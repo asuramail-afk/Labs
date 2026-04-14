@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JavaScript Proxy 完全理解 Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+/* Sidebar */
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+/* Hero */
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+/* TOC */
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+/* Container & Lab cards */
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+/* Code block */
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+/* Syntax token colors */
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+
+/* info-box */
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+/* verify Before / After */
+.verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+  line-height:1.7; border:1px solid; }
+.verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+.verify-before .verify-label { color:var(--error); }
+.verify-after  .verify-label { color:var(--success); }
+
+/* check-steps */
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+/* compare-table */
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+.compare-table .yes { color:var(--success); } .compare-table .no { color:var(--error); }
+
+/* beginner-box */
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+/* demo-area */
+.demo-area { background:#fff; border:1px solid var(--border); border-radius:8px;
+  padding:16px; margin:12px 0; }
+.demo-area h4 { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  margin-bottom:10px; letter-spacing:.05em; }
+.demo-btn { background:var(--accent); color:#fff; border:none; font-family:var(--mono);
+  font-size:.78rem; padding:7px 16px; border-radius:5px; cursor:pointer;
+  transition:background .15s; margin:4px 4px 4px 0; }
+.demo-btn:hover { background:#0046a0; }
+.demo-output { background:var(--code-bg); border:1px solid var(--border);
+  border-radius:6px; padding:10px 14px; margin-top:10px;
+  font-family:var(--mono); font-size:.8rem; line-height:1.6;
+  color:var(--text); min-height:40px; white-space:pre-wrap; }
+
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .verify { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+  </style>
+</head>
+<body>
+
+<!-- ===== Sidebar ===== -->
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// <span>JS</span> Proxy Lab</div>
+  <div class="nav-section">基礎概念</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>Proxyとは何か</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>最初のProxy作成</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>getトラップ</a>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>setトラップ</a>
+  <div class="nav-section">実践トラップ</div>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>has / deleteProperty</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>apply（関数Proxy）</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>construct（new操作）</a>
+  <div class="nav-section">応用パターン</div>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>バリデーション実装</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>デフォルト値と存在しないプロパティ</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>変更監視（Observer）</a>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>Reflect APIとの連携</a>
+  <div class="nav-section">発展</div>
+  <a class="nav-item" href="#lab11"><span class="nav-num">11</span>Revocable Proxy</a>
+  <a class="nav-item" href="#lab12"><span class="nav-num">12</span>全トラップ一覧と制約</a>
+</nav>
+
+<!-- ===== Hero ===== -->
+<div class="hero">
+  <h1>JavaScript Proxy 完全理解 Lab</h1>
+  <p class="subtitle">オブジェクトの「門番」を理解する — 13ラボで基礎から応用まで実機確認</p>
+</div>
+
+<!-- ===== TOC ===== -->
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>Proxyとは何か</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>最初のProxy作成</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>getトラップ</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>setトラップ</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>has / deleteProperty</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>apply（関数Proxy）</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>construct（new操作）</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>バリデーション実装</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>デフォルト値と存在しないプロパティ</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>変更監視（Observer）</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">10</span>Reflect APIとの連携</a>
+    <a class="toc-item" href="#lab11"><span class="toc-num">11</span>Revocable Proxy</a>
+    <a class="toc-item" href="#lab12"><span class="toc-num">12</span>全トラップ一覧と制約</a>
+  </div>
+</div>
+
+<!-- ===== Labs ===== -->
+<div class="container">
+
+  <!-- ==================== Lab 00 ==================== -->
+  <div class="lab" id="lab0">
+    <div class="lab-header">
+      <div class="lab-num">00</div>
+      <h3>Proxyとは何か — 概念を掴む</h3>
+      <span class="lab-tag tag-basic">基本</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>Proxy</code> はオブジェクトの前に立つ「門番」です。プロパティの読み書き・削除・関数呼び出しなど、オブジェクトへのあらゆる操作を途中で横取り（インターセプト）し、独自のロジックを差し込めます。
+      </p>
+
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 たとえ話で理解する</div>
+        ホテルのフロントデスクを想像してください。宿泊客（コード）が部屋（オブジェクト）に何か頼むとき、必ずフロント（Proxy）を経由します。フロントは「荷物を届ける」「部屋を掃除する」「チェックアウト」どれも一旦受け取り、ルールに従って処理します。
+        <pre class="ascii-art">
+  あなたのコード        Proxy（門番）        ターゲットオブジェクト
+ ┌──────────┐      ┌─────────────┐      ┌──────────────┐
+ │ obj.name  │─────▶│ get トラップ  │─────▶│ { name: "太郎" } │
+ │ obj.age=25│─────▶│ set トラップ  │─────▶│ { age: 25 }    │
+ │ delete obj│─────▶│ delete トラップ│─────▶│ (プロパティ削除) │
+ └──────────┘      └─────────────┘      └──────────────┘
+        </pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">Proxy の 3つの登場人物</div>
+        <pre><span class="cm">// ① ターゲット（target）: 元のオブジェクト</span>
+<span class="kw">const</span> target = { name: <span class="str">"太郎"</span>, age: <span class="num">30</span> };
+
+<span class="cm">// ② ハンドラ（handler）: トラップ関数を集めたオブジェクト</span>
+<span class="kw">const</span> handler = {
+  <span class="fn">get</span>(target, prop) {
+    <span class="fn">console.log</span>(<span class="str">`"${prop}" が読まれました`</span>);
+    <span class="kw">return</span> target[prop];
+  }
+};
+
+<span class="cm">// ③ プロキシ（proxy）: target + handler を組み合わせた新オブジェクト</span>
+<span class="kw">const</span> proxy = <span class="kw">new</span> <span class="fn">Proxy</span>(target, handler);
+
+proxy.name; <span class="cm">// → "name が読まれました" → "太郎"</span></pre>
+      </div>
+
+      <table class="compare-table">
+        <tr><th>用語</th><th>役割</th><th>たとえ</th></tr>
+        <tr><td>target</td><td>元のオブジェクト</td><td>ホテルの部屋</td></tr>
+        <tr><td>handler</td><td>トラップ関数をまとめたオブジェクト</td><td>フロントの業務マニュアル</td></tr>
+        <tr><td>trap</td><td>個々の操作をフックする関数</td><td>「荷物配達」「掃除」等の各業務手順</td></tr>
+        <tr><td>proxy</td><td>target + handler の合体物</td><td>フロント経由でしか触れない部屋</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- ==================== Lab 01 ==================== -->
+  <div class="lab" id="lab1">
+    <div class="lab-header">
+      <div class="lab-num">01</div>
+      <h3>最初のProxy作成 — 空ハンドラ</h3>
+      <span class="lab-tag tag-basic">基本</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        ハンドラに何もトラップを定義しない場合、Proxyは完全に透過的（パススルー）に動作します。つまり、元のオブジェクトとまったく同じ振る舞いをします。これが出発点です。
+      </p>
+
+      <div class="code-block">
+        <div class="code-label">空ハンドラ — 透過Proxy</div>
+        <pre><span class="kw">const</span> target = { x: <span class="num">1</span>, y: <span class="num">2</span> };
+<span class="kw">const</span> proxy = <span class="kw">new</span> <span class="fn">Proxy</span>(target, {}); <span class="cm">// handler は空オブジェクト</span>
+
+<span class="fn">console.log</span>(proxy.x);      <span class="cm">// 1   ← そのまま通過</span>
+proxy.z = <span class="num">3</span>;
+<span class="fn">console.log</span>(target.z);     <span class="cm">// 3   ← target にも反映される！</span>
+<span class="fn">console.log</span>(proxy === target); <span class="cm">// false ← 別オブジェクト</span></pre>
+      </div>
+
+      <div class="demo-area">
+        <h4>▶ 実行してみよう</h4>
+        <button class="demo-btn" onclick="runLab1()">実行</button>
+        <div class="demo-output" id="lab1-output"></div>
+      </div>
+
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 proxy と target は別モノ</div>
+        <code>proxy === target</code> は <strong>false</strong> です。Proxy は target を「ラップ」した新しいオブジェクト。しかし proxy への操作は target に反映されます（共有参照）。
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== Lab 02 ==================== -->
+  <div class="lab" id="lab2">
+    <div class="lab-header">
+      <div class="lab-num">02</div>
+      <h3>getトラップ — 読み取りの横取り</h3>
+      <span class="lab-tag tag-basic">基本</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>get(target, property, receiver)</code> はプロパティが読み取られるたびに呼ばれます。最も基本的で最も頻出するトラップです。
+      </p>
+
+      <div class="code-block">
+        <div class="code-label">get トラップの基本</div>
+        <pre><span class="kw">const</span> user = { name: <span class="str">"花子"</span>, age: <span class="num">25</span> };
+
+<span class="kw">const</span> proxy = <span class="kw">new</span> <span class="fn">Proxy</span>(user, {
+  <span class="fn">get</span>(target, prop, receiver) {
+    <span class="fn">console.log</span>(<span class="str">`[GET] ${prop}`</span>);
+
+    <span class="cm">// 存在しないプロパティにはデフォルトメッセージ</span>
+    <span class="kw">if</span> (!(prop <span class="kw">in</span> target)) {
+      <span class="kw">return</span> <span class="str">`"${prop}" は存在しません`</span>;
+    }
+    <span class="kw">return</span> target[prop];
+  }
+});
+
+<span class="fn">console.log</span>(proxy.name);    <span class="cm">// [GET] name → "花子"</span>
+<span class="fn">console.log</span>(proxy.email);   <span class="cm">// [GET] email → "email は存在しません"</span></pre>
+      </div>
+
+      <div class="demo-area">
+        <h4>▶ 実行してみよう</h4>
+        <button class="demo-btn" onclick="runLab2()">実行</button>
+        <div class="demo-output" id="lab2-output"></div>
+      </div>
+
+      <table class="compare-table">
+        <tr><th>引数</th><th>意味</th><th>例</th></tr>
+        <tr><td>target</td><td>元のオブジェクト</td><td><code>user</code></td></tr>
+        <tr><td>prop</td><td>アクセスされたプロパティ名</td><td><code>"name"</code></td></tr>
+        <tr><td>receiver</td><td>proxy自身（or 継承先）</td><td>通常は <code>proxy</code></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- ==================== Lab 03 ==================== -->
+  <div class="lab" id="lab3">
+    <div class="lab-header">
+      <div class="lab-num">03</div>
+      <h3>setトラップ — 書き込みの横取り</h3>
+      <span class="lab-tag tag-basic">基本</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>set(target, property, value, receiver)</code> はプロパティへの代入時に呼ばれます。バリデーション（型チェック、範囲チェック等）を入れられる最も実用的なトラップです。<strong>必ず <code>true</code> を返す</strong>ことが重要です。
+      </p>
+
+      <div class="code-block">
+        <div class="code-label">set トラップで型チェック</div>
+        <pre><span class="kw">const</span> person = { name: <span class="str">"太郎"</span>, age: <span class="num">30</span> };
+
+<span class="kw">const</span> proxy = <span class="kw">new</span> <span class="fn">Proxy</span>(person, {
+  <span class="fn">set</span>(target, prop, value, receiver) {
+    <span class="kw">if</span> (prop === <span class="str">"age"</span>) {
+      <span class="kw">if</span> (<span class="kw">typeof</span> value !== <span class="str">"number"</span>) {
+        <span class="kw">throw new</span> <span class="fn">TypeError</span>(<span class="str">"age は数値のみ"</span>);
+      }
+      <span class="kw">if</span> (value &lt; <span class="num">0</span> || value &gt; <span class="num">150</span>) {
+        <span class="kw">throw new</span> <span class="fn">RangeError</span>(<span class="str">"age は 0〜150"</span>);
+      }
+    }
+    target[prop] = value;
+    <span class="kw">return true</span>; <span class="cm">// ← 必須！</span>
+  }
+});
+
+proxy.age = <span class="num">25</span>;       <span class="cm">// OK</span>
+<span class="cm">// proxy.age = "二十五"; // → TypeError!</span>
+<span class="cm">// proxy.age = -5;      // → RangeError!</span></pre>
+      </div>
+
+      <div class="demo-area">
+        <h4>▶ 実行してみよう</h4>
+        <button class="demo-btn" onclick="runLab3('ok')">正常: age = 25</button>
+        <button class="demo-btn" onclick="runLab3('type')">型エラー: age = "文字"</button>
+        <button class="demo-btn" onclick="runLab3('range')">範囲エラー: age = -5</button>
+        <div class="demo-output" id="lab3-output"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== Lab 04 ==================== -->
+  <div class="lab" id="lab4">
+    <div class="lab-header">
+      <div class="lab-num">04</div>
+      <h3>has / deleteProperty トラップ</h3>
+      <span class="lab-tag tag-intermediate">中級</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>has</code> は <code>in</code> 演算子を、<code>deleteProperty</code> は <code>delete</code> 演算子をインターセプトします。プロパティの存在チェックや削除を制御できます。
+      </p>
+
+      <div class="code-block">
+        <div class="code-label">has — プロパティ隠蔽</div>
+        <pre><span class="kw">const</span> secrets = { password: <span class="str">"abc123"</span>, name: <span class="str">"太郎"</span> };
+
+<span class="kw">const</span> proxy = <span class="kw">new</span> <span class="fn">Proxy</span>(secrets, {
+  <span class="fn">has</span>(target, prop) {
+    <span class="kw">if</span> (prop === <span class="str">"password"</span>) {
+      <span class="kw">return false</span>; <span class="cm">// 存在を隠す</span>
+    }
+    <span class="kw">return</span> prop <span class="kw">in</span> target;
+  }
+});
+
+<span class="fn">console.log</span>(<span class="str">"name"</span> <span class="kw">in</span> proxy);     <span class="cm">// true</span>
+<span class="fn">console.log</span>(<span class="str">"password"</span> <span class="kw">in</span> proxy); <span class="cm">// false (隠蔽！)</span>
+<span class="fn">console.log</span>(proxy.password);       <span class="cm">// "abc123" (get は制限していないので取れる)</span></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">deleteProperty — 削除の制限</div>
+        <pre><span class="kw">const</span> config = { host: <span class="str">"localhost"</span>, port: <span class="num">3000</span>, debug: <span class="kw">true</span> };
+
+<span class="kw">const</span> proxy = <span class="kw">new</span> <span class="fn">Proxy</span>(config, {
+  <span class="fn">deleteProperty</span>(target, prop) {
+    <span class="kw">if</span> (prop === <span class="str">"host"</span> || prop === <span class="str">"port"</span>) {
+      <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">`"${prop}" は削除禁止です`</span>);
+    }
+    <span class="kw">delete</span> target[prop];
+    <span class="kw">return true</span>;
+  }
+});
+
+<span class="kw">delete</span> proxy.debug; <span class="cm">// OK — debug は削除可能</span>
+<span class="cm">// delete proxy.host; // → Error: "host" は削除禁止です</span></pre>
+      </div>
+
+      <div class="demo-area">
+        <h4>▶ 実行してみよう</h4>
+        <button class="demo-btn" onclick="runLab4()">実行</button>
+        <div class="demo-output" id="lab4-output"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== Lab 05 ==================== -->
+  <div class="lab" id="lab5">
+    <div class="lab-header">
+      <div class="lab-num">05</div>
+      <h3>applyトラップ — 関数呼び出しの横取り</h3>
+      <span class="lab-tag tag-intermediate">中級</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>apply(target, thisArg, args)</code> は関数が呼び出されたときに発火します。<strong>target が関数</strong>の場合のみ使用可能です。ログ記録、キャッシュ、引数変換などに活用できます。
+      </p>
+
+      <div class="code-block">
+        <div class="code-label">apply — 実行時間の計測ラッパー</div>
+        <pre><span class="kw">function</span> <span class="fn">heavyCalc</span>(n) {
+  <span class="kw">let</span> sum = <span class="num">0</span>;
+  <span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i &lt; n; i++) sum += i;
+  <span class="kw">return</span> sum;
+}
+
+<span class="kw">const</span> timedCalc = <span class="kw">new</span> <span class="fn">Proxy</span>(heavyCalc, {
+  <span class="fn">apply</span>(target, thisArg, args) {
+    <span class="kw">const</span> start = performance.<span class="fn">now</span>();
+    <span class="kw">const</span> result = target.<span class="fn">apply</span>(thisArg, args);
+    <span class="kw">const</span> ms = (performance.<span class="fn">now</span>() - start).<span class="fn">toFixed</span>(<span class="num">2</span>);
+    <span class="fn">console.log</span>(<span class="str">`実行時間: ${ms}ms`</span>);
+    <span class="kw">return</span> result;
+  }
+});
+
+timedCalc(<span class="num">1000000</span>); <span class="cm">// → 実行時間: X.XXms → 499999500000</span></pre>
+      </div>
+
+      <div class="demo-area">
+        <h4>▶ 実行してみよう</h4>
+        <button class="demo-btn" onclick="runLab5()">実行</button>
+        <div class="demo-output" id="lab5-output"></div>
+      </div>
+
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 apply は「関数専用」</div>
+        普通のオブジェクト（ <code>{ }</code> ）に apply トラップを仕掛けてもエラーになります。target が関数（<code>typeof target === "function"</code>）のときだけ使えます。
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== Lab 06 ==================== -->
+  <div class="lab" id="lab6">
+    <div class="lab-header">
+      <div class="lab-num">06</div>
+      <h3>constructトラップ — new操作の横取り</h3>
+      <span class="lab-tag tag-intermediate">中級</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>construct(target, args, newTarget)</code> は <code>new</code> 演算子によるインスタンス生成をインターセプトします。<strong>必ずオブジェクトを返す</strong>必要があります。
+      </p>
+
+      <div class="code-block">
+        <div class="code-label">construct — シングルトン風パターン</div>
+        <pre><span class="kw">function</span> <span class="fn">Database</span>(name) {
+  <span class="kw">this</span>.name = name;
+  <span class="kw">this</span>.createdAt = <span class="kw">new</span> <span class="fn">Date</span>().<span class="fn">toISOString</span>();
+}
+
+<span class="kw">let</span> instance = <span class="kw">null</span>;
+
+<span class="kw">const</span> SingletonDB = <span class="kw">new</span> <span class="fn">Proxy</span>(Database, {
+  <span class="fn">construct</span>(target, args, newTarget) {
+    <span class="kw">if</span> (!instance) {
+      instance = <span class="kw">new</span> target(...args);
+      <span class="fn">console.log</span>(<span class="str">"新規インスタンス作成"</span>);
+    } <span class="kw">else</span> {
+      <span class="fn">console.log</span>(<span class="str">"既存インスタンスを再利用"</span>);
+    }
+    <span class="kw">return</span> instance;
+  }
+});
+
+<span class="kw">const</span> db1 = <span class="kw">new</span> <span class="fn">SingletonDB</span>(<span class="str">"myDB"</span>);
+<span class="kw">const</span> db2 = <span class="kw">new</span> <span class="fn">SingletonDB</span>(<span class="str">"otherDB"</span>);
+<span class="fn">console.log</span>(db1 === db2); <span class="cm">// true</span></pre>
+      </div>
+
+      <div class="demo-area">
+        <h4>▶ 実行してみよう</h4>
+        <button class="demo-btn" onclick="runLab6()">実行</button>
+        <div class="demo-output" id="lab6-output"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== Lab 07 ==================== -->
+  <div class="lab" id="lab7">
+    <div class="lab-header">
+      <div class="lab-num">07</div>
+      <h3>バリデーション実装 — 実践パターン</h3>
+      <span class="lab-tag tag-intermediate">中級</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        複数のプロパティに対して型・範囲・形式のバリデーションを一括管理する実用パターンです。スキーマ定義とProxyを組み合わせます。
+      </p>
+
+      <div class="code-block">
+        <div class="code-label">スキーマ駆動バリデーション</div>
+        <pre><span class="kw">const</span> schema = {
+  name:  { type: <span class="str">"string"</span>,  minLen: <span class="num">1</span>, maxLen: <span class="num">50</span> },
+  email: { type: <span class="str">"string"</span>,  pattern: <span class="val">/^[^\s@]+@[^\s@]+\.[^\s@]+$/</span> },
+  age:   { type: <span class="str">"number"</span>,  min: <span class="num">0</span>, max: <span class="num">150</span> }
+};
+
+<span class="kw">function</span> <span class="fn">createValidated</span>(data, schema) {
+  <span class="kw">return new</span> <span class="fn">Proxy</span>(data, {
+    <span class="fn">set</span>(target, prop, value) {
+      <span class="kw">const</span> rule = schema[prop];
+      <span class="kw">if</span> (!rule) { target[prop] = value; <span class="kw">return true</span>; }
+
+      <span class="kw">if</span> (<span class="kw">typeof</span> value !== rule.type) {
+        <span class="kw">throw new</span> <span class="fn">TypeError</span>(<span class="str">`${prop}: ${rule.type}型が必要`</span>);
+      }
+      <span class="kw">if</span> (rule.minLen &amp;&amp; value.length &lt; rule.minLen) {
+        <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">`${prop}: ${rule.minLen}文字以上`</span>);
+      }
+      <span class="kw">if</span> (rule.pattern &amp;&amp; !rule.pattern.<span class="fn">test</span>(value)) {
+        <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">`${prop}: 形式が不正`</span>);
+      }
+      <span class="kw">if</span> (rule.min != <span class="kw">null</span> &amp;&amp; value &lt; rule.min) {
+        <span class="kw">throw new</span> <span class="fn">RangeError</span>(<span class="str">`${prop}: ${rule.min}以上`</span>);
+      }
+      target[prop] = value;
+      <span class="kw">return true</span>;
+    }
+  });
+}
+
+<span class="kw">const</span> user = <span class="fn">createValidated</span>({}, schema);
+user.name = <span class="str">"太郎"</span>;            <span class="cm">// ✓ OK</span>
+user.email = <span class="str">"taro@test.com"</span>;  <span class="cm">// ✓ OK</span>
+user.age = <span class="num">25</span>;                  <span class="cm">// ✓ OK</span>
+<span class="cm">// user.email = "not-an-email"; // → Error: email: 形式が不正</span></pre>
+      </div>
+
+      <div class="demo-area">
+        <h4>▶ 実行してみよう</h4>
+        <button class="demo-btn" onclick="runLab7('ok')">正常入力</button>
+        <button class="demo-btn" onclick="runLab7('bad')">不正メール</button>
+        <button class="demo-btn" onclick="runLab7('age')">範囲外age</button>
+        <div class="demo-output" id="lab7-output"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== Lab 08 ==================== -->
+  <div class="lab" id="lab8">
+    <div class="lab-header">
+      <div class="lab-num">08</div>
+      <h3>デフォルト値と存在しないプロパティ</h3>
+      <span class="lab-tag tag-intermediate">中級</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        存在しないプロパティにアクセスしたとき、<code>undefined</code> ではなくデフォルト値を返す「スマートオブジェクト」を作ります。辞書型データやi18n翻訳オブジェクトで便利です。
+      </p>
+
+      <div class="code-block">
+        <div class="code-label">デフォルト値Proxy</div>
+        <pre><span class="kw">function</span> <span class="fn">withDefaults</span>(target, defaults) {
+  <span class="kw">return new</span> <span class="fn">Proxy</span>(target, {
+    <span class="fn">get</span>(obj, prop) {
+      <span class="kw">return</span> prop <span class="kw">in</span> obj ? obj[prop] : defaults[prop] ?? <span class="str">`[${prop} 未定義]`</span>;
+    }
+  });
+}
+
+<span class="kw">const</span> config = <span class="fn">withDefaults</span>(
+  { host: <span class="str">"production.example.com"</span> },
+  { host: <span class="str">"localhost"</span>, port: <span class="num">3000</span>, debug: <span class="kw">false</span> }
+);
+
+<span class="fn">console.log</span>(config.host);    <span class="cm">// "production.example.com" (自分の値)</span>
+<span class="fn">console.log</span>(config.port);    <span class="cm">// 3000 (デフォルト値)</span>
+<span class="fn">console.log</span>(config.debug);   <span class="cm">// false (デフォルト値)</span>
+<span class="fn">console.log</span>(config.unknown); <span class="cm">// "[unknown 未定義]"</span></pre>
+      </div>
+
+      <div class="demo-area">
+        <h4>▶ 実行してみよう</h4>
+        <button class="demo-btn" onclick="runLab8()">実行</button>
+        <div class="demo-output" id="lab8-output"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== Lab 09 ==================== -->
+  <div class="lab" id="lab9">
+    <div class="lab-header">
+      <div class="lab-num">09</div>
+      <h3>変更監視（Observer パターン）</h3>
+      <span class="lab-tag tag-advanced">応用</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        プロパティの変更を検知してコールバックを呼ぶ「Observer」パターン。Vue.js や MobX 等のリアクティブシステムの原型です。
+      </p>
+
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 Vue.jsとの関係</div>
+        Vue 3 の <code>reactive()</code> は内部で Proxy を使ってデータ変更を検知しています。この Lab で作るものは、その仕組みの簡略版です。
+        <pre class="ascii-art">
+  Vue 3 リアクティブシステム（簡略）
+
+  const state = reactive({ count: 0 })
+        ↓ 内部的に
+  new Proxy({ count: 0 }, {
+    get()  → 依存関係を追跡（track）
+    set()  → 変更を通知（trigger） → DOM更新
+  })
+        </pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">変更監視 Observable</div>
+        <pre><span class="kw">function</span> <span class="fn">observable</span>(target, onChange) {
+  <span class="kw">return new</span> <span class="fn">Proxy</span>(target, {
+    <span class="fn">set</span>(obj, prop, value) {
+      <span class="kw">const</span> oldValue = obj[prop];
+      obj[prop] = value;
+      <span class="fn">onChange</span>({
+        prop,
+        oldValue,
+        newValue: value,
+        timestamp: <span class="kw">new</span> <span class="fn">Date</span>().<span class="fn">toLocaleTimeString</span>()
+      });
+      <span class="kw">return true</span>;
+    },
+    <span class="fn">deleteProperty</span>(obj, prop) {
+      <span class="kw">const</span> oldValue = obj[prop];
+      <span class="kw">delete</span> obj[prop];
+      <span class="fn">onChange</span>({ prop, oldValue, newValue: <span class="kw">undefined</span>, action: <span class="str">"delete"</span> });
+      <span class="kw">return true</span>;
+    }
+  });
+}
+
+<span class="kw">const</span> state = <span class="fn">observable</span>({ count: <span class="num">0</span>, text: <span class="str">"hello"</span> }, (change) =&gt; {
+  <span class="fn">console.log</span>(<span class="str">`[${change.timestamp}] ${change.prop}: ${change.oldValue} → ${change.newValue}`</span>);
+});
+
+state.count = <span class="num">1</span>;    <span class="cm">// → [時刻] count: 0 → 1</span>
+state.text = <span class="str">"hi"</span>; <span class="cm">// → [時刻] text: hello → hi</span></pre>
+      </div>
+
+      <div class="demo-area">
+        <h4>▶ 実行してみよう</h4>
+        <button class="demo-btn" onclick="runLab9()">実行</button>
+        <div class="demo-output" id="lab9-output"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== Lab 10 ==================== -->
+  <div class="lab" id="lab10">
+    <div class="lab-header">
+      <div class="lab-num">10</div>
+      <h3>Reflect APIとの連携</h3>
+      <span class="lab-tag tag-advanced">応用</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>Reflect</code> は Proxy のトラップと1:1対応するメソッドを持つ組み込みオブジェクトです。トラップ内で <code>target[prop]</code> の代わりに <code>Reflect.get(target, prop, receiver)</code> を使うことで、プロトタイプチェーンや getter の <code>this</code> が正しく動作します。
+      </p>
+
+      <div class="code-block">
+        <div class="code-label">Reflect を使うべき理由</div>
+        <pre><span class="cm">// ❌ target[prop] — this が target に固定される</span>
+<span class="kw">const</span> badHandler = {
+  <span class="fn">get</span>(target, prop) {
+    <span class="kw">return</span> target[prop]; <span class="cm">// getter 内の this が target になる</span>
+  }
+};
+
+<span class="cm">// ✅ Reflect.get — receiver を渡すので this が正しい</span>
+<span class="kw">const</span> goodHandler = {
+  <span class="fn">get</span>(target, prop, receiver) {
+    <span class="fn">console.log</span>(<span class="str">`[GET] ${prop}`</span>);
+    <span class="kw">return</span> <span class="fn">Reflect.get</span>(target, prop, receiver);
+  },
+  <span class="fn">set</span>(target, prop, value, receiver) {
+    <span class="fn">console.log</span>(<span class="str">`[SET] ${prop} = ${value}`</span>);
+    <span class="kw">return</span> <span class="fn">Reflect.set</span>(target, prop, value, receiver);
+  }
+};</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">getter で差が出る例</div>
+        <pre><span class="kw">const</span> base = {
+  _name: <span class="str">"太郎"</span>,
+  <span class="kw">get</span> <span class="fn">greeting</span>() {
+    <span class="kw">return</span> <span class="str">`こんにちは、${<span class="kw">this</span>._name}です`</span>; <span class="cm">// ← this が重要</span>
+  }
+};
+
+<span class="kw">const</span> proxy = <span class="kw">new</span> <span class="fn">Proxy</span>(base, {
+  <span class="fn">get</span>(target, prop, receiver) {
+    <span class="kw">return</span> <span class="fn">Reflect.get</span>(target, prop, receiver);
+  }
+});
+
+<span class="kw">const</span> child = <span class="fn">Object.create</span>(proxy);
+child._name = <span class="str">"花子"</span>;
+<span class="fn">console.log</span>(child.greeting); <span class="cm">// "こんにちは、花子です" ← 正しい！</span></pre>
+      </div>
+
+      <table class="compare-table">
+        <tr><th>Proxy トラップ</th><th>対応する Reflect メソッド</th></tr>
+        <tr><td>get</td><td>Reflect.get(target, prop, receiver)</td></tr>
+        <tr><td>set</td><td>Reflect.set(target, prop, value, receiver)</td></tr>
+        <tr><td>has</td><td>Reflect.has(target, prop)</td></tr>
+        <tr><td>deleteProperty</td><td>Reflect.deleteProperty(target, prop)</td></tr>
+        <tr><td>apply</td><td>Reflect.apply(target, thisArg, args)</td></tr>
+        <tr><td>construct</td><td>Reflect.construct(target, args, newTarget)</td></tr>
+      </table>
+
+      <div class="demo-area">
+        <h4>▶ 実行してみよう</h4>
+        <button class="demo-btn" onclick="runLab10()">実行</button>
+        <div class="demo-output" id="lab10-output"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== Lab 11 ==================== -->
+  <div class="lab" id="lab11">
+    <div class="lab-header">
+      <div class="lab-num">11</div>
+      <h3>Revocable Proxy — 取り消し可能</h3>
+      <span class="lab-tag tag-advanced">応用</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>Proxy.revocable()</code> は通常の Proxy に加えて <code>revoke()</code> 関数を返します。一度 revoke すると、そのプロキシへのあらゆる操作が <code>TypeError</code> になります。API キーの無効化やセッション管理に使えます。
+      </p>
+
+      <div class="code-block">
+        <div class="code-label">Revocable Proxy</div>
+        <pre><span class="kw">const</span> { proxy, revoke } = <span class="fn">Proxy.revocable</span>(
+  { secret: <span class="str">"機密データ"</span>, public: <span class="str">"公開データ"</span> },
+  {
+    <span class="fn">get</span>(target, prop, receiver) {
+      <span class="fn">console.log</span>(<span class="str">`[アクセス] ${prop}`</span>);
+      <span class="kw">return</span> <span class="fn">Reflect.get</span>(target, prop, receiver);
+    }
+  }
+);
+
+<span class="fn">console.log</span>(proxy.secret); <span class="cm">// "機密データ" — まだアクセス可能</span>
+
+<span class="fn">revoke</span>();  <span class="cm">// ← ここでプロキシを無効化！</span>
+
+<span class="kw">try</span> {
+  proxy.secret; <span class="cm">// → TypeError: proxy が revoke 済み</span>
+} <span class="kw">catch</span> (e) {
+  <span class="fn">console.log</span>(<span class="str">`エラー: ${e.message}`</span>);
+}</pre>
+      </div>
+
+      <div class="demo-area">
+        <h4>▶ 実行してみよう</h4>
+        <button class="demo-btn" onclick="runLab11()">実行</button>
+        <div class="demo-output" id="lab11-output"></div>
+      </div>
+
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 使いどころ</div>
+        「一定時間だけアクセスを許可する一時トークン」や「ログアウト後に即座にデータアクセスを遮断する」場合に使えます。<code>revoke()</code> は何度呼んでもOKで、一度無効化したProxyは復活できません。
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== Lab 12 ==================== -->
+  <div class="lab" id="lab12">
+    <div class="lab-header">
+      <div class="lab-num">12</div>
+      <h3>全トラップ一覧と不変条件</h3>
+      <span class="lab-tag tag-advanced">応用</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        Proxy には全13種のトラップがあります。また、Proxy には「不変条件（invariant）」というルールがあり、ハンドラで嘘をつける範囲には制限があります。
+      </p>
+
+      <table class="compare-table">
+        <tr><th>トラップ</th><th>横取りする操作</th><th>使用頻度</th></tr>
+        <tr><td>get</td><td>プロパティ読み取り</td><td>★★★</td></tr>
+        <tr><td>set</td><td>プロパティ書き込み</td><td>★★★</td></tr>
+        <tr><td>has</td><td><code>in</code> 演算子</td><td>★★☆</td></tr>
+        <tr><td>deleteProperty</td><td><code>delete</code> 演算子</td><td>★★☆</td></tr>
+        <tr><td>apply</td><td>関数呼び出し <code>f()</code></td><td>★★☆</td></tr>
+        <tr><td>construct</td><td><code>new</code> 演算子</td><td>★☆☆</td></tr>
+        <tr><td>getPrototypeOf</td><td><code>Object.getPrototypeOf()</code></td><td>★☆☆</td></tr>
+        <tr><td>setPrototypeOf</td><td><code>Object.setPrototypeOf()</code></td><td>★☆☆</td></tr>
+        <tr><td>isExtensible</td><td><code>Object.isExtensible()</code></td><td>★☆☆</td></tr>
+        <tr><td>preventExtensions</td><td><code>Object.preventExtensions()</code></td><td>★☆☆</td></tr>
+        <tr><td>getOwnPropertyDescriptor</td><td><code>Object.getOwnPropertyDescriptor()</code></td><td>★☆☆</td></tr>
+        <tr><td>defineProperty</td><td><code>Object.defineProperty()</code></td><td>★☆☆</td></tr>
+        <tr><td>ownKeys</td><td><code>Object.keys()</code> / <code>for...in</code></td><td>★★☆</td></tr>
+      </table>
+
+      <div class="code-block">
+        <div class="code-label">不変条件（Invariant）の例</div>
+        <pre><span class="kw">const</span> obj = {};
+<span class="fn">Object.defineProperty</span>(obj, <span class="str">"locked"</span>, {
+  value: <span class="num">42</span>,
+  writable: <span class="kw">false</span>,
+  configurable: <span class="kw">false</span>
+});
+
+<span class="kw">const</span> proxy = <span class="kw">new</span> <span class="fn">Proxy</span>(obj, {
+  <span class="fn">get</span>(target, prop) {
+    <span class="kw">if</span> (prop === <span class="str">"locked"</span>) <span class="kw">return</span> <span class="num">99</span>; <span class="cm">// 嘘の値を返そうとする</span>
+    <span class="kw">return</span> target[prop];
+  }
+});
+
+<span class="cm">// proxy.locked → TypeError!</span>
+<span class="cm">// configurable:false かつ writable:false のプロパティは</span>
+<span class="cm">// get トラップで異なる値を返せない（不変条件違反）</span></pre>
+      </div>
+
+      <div class="demo-area">
+        <h4>▶ 実行してみよう</h4>
+        <button class="demo-btn" onclick="runLab12()">不変条件違反テスト</button>
+        <div class="demo-output" id="lab12-output"></div>
+      </div>
+
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 なぜ不変条件があるのか</div>
+        もしProxyがどんな嘘でもつけたら、<code>Object.freeze()</code> や <code>Object.defineProperty</code> で設定した制約が意味をなさなくなります。JavaScript の型システムの信頼性を保つため、Proxy にも「越えられない壁」が設けられています。
+      </div>
+    </div>
+  </div>
+
+</div><!-- /.container -->
+
+<!-- ===== Scripts ===== -->
+<script>
+  // ===== Demo Runners =====
+  function capture(fn) {
+    const logs = [];
+    const orig = console.log;
+    console.log = (...args) => logs.push(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '));
+    try { fn(); } catch(e) { logs.push('❌ ' + e); } finally { console.log = orig; }
+    return logs.join('\n');
+  }
+
+  function runLab1() {
+    document.getElementById('lab1-output').textContent = capture(() => {
+      const target = { x: 1, y: 2 };
+      const proxy = new Proxy(target, {});
+      console.log('proxy.x =', proxy.x);
+      proxy.z = 3;
+      console.log('target.z =', target.z);
+      console.log('proxy === target ?', proxy === target);
+    });
+  }
+
+  function runLab2() {
+    document.getElementById('lab2-output').textContent = capture(() => {
+      const user = { name: "花子", age: 25 };
+      const proxy = new Proxy(user, {
+        get(target, prop) {
+          console.log(`[GET] ${prop}`);
+          if (!(prop in target)) return `"${prop}" は存在しません`;
+          return target[prop];
+        }
+      });
+      console.log('→', proxy.name);
+      console.log('→', proxy.email);
+    });
+  }
+
+  function runLab3(mode) {
+    document.getElementById('lab3-output').textContent = capture(() => {
+      const person = { name: "太郎", age: 30 };
+      const proxy = new Proxy(person, {
+        set(target, prop, value) {
+          if (prop === "age") {
+            if (typeof value !== "number") throw new TypeError("age は数値のみ");
+            if (value < 0 || value > 150) throw new RangeError("age は 0〜150");
+          }
+          target[prop] = value;
+          return true;
+        }
+      });
+      if (mode === 'ok') { proxy.age = 25; console.log('✅ age =', proxy.age); }
+      if (mode === 'type') { proxy.age = "二十五"; }
+      if (mode === 'range') { proxy.age = -5; }
+    });
+  }
+
+  function runLab4() {
+    document.getElementById('lab4-output').textContent = capture(() => {
+      const secrets = { password: "abc123", name: "太郎" };
+      const proxy = new Proxy(secrets, {
+        has(target, prop) {
+          if (prop === "password") return false;
+          return prop in target;
+        }
+      });
+      console.log('"name" in proxy →', "name" in proxy);
+      console.log('"password" in proxy →', "password" in proxy);
+      console.log('proxy.password →', proxy.password);
+
+      console.log('');
+      const config = { host: "localhost", port: 3000, debug: true };
+      const cfgProxy = new Proxy(config, {
+        deleteProperty(target, prop) {
+          if (prop === "host" || prop === "port") throw new Error(`"${prop}" は削除禁止`);
+          delete target[prop];
+          return true;
+        }
+      });
+      delete cfgProxy.debug;
+      console.log('delete debug → OK, keys:', Object.keys(config).join(', '));
+      try { delete cfgProxy.host; } catch(e) { console.log('delete host →', e.message); }
+    });
+  }
+
+  function runLab5() {
+    document.getElementById('lab5-output').textContent = capture(() => {
+      function heavyCalc(n) { let s=0; for(let i=0;i<n;i++) s+=i; return s; }
+      const timedCalc = new Proxy(heavyCalc, {
+        apply(target, thisArg, args) {
+          const start = performance.now();
+          const result = target.apply(thisArg, args);
+          const ms = (performance.now() - start).toFixed(2);
+          console.log(`実行時間: ${ms}ms`);
+          return result;
+        }
+      });
+      const r = timedCalc(1000000);
+      console.log('結果:', r);
+    });
+  }
+
+  function runLab6() {
+    document.getElementById('lab6-output').textContent = capture(() => {
+      function Database(name) { this.name = name; this.createdAt = new Date().toISOString(); }
+      let instance = null;
+      const SingletonDB = new Proxy(Database, {
+        construct(target, args) {
+          if (!instance) { instance = new target(...args); console.log("新規インスタンス作成"); }
+          else { console.log("既存インスタンスを再利用"); }
+          return instance;
+        }
+      });
+      const db1 = new SingletonDB("myDB");
+      console.log('db1.name:', db1.name);
+      const db2 = new SingletonDB("otherDB");
+      console.log('db2.name:', db2.name);
+      console.log('db1 === db2 ?', db1 === db2);
+    });
+  }
+
+  function runLab7(mode) {
+    document.getElementById('lab7-output').textContent = capture(() => {
+      const schema = {
+        name:  { type:"string", minLen:1, maxLen:50 },
+        email: { type:"string", pattern:/^[^\s@]+@[^\s@]+\.[^\s@]+$/ },
+        age:   { type:"number", min:0, max:150 }
+      };
+      function createValidated(data, schema) {
+        return new Proxy(data, {
+          set(target, prop, value) {
+            const rule = schema[prop];
+            if (!rule) { target[prop]=value; return true; }
+            if (typeof value !== rule.type) throw new TypeError(`${prop}: ${rule.type}型が必要`);
+            if (rule.minLen && value.length < rule.minLen) throw new Error(`${prop}: ${rule.minLen}文字以上`);
+            if (rule.pattern && !rule.pattern.test(value)) throw new Error(`${prop}: 形式が不正`);
+            if (rule.min != null && value < rule.min) throw new RangeError(`${prop}: ${rule.min}以上`);
+            target[prop]=value; return true;
+          }
+        });
+      }
+      const user = createValidated({}, schema);
+      if (mode==='ok') { user.name="太郎"; user.email="taro@test.com"; user.age=25; console.log('✅ すべて正常:', JSON.stringify(user)); }
+      if (mode==='bad') { user.name="太郎"; user.email="not-an-email"; }
+      if (mode==='age') { user.name="太郎"; user.email="taro@test.com"; user.age=-5; }
+    });
+  }
+
+  function runLab8() {
+    document.getElementById('lab8-output').textContent = capture(() => {
+      function withDefaults(target, defaults) {
+        return new Proxy(target, {
+          get(obj, prop) { return prop in obj ? obj[prop] : defaults[prop] ?? `[${prop} 未定義]`; }
+        });
+      }
+      const config = withDefaults(
+        { host: "production.example.com" },
+        { host: "localhost", port: 3000, debug: false }
+      );
+      console.log('host:', config.host);
+      console.log('port:', config.port);
+      console.log('debug:', config.debug);
+      console.log('unknown:', config.unknown);
+    });
+  }
+
+  function runLab9() {
+    document.getElementById('lab9-output').textContent = capture(() => {
+      function observable(target, onChange) {
+        return new Proxy(target, {
+          set(obj, prop, value) {
+            const oldValue = obj[prop];
+            obj[prop] = value;
+            onChange({ prop, oldValue, newValue: value });
+            return true;
+          },
+          deleteProperty(obj, prop) {
+            const oldValue = obj[prop];
+            delete obj[prop];
+            onChange({ prop, oldValue, newValue: undefined, action:"delete" });
+            return true;
+          }
+        });
+      }
+      const state = observable({ count:0, text:"hello" }, (c) => {
+        console.log(`変更検知: ${c.prop}: ${c.oldValue} → ${c.newValue}`);
+      });
+      state.count = 1;
+      state.count = 2;
+      state.text = "hi";
+      delete state.text;
+    });
+  }
+
+  function runLab10() {
+    document.getElementById('lab10-output').textContent = capture(() => {
+      const base = {
+        _name: "太郎",
+        get greeting() { return `こんにちは、${this._name}です`; }
+      };
+      const proxy = new Proxy(base, {
+        get(target, prop, receiver) {
+          console.log(`[GET] ${prop}`);
+          return Reflect.get(target, prop, receiver);
+        }
+      });
+      const child = Object.create(proxy);
+      child._name = "花子";
+      console.log('child.greeting →', child.greeting);
+    });
+  }
+
+  function runLab11() {
+    document.getElementById('lab11-output').textContent = capture(() => {
+      const { proxy, revoke } = Proxy.revocable(
+        { secret: "機密データ", public: "公開データ" },
+        { get(t,p,r) { console.log(`[アクセス] ${p}`); return Reflect.get(t,p,r); } }
+      );
+      console.log('revoke前:', proxy.secret);
+      revoke();
+      console.log('--- revoke() 実行 ---');
+      try { proxy.secret; } catch(e) { console.log('revoke後:', e.message); }
+      try { proxy.public; } catch(e) { console.log('revoke後:', e.message); }
+    });
+  }
+
+  function runLab12() {
+    document.getElementById('lab12-output').textContent = capture(() => {
+      const obj = {};
+      Object.defineProperty(obj, "locked", { value:42, writable:false, configurable:false });
+      const proxy = new Proxy(obj, {
+        get(target, prop) {
+          if (prop === "locked") return 99;
+          return target[prop];
+        }
+      });
+      console.log('obj.locked =', obj.locked);
+      try { console.log('proxy.locked =', proxy.locked); }
+      catch(e) { console.log('proxy.locked → TypeError:', e.message); }
+      console.log('');
+      console.log('→ configurable:false + writable:false のプロパティは');
+      console.log('  get トラップで嘘の値を返せない（不変条件）');
+    });
+  }
+
+  // ===== Copy Code + Sidebar Active + Auto header =====
+  function copyCode(btn) {
+    const block = btn.closest('.code-block') || btn.parentElement;
+    const pre = block.querySelector('pre');
+    if (!pre) return;
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    });
+  }
+
+  const LAB_META = {
+    lab0: {
+      info:  { type:'info', html:'📘 <strong>Proxy</strong> は ES2015 (ES6) で導入された標準API。ポリフィルは存在しません（低レベル言語機能のため）。IE は非対応ですが、モダンブラウザすべてで使用可能です。' },
+      check: ['① コンソールで <code>new Proxy({}, {})</code> を入力し、Proxy オブジェクトが返ることを確認','② <code>typeof new Proxy({}, {})</code> が <code>"object"</code> になることを確認','③ <code>new Proxy(123, {})</code> がエラーになることを確認（target はオブジェクトのみ）']
+    },
+    lab1: {
+      info:  { type:'ok', html:'✅ 空ハンドラの Proxy は target と完全に同じ動作。ここからトラップを1つずつ追加して機能を足していきます。' },
+      verify:{ before:'<code>proxy.z</code> は undefined（zプロパティなし）', after:'<code>proxy.z = 3</code> 後、<code>target.z</code> も <code>3</code> に（共有参照）' },
+      check: ['① コンソールで proxy と target の両方を展開し、プロパティが同一であることを確認','② <code>proxy === target</code> が <code>false</code> であることを確認','③ proxy に新プロパティを追加して target にも反映されることを確認']
+    },
+    lab2: {
+      info:  { type:'info', html:'📘 <code>get</code> トラップは <strong>プロパティ読み取り</strong>、<strong>ドット記法</strong>、<strong>ブラケット記法</strong>、<strong>in 演算子による暗黙的な読み取り</strong>のすべてで呼ばれます。' },
+      check: ['① コンソールで存在するプロパティと存在しないプロパティをそれぞれアクセスし、get ログが出ることを確認','② <code>proxy["name"]</code>（ブラケット記法）でも get が発火することを確認','③ <code>JSON.stringify(proxy)</code> で各プロパティの get が呼ばれることを確認']
+    },
+    lab3: {
+      info:  { type:'warn', html:'⚠️ <code>set</code> トラップは <strong>必ず <code>true</code> を返す</strong>こと。<code>false</code> や <code>undefined</code> を返すと strict mode で <code>TypeError</code> になります。' },
+      verify:{ before:'<code>proxy.age = "二十五"</code> → 型チェックなしで代入', after:'set トラップにより <code>TypeError: age は数値のみ</code> が投げられる' },
+      check: ['① 正常値（25）を代入してエラーが出ないことを確認','② 文字列を代入して TypeError が出ることを確認','③ 負の値を代入して RangeError が出ることを確認','④ <code>return true</code> を削除するとどうなるか試してみる']
+    },
+    lab4: {
+      info:  { type:'info', html:'📘 <code>has</code> は <code>in</code> 演算子のみをトラップします。<code>Object.hasOwn()</code> や <code>hasOwnProperty()</code> はトラップされません。' },
+      check: ['① <code>"password" in proxy</code> が false でも <code>proxy.password</code> で値が取れることを確認（has と get は独立）','② <code>for...in</code> ループで has トラップが呼ばれるか確認','③ 削除禁止プロパティの delete でエラーが出ることを確認']
+    },
+    lab5: {
+      info:  { type:'info', html:'📘 <code>apply</code> は関数が <code>()</code> で呼ばれるとき・<code>.call()</code>・<code>.apply()</code> のすべてで発火します。' },
+      check: ['① 実行ボタンを押して実行時間がコンソールに出ることを確認','② 引数の数を変えて実行時間が変わることを確認','③ コンソールで <code>timedCalc.call(null, 100)</code> でも apply が呼ばれることを確認']
+    },
+    lab6: {
+      info:  { type:'warn', html:'⚠️ <code>construct</code> トラップは<strong>必ずオブジェクトを返す</strong>必要があります。プリミティブ値（数値・文字列等）を返すと <code>TypeError</code> になります。' },
+      check: ['① db1 と db2 が同一インスタンスであることを確認（<code>===</code> が true）','② db2.name が "myDB"（最初に作った名前）であることを確認','③ コンソールログで「新規」と「再利用」のメッセージを確認']
+    },
+    lab7: {
+      info:  { type:'ok', html:'✅ スキーマ駆動バリデーションは実務で頻出するパターンです。TypeScript の型チェックがコンパイル時なのに対し、Proxy バリデーションは<strong>実行時</strong>にチェックできます。' },
+      check: ['① 正常入力ですべてのプロパティが設定されることを確認','② 不正メールアドレスでエラーが出ることを確認','③ スキーマにないプロパティ（例: <code>user.nickname = "太"</code>）がエラーなく通ることを確認']
+    },
+    lab8: {
+      info:  { type:'info', html:'📘 このパターンは設定ファイルやi18n辞書で頻出します。ネストしたオブジェクトにも対応させるには、get で返す値が object の場合に再帰的に Proxy を巻く必要があります。' },
+      check: ['① 自分で設定した host が defaults に優先することを確認','② defaults にあるプロパティ（port, debug）がフォールバックされることを確認','③ どちらにもないプロパティで「未定義」メッセージが出ることを確認']
+    },
+    lab9: {
+      info:  { type:'info', html:'📘 Vue 3 の <code>reactive()</code>、MobX の <code>observable()</code> は内部で Proxy を使っています。この Lab の仕組みはそれらの最も基本的な形です。' },
+      check: ['① count を2回変更してログが2回出ることを確認（バッチ処理されない）','② delete 操作でも onChange が呼ばれることを確認','③ oldValue と newValue が正しく記録されていることを確認']
+    },
+    lab10: {
+      info:  { type:'warn', html:'⚠️ <strong>ベストプラクティス</strong>: トラップ内では <code>target[prop]</code> より <code>Reflect.get(target, prop, receiver)</code> を使いましょう。プロトタイプ継承や getter の this を正しく処理できます。' },
+      check: ['① child.greeting が「花子」であり「太郎」ではないことを確認','② Reflect.get を target[prop] に書き換えると「太郎」になることを確認','③ get ログで _name と greeting の両方が記録されることを確認']
+    },
+    lab11: {
+      info:  { type:'err', html:'🚫 <code>revoke()</code> 後のプロキシは<strong>一切の操作が不可能</strong>になります。get/set/has/delete すべて <code>TypeError</code> です。復活方法はありません。' },
+      check: ['① revoke 前に proxy.secret が取れることを確認','② revoke 後に proxy のどのプロパティにアクセスしても TypeError になることを確認','③ revoke() を2回呼んでもエラーにならないことを確認']
+    },
+    lab12: {
+      info:  { type:'err', html:'🚫 <strong>不変条件（Invariant）</strong>: Proxy は万能ではありません。<code>configurable: false</code> のプロパティに対して get で異なる値を返す等の「嘘」はエンジンが検出して TypeError を投げます。' },
+      check: ['① 不変条件違反で TypeError が出ることを確認','② <code>Object.defineProperty</code> で <code>configurable: true</code> にすると嘘が通ることを確認','③ <code>Object.freeze()</code> したオブジェクトを Proxy して set トラップの挙動を確認']
+    }
+  };
+
+  function infoHTML(m){ return m?.info ? `<div class="info-box ${m.info.type||'info'}">${m.info.html}</div>` : ''; }
+  function verifyHTML(m){ if (!m?.verify) return '';
+    const {before, after} = m.verify;
+    return `<div class="verify">
+      <div class="verify-col verify-before"><div class="verify-label">Before ▶︎ 実行前</div>${before||''}</div>
+      <div class="verify-col verify-after"><div class="verify-label">After ▶︎ 実行後</div>${after||''}</div>
+    </div>`; }
+  function checkHTML(m){ if (!m?.check?.length) return '';
+    return `<div class="check-steps">
+      <div class="check-steps-title">🔍 ブラウザ実機チェック</div>
+      <ol>${m.check.map(s=>`<li>${s}</li>`).join('')}</ol>
+    </div>`; }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.lab').forEach(lab => {
+      const meta = LAB_META[lab.id]; const body = lab.querySelector('.lab-body');
+      if (!body || !meta) return;
+      const frag = document.createElement('div');
+      frag.innerHTML = infoHTML(meta) + verifyHTML(meta) + checkHTML(meta);
+      while (frag.firstChild) body.appendChild(frag.firstChild);
+    });
+
+    const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+    const map = new Map();
+    links.forEach(a => { const el = document.getElementById(a.getAttribute('href').slice(1)); if (el) map.set(el, a); });
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting) { const l = map.get(e.target);
+        if (l) { links.forEach(n=>n.classList.remove('active')); l.classList.add('active'); } }
+    }), { rootMargin:'-30% 0px -60% 0px' });
+    document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+    document.querySelectorAll('.code-block').forEach((cb, i) => {
+      if (cb.querySelector('.code-block-header')) return;
+      const existing = cb.querySelector('.code-label');
+      const labelText = existing ? existing.textContent.trim() : `Code #${i+1}`;
+      if (existing) existing.remove();
+      const header = document.createElement('div');
+      header.className = 'code-block-header';
+      header.innerHTML = `<span>${labelText}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+      cb.insertBefore(header, cb.firstChild);
+    });
+  });
+</script>
+
+</body>
+</html>

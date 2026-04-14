@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JavaScript Symbol 完全理解 Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+/* Sidebar */
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+/* Hero */
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent3));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+/* TOC */
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+/* Container & Lab cards */
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+/* Code block */
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+/* Syntax token colors */
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+
+/* info-box */
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+/* verify Before / After */
+.verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+  line-height:1.7; border:1px solid; }
+.verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+.verify-before .verify-label { color:var(--error); }
+.verify-after  .verify-label { color:var(--success); }
+
+/* check-steps */
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+/* compare-table */
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+.compare-table .yes { color:var(--success); } .compare-table .no { color:var(--error); }
+
+/* beginner-box */
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+/* Live demo area */
+.demo-area { background:#fff; border:1px solid var(--border); border-radius:8px;
+  padding:14px 18px; margin:12px 0; }
+.demo-area h4 { font-family:var(--mono); font-size:.76rem; color:var(--accent3);
+  letter-spacing:.08em; margin-bottom:8px; text-transform:uppercase; }
+.demo-btn { background:var(--accent); color:#fff; border:none; font-family:var(--mono);
+  font-size:.8rem; padding:8px 18px; border-radius:6px; cursor:pointer;
+  transition:background .15s; margin:4px 4px 4px 0; }
+.demo-btn:hover { background:#0046a0; }
+.demo-output { font-family:var(--mono); font-size:.82rem; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:6px; padding:10px 14px; margin-top:8px;
+  min-height:40px; white-space:pre-wrap; line-height:1.6; color:var(--text); }
+
+/* Responsive */
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .verify { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+  </style>
+</head>
+<body>
+
+<!-- ========== Sidebar ========== -->
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// <span>Symbol Lab</span></div>
+  <div class="nav-section">基礎</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>Symbolとは何か？</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>Symbol()の生成と一意性</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>Symbol.for() 共有レジストリ</a>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>Symbolをオブジェクトキーに</a>
+  <div class="nav-section">イテレータ</div>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>for...of と iterableプロトコル</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>Symbol.iterator を実装する</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>ジェネレータで楽にiterable</a>
+  <div class="nav-section">Well-Known Symbols</div>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>Symbol.toPrimitive 型変換</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>Symbol.hasInstance</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>Well-Known Symbols 一覧</a>
+</nav>
+
+<!-- ========== Hero ========== -->
+<div class="hero">
+  <h1>JavaScript Symbol 完全理解 Lab</h1>
+  <p class="subtitle">Symbol / Symbol.iterator / Well-Known Symbols をブラウザで実機確認しながら学ぶ</p>
+</div>
+
+<!-- ========== TOC ========== -->
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>Symbolとは何か？</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>Symbol()の生成と一意性</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>Symbol.for() 共有レジストリ</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>Symbolをオブジェクトキーに</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>for...of と iterableプロトコル</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>Symbol.iterator を実装する</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>ジェネレータで楽にiterable</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>Symbol.toPrimitive 型変換</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>Symbol.hasInstance</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>Well-Known Symbols 一覧</a>
+  </div>
+</div>
+
+<!-- ========== Labs ========== -->
+<div class="container">
+
+  <!-- ==================== Lab 00 ==================== -->
+  <div class="lab" id="lab0">
+    <div class="lab-header">
+      <div class="lab-num">00</div>
+      <h3>Symbolとは何か？</h3>
+      <span class="lab-tag tag-basic">基本</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>Symbol</code> はES2015で追加されたJavaScriptの<strong>7番目のプリミティブ型</strong>です。
+        数値や文字列のように「値そのもの」ですが、最大の特徴は<strong>すべてのSymbolが一意（ユニーク）</strong>であることです。
+      </p>
+
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 なぜSymbolが必要？</div>
+        JavaScriptのオブジェクトキーは文字列しか使えませんでした。ライブラリAとライブラリBが同じキー名 <code>"id"</code> を使うと<strong>衝突</strong>します。
+        Symbolを使えば「絶対に被らない鍵」を作れるので、安全に機能を追加できます。
+        <pre class="ascii-art">
+┌─ JavaScript のプリミティブ型 ──────────────────┐
+│  1. number    ... 42, 3.14                     │
+│  2. string    ... "hello"                      │
+│  3. boolean   ... true / false                 │
+│  4. undefined ... undefined                    │
+│  5. null      ... null                         │
+│  6. bigint    ... 9007199254740993n             │
+│  7. symbol    ... Symbol("description") ← NEW! │
+│                                                │
+│  ※ object はプリミティブではない（参照型）       │
+└────────────────────────────────────────────────┘</pre>
+      </div>
+
+      <table class="compare-table">
+        <tr><th>特徴</th><th>string キー</th><th>Symbol キー</th></tr>
+        <tr><td>一意性</td><td class="no">名前が同じなら同一</td><td class="yes">毎回新しい一意の値</td></tr>
+        <tr><td>for...in</td><td class="yes">列挙される</td><td class="no">列挙されない</td></tr>
+        <tr><td>JSON.stringify</td><td class="yes">出力される</td><td class="no">無視される</td></tr>
+        <tr><td>用途</td><td>通常のプロパティ</td><td>メタデータ・内部API</td></tr>
+      </table>
+
+      <div class="code-block">
+        <div class="code-label">typeof で確認</div>
+        <pre><span class="kw">const</span> s = <span class="fn">Symbol</span>(<span class="str">"mySymbol"</span>);
+
+<span class="fn">console</span>.<span class="fn">log</span>(<span class="kw">typeof</span> s);          <span class="cm">// "symbol"</span>
+<span class="fn">console</span>.<span class="fn">log</span>(s.<span class="fn">toString</span>());     <span class="cm">// "Symbol(mySymbol)"</span>
+<span class="fn">console</span>.<span class="fn">log</span>(s.<span class="prop">description</span>);  <span class="cm">// "mySymbol"</span></pre>
+      </div>
+
+      <div class="demo-area">
+        <h4>▶ ライブデモ</h4>
+        <button class="demo-btn" onclick="runDemo0()">実行する</button>
+        <div class="demo-output" id="out0"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== Lab 01 ==================== -->
+  <div class="lab" id="lab1">
+    <div class="lab-header">
+      <div class="lab-num">01</div>
+      <h3>Symbol()の生成と一意性</h3>
+      <span class="lab-tag tag-basic">基本</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>Symbol()</code> を呼ぶたびに<strong>世界で一つだけの新しい値</strong>が生まれます。
+        同じ説明文字列を渡しても、返されるSymbolは別物です。<code>new Symbol()</code> は TypeError になります。
+      </p>
+
+      <div class="code-block">
+        <div class="code-label">一意性の証明</div>
+        <pre><span class="kw">const</span> a = <span class="fn">Symbol</span>(<span class="str">"id"</span>);
+<span class="kw">const</span> b = <span class="fn">Symbol</span>(<span class="str">"id"</span>);
+
+<span class="fn">console</span>.<span class="fn">log</span>(a === b);     <span class="cm">// false ← 同じ説明でも別物！</span>
+<span class="fn">console</span>.<span class="fn">log</span>(a == b);      <span class="cm">// false ← 暗黙変換でも同じ</span></pre>
+      </div>
+
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 「説明(description)」はただのラベル</div>
+        <code>Symbol("id")</code> の <code>"id"</code> はデバッグ用のラベルであり、Symbolの同一性には<strong>一切関係ありません</strong>。
+        コンソールで <code>Symbol(id)</code> と表示するための名札と考えてください。
+        <pre class="ascii-art">
+Symbol("id")  →  #unique_001  ← 内部的に一意なID
+Symbol("id")  →  #unique_002  ← また別の一意なID
+                                 ↑ 説明文"id"は同じでも中身は別</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">new Symbol() は使えない</div>
+        <pre><span class="kw">try</span> {
+  <span class="kw">const</span> s = <span class="kw">new</span> <span class="fn">Symbol</span>(<span class="str">"oops"</span>);
+} <span class="kw">catch</span> (e) {
+  <span class="fn">console</span>.<span class="fn">log</span>(e.<span class="prop">message</span>);
+  <span class="cm">// "Symbol is not a constructor"</span>
+}</pre>
+      </div>
+
+      <div class="demo-area">
+        <h4>▶ ライブデモ</h4>
+        <button class="demo-btn" onclick="runDemo1()">一意性を確認</button>
+        <button class="demo-btn" onclick="runDemo1b()">new Symbol() エラー</button>
+        <div class="demo-output" id="out1"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== Lab 02 ==================== -->
+  <div class="lab" id="lab2">
+    <div class="lab-header">
+      <div class="lab-num">02</div>
+      <h3>Symbol.for() — グローバル共有レジストリ</h3>
+      <span class="lab-tag tag-basic">基本</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>Symbol.for(key)</code> はグローバルレジストリからSymbolを検索し、
+        なければ新規作成して登録します。同じキーなら<strong>常に同じSymbol</strong>が返ります。
+        <code>Symbol.keyFor(sym)</code> で逆引きもできます。
+      </p>
+
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 Symbol() vs Symbol.for() の使い分け</div>
+        <pre class="ascii-art">
+Symbol("id")      →  毎回新しい鍵を作る（ローカル）
+Symbol.for("id")  →  共有ロッカーから鍵を借りる（グローバル）
+
+┌─ グローバル Symbol レジストリ ──────────┐
+│  "id"     → Symbol(id)  #shared_001   │
+│  "config" → Symbol(config) #shared_002 │
+│  ...                                   │
+└────────────────────────────────────────┘
+  ↑ Symbol.for() はここを読み書きする
+  ↑ Symbol()    はここを使わない</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">Symbol.for() のグローバル共有</div>
+        <pre><span class="kw">const</span> s1 = <span class="fn">Symbol</span>.<span class="fn">for</span>(<span class="str">"app.id"</span>);
+<span class="kw">const</span> s2 = <span class="fn">Symbol</span>.<span class="fn">for</span>(<span class="str">"app.id"</span>);
+
+<span class="fn">console</span>.<span class="fn">log</span>(s1 === s2);  <span class="cm">// true ← 同じキーなら同じSymbol!</span>
+
+<span class="cm">// 逆引き</span>
+<span class="fn">console</span>.<span class="fn">log</span>(<span class="fn">Symbol</span>.<span class="fn">keyFor</span>(s1));  <span class="cm">// "app.id"</span>
+
+<span class="cm">// 通常のSymbol()で作ったものは逆引きできない</span>
+<span class="kw">const</span> local = <span class="fn">Symbol</span>(<span class="str">"local"</span>);
+<span class="fn">console</span>.<span class="fn">log</span>(<span class="fn">Symbol</span>.<span class="fn">keyFor</span>(local));  <span class="cm">// undefined</span></pre>
+      </div>
+
+      <div class="demo-area">
+        <h4>▶ ライブデモ</h4>
+        <button class="demo-btn" onclick="runDemo2()">実行する</button>
+        <div class="demo-output" id="out2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== Lab 03 ==================== -->
+  <div class="lab" id="lab3">
+    <div class="lab-header">
+      <div class="lab-num">03</div>
+      <h3>Symbolをオブジェクトキーに使う</h3>
+      <span class="lab-tag tag-intermediate">応用</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        Symbolの最も実用的な使い方は、オブジェクトの<strong>隠しプロパティ</strong>です。
+        <code>for...in</code> や <code>Object.keys()</code> には現れず、
+        <code>Object.getOwnPropertySymbols()</code> でのみ取得できます。
+      </p>
+
+      <div class="code-block">
+        <div class="code-label">Symbolキーの作成と列挙</div>
+        <pre><span class="kw">const</span> SECRET = <span class="fn">Symbol</span>(<span class="str">"secret"</span>);
+<span class="kw">const</span> user = {
+  name: <span class="str">"Tom"</span>,
+  age: <span class="num">30</span>,
+  [SECRET]: <span class="str">"隠しデータ"</span>   <span class="cm">// ← [] で囲むのがポイント</span>
+};
+
+<span class="cm">// 通常の方法では見えない</span>
+<span class="fn">console</span>.<span class="fn">log</span>(<span class="fn">Object</span>.<span class="fn">keys</span>(user));       <span class="cm">// ["name", "age"]</span>
+<span class="fn">console</span>.<span class="fn">log</span>(<span class="fn">JSON</span>.<span class="fn">stringify</span>(user));   <span class="cm">// {"name":"Tom","age":30}</span>
+
+<span class="cm">// Symbol専用の方法なら見える</span>
+<span class="fn">console</span>.<span class="fn">log</span>(user[SECRET]);           <span class="cm">// "隠しデータ"</span>
+<span class="fn">console</span>.<span class="fn">log</span>(<span class="fn">Object</span>.<span class="fn">getOwnPropertySymbols</span>(user));
+<span class="cm">// [Symbol(secret)]</span></pre>
+      </div>
+
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 [] (Computed Property) を忘れずに</div>
+        オブジェクトリテラルでSymbolキーを使うには <code>[mySymbol]</code> と角括弧で囲みます。
+        括弧なしで書くと、ただの文字列キー <code>"SECRET"</code> になってしまいます。
+        <pre class="ascii-art">
+{ [SECRET]: "○" }  →  キーが Symbol(secret)  ✓ 正しい
+{ SECRET: "×" }    →  キーが "SECRET" (文字列) ✗ 間違い</pre>
+      </div>
+
+      <div class="demo-area">
+        <h4>▶ ライブデモ</h4>
+        <button class="demo-btn" onclick="runDemo3()">列挙の違いを確認</button>
+        <div class="demo-output" id="out3"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== Lab 04 ==================== -->
+  <div class="lab" id="lab4">
+    <div class="lab-header">
+      <div class="lab-num">04</div>
+      <h3>for...of と iterableプロトコル</h3>
+      <span class="lab-tag tag-intermediate">応用</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>for...of</code> で回せるオブジェクトは <strong>iterable</strong>（反復可能）と呼ばれます。
+        iterable には <code>Symbol.iterator</code> というメソッドが定義されており、
+        そのメソッドが <strong>iterator</strong>（反復子）を返します。
+      </p>
+
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 そもそも なぜ [Symbol.iterator] が必要なのか？</div>
+        <strong>疑問:</strong> 「<code>for...of</code> で回すだけなら、配列みたいに <code>.length</code> と <code>[i]</code> があれば十分では？」<br><br>
+        答えは <strong>「配列以外にも"順番に取り出す"ものはたくさんあるから」</strong>です。<br>
+        Map、Set、文字列、DOM NodeList、ファイルの行、無限数列… これらは <code>.length</code> を持たなかったり、インデックスでアクセスできなかったりします。
+        <pre class="ascii-art">
+もし「for...of が使えるかどうか」をデータ型ごとに個別判定すると…
+
+  if (Array)      → .length + [i] で回す
+  if (String)     → .length + .charAt(i) で回す
+  if (Map)        → .size + .entries() で回す
+  if (Set)        → .size + .values() で回す
+  if (NodeList)   → .length + .item(i) で回す
+  if (自作クラス) → ???  ← どうやって教える？
+
+  → 型が増えるたびにfor...ofの中身を書き換える必要がある 💀</pre>
+        そこで <strong>「共通のお約束」</strong> を1つ決めました：<br>
+        <code>[Symbol.iterator]()</code> というメソッドを持っていれば、<code>for...of</code> で回せる。
+        <pre class="ascii-art">
+統一ルール: [Symbol.iterator]() さえ持っていればOK
+
+  for...of は こう動く（型を問わない）:
+    1. obj[Symbol.iterator]() を呼ぶ → iterator を得る
+    2. iterator.next() を呼ぶ → { value, done }
+    3. done === true になるまで繰り返す
+
+┌───────────────────────────────────────────────────┐
+│  Array  ─┐                                       │
+│  String ─┤                                       │
+│  Map    ─┼─→ 全員 [Symbol.iterator]() を持つ     │
+│  Set    ─┤       ↓                               │
+│  自作   ─┘   for...of は このメソッドだけ見る     │
+│              型ごとの分岐は不要！                 │
+└───────────────────────────────────────────────────┘</pre>
+        <strong>なぜ文字列キーの <code>"iterator"</code> ではなく Symbol なのか？</strong><br>
+        もし文字列 <code>"iterator"</code> というメソッド名だったら、すでに同名のメソッドを持つ既存コードと<strong>衝突</strong>してしまいます。
+        Symbol は「絶対に被らないキー」なので、既存のどんなオブジェクトとも衝突しません。
+        これが Lab 00 で学んだ Symbol の存在理由と直結しています。
+      </div>
+
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 iterable と iterator の関係</div>
+        レストランに例えると、iterable は「メニューブック」、iterator は「指で押さえている今の位置」です。
+        <code>next()</code> を呼ぶたびに次の料理が出てきます。
+        <pre class="ascii-art">
+iterable（メニューブック）
+  └─ [Symbol.iterator]() メソッド
+       └─ iterator オブジェクトを返す
+            ├─ .next() → { value: "前菜", done: false }
+            ├─ .next() → { value: "メイン", done: false }
+            ├─ .next() → { value: "デザート", done: false }
+            └─ .next() → { value: undefined, done: true } ← 終了
+
+for...of は内部で以下を自動実行:
+  1. obj[Symbol.iterator]() を呼んで iterator を取得
+  2. iterator.next() を繰り返し呼ぶ
+  3. done: true になったら停止</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">配列の iterator を手動で使う</div>
+        <pre><span class="kw">const</span> arr = [<span class="str">"A"</span>, <span class="str">"B"</span>, <span class="str">"C"</span>];
+
+<span class="cm">// 配列は iterable なので [Symbol.iterator] を持つ</span>
+<span class="kw">const</span> iter = arr[<span class="fn">Symbol</span>.<span class="prop">iterator</span>]();
+
+<span class="fn">console</span>.<span class="fn">log</span>(iter.<span class="fn">next</span>()); <span class="cm">// { value: "A", done: false }</span>
+<span class="fn">console</span>.<span class="fn">log</span>(iter.<span class="fn">next</span>()); <span class="cm">// { value: "B", done: false }</span>
+<span class="fn">console</span>.<span class="fn">log</span>(iter.<span class="fn">next</span>()); <span class="cm">// { value: "C", done: false }</span>
+<span class="fn">console</span>.<span class="fn">log</span>(iter.<span class="fn">next</span>()); <span class="cm">// { value: undefined, done: true }</span></pre>
+      </div>
+
+      <table class="compare-table">
+        <tr><th>標準 iterable</th><th>for...of 可能？</th><th>備考</th></tr>
+        <tr><td>Array</td><td class="yes">✓</td><td>最も基本的な iterable</td></tr>
+        <tr><td>String</td><td class="yes">✓</td><td>1文字ずつ反復</td></tr>
+        <tr><td>Map / Set</td><td class="yes">✓</td><td>挿入順で反復</td></tr>
+        <tr><td>NodeList</td><td class="yes">✓</td><td>DOM API の結果</td></tr>
+        <tr><td>Object</td><td class="no">✗</td><td>デフォルトでは iterable ではない</td></tr>
+      </table>
+
+      <div class="demo-area">
+        <h4>▶ ライブデモ</h4>
+        <button class="demo-btn" onclick="runDemo4()">手動 iterator</button>
+        <button class="demo-btn" onclick="runDemo4b()">for...of 比較</button>
+        <div class="demo-output" id="out4"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== Lab 05 ==================== -->
+  <div class="lab" id="lab5">
+    <div class="lab-header">
+      <div class="lab-num">05</div>
+      <h3>Symbol.iterator を実装する</h3>
+      <span class="lab-tag tag-intermediate">応用</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        自分のオブジェクトに <code>[Symbol.iterator]</code> メソッドを定義すれば、
+        <code>for...of</code> や <code>スプレッド構文</code> で使えるようになります。
+        ここではカスタム iterable を1から作ります。
+      </p>
+
+      <div class="code-block">
+        <div class="code-label">数値範囲 Range を iterable にする</div>
+        <pre><span class="kw">const</span> range = {
+  from: <span class="num">1</span>,
+  to: <span class="num">5</span>,
+
+  <span class="cm">// for...of が最初に呼ぶメソッド</span>
+  [<span class="fn">Symbol</span>.<span class="prop">iterator</span>]() {
+    <span class="kw">let</span> current = <span class="kw">this</span>.from;
+    <span class="kw">const</span> last = <span class="kw">this</span>.to;
+
+    <span class="cm">// iterator オブジェクトを返す</span>
+    <span class="kw">return</span> {
+      <span class="fn">next</span>() {
+        <span class="kw">if</span> (current &lt;= last) {
+          <span class="kw">return</span> { value: current++, done: <span class="kw">false</span> };
+        } <span class="kw">else</span> {
+          <span class="kw">return</span> { value: <span class="kw">undefined</span>, done: <span class="kw">true</span> };
+        }
+      }
+    };
+  }
+};
+
+<span class="cm">// for...of で使える！</span>
+<span class="kw">for</span> (<span class="kw">const</span> n <span class="kw">of</span> range) {
+  <span class="fn">console</span>.<span class="fn">log</span>(n); <span class="cm">// 1, 2, 3, 4, 5</span>
+}
+
+<span class="cm">// スプレッド構文でも使える！</span>
+<span class="fn">console</span>.<span class="fn">log</span>([...range]); <span class="cm">// [1, 2, 3, 4, 5]</span></pre>
+      </div>
+
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 iterator の最小要件</div>
+        <pre class="ascii-art">
+iterable に必要なもの：
+  [Symbol.iterator]() → iterator オブジェクト
+
+iterator オブジェクトに必要なもの：
+  .next() → { value: 何か, done: true/false }
+
+┌────────────────────────────────────────────┐
+│ [Symbol.iterator]() が呼ばれる              │
+│   ↓                                        │
+│ iterator = { next() { ... } } が返される   │
+│   ↓                                        │
+│ .next() → { value: 1, done: false }        │
+│ .next() → { value: 2, done: false }        │
+│ .next() → { value: 3, done: false }        │
+│ .next() → { value: undefined, done: true } │ ← ここで停止
+└────────────────────────────────────────────┘</pre>
+      </div>
+
+      <div class="demo-area">
+        <h4>▶ ライブデモ</h4>
+        <button class="demo-btn" onclick="runDemo5()">Range を for...of で実行</button>
+        <button class="demo-btn" onclick="runDemo5b()">スプレッド展開</button>
+        <div class="demo-output" id="out5"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== Lab 06 ==================== -->
+  <div class="lab" id="lab6">
+    <div class="lab-header">
+      <div class="lab-num">06</div>
+      <h3>ジェネレータで楽に iterable</h3>
+      <span class="lab-tag tag-intermediate">応用</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>function*</code>（ジェネレータ関数）を使うと、<code>next()</code> と <code>done</code> を
+        自分で管理する必要がなくなり、<code>yield</code> で値を返すだけで iterable が作れます。
+      </p>
+
+      <div class="code-block">
+        <div class="code-label">ジェネレータ版 Range</div>
+        <pre><span class="kw">const</span> range = {
+  from: <span class="num">1</span>,
+  to: <span class="num">5</span>,
+
+  <span class="cm">// function* でジェネレータとして定義</span>
+  *[<span class="fn">Symbol</span>.<span class="prop">iterator</span>]() {
+    <span class="kw">for</span> (<span class="kw">let</span> i = <span class="kw">this</span>.from; i &lt;= <span class="kw">this</span>.to; i++) {
+      <span class="kw">yield</span> i;  <span class="cm">// ← next() の代わりに yield!</span>
+    }
+  }
+};
+
+<span class="fn">console</span>.<span class="fn">log</span>([...range]); <span class="cm">// [1, 2, 3, 4, 5]</span></pre>
+      </div>
+
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 yield は「一時停止して値を渡す」</div>
+        <code>yield</code> に到達すると関数が一時停止し、値を外に渡します。
+        次に <code>next()</code> が呼ばれると、停止した位置から再開します。
+        <pre class="ascii-art">
+Lab 05 の手動実装:        Lab 06 のジェネレータ版:
+───────────────────       ───────────────────
+return {                  *[Symbol.iterator]() {
+  next() {                  for (let i = ...) {
+    if (current &lt;= last)      yield i;
+      return {value, done}  }
+    else                  }
+      return {done: true}
+  }
+}
+───────────────────       ───────────────────
+   15行                      5行  ← 短い！</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">無限シーケンスも可能</div>
+        <pre><span class="kw">function</span>* <span class="fn">fibonacci</span>() {
+  <span class="kw">let</span> a = <span class="num">0</span>, b = <span class="num">1</span>;
+  <span class="kw">while</span> (<span class="kw">true</span>) {
+    <span class="kw">yield</span> a;
+    [a, b] = [b, a + b];
+  }
+}
+
+<span class="cm">// 最初の10個だけ取得</span>
+<span class="kw">const</span> fib = <span class="fn">fibonacci</span>();
+<span class="kw">const</span> first10 = [];
+<span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i &lt; <span class="num">10</span>; i++) {
+  first10.<span class="fn">push</span>(fib.<span class="fn">next</span>().<span class="prop">value</span>);
+}
+<span class="fn">console</span>.<span class="fn">log</span>(first10);
+<span class="cm">// [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]</span></pre>
+      </div>
+
+      <div class="demo-area">
+        <h4>▶ ライブデモ</h4>
+        <button class="demo-btn" onclick="runDemo6()">ジェネレータ Range</button>
+        <button class="demo-btn" onclick="runDemo6b()">フィボナッチ先頭10個</button>
+        <div class="demo-output" id="out6"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== Lab 07 ==================== -->
+  <div class="lab" id="lab7">
+    <div class="lab-header">
+      <div class="lab-num">07</div>
+      <h3>Symbol.toPrimitive — 型変換の制御</h3>
+      <span class="lab-tag tag-advanced">発展</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        オブジェクトが文字列や数値に変換されるとき、<code>[Symbol.toPrimitive](hint)</code> が呼ばれます。
+        <code>hint</code> は <code>"number"</code> / <code>"string"</code> / <code>"default"</code> のいずれかです。
+      </p>
+
+      <div class="code-block">
+        <div class="code-label">通貨オブジェクトの型変換</div>
+        <pre><span class="kw">const</span> price = {
+  amount: <span class="num">1500</span>,
+  currency: <span class="str">"JPY"</span>,
+
+  [<span class="fn">Symbol</span>.<span class="prop">toPrimitive</span>](hint) {
+    <span class="kw">switch</span> (hint) {
+      <span class="kw">case</span> <span class="str">"number"</span>:
+        <span class="kw">return</span> <span class="kw">this</span>.amount;         <span class="cm">// +price</span>
+      <span class="kw">case</span> <span class="str">"string"</span>:
+        <span class="kw">return</span> <span class="str">`¥\${this.amount}`</span>;   <span class="cm">// `${price}`</span>
+      <span class="kw">default</span>:
+        <span class="kw">return</span> <span class="kw">this</span>.amount;         <span class="cm">// price + 100</span>
+    }
+  }
+};
+
+<span class="fn">console</span>.<span class="fn">log</span>(<span class="str">`価格: \${price}`</span>);  <span class="cm">// "価格: ¥1500"</span>
+<span class="fn">console</span>.<span class="fn">log</span>(+price);           <span class="cm">// 1500</span>
+<span class="fn">console</span>.<span class="fn">log</span>(price + <span class="num">500</span>);     <span class="cm">// 2000</span></pre>
+      </div>
+
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 hint が決まるタイミング</div>
+        <pre class="ascii-art">
+┌─ hint の決定ルール ──────────────────────────┐
+│                                              │
+│  "number"  ← +obj, Number(obj), 比較 &gt;/&lt;    │
+│  "string"  ← `${obj}`, String(obj)          │
+│  "default" ← obj + 100, obj == "..."        │
+│                                              │
+│ ※ == と + は "default" (numberではない!)     │
+└──────────────────────────────────────────────┘</pre>
+      </div>
+
+      <div class="demo-area">
+        <h4>▶ ライブデモ</h4>
+        <button class="demo-btn" onclick="runDemo7()">型変換を確認</button>
+        <div class="demo-output" id="out7"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== Lab 08 ==================== -->
+  <div class="lab" id="lab8">
+    <div class="lab-header">
+      <div class="lab-num">08</div>
+      <h3>Symbol.hasInstance — instanceof の制御</h3>
+      <span class="lab-tag tag-advanced">発展</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>obj instanceof Class</code> の判定ロジックをカスタマイズできます。
+        <code>static [Symbol.hasInstance](instance)</code> を定義するだけです。
+      </p>
+
+      <div class="code-block">
+        <div class="code-label">「偶数かどうか」判定クラス</div>
+        <pre><span class="kw">class</span> <span class="fn">Even</span> {
+  <span class="kw">static</span> [<span class="fn">Symbol</span>.<span class="prop">hasInstance</span>](num) {
+    <span class="kw">return</span> <span class="kw">typeof</span> num === <span class="str">"number"</span> &amp;&amp; num % <span class="num">2</span> === <span class="num">0</span>;
+  }
+}
+
+<span class="fn">console</span>.<span class="fn">log</span>(<span class="num">4</span>  <span class="kw">instanceof</span> <span class="fn">Even</span>); <span class="cm">// true</span>
+<span class="fn">console</span>.<span class="fn">log</span>(<span class="num">7</span>  <span class="kw">instanceof</span> <span class="fn">Even</span>); <span class="cm">// false</span>
+<span class="fn">console</span>.<span class="fn">log</span>(<span class="num">10</span> <span class="kw">instanceof</span> <span class="fn">Even</span>); <span class="cm">// true</span></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">型バリデータとして使う</div>
+        <pre><span class="kw">class</span> <span class="fn">ValidEmail</span> {
+  <span class="kw">static</span> [<span class="fn">Symbol</span>.<span class="prop">hasInstance</span>](value) {
+    <span class="kw">return</span> <span class="kw">typeof</span> value === <span class="str">"string"</span>
+      &amp;&amp; value.<span class="fn">includes</span>(<span class="str">"@"</span>)
+      &amp;&amp; value.<span class="fn">includes</span>(<span class="str">"."</span>);
+  }
+}
+
+<span class="fn">console</span>.<span class="fn">log</span>(<span class="str">"tom@example.com"</span> <span class="kw">instanceof</span> <span class="fn">ValidEmail</span>); <span class="cm">// true</span>
+<span class="fn">console</span>.<span class="fn">log</span>(<span class="str">"not-an-email"</span>    <span class="kw">instanceof</span> <span class="fn">ValidEmail</span>); <span class="cm">// false</span></pre>
+      </div>
+
+      <div class="demo-area">
+        <h4>▶ ライブデモ</h4>
+        <button class="demo-btn" onclick="runDemo8()">偶数判定</button>
+        <button class="demo-btn" onclick="runDemo8b()">メール検証</button>
+        <div class="demo-output" id="out8"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== Lab 09 ==================== -->
+  <div class="lab" id="lab9">
+    <div class="lab-header">
+      <div class="lab-num">09</div>
+      <h3>Well-Known Symbols 一覧と使い分け</h3>
+      <span class="lab-tag tag-advanced">発展</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        JavaScriptには言語仕様で定められた<strong>Well-Known Symbols</strong>（既知シンボル）があります。
+        これらはJSエンジンが特定の処理で自動的に参照する「フック」です。
+      </p>
+
+      <table class="compare-table">
+        <tr><th>Symbol</th><th>用途</th><th>発動タイミング</th></tr>
+        <tr><td>Symbol.iterator</td><td>iterable プロトコル</td><td>for...of, スプレッド, 分割代入</td></tr>
+        <tr><td>Symbol.asyncIterator</td><td>非同期 iterable</td><td>for await...of</td></tr>
+        <tr><td>Symbol.toPrimitive</td><td>型変換の制御</td><td>+obj, `${obj}`, obj == val</td></tr>
+        <tr><td>Symbol.hasInstance</td><td>instanceof の制御</td><td>obj instanceof Class</td></tr>
+        <tr><td>Symbol.toStringTag</td><td>toString の表示名</td><td>Object.prototype.toString.call(obj)</td></tr>
+        <tr><td>Symbol.species</td><td>派生オブジェクトのコンストラクタ</td><td>map(), filter() 等の戻り値</td></tr>
+        <tr><td>Symbol.isConcatSpreadable</td><td>concat 時の展開制御</td><td>Array.prototype.concat()</td></tr>
+        <tr><td>Symbol.match</td><td>正規表現マッチ</td><td>str.match(obj)</td></tr>
+        <tr><td>Symbol.replace</td><td>正規表現置換</td><td>str.replace(obj, ...)</td></tr>
+        <tr><td>Symbol.search</td><td>正規表現検索</td><td>str.search(obj)</td></tr>
+        <tr><td>Symbol.split</td><td>正規表現分割</td><td>str.split(obj)</td></tr>
+      </table>
+
+      <div class="code-block">
+        <div class="code-label">Symbol.toStringTag の例</div>
+        <pre><span class="kw">class</span> <span class="fn">MyAPI</span> {
+  <span class="kw">get</span> [<span class="fn">Symbol</span>.<span class="prop">toStringTag</span>]() {
+    <span class="kw">return</span> <span class="str">"MyAPI"</span>;
+  }
+}
+
+<span class="kw">const</span> api = <span class="kw">new</span> <span class="fn">MyAPI</span>();
+<span class="fn">console</span>.<span class="fn">log</span>(<span class="fn">Object</span>.<span class="prop">prototype</span>.<span class="fn">toString</span>.<span class="fn">call</span>(api));
+<span class="cm">// "[object MyAPI]"  ← 通常は "[object Object]"</span></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">Symbol.isConcatSpreadable の例</div>
+        <pre><span class="kw">const</span> extra = [<span class="num">4</span>, <span class="num">5</span>, <span class="num">6</span>];
+extra[<span class="fn">Symbol</span>.<span class="prop">isConcatSpreadable</span>] = <span class="kw">false</span>;
+
+<span class="kw">const</span> result = [<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>].<span class="fn">concat</span>(extra);
+<span class="fn">console</span>.<span class="fn">log</span>(result);
+<span class="cm">// [1, 2, 3, [4, 5, 6]]  ← 展開されず配列のまま入る</span></pre>
+      </div>
+
+      <div class="demo-area">
+        <h4>▶ ライブデモ</h4>
+        <button class="demo-btn" onclick="runDemo9()">toStringTag</button>
+        <button class="demo-btn" onclick="runDemo9b()">isConcatSpreadable</button>
+        <div class="demo-output" id="out9"></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<!-- ========== Scripts ========== -->
+<script>
+  // ===== Demo Functions =====
+  function log(id, ...args) {
+    const el = document.getElementById(id);
+    el.textContent = args.map(a =>
+      typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
+    ).join('\n');
+  }
+
+  function runDemo0() {
+    const s = Symbol("mySymbol");
+    log('out0',
+      `typeof s       → "${typeof s}"`,
+      `s.toString()   → "${s.toString()}"`,
+      `s.description  → "${s.description}"`
+    );
+  }
+
+  function runDemo1() {
+    const a = Symbol("id");
+    const b = Symbol("id");
+    log('out1',
+      `a === b → ${a === b}`,
+      `a == b  → ${a == b}`,
+      `a.toString() → ${a.toString()}`,
+      `b.toString() → ${b.toString()}`,
+      '',
+      '→ 同じ "id" でも完全に別のSymbol！'
+    );
+  }
+  function runDemo1b() {
+    try {
+      const s = new Symbol("oops");
+    } catch (e) {
+      log('out1', `TypeError: ${e.message}\n\n→ Symbol は new で作れません。Symbol() を直接呼びます。`);
+    }
+  }
+
+  function runDemo2() {
+    const s1 = Symbol.for("app.id");
+    const s2 = Symbol.for("app.id");
+    const local = Symbol("local");
+    log('out2',
+      `s1 === s2          → ${s1 === s2}   (グローバル共有)`,
+      `Symbol.keyFor(s1)  → "${Symbol.keyFor(s1)}"`,
+      `Symbol.keyFor(local) → ${Symbol.keyFor(local)}   (通常Symbolは逆引き不可)`
+    );
+  }
+
+  function runDemo3() {
+    const SECRET = Symbol("secret");
+    const user = { name: "Tom", age: 30, [SECRET]: "隠しデータ" };
+    log('out3',
+      `Object.keys(user)          → ${JSON.stringify(Object.keys(user))}`,
+      `JSON.stringify(user)       → ${JSON.stringify(user)}`,
+      `user[SECRET]               → "${user[SECRET]}"`,
+      `Object.getOwnPropertySymbols(user) → [${Object.getOwnPropertySymbols(user).map(s=>s.toString())}]`,
+      '',
+      '→ Symbolキーは通常の列挙では見えない！'
+    );
+  }
+
+  function runDemo4() {
+    const arr = ["A", "B", "C"];
+    const iter = arr[Symbol.iterator]();
+    const results = [];
+    let r;
+    while (!(r = iter.next()).done) {
+      results.push(`{ value: "${r.value}", done: ${r.done} }`);
+    }
+    results.push(`{ value: ${r.value}, done: ${r.done} }  ← 終了`);
+    log('out4', '手動で .next() を呼んだ結果:', ...results);
+  }
+  function runDemo4b() {
+    const arr = ["A", "B", "C"];
+    const str = "Hello";
+    const set = new Set([10, 20, 30]);
+    const lines = [];
+    lines.push('--- Array ---');
+    for (const v of arr) lines.push(`  ${v}`);
+    lines.push('--- String ---');
+    for (const c of str) lines.push(`  "${c}"`);
+    lines.push('--- Set ---');
+    for (const n of set) lines.push(`  ${n}`);
+    lines.push('--- Object (エラー) ---');
+    try { for (const x of {a:1}) {} } catch(e) { lines.push(`  TypeError: ${e.message}`); }
+    log('out4', ...lines);
+  }
+
+  function runDemo5() {
+    const range = {
+      from: 1, to: 5,
+      [Symbol.iterator]() {
+        let current = this.from;
+        const last = this.to;
+        return {
+          next() {
+            return current <= last
+              ? { value: current++, done: false }
+              : { value: undefined, done: true };
+          }
+        };
+      }
+    };
+    const results = [];
+    for (const n of range) results.push(n);
+    log('out5', `for...of range(1..5): [${results.join(', ')}]`);
+  }
+  function runDemo5b() {
+    const range = {
+      from: 1, to: 5,
+      [Symbol.iterator]() {
+        let current = this.from;
+        const last = this.to;
+        return { next() { return current <= last ? { value: current++, done: false } : { done: true }; } };
+      }
+    };
+    log('out5', `[...range] → [${[...range].join(', ')}]`);
+  }
+
+  function runDemo6() {
+    const range = {
+      from: 1, to: 5,
+      *[Symbol.iterator]() {
+        for (let i = this.from; i <= this.to; i++) yield i;
+      }
+    };
+    log('out6', `ジェネレータ版 [...range] → [${[...range].join(', ')}]`);
+  }
+  function runDemo6b() {
+    function* fibonacci() {
+      let a = 0, b = 1;
+      while (true) { yield a; [a, b] = [b, a + b]; }
+    }
+    const fib = fibonacci();
+    const first10 = [];
+    for (let i = 0; i < 10; i++) first10.push(fib.next().value);
+    log('out6', `フィボナッチ先頭10個:\n[${first10.join(', ')}]`);
+  }
+
+  function runDemo7() {
+    const price = {
+      amount: 1500, currency: "JPY",
+      [Symbol.toPrimitive](hint) {
+        switch (hint) {
+          case "number": return this.amount;
+          case "string": return `¥${this.amount}`;
+          default: return this.amount;
+        }
+      }
+    };
+    log('out7',
+      `\`価格: \${price}\` → "価格: ${price}"   (hint: "string")`,
+      `+price           → ${+price}            (hint: "number")`,
+      `price + 500      → ${price + 500}          (hint: "default")`
+    );
+  }
+
+  function runDemo8() {
+    class Even { static [Symbol.hasInstance](num) { return typeof num === "number" && num % 2 === 0; } }
+    log('out8',
+      `4  instanceof Even → ${4 instanceof Even}`,
+      `7  instanceof Even → ${7 instanceof Even}`,
+      `10 instanceof Even → ${10 instanceof Even}`,
+      `0  instanceof Even → ${0 instanceof Even}`
+    );
+  }
+  function runDemo8b() {
+    class ValidEmail { static [Symbol.hasInstance](v) { return typeof v === "string" && v.includes("@") && v.includes("."); } }
+    log('out8',
+      `"tom@example.com" instanceof ValidEmail → ${"tom@example.com" instanceof ValidEmail}`,
+      `"not-an-email"    instanceof ValidEmail → ${"not-an-email" instanceof ValidEmail}`,
+      `"a@b.c"           instanceof ValidEmail → ${"a@b.c" instanceof ValidEmail}`
+    );
+  }
+
+  function runDemo9() {
+    class MyAPI { get [Symbol.toStringTag]() { return "MyAPI"; } }
+    const api = new MyAPI();
+    log('out9',
+      `Object.prototype.toString.call(api)    → "${Object.prototype.toString.call(api)}"`,
+      `Object.prototype.toString.call([])     → "${Object.prototype.toString.call([])}"`,
+      `Object.prototype.toString.call({})     → "${Object.prototype.toString.call({})}"`,
+      '',
+      '→ カスタムクラスの識別に使える！'
+    );
+  }
+  function runDemo9b() {
+    const extra = [4, 5, 6];
+    const normal = [1, 2, 3].concat([4, 5, 6]);
+    extra[Symbol.isConcatSpreadable] = false;
+    const noSpread = [1, 2, 3].concat(extra);
+    log('out9',
+      `通常:  [1,2,3].concat([4,5,6])             → [${normal}]`,
+      `false: [1,2,3].concat(extra{spreadable:F})  → ${JSON.stringify(noSpread)}`,
+      '',
+      '→ isConcatSpreadable=false で展開を抑制！'
+    );
+  }
+
+  // ===== Copy + Sidebar + LAB_META injection =====
+  function copyCode(btn) {
+    const block = btn.closest('.code-block') || btn.parentElement;
+    const pre = block.querySelector('pre');
+    if (!pre) return;
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    });
+  }
+
+  const LAB_META = {
+    lab0: {
+      info: { type:'info', html:'📘 <strong>Symbolはプリミティブ型</strong>: <code>typeof Symbol() === "symbol"</code>。オブジェクトではないため <code>new Symbol()</code> はエラーです。' },
+      check: ['① DevTools Console で <code>typeof Symbol("test")</code> を実行 → <code>"symbol"</code> と表示されることを確認','② <code>Symbol("a") === Symbol("a")</code> が <code>false</code> になることを確認','③ <code>.description</code> プロパティでラベルが取れることを確認']
+    },
+    lab1: {
+      info: { type:'warn', html:'⚠️ <strong>Symbol() の引数はデバッグ用ラベル</strong>であり、同一性には影響しません。同じ文字列を渡しても <code>===</code> は常に <code>false</code> です。' },
+      check: ['① 「一意性を確認」ボタンで <code>false</code> が表示されることを確認','② 「new Symbol() エラー」ボタンで <code>TypeError</code> が発生することを確認','③ Console で <code>Symbol("x") === Symbol("x")</code> を直接入力して <code>false</code> を確認']
+    },
+    lab2: {
+      info: { type:'ok', html:'✅ <strong>Symbol.for() はグローバルで共有</strong>: iframe や Web Worker をまたいでも同じキーなら同じ Symbol が返ります。ライブラリ間の連携に使えます。' },
+      verify: { before:'<code>Symbol("key") === Symbol("key")</code><br>→ <code>false</code>（毎回新規作成）', after:'<code>Symbol.for("key") === Symbol.for("key")</code><br>→ <code>true</code>（レジストリから取得）' },
+      check: ['① Console で <code>Symbol.for("test") === Symbol.for("test")</code> が <code>true</code> であることを確認','② <code>Symbol.keyFor(Symbol.for("test"))</code> が <code>"test"</code> を返すことを確認','③ <code>Symbol.keyFor(Symbol("local"))</code> が <code>undefined</code> を返すことを確認']
+    },
+    lab3: {
+      info: { type:'info', html:'📘 <strong>Symbolキーの列挙方法</strong>: <code>Object.getOwnPropertySymbols(obj)</code> でSymbolキーだけ取得。<code>Reflect.ownKeys(obj)</code> で文字列キー＋Symbolキーの両方を取得できます。' },
+      check: ['① <code>Object.keys()</code> にSymbolキーが含まれないことを確認','② <code>JSON.stringify()</code> でSymbolキーが無視されることを確認','③ <code>Object.getOwnPropertySymbols()</code> でSymbolキーが取得できることを確認','④ Console で <code>Reflect.ownKeys(user)</code> を試し、全キーが表示されることを確認']
+    },
+    lab4: {
+      info: { type:'info', html:'📘 <strong>iterable プロトコル</strong>: <code>[Symbol.iterator]()</code> メソッドを持つオブジェクトは iterable です。<code>for...of</code> / スプレッド / 分割代入で使えます。' },
+      verify: { before:'<code>for (const x of {})</code><br>→ <code>TypeError: {} is not iterable</code>', after:'<code>for (const x of [1,2,3])</code><br>→ <code>1, 2, 3</code>（配列は iterable）' },
+      check: ['① 「手動 iterator」で <code>.next()</code> の戻り値構造 <code>{value, done}</code> を確認','② 「for...of 比較」で Object がエラーになることを確認','③ Console で <code>"Hello"[Symbol.iterator]</code> が関数であることを確認','④ <code>new Map([[1,"a"]])[Symbol.iterator]</code> も確認']
+    },
+    lab5: {
+      info: { type:'ok', html:'✅ <strong>自作 iterable の最小構成</strong>: <code>[Symbol.iterator]()</code> が <code>{ next() { return {value, done} } }</code> を返せばOK。たった2つのルールです。' },
+      check: ['① Range オブジェクトが <code>for...of</code> で反復できることを確認','② スプレッド展開 <code>[...range]</code> で配列化できることを確認','③ Console で <code>range[Symbol.iterator]</code> が関数であることを確認','④ <code>const it = range[Symbol.iterator](); it.next();</code> を手動実行して構造を確認']
+    },
+    lab6: {
+      info: { type:'ok', html:'✅ <strong>ジェネレータ = 楽な iterator</strong>: <code>function*</code> と <code>yield</code> を使うと、<code>next()</code>/<code>done</code> の管理が不要になります。無限シーケンスも簡単に書けます。' },
+      check: ['① ジェネレータ版 Range が Lab 05 と同じ結果になることを確認','② フィボナッチが正しい10個を出力することを確認','③ Console で <code>function* g(){yield 1; yield 2;} const it=g(); it.next();</code> を実行して動作を確認']
+    },
+    lab7: {
+      info: { type:'warn', html:'⚠️ <strong>hint の判定ルール</strong>: <code>==</code> や <code>+</code> 演算子は hint <code>"default"</code> です。<code>"number"</code> ではありません。alert() は hint <code>"string"</code> です。' },
+      check: ['① テンプレートリテラルで hint="string" が発動することを確認','② 単項 <code>+</code> で hint="number" が発動することを確認','③ <code>price + 500</code> で hint="default" が発動し数値加算されることを確認']
+    },
+    lab8: {
+      info: { type:'info', html:'📘 <strong>Symbol.hasInstance で型チェック</strong>: <code>instanceof</code> は本来「プロトタイプチェーン上にあるか」を判定しますが、このSymbolで完全にカスタマイズできます。' },
+      check: ['① 偶数判定で <code>4 instanceof Even</code> が <code>true</code> になることを確認','② 奇数で <code>false</code> になることを確認','③ メール検証で <code>"user@example.com" instanceof ValidEmail</code> が <code>true</code> になることを確認']
+    },
+    lab9: {
+      info: { type:'info', html:'📘 <strong>Well-Known Symbols</strong> はJSエンジンが内部処理で参照する「フックポイント」です。カスタムクラスやオブジェクトの振る舞いを根本から変更できます。' },
+      check: ['① toStringTag で <code>[object MyAPI]</code> と表示されることを確認','② isConcatSpreadable=false で配列がネストされることを確認','③ Console で <code>Symbol.iterator</code>, <code>Symbol.toPrimitive</code> 等がSymbol値であることを確認','④ <code>Object.getOwnPropertyNames(Symbol)</code> で全 Well-Known Symbols を一覧表示してみる']
+    }
+  };
+
+  function infoHTML(m){ return m?.info ? `<div class="info-box ${m.info.type||'info'}">${m.info.html}</div>` : ''; }
+  function verifyHTML(m){ if (!m?.verify) return '';
+    const {before, after} = m.verify;
+    return `<div class="verify">
+      <div class="verify-col verify-before"><div class="verify-label">Before ▶︎ 実行前</div>${before||''}</div>
+      <div class="verify-col verify-after"><div class="verify-label">After ▶︎ 実行後</div>${after||''}</div>
+    </div>`; }
+  function checkHTML(m){ if (!m?.check?.length) return '';
+    return `<div class="check-steps">
+      <div class="check-steps-title">🔍 ブラウザ実機チェック</div>
+      <ol>${m.check.map(s=>`<li>${s}</li>`).join('')}</ol>
+    </div>`; }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // 各ラボに info + verify + check を自動挿入
+    document.querySelectorAll('.lab').forEach(lab => {
+      const meta = LAB_META[lab.id]; const body = lab.querySelector('.lab-body');
+      if (!body || !meta) return;
+      const frag = document.createElement('div');
+      frag.innerHTML = infoHTML(meta) + verifyHTML(meta) + checkHTML(meta);
+      while (frag.firstChild) body.appendChild(frag.firstChild);
+    });
+
+    // サイドバー active ハイライト
+    const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+    const map = new Map();
+    links.forEach(a => { const el = document.getElementById(a.getAttribute('href').slice(1)); if (el) map.set(el, a); });
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting) { const l = map.get(e.target);
+        if (l) { links.forEach(n=>n.classList.remove('active')); l.classList.add('active'); } }
+    }), { rootMargin:'-30% 0px -60% 0px' });
+    document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+    // 既存 .code-block に header + Copy を自動付与
+    document.querySelectorAll('.code-block').forEach((cb, i) => {
+      if (cb.querySelector('.code-block-header')) return;
+      const existing = cb.querySelector('.code-label');
+      const labelText = existing ? existing.textContent.trim() : `Code #${i+1}`;
+      if (existing) existing.remove();
+      const header = document.createElement('div');
+      header.className = 'code-block-header';
+      header.innerHTML = `<span>${labelText}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+      cb.insertBefore(header, cb.firstChild);
+    });
+  });
+</script>
+</body>
+</html>

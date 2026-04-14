@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JavaScript Generator 完全理解 Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+/* Sidebar */
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+/* Hero */
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+/* TOC */
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+/* Container & Lab cards */
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+/* Code block */
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+/* Syntax token colors (GitHub light) */
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+
+/* info-box */
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+/* verify Before / After */
+.verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+  line-height:1.7; border:1px solid; }
+.verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+.verify-before .verify-label { color:var(--error); }
+.verify-after  .verify-label { color:var(--success); }
+
+/* check-steps */
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+/* compare-table */
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+.compare-table .yes { color:var(--success); } .compare-table .no { color:var(--error); }
+
+/* beginner-box */
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+/* Live demo area */
+.demo-area { background:#fff; border:1px solid var(--border); border-radius:8px;
+  padding:16px; margin:12px 0; }
+.demo-area .demo-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent); font-weight:700; margin-bottom:8px; text-transform:uppercase; }
+.demo-area button { font-family:var(--mono); font-size:.8rem; padding:6px 14px;
+  border:1px solid var(--accent); color:var(--accent); background:transparent;
+  border-radius:5px; cursor:pointer; transition:all .15s; margin-right:6px; margin-bottom:6px; }
+.demo-area button:hover { background:var(--accent); color:#fff; }
+.demo-area .demo-output { font-family:var(--mono); font-size:.82rem; line-height:1.7;
+  background:var(--code-bg); border:1px solid var(--border); border-radius:6px;
+  padding:10px 14px; margin-top:10px; min-height:40px; white-space:pre-wrap; color:var(--text); }
+
+/* Responsive */
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .verify { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+  </style>
+</head>
+<body>
+
+<!-- ============ SIDEBAR ============ -->
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// Generator Lab</div>
+  <div class="nav-section">基礎概念</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>普通の関数との違い</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>function* と yield</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>next() の戻り値</a>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>yield に値を渡す</a>
+  <div class="nav-section">制御パターン</div>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>for...of で自動反復</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>return と完了制御</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>yield* で委譲</a>
+  <div class="nav-section">実用パターン</div>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>無限シーケンス生成</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>遅延評価パイプライン</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>非同期Generator</a>
+</nav>
+
+<!-- ============ HERO ============ -->
+<div class="hero">
+  <h1>JavaScript Generator 完全理解 Lab</h1>
+  <p class="subtitle">「途中で止まる関数」を10ステップで完全に理解する</p>
+</div>
+
+<!-- ============ TOC ============ -->
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>普通の関数との違い</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>function* と yield</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>next() の戻り値</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>yield に値を渡す</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>for...of で自動反復</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>return と完了制御</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>yield* で委譲</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>無限シーケンス生成</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>遅延評価パイプライン</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>非同期Generator</a>
+  </div>
+</div>
+
+<!-- ============ CONTAINER ============ -->
+<div class="container">
+
+<!-- ====== LAB 00 ====== -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>普通の関数との違い</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      普通の関数は呼ぶと<strong>最後まで一気に実行</strong>されます。Generator関数は<strong>途中で止まって、続きから再開</strong>できます。この「一時停止できる関数」がGeneratorの本質です。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 たとえ話で理解する</div>
+      普通の関数 = 自動販売機。ボタンを押すと飲み物が<strong>一気に</strong>出てくる。<br>
+      Generator関数 = 紙芝居。「次へ」と言うたびに<strong>1枚ずつ</strong>めくられる。自分のペースで進められる。
+      <pre class="ascii-art">普通の関数:    呼出 ──────────────▶ 結果（一括）
+
+Generator:     呼出 ──▶ 停止① ──▶ 停止② ──▶ 停止③ ──▶ 完了
+                        ↑ next()  ↑ next()  ↑ next()  ↑ next()</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-label">普通の関数</div>
+      <pre><span class="cm">// 普通の関数: 呼ぶと一気に最後まで実行</span>
+<span class="kw">function</span> <span class="fn">normal</span>() {
+  console.<span class="fn">log</span>(<span class="str">"A"</span>);
+  console.<span class="fn">log</span>(<span class="str">"B"</span>);
+  console.<span class="fn">log</span>(<span class="str">"C"</span>);
+}
+<span class="fn">normal</span>();  <span class="cm">// A, B, C が一気に出力される</span></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-label">Generator関数</div>
+      <pre><span class="cm">// Generator関数: next() を呼ぶたびに1つずつ進む</span>
+<span class="kw">function*</span> <span class="fn">gen</span>() {
+  console.<span class="fn">log</span>(<span class="str">"A"</span>);
+  <span class="kw">yield</span>;            <span class="cm">// ← ここで一時停止！</span>
+  console.<span class="fn">log</span>(<span class="str">"B"</span>);
+  <span class="kw">yield</span>;            <span class="cm">// ← またここで一時停止！</span>
+  console.<span class="fn">log</span>(<span class="str">"C"</span>);
+}
+
+<span class="kw">const</span> g = <span class="fn">gen</span>();    <span class="cm">// ← この時点では何も実行されない！</span>
+g.<span class="fn">next</span>();            <span class="cm">// → "A" が出力される（最初のyieldで停止）</span>
+g.<span class="fn">next</span>();            <span class="cm">// → "B" が出力される（次のyieldで停止）</span>
+g.<span class="fn">next</span>();            <span class="cm">// → "C" が出力される（関数終了）</span></pre>
+    </div>
+
+    <div class="demo-area">
+      <div class="demo-title">▶ ライブデモ</div>
+      <button onclick="demo0_run()">next() を1回実行</button>
+      <button onclick="demo0_reset()">リセット</button>
+      <div class="demo-output" id="demo0-output">ここに結果が表示されます</div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== LAB 01 ====== -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>function* と yield の基本構文</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>function*</code>（アスタリスク付き）でGenerator関数を定義し、<code>yield</code> キーワードで「ここで止まって値を返す」と指示します。
+    </p>
+
+    <table class="compare-table">
+      <tr><th>構文</th><th>意味</th><th>例</th></tr>
+      <tr><td>function*</td><td>Generator関数の宣言</td><td><code>function* myGen() { }</code></td></tr>
+      <tr><td>yield 値</td><td>一時停止して値を外に返す</td><td><code>yield 42</code></td></tr>
+      <tr><td>gen()</td><td>イテレータオブジェクト生成</td><td><code>const it = myGen()</code></td></tr>
+      <tr><td>it.next()</td><td>次のyieldまで実行</td><td><code>it.next() // {value:42, done:false}</code></td></tr>
+    </table>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 * の位置は自由</div>
+      <code>function* gen()</code> / <code>function *gen()</code> / <code>function * gen()</code><br>
+      どの書き方でもOK。慣例として <code>function*</code> が最も一般的です。
+    </div>
+
+    <div class="code-block">
+      <div class="code-label">yield で値を返す</div>
+      <pre><span class="kw">function*</span> <span class="fn">fruitGen</span>() {
+  <span class="kw">yield</span> <span class="str">"🍎 りんご"</span>;
+  <span class="kw">yield</span> <span class="str">"🍌 バナナ"</span>;
+  <span class="kw">yield</span> <span class="str">"🍇 ぶどう"</span>;
+}
+
+<span class="kw">const</span> fruits = <span class="fn">fruitGen</span>();
+console.<span class="fn">log</span>(fruits.<span class="fn">next</span>());  <span class="cm">// { value: "🍎 りんご", done: false }</span>
+console.<span class="fn">log</span>(fruits.<span class="fn">next</span>());  <span class="cm">// { value: "🍌 バナナ", done: false }</span>
+console.<span class="fn">log</span>(fruits.<span class="fn">next</span>());  <span class="cm">// { value: "🍇 ぶどう", done: false }</span>
+console.<span class="fn">log</span>(fruits.<span class="fn">next</span>());  <span class="cm">// { value: undefined, done: true } ← 完了！</span></pre>
+    </div>
+
+    <div class="demo-area">
+      <div class="demo-title">▶ ライブデモ</div>
+      <button onclick="demo1_run()">next() を1回実行</button>
+      <button onclick="demo1_reset()">リセット</button>
+      <div class="demo-output" id="demo1-output">ここに結果が表示されます</div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== LAB 02 ====== -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>next() の戻り値 {value, done}</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>next()</code> は常に <code>{ value, done }</code> 形式のオブジェクトを返します。<code>done</code> が <code>true</code> になったら、そのGeneratorはもう値を生成しません。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 value と done の関係</div>
+      <pre class="ascii-art">function* count() {
+  yield 10;    ← next() → { value: 10,        done: false }  ← まだ続く
+  yield 20;    ← next() → { value: 20,        done: false }  ← まだ続く
+}              ← next() → { value: undefined,  done: true  }  ← 完了！
+                                                  ↑
+                                       return がないので undefined</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-label">done フラグの確認</div>
+      <pre><span class="kw">function*</span> <span class="fn">twoValues</span>() {
+  <span class="kw">yield</span> <span class="str">"first"</span>;
+  <span class="kw">yield</span> <span class="str">"second"</span>;
+}
+
+<span class="kw">const</span> it = <span class="fn">twoValues</span>();
+
+<span class="kw">let</span> result = it.<span class="fn">next</span>();
+<span class="kw">while</span> (!result.done) {
+  console.<span class="fn">log</span>(<span class="str">`値: ${</span>result.value<span class="str">}`</span>);
+  result = it.<span class="fn">next</span>();
+}
+<span class="cm">// 出力:
+// 値: first
+// 値: second</span></pre>
+    </div>
+
+    <div class="demo-area">
+      <div class="demo-title">▶ ライブデモ — done の変化を観察</div>
+      <button onclick="demo2_run()">next() を1回実行</button>
+      <button onclick="demo2_reset()">リセット</button>
+      <div class="demo-output" id="demo2-output">ここに結果が表示されます</div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== LAB 03 ====== -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>yield に値を渡す（双方向通信）</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>next(値)</code> で値をGenerator内部に送り込めます。送られた値は、<strong>直前の yield の戻り値</strong>になります。これが「双方向通信」です。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 yield は「出入口」</div>
+      <pre class="ascii-art">外側                       Generator内部
+─────                      ──────────────
+next()        ────▶         実行開始...
+              ◀────         yield "質問"     ← 外に値を出す
+next("回答")  ────▶         answer = "回答"  ← 外から値を受け取る
+              ◀────         yield "次の質問"
+
+※ 最初の next() に渡した値は捨てられる（受け取る yield がない）</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-label">双方向通信の例</div>
+      <pre><span class="kw">function*</span> <span class="fn">conversation</span>() {
+  <span class="kw">const</span> name = <span class="kw">yield</span> <span class="str">"あなたの名前は？"</span>;
+  <span class="kw">const</span> age  = <span class="kw">yield</span> <span class="str">`${name}さん、年齢は？`</span>;
+  <span class="kw">yield</span> <span class="str">`${name}さん(${age}歳)、よろしく！`</span>;
+}
+
+<span class="kw">const</span> chat = <span class="fn">conversation</span>();
+
+console.<span class="fn">log</span>(chat.<span class="fn">next</span>());           <span class="cm">// { value: "あなたの名前は？", done: false }</span>
+console.<span class="fn">log</span>(chat.<span class="fn">next</span>(<span class="str">"太郎"</span>));     <span class="cm">// { value: "太郎さん、年齢は？", done: false }</span>
+console.<span class="fn">log</span>(chat.<span class="fn">next</span>(<span class="num">25</span>));         <span class="cm">// { value: "太郎さん(25歳)、よろしく！", done: false }</span>
+console.<span class="fn">log</span>(chat.<span class="fn">next</span>());           <span class="cm">// { value: undefined, done: true }</span></pre>
+    </div>
+
+    <div class="demo-area">
+      <div class="demo-title">▶ ライブデモ — 対話型Generator</div>
+      <input type="text" id="demo3-input" placeholder="値を入力（名前 / 年齢）" style="font-family:var(--mono);font-size:.82rem;padding:5px 10px;border:1px solid var(--border);border-radius:4px;margin-bottom:6px;width:220px;">
+      <button onclick="demo3_run()">next(入力値) を実行</button>
+      <button onclick="demo3_reset()">リセット</button>
+      <div class="demo-output" id="demo3-output">ここに結果が表示されます</div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== LAB 04 ====== -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>for...of で自動反復</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Generatorは<strong>イテラブル</strong>なので、<code>for...of</code> / スプレッド構文 / 分割代入で簡単に消費できます。<code>next()</code> を手動で呼ぶ必要がありません。
+    </p>
+
+    <div class="code-block">
+      <div class="code-label">for...of</div>
+      <pre><span class="kw">function*</span> <span class="fn">colors</span>() {
+  <span class="kw">yield</span> <span class="str">"赤"</span>;
+  <span class="kw">yield</span> <span class="str">"青"</span>;
+  <span class="kw">yield</span> <span class="str">"緑"</span>;
+}
+
+<span class="cm">// ① for...of — 最も一般的</span>
+<span class="kw">for</span> (<span class="kw">const</span> color <span class="kw">of</span> <span class="fn">colors</span>()) {
+  console.<span class="fn">log</span>(color);  <span class="cm">// "赤" → "青" → "緑"</span>
+}
+
+<span class="cm">// ② スプレッド構文 — 一気に配列化</span>
+<span class="kw">const</span> arr = [...<span class="fn">colors</span>()];
+console.<span class="fn">log</span>(arr);  <span class="cm">// ["赤", "青", "緑"]</span>
+
+<span class="cm">// ③ 分割代入</span>
+<span class="kw">const</span> [first, second] = <span class="fn">colors</span>();
+console.<span class="fn">log</span>(first, second);  <span class="cm">// "赤" "青"</span></pre>
+    </div>
+
+    <div class="demo-area">
+      <div class="demo-title">▶ ライブデモ — 3つの消費方法</div>
+      <button onclick="demo4_forof()">for...of</button>
+      <button onclick="demo4_spread()">スプレッド [...gen()]</button>
+      <button onclick="demo4_destruct()">分割代入 [a, b]</button>
+      <div class="demo-output" id="demo4-output">ボタンを押して結果を確認</div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== LAB 05 ====== -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>return と完了制御</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Generator内の <code>return</code> は即座に <code>done: true</code> にします。また外側から <code>.return()</code> を呼んで強制終了もできます。
+    </p>
+
+    <div class="code-block">
+      <div class="code-label">return の挙動</div>
+      <pre><span class="kw">function*</span> <span class="fn">withReturn</span>() {
+  <span class="kw">yield</span> <span class="str">"A"</span>;
+  <span class="kw">return</span> <span class="str">"B"</span>;  <span class="cm">// ← done: true になる！</span>
+  <span class="kw">yield</span> <span class="str">"C"</span>;    <span class="cm">// ← 到達しない（デッドコード）</span>
+}
+
+<span class="kw">const</span> it = <span class="fn">withReturn</span>();
+console.<span class="fn">log</span>(it.<span class="fn">next</span>());  <span class="cm">// { value: "A", done: false }</span>
+console.<span class="fn">log</span>(it.<span class="fn">next</span>());  <span class="cm">// { value: "B", done: true }  ← return値！</span>
+console.<span class="fn">log</span>(it.<span class="fn">next</span>());  <span class="cm">// { value: undefined, done: true }</span></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-label">外部からの .return() / .throw()</div>
+      <pre><span class="kw">function*</span> <span class="fn">infinite</span>() {
+  <span class="kw">let</span> i = <span class="num">0</span>;
+  <span class="kw">while</span> (<span class="kw">true</span>) {
+    <span class="kw">yield</span> i++;
+  }
+}
+
+<span class="kw">const</span> it = <span class="fn">infinite</span>();
+console.<span class="fn">log</span>(it.<span class="fn">next</span>());        <span class="cm">// { value: 0, done: false }</span>
+console.<span class="fn">log</span>(it.<span class="fn">next</span>());        <span class="cm">// { value: 1, done: false }</span>
+console.<span class="fn">log</span>(it.<span class="fn">return</span>(<span class="str">"終了"</span>)); <span class="cm">// { value: "終了", done: true } ← 強制完了</span>
+console.<span class="fn">log</span>(it.<span class="fn">next</span>());        <span class="cm">// { value: undefined, done: true }</span></pre>
+    </div>
+
+    <div class="demo-area">
+      <div class="demo-title">▶ ライブデモ — return の違い</div>
+      <button onclick="demo5_internal()">内部 return</button>
+      <button onclick="demo5_external()">外部 .return()</button>
+      <div class="demo-output" id="demo5-output">ボタンを押して結果を確認</div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== LAB 06 ====== -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>yield* で別Generatorに委譲</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>yield*</code> を使うと、別のGeneratorや配列などのイテラブルの全要素を「この場で展開して yield」できます。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 yield vs yield* の違い</div>
+      <pre class="ascii-art">yield  [1,2,3]   → 配列オブジェクトそのものを1回だけ返す
+yield* [1,2,3]   → 1, 2, 3 を個別に1つずつ返す（展開）
+
+yield  otherGen() → イテレータオブジェクトそのものを返す
+yield* otherGen() → otherGenの全yield値を1つずつ代理で返す</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-label">yield* の活用</div>
+      <pre><span class="kw">function*</span> <span class="fn">inner</span>() {
+  <span class="kw">yield</span> <span class="str">"x"</span>;
+  <span class="kw">yield</span> <span class="str">"y"</span>;
+}
+
+<span class="kw">function*</span> <span class="fn">outer</span>() {
+  <span class="kw">yield</span> <span class="str">"a"</span>;
+  <span class="kw">yield*</span> <span class="fn">inner</span>();      <span class="cm">// inner()の値を1つずつ委譲</span>
+  <span class="kw">yield*</span> [<span class="num">1</span>, <span class="num">2</span>];       <span class="cm">// 配列もイテラブルなのでOK</span>
+  <span class="kw">yield</span> <span class="str">"z"</span>;
+}
+
+console.<span class="fn">log</span>([...<span class="fn">outer</span>()]);
+<span class="cm">// → ["a", "x", "y", 1, 2, "z"]</span></pre>
+    </div>
+
+    <div class="demo-area">
+      <div class="demo-title">▶ ライブデモ — yield vs yield* 比較</div>
+      <button onclick="demo6_yield()">yield [1,2,3]</button>
+      <button onclick="demo6_yieldstar()">yield* [1,2,3]</button>
+      <button onclick="demo6_delegate()">yield* otherGen()</button>
+      <div class="demo-output" id="demo6-output">ボタンを押して結果を確認</div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== LAB 07 ====== -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>無限シーケンスの生成</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Generatorは「必要になるまで計算しない」ため、<strong>無限ループ</strong>を安全に書けます。メモリを消費せず、要求されたぶんだけ値を生成します。
+    </p>
+
+    <div class="code-block">
+      <div class="code-label">フィボナッチ数列（無限）</div>
+      <pre><span class="kw">function*</span> <span class="fn">fibonacci</span>() {
+  <span class="kw">let</span> [a, b] = [<span class="num">0</span>, <span class="num">1</span>];
+  <span class="kw">while</span> (<span class="kw">true</span>) {
+    <span class="kw">yield</span> a;
+    [a, b] = [b, a + b];
+  }
+}
+
+<span class="cm">// 必要な分だけ取り出す</span>
+<span class="kw">const</span> fib = <span class="fn">fibonacci</span>();
+<span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i &lt; <span class="num">10</span>; i++) {
+  console.<span class="fn">log</span>(fib.<span class="fn">next</span>().value);
+}
+<span class="cm">// → 0, 1, 1, 2, 3, 5, 8, 13, 21, 34</span></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-label">ユーティリティ: take(n, gen)</div>
+      <pre><span class="cm">// 先頭N個だけ取り出すヘルパー</span>
+<span class="kw">function*</span> <span class="fn">take</span>(n, gen) {
+  <span class="kw">for</span> (<span class="kw">const</span> val <span class="kw">of</span> gen) {
+    <span class="kw">if</span> (n-- &lt;= <span class="num">0</span>) <span class="kw">return</span>;
+    <span class="kw">yield</span> val;
+  }
+}
+
+console.<span class="fn">log</span>([...<span class="fn">take</span>(<span class="num">7</span>, <span class="fn">fibonacci</span>())]);
+<span class="cm">// → [0, 1, 1, 2, 3, 5, 8]</span></pre>
+    </div>
+
+    <div class="demo-area">
+      <div class="demo-title">▶ ライブデモ — フィボナッチ</div>
+      <button onclick="demo7_run()">次の値を取得</button>
+      <button onclick="demo7_take10()">先頭10個を一括表示</button>
+      <button onclick="demo7_reset()">リセット</button>
+      <div class="demo-output" id="demo7-output">ここに結果が表示されます</div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== LAB 08 ====== -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>遅延評価パイプライン</h3>
+    <span class="lab-tag tag-advanced">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Generatorを連鎖して「パイプライン」を構築すると、大量データも<strong>1要素ずつ</strong>処理でき、中間配列が不要になります。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 配列メソッド vs Generator パイプライン</div>
+      <pre class="ascii-art">配列:  [1..1000000].filter(...).map(...)  → 中間配列が2つ → メモリ大
+Generator: source → filter → map → take  → 1要素ずつ流れる → メモリ小
+
+データの流れ（1要素ずつ）:
+  source ──1──▶ filter ──1──▶ map ──1──▶ take ──1──▶ 出力
+  source ──2──▶ filter ──✗   （フィルタで落ちたらここで終了）
+  source ──3──▶ filter ──3──▶ map ──3──▶ take ──3──▶ 出力</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-label">パイプライン構築</div>
+      <pre><span class="cm">// ① ソース: 自然数を無限に生成</span>
+<span class="kw">function*</span> <span class="fn">naturals</span>() {
+  <span class="kw">let</span> n = <span class="num">1</span>;
+  <span class="kw">while</span> (<span class="kw">true</span>) <span class="kw">yield</span> n++;
+}
+
+<span class="cm">// ② filter: 条件に合う要素だけ通す</span>
+<span class="kw">function*</span> <span class="fn">filter</span>(gen, predicate) {
+  <span class="kw">for</span> (<span class="kw">const</span> val <span class="kw">of</span> gen) {
+    <span class="kw">if</span> (<span class="fn">predicate</span>(val)) <span class="kw">yield</span> val;
+  }
+}
+
+<span class="cm">// ③ map: 各要素を変換</span>
+<span class="kw">function*</span> <span class="fn">map</span>(gen, transform) {
+  <span class="kw">for</span> (<span class="kw">const</span> val <span class="kw">of</span> gen) {
+    <span class="kw">yield</span> <span class="fn">transform</span>(val);
+  }
+}
+
+<span class="cm">// ④ take: 先頭N個だけ取得</span>
+<span class="kw">function*</span> <span class="fn">take</span>(n, gen) {
+  <span class="kw">for</span> (<span class="kw">const</span> val <span class="kw">of</span> gen) {
+    <span class="kw">if</span> (n-- &lt;= <span class="num">0</span>) <span class="kw">return</span>;
+    <span class="kw">yield</span> val;
+  }
+}
+
+<span class="cm">// パイプライン: 自然数 → 奇数だけ → 二乗 → 先頭5個</span>
+<span class="kw">const</span> pipeline = <span class="fn">take</span>(<span class="num">5</span>,
+  <span class="fn">map</span>(
+    <span class="fn">filter</span>(<span class="fn">naturals</span>(), n =&gt; n % <span class="num">2</span> !== <span class="num">0</span>),
+    n =&gt; n * n
+  )
+);
+
+console.<span class="fn">log</span>([...pipeline]);
+<span class="cm">// → [1, 9, 25, 49, 81]  (1², 3², 5², 7², 9²)</span></pre>
+    </div>
+
+    <div class="demo-area">
+      <div class="demo-title">▶ ライブデモ — パイプライン実行</div>
+      <button onclick="demo8_run()">パイプライン実行</button>
+      <button onclick="demo8_step()">1要素ずつステップ実行</button>
+      <button onclick="demo8_reset()">リセット</button>
+      <div class="demo-output" id="demo8-output">ボタンを押して結果を確認</div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== LAB 09 ====== -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>非同期Generator (async function*)</h3>
+    <span class="lab-tag tag-advanced">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>async function*</code> で非同期Generatorを定義でき、<code>for await...of</code> で消費します。APIのページネーションやストリーミングデータに最適です。
+    </p>
+
+    <table class="compare-table">
+      <tr><th>種類</th><th>定義</th><th>消費方法</th><th>yield する値</th></tr>
+      <tr><td>同期Generator</td><td><code>function*</code></td><td><code>for...of</code></td><td>即座の値</td></tr>
+      <tr><td>非同期Generator</td><td><code>async function*</code></td><td><code>for await...of</code></td><td>Promiseも可</td></tr>
+    </table>
+
+    <div class="code-block">
+      <div class="code-label">API ページネーション風の例</div>
+      <pre><span class="cm">// 模擬API: 遅延して結果を返す</span>
+<span class="kw">async function</span> <span class="fn">fetchPage</span>(page) {
+  <span class="kw">await new</span> <span class="fn">Promise</span>(r =&gt; <span class="fn">setTimeout</span>(r, <span class="num">500</span>));
+  <span class="kw">if</span> (page &gt; <span class="num">3</span>) <span class="kw">return</span> <span class="kw">null</span>;  <span class="cm">// 3ページで終了</span>
+  <span class="kw">return</span> { page, items: [<span class="str">`item-${page}a`</span>, <span class="str">`item-${page}b`</span>] };
+}
+
+<span class="cm">// 非同期Generator: ページを順番に取得</span>
+<span class="kw">async function*</span> <span class="fn">allItems</span>() {
+  <span class="kw">let</span> page = <span class="num">1</span>;
+  <span class="kw">while</span> (<span class="kw">true</span>) {
+    <span class="kw">const</span> data = <span class="kw">await</span> <span class="fn">fetchPage</span>(page++);
+    <span class="kw">if</span> (!data) <span class="kw">return</span>;       <span class="cm">// データなし→完了</span>
+    <span class="kw">yield*</span> data.items;      <span class="cm">// 各アイテムを個別にyield</span>
+  }
+}
+
+<span class="cm">// 消費: for await...of</span>
+(<span class="kw">async</span> () =&gt; {
+  <span class="kw">for await</span> (<span class="kw">const</span> item <span class="kw">of</span> <span class="fn">allItems</span>()) {
+    console.<span class="fn">log</span>(item);
+  }
+  <span class="cm">// → item-1a, item-1b, item-2a, item-2b, item-3a, item-3b</span>
+})();</pre>
+    </div>
+
+    <div class="demo-area">
+      <div class="demo-title">▶ ライブデモ — 非同期ページネーション</div>
+      <button onclick="demo9_run()">全ページ取得（非同期）</button>
+      <button onclick="demo9_reset()">リセット</button>
+      <div class="demo-output" id="demo9-output">ボタンを押すと500msごとにページを取得します</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<!-- ============ SCRIPTS ============ -->
+<script>
+  // ===== Copy button logic =====
+  function copyCode(btn) {
+    const block = btn.closest('.code-block') || btn.parentElement;
+    const pre = block.querySelector('pre');
+    if (!pre) return;
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    });
+  }
+
+  // ===== LAB_META =====
+  const LAB_META = {
+    lab0: {
+      info: { type:'info', html:'📘 <strong>Generator関数</strong>は ES2015 (ES6) で導入されました。<code>function*</code> で定義し、呼び出すと<strong>イテレータ</strong>オブジェクトを返します。関数本体はまだ実行されません。' },
+      verify: { before:'<code>gen()</code> を呼んだだけ → コンソールに何も出ない', after:'<code>g.next()</code> を呼ぶたびに次の <code>yield</code> まで実行され、ログが1つずつ出力される' },
+      check: ['①コンソールを開き、<code>gen()</code> だけ実行して何も出力されないことを確認','②<code>g.next()</code> を1回呼ぶたびに console.log が1行ずつ増えることを確認','③3回目の <code>next()</code> で "C" が出力され、4回目は <code>{value: undefined, done: true}</code> になることを確認']
+    },
+    lab1: {
+      info: { type:'info', html:'📘 <code>yield</code> は「一時停止して値を外に返す」構文です。<code>return</code> との違い: <code>return</code> は関数を終了させるが、<code>yield</code> は一時停止するだけで再開可能です。' },
+      check: ['①デモの next() ボタンを4回押し、4回目で <code>done: true</code> になることを確認','②<code>value</code> の型が string であること（<code>typeof</code> で検証可）','③リセット後に再度実行し、毎回同じ順序で値が返ることを確認']
+    },
+    lab2: {
+      info: { type:'warn', html:'⚠️ <strong>注意</strong>: <code>done: true</code> の後に <code>next()</code> を何度呼んでも、常に <code>{value: undefined, done: true}</code> が返ります。Generatorは使い捨て＝再利用不可です。新しいイテレータを作り直す必要があります。' },
+      check: ['①デモで <code>done</code> が <code>false</code> → <code>true</code> に切り替わるタイミングを確認','②<code>done: true</code> 後にもう一度 next() を押して <code>value: undefined</code> になることを確認','③コンソールで <code>typeof result.value</code> を確認し、完了後は <code>"undefined"</code> になることを確認']
+    },
+    lab3: {
+      info: { type:'warn', html:'⚠️ <strong>重要</strong>: 最初の <code>next()</code> に渡した値は<strong>捨てられます</strong>。受け取る側の <code>yield</code> がまだ存在しないためです。値の送り込みは<strong>2回目の next() から</strong>有効です。' },
+      verify: { before:'<code>next()</code> だけ→ <code>name</code> は <code>undefined</code>', after:'<code>next("太郎")</code> → <code>name</code> に <code>"太郎"</code> が代入される' },
+      check: ['①最初の next() は引数なしで呼び、"あなたの名前は？" が返ることを確認','②2回目の next("太郎") で名前が反映された質問が返ることを確認','③入力欄を空にして next() を呼び、<code>undefined</code> が代入されることを確認（意図通りか考察）']
+    },
+    lab4: {
+      info: { type:'ok', html:'✅ <strong>推奨</strong>: 単純に全値を取り出したい場合は <code>for...of</code> または <code>[...gen()]</code> が最も読みやすい書き方です。<code>next()</code> の手動呼び出しは、双方向通信が必要な場合にのみ使いましょう。' },
+      check: ['①3つのデモボタンをそれぞれ押し、同じ値が取得されることを確認','②<code>for...of</code> では <code>done: true</code> の value（return値）が<strong>含まれない</strong>ことに注意','③スプレッド構文の結果が配列であること（<code>Array.isArray()</code>）を確認']
+    },
+    lab5: {
+      info: { type:'err', html:'🚫 <strong>注意</strong>: <code>return</code> で返した値は <code>for...of</code> では取得<strong>できません</strong>。<code>for...of</code> は <code>done: true</code> になった時点で終了し、その <code>value</code> を無視します。' },
+      verify: { before:'<code>for...of</code> で消費 → "A" のみ取得（"B" は取れない）', after:'手動 <code>next()</code> で消費 → <code>{value:"B", done:true}</code> で "B" も取得可能' },
+      check: ['①「内部 return」ボタンで return 値が done:true と一緒に返ることを確認','②「外部 .return()」ボタンで任意のタイミングで強制終了できることを確認','③コンソールで <code>[...withReturn()]</code> を実行し、return値が含まれないことを確認']
+    },
+    lab6: {
+      info: { type:'info', html:'📘 <code>yield*</code> は任意の<strong>イテラブル</strong>に使えます：配列、文字列、Set、Map、別のGeneratorなど。再帰的なツリー走査にも活用できます。' },
+      check: ['①「yield」と「yield*」の違いを比較し、yield は配列を丸ごと返すのに対し yield* は要素を個別に返すことを確認','②「yield* otherGen()」ボタンで別Generatorの値が途中に挿入されることを確認','③コンソールで <code>yield* "hello"</code> を試し、文字が1文字ずつ返ることを確認']
+    },
+    lab7: {
+      info: { type:'ok', html:'✅ <strong>ポイント</strong>: Generatorの遅延評価は「無限の概念」を安全にプログラムで表現できます。配列で <code>[0,1,1,2,3,5,8...]</code> と無限に確保する必要がありません。' },
+      check: ['①「次の値を取得」を連打し、フィボナッチ数列が正しく進むことを確認','②「先頭10個」ボタンで一括取得し、0始まりの10要素が表示されることを確認','③リセット後に再実行し、最初からやり直すことを確認（Generatorは新規作成が必要）']
+    },
+    lab8: {
+      info: { type:'info', html:'📘 <strong>遅延評価</strong>とは「必要になるまで計算しない」こと。100万件のデータがあっても、<code>take(5, ...)</code> なら5件分しか処理されません。メモリ効率が圧倒的に良くなります。' },
+      check: ['①パイプライン実行で奇数の二乗5個 [1,9,25,49,81] が出ることを確認','②ステップ実行で1要素ずつ処理の流れを観察','③コンソールで各Generator部品（filter, map, take）を個別に組み合わせてみる']
+    },
+    lab9: {
+      info: { type:'info', html:'📘 <code>async function*</code> は ES2018 で導入されました。内部で <code>await</code> が使えるため、API呼び出し・ファイル読み込み・WebSocket受信などの非同期ストリーム処理に最適です。' },
+      check: ['①デモ実行で500msごとに項目が追加されていくことを確認','②全6アイテムが表示されたら自動停止することを確認','③ブラウザのネットワークタブには実際のリクエストは飛ばないことを確認（模擬APIのため）']
+    }
+  };
+
+  // ===== Injection functions =====
+  function infoHTML(m){ return m?.info ? `<div class="info-box ${m.info.type||'info'}">${m.info.html}</div>` : ''; }
+  function verifyHTML(m){ if (!m?.verify) return '';
+    const {before, after} = m.verify;
+    return `<div class="verify">
+      <div class="verify-col verify-before"><div class="verify-label">Before ▶︎ 実行前</div>${before||''}</div>
+      <div class="verify-col verify-after"><div class="verify-label">After ▶︎ 実行後</div>${after||''}</div>
+    </div>`; }
+  function checkHTML(m){ if (!m?.check?.length) return '';
+    return `<div class="check-steps">
+      <div class="check-steps-title">🔍 ブラウザ実機チェック</div>
+      <ol>${m.check.map(s=>`<li>${s}</li>`).join('')}</ol>
+    </div>`; }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // (1) Inject info + verify + check
+    document.querySelectorAll('.lab').forEach(lab => {
+      const meta = LAB_META[lab.id]; const body = lab.querySelector('.lab-body');
+      if (!body || !meta) return;
+      const frag = document.createElement('div');
+      frag.innerHTML = infoHTML(meta) + verifyHTML(meta) + checkHTML(meta);
+      while (frag.firstChild) body.appendChild(frag.firstChild);
+    });
+
+    // (2) Sidebar active highlight
+    const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+    const sidebarMap = new Map();
+    links.forEach(a => { const el = document.getElementById(a.getAttribute('href').slice(1)); if (el) sidebarMap.set(el, a); });
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting) { const l = sidebarMap.get(e.target);
+        if (l) { links.forEach(n=>n.classList.remove('active')); l.classList.add('active'); } }
+    }), { rootMargin:'-30% 0px -60% 0px' });
+    document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+    // (3) Auto-inject Copy buttons
+    document.querySelectorAll('.code-block').forEach((cb, i) => {
+      if (cb.querySelector('.code-block-header')) return;
+      const existing = cb.querySelector('.code-label');
+      const labelText = existing ? existing.textContent.trim() : `Code #${i+1}`;
+      if (existing) existing.remove();
+      const header = document.createElement('div');
+      header.className = 'code-block-header';
+      header.innerHTML = `<span>${labelText}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+      cb.insertBefore(header, cb.firstChild);
+    });
+  });
+
+  // ===========================
+  // DEMO SCRIPTS
+  // ===========================
+
+  // --- Lab 00: 普通の関数との違い ---
+  let demo0_gen, demo0_step;
+  function demo0_reset() {
+    function* gen() {
+      console.log("A"); yield;
+      console.log("B"); yield;
+      console.log("C");
+    }
+    demo0_gen = gen();
+    demo0_step = 0;
+    document.getElementById('demo0-output').textContent = '🔄 リセットしました。next() を押してください。';
+  }
+  function demo0_run() {
+    if (!demo0_gen) demo0_reset();
+    const result = demo0_gen.next();
+    demo0_step++;
+    const out = document.getElementById('demo0-output');
+    const steps = ['→ "A" を出力（最初のyieldで停止中）','→ "B" を出力（2番目のyieldで停止中）','→ "C" を出力（関数が完了）','→ すでに完了。done: true'];
+    out.textContent += (out.textContent.includes('リセット') || out.textContent.includes('ここに') ? '' : '\n')
+      + `next() #${demo0_step}: { value: ${JSON.stringify(result.value)}, done: ${result.done} } ${steps[Math.min(demo0_step-1,3)]}`;
+    if (out.textContent.includes('ここに')) out.textContent = `next() #${demo0_step}: { value: ${JSON.stringify(result.value)}, done: ${result.done} } ${steps[Math.min(demo0_step-1,3)]}`;
+  }
+  demo0_reset();
+
+  // --- Lab 01: function* と yield ---
+  let demo1_gen, demo1_step;
+  function demo1_reset() {
+    function* fruitGen() {
+      yield "🍎 りんご";
+      yield "🍌 バナナ";
+      yield "🍇 ぶどう";
+    }
+    demo1_gen = fruitGen();
+    demo1_step = 0;
+    document.getElementById('demo1-output').textContent = '🔄 リセットしました。next() を押してください。';
+  }
+  function demo1_run() {
+    if (!demo1_gen) demo1_reset();
+    const result = demo1_gen.next();
+    demo1_step++;
+    const out = document.getElementById('demo1-output');
+    const line = `next() #${demo1_step}: { value: ${JSON.stringify(result.value)}, done: ${result.done} }`;
+    if (out.textContent.includes('リセット') || out.textContent.includes('ここに'))
+      out.textContent = line;
+    else
+      out.textContent += '\n' + line;
+  }
+  demo1_reset();
+
+  // --- Lab 02: next() の戻り値 ---
+  let demo2_gen, demo2_step;
+  function demo2_reset() {
+    function* twoValues() { yield "first"; yield "second"; }
+    demo2_gen = twoValues();
+    demo2_step = 0;
+    document.getElementById('demo2-output').textContent = '🔄 リセットしました。next() を押してください。';
+  }
+  function demo2_run() {
+    if (!demo2_gen) demo2_reset();
+    const result = demo2_gen.next();
+    demo2_step++;
+    const out = document.getElementById('demo2-output');
+    const doneLabel = result.done ? ' ← 🔴 完了！' : ' ← 🟢 まだ続く';
+    const line = `next() #${demo2_step}: { value: ${JSON.stringify(result.value)}, done: ${result.done} }${doneLabel}`;
+    if (out.textContent.includes('リセット') || out.textContent.includes('ここに'))
+      out.textContent = line;
+    else
+      out.textContent += '\n' + line;
+  }
+  demo2_reset();
+
+  // --- Lab 03: yield に値を渡す ---
+  let demo3_gen, demo3_step;
+  function demo3_reset() {
+    function* conversation() {
+      const name = yield "あなたの名前は？";
+      const age  = yield `${name}さん、年齢は？`;
+      yield `${name}さん(${age}歳)、よろしく！`;
+    }
+    demo3_gen = conversation();
+    demo3_step = 0;
+    document.getElementById('demo3-output').textContent = '🔄 リセットしました。next() を押してください。';
+    document.getElementById('demo3-input').value = '';
+  }
+  function demo3_run() {
+    if (!demo3_gen) demo3_reset();
+    const input = document.getElementById('demo3-input').value || undefined;
+    const result = demo3_gen.next(demo3_step === 0 ? undefined : input);
+    demo3_step++;
+    const out = document.getElementById('demo3-output');
+    const sendLabel = demo3_step === 1 ? '(初回は引数無視)' : `← 送った値: ${JSON.stringify(input)}`;
+    const line = `next() #${demo3_step} ${sendLabel}\n  → { value: ${JSON.stringify(result.value)}, done: ${result.done} }`;
+    if (out.textContent.includes('リセット') || out.textContent.includes('ここに'))
+      out.textContent = line;
+    else
+      out.textContent += '\n\n' + line;
+    document.getElementById('demo3-input').value = '';
+  }
+  demo3_reset();
+
+  // --- Lab 04: for...of ---
+  function* colorsGen() { yield "赤"; yield "青"; yield "緑"; }
+  function demo4_forof() {
+    let result = 'for...of の結果:\n';
+    for (const c of colorsGen()) result += `  → ${c}\n`;
+    document.getElementById('demo4-output').textContent = result;
+  }
+  function demo4_spread() {
+    const arr = [...colorsGen()];
+    document.getElementById('demo4-output').textContent = `スプレッド構文の結果:\n  → [${arr.map(a=>'"'+a+'"').join(', ')}]\n  Array.isArray: ${Array.isArray(arr)}`;
+  }
+  function demo4_destruct() {
+    const [first, second] = colorsGen();
+    document.getElementById('demo4-output').textContent = `分割代入の結果:\n  first  → "${first}"\n  second → "${second}"\n  (3番目は取得していない)`;
+  }
+
+  // --- Lab 05: return ---
+  function demo5_internal() {
+    function* withReturn() { yield "A"; return "B"; yield "C"; }
+    const it = withReturn();
+    let out = '内部 return の挙動:\n';
+    for (let i = 0; i < 4; i++) {
+      const r = it.next();
+      out += `  next() #${i+1}: { value: ${JSON.stringify(r.value)}, done: ${r.done} }`;
+      if (i === 1) out += ' ← return値！done:true';
+      if (i === 0) out += ' ← yield値';
+      out += '\n';
+    }
+    out += '\nfor...of で消費: [' + [...(function*(){yield "A"; return "B"; yield "C";})()] .map(v=>'"'+v+'"').join(', ') + ']';
+    out += '\n  → "B" は取得されない！';
+    document.getElementById('demo5-output').textContent = out;
+  }
+  function demo5_external() {
+    function* infinite() { let i=0; while(true) yield i++; }
+    const it = infinite();
+    let out = '外部 .return() の挙動:\n';
+    out += `  next()      → ${JSON.stringify(it.next())}\n`;
+    out += `  next()      → ${JSON.stringify(it.next())}\n`;
+    out += `  return("終了") → ${JSON.stringify(it.return("終了"))}  ← 強制完了！\n`;
+    out += `  next()      → ${JSON.stringify(it.next())}  ← 以降ずっと done:true`;
+    document.getElementById('demo5-output').textContent = out;
+  }
+
+  // --- Lab 06: yield* ---
+  function demo6_yield() {
+    function* g() { yield [1,2,3]; }
+    const result = [...g()];
+    document.getElementById('demo6-output').textContent =
+      `yield [1,2,3] の結果:\n  → [${JSON.stringify(result[0])}]\n  要素数: ${result.length} (配列が丸ごと1つの値として返る)`;
+  }
+  function demo6_yieldstar() {
+    function* g() { yield* [1,2,3]; }
+    const result = [...g()];
+    document.getElementById('demo6-output').textContent =
+      `yield* [1,2,3] の結果:\n  → [${result.join(', ')}]\n  要素数: ${result.length} (個別の値として展開される)`;
+  }
+  function demo6_delegate() {
+    function* inner() { yield "x"; yield "y"; }
+    function* outer() { yield "a"; yield* inner(); yield* [1,2]; yield "z"; }
+    const result = [...outer()];
+    document.getElementById('demo6-output').textContent =
+      `yield* otherGen() の結果:\n  outer → [${result.map(v=>JSON.stringify(v)).join(', ')}]\n  inner の "x","y" が途中に挿入されている`;
+  }
+
+  // --- Lab 07: フィボナッチ ---
+  let demo7_gen, demo7_step;
+  function* fibonacci() { let [a,b]=[0,1]; while(true) { yield a; [a,b]=[b,a+b]; } }
+  function demo7_reset() {
+    demo7_gen = fibonacci();
+    demo7_step = 0;
+    document.getElementById('demo7-output').textContent = '🔄 リセットしました。';
+  }
+  function demo7_run() {
+    if (!demo7_gen) demo7_reset();
+    const v = demo7_gen.next().value;
+    demo7_step++;
+    const out = document.getElementById('demo7-output');
+    const line = `fib(${demo7_step}): ${v}`;
+    if (out.textContent.includes('リセット') || out.textContent.includes('ここに'))
+      out.textContent = line;
+    else
+      out.textContent += '\n' + line;
+  }
+  function demo7_take10() {
+    const gen = fibonacci();
+    const result = [];
+    for (let i=0; i<10; i++) result.push(gen.next().value);
+    document.getElementById('demo7-output').textContent = `先頭10個: [${result.join(', ')}]`;
+    demo7_gen = null;
+  }
+  demo7_reset();
+
+  // --- Lab 08: パイプライン ---
+  function* naturals() { let n=1; while(true) yield n++; }
+  function* pFilter(gen, pred) { for(const v of gen) if(pred(v)) yield v; }
+  function* pMap(gen, fn) { for(const v of gen) yield fn(v); }
+  function* pTake(n, gen) { for(const v of gen) { if(n--<=0)return; yield v; } }
+
+  let demo8_pipeline;
+  function demo8_reset() {
+    demo8_pipeline = null;
+    document.getElementById('demo8-output').textContent = '🔄 リセットしました。';
+  }
+  function demo8_run() {
+    const pipeline = pTake(5, pMap(pFilter(naturals(), n=>n%2!==0), n=>n*n));
+    const result = [...pipeline];
+    document.getElementById('demo8-output').textContent =
+      `パイプライン結果: [${result.join(', ')}]\n\n処理の流れ:\n  自然数 → 奇数フィルタ → 二乗 → 先頭5個\n  1→1²=1, 3→3²=9, 5→5²=25, 7→7²=49, 9→9²=81`;
+  }
+  function demo8_step() {
+    if (!demo8_pipeline) {
+      demo8_pipeline = pTake(5, pMap(pFilter(naturals(), n=>n%2!==0), n=>n*n));
+      document.getElementById('demo8-output').textContent = 'ステップ実行開始:';
+    }
+    const r = demo8_pipeline.next();
+    const out = document.getElementById('demo8-output');
+    if (r.done) {
+      out.textContent += '\n→ 完了 (done: true)';
+      demo8_pipeline = null;
+    } else {
+      out.textContent += `\n→ ${r.value}`;
+    }
+  }
+  demo8_reset();
+
+  // --- Lab 09: async generator ---
+  async function mockFetchPage(page) {
+    await new Promise(r => setTimeout(r, 500));
+    if (page > 3) return null;
+    return { page, items: [`item-${page}a`, `item-${page}b`] };
+  }
+  async function* allItems() {
+    let page = 1;
+    while (true) {
+      const data = await mockFetchPage(page++);
+      if (!data) return;
+      yield* data.items;
+    }
+  }
+  let demo9_running = false;
+  async function demo9_run() {
+    if (demo9_running) return;
+    demo9_running = true;
+    const out = document.getElementById('demo9-output');
+    out.textContent = '⏳ 非同期ページネーション開始...\n';
+    let count = 0;
+    for await (const item of allItems()) {
+      count++;
+      out.textContent += `  [${new Date().toLocaleTimeString()}] #${count}: ${item}\n`;
+    }
+    out.textContent += '\n✅ 全ページ取得完了！';
+    demo9_running = false;
+  }
+  function demo9_reset() {
+    demo9_running = false;
+    document.getElementById('demo9-output').textContent = 'ボタンを押すと500msごとにページを取得します';
+  }
+</script>
+
+</body>
+</html>
