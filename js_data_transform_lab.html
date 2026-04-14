@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JS データ構造変換パターン Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+.verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+  line-height:1.7; border:1px solid; }
+.verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+.verify-before .verify-label { color:var(--error); }
+.verify-after  .verify-label { color:var(--success); }
+
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+/* Run button */
+.run-btn { display:inline-flex; align-items:center; gap:6px; margin:8px 0;
+  padding:8px 18px; background:var(--accent); color:#fff; border:none;
+  border-radius:6px; font-family:var(--mono); font-size:.82rem; cursor:pointer;
+  transition:background .15s; }
+.run-btn:hover { background:#004a9e; }
+.run-btn::before { content:'▶'; font-size:.7rem; }
+
+/* Result area */
+.result-area { background:#1e1e2e; color:#c6d0f5; border-radius:8px;
+  padding:14px 16px; margin:8px 0 12px; font-family:var(--mono); font-size:.8rem;
+  line-height:1.6; min-height:48px; max-height:320px; overflow:auto;
+  white-space:pre-wrap; word-break:break-all; border:1px solid #313244; }
+.result-area:empty::before { content:'▶ ボタンを押すと結果がここに表示されます';
+  color:#6c7086; font-style:italic; }
+.result-area .r-key { color:#89b4fa; }
+.result-area .r-str { color:#a6e3a1; }
+.result-area .r-num { color:#fab387; }
+.result-area .r-bool { color:#f38ba8; }
+.result-area .r-null { color:#6c7086; }
+
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .verify { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+  </style>
+</head>
+<body>
+
+<!-- ===== SIDEBAR ===== -->
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// JS変換パターン <span>Lab</span></div>
+  <div class="nav-section">配列 → 別の形</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>配列→辞書オブジェクト</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>配列→グループ化</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>配列→Set 重複排除</a>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>配列→ツリー構造復元</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>配列→集約値(reduce)</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>配列→配列(形状変換)</a>
+  <div class="nav-section">オブジェクト → 別の形</div>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>Obj→配列に分解</a>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>pick / omit 部分抽出</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>ネスト↔フラット変換</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>浅いマージ vs 深いマージ</a>
+  <div class="nav-section">ツリー・再帰構造</div>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>ツリー→フラット配列</a>
+  <a class="nav-item" href="#lab11"><span class="nav-num">11</span>DOM→JSONツリー</a>
+  <div class="nav-section">文字列 ↔ 構造化データ</div>
+  <a class="nav-item" href="#lab12"><span class="nav-num">12</span>CSV→オブジェクト配列</a>
+  <a class="nav-item" href="#lab13"><span class="nav-num">13</span>URLクエリ↔オブジェクト</a>
+  <div class="nav-section">API・状態管理パターン</div>
+  <a class="nav-item" href="#lab14"><span class="nav-num">14</span>APIレスポンス正規化</a>
+  <a class="nav-item" href="#lab15"><span class="nav-num">15</span>イミュータブル更新</a>
+  <a class="nav-item" href="#lab16"><span class="nav-num">16</span>正規化と逆正規化</a>
+</nav>
+
+<!-- ===== HERO ===== -->
+<div class="hero">
+  <h1>JS データ構造変換パターン Lab</h1>
+  <p class="subtitle">全17パターンを ▶ ボタンで実行 → コンソールで目視確認</p>
+</div>
+
+<!-- ===== TOC ===== -->
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>配列→辞書オブジェクト</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>配列→グループ化</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>配列→Set 重複排除</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>配列→ツリー構造復元</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>配列→集約値(reduce)</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>配列→配列(形状変換)</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>Obj→配列に分解</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>pick / omit 部分抽出</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>ネスト↔フラット変換</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>浅いマージ vs 深いマージ</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">10</span>ツリー→フラット配列</a>
+    <a class="toc-item" href="#lab11"><span class="toc-num">11</span>DOM→JSONツリー</a>
+    <a class="toc-item" href="#lab12"><span class="toc-num">12</span>CSV→オブジェクト配列</a>
+    <a class="toc-item" href="#lab13"><span class="toc-num">13</span>URLクエリ↔オブジェクト</a>
+    <a class="toc-item" href="#lab14"><span class="toc-num">14</span>APIレスポンス正規化</a>
+    <a class="toc-item" href="#lab15"><span class="toc-num">15</span>イミュータブル更新</a>
+    <a class="toc-item" href="#lab16"><span class="toc-num">16</span>正規化と逆正規化</a>
+  </div>
+</div>
+
+<!-- ===== LABS ===== -->
+<div class="container">
+
+<!-- ===================== LAB 00 ===================== -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>配列 → 辞書オブジェクト（ルックアップ化）</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      配列を <code>id</code> をキーにしたオブジェクトに変換。<code>reduce</code> と <code>Object.fromEntries</code> の2通り。
+      APIから取得したリストを「IDで即引き」できる辞書にする実務パターン。
+    </p>
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 なぜ辞書化が必要？</div>
+      配列のままだと <code>users.find(u =&gt; u.id === 3)</code> で毎回ループが走る。辞書にすれば <code>dict[3]</code> で O(1) でアクセスできる。
+      <pre class="ascii-art">
+配列 (毎回探索)          辞書 (即アクセス)
+┌───┬───┬───┐       ┌─────────────────┐
+│ 0 │ 1 │ 2 │  →    │ "1": {id:1,...}  │
+│{} │{} │{} │       │ "2": {id:2,...}  │
+└───┴───┴───┘       │ "3": {id:3,...}  │
+  find(id===3)        └─────────────────┘
+  → 最大3回            dict[3] → 1回</pre>
+    </div>
+    <div class="code-block">
+      <div class="code-label">reduce版</div>
+      <pre><span class="kw">const</span> users = [
+  { id: <span class="num">1</span>, name: <span class="str">"Alice"</span> },
+  { id: <span class="num">2</span>, name: <span class="str">"Bob"</span> },
+  { id: <span class="num">3</span>, name: <span class="str">"Carol"</span> }
+];
+
+<span class="cm">// reduce版: 初期値 {} に1つずつ追加</span>
+<span class="kw">const</span> dict1 = users.<span class="fn">reduce</span>((acc, u) =&gt; {
+  acc[u.id] = u;
+  <span class="kw">return</span> acc;
+}, {});
+
+<span class="cm">// fromEntries版: [key, value] のペア配列から一発変換</span>
+<span class="kw">const</span> dict2 = Object.<span class="fn">fromEntries</span>(
+  users.<span class="fn">map</span>(u =&gt; [u.id, u])
+);
+
+console.<span class="fn">log</span>(<span class="str">"reduce版:"</span>, dict1);
+console.<span class="fn">log</span>(<span class="str">"fromEntries版:"</span>, dict2);
+console.<span class="fn">log</span>(<span class="str">"ID=2を即取得:"</span>, dict1[<span class="num">2</span>]);</pre>
+    </div>
+    <button class="run-btn" onclick="runLab0()">実行して結果を見る</button>
+    <div class="result-area" id="result0"></div>
+  </div>
+</div>
+
+<!-- ===================== LAB 01 ===================== -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>配列 → グループ化オブジェクト</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      配列をあるプロパティ値ごとにまとめる。<code>reduce</code> と <code>Object.groupBy</code>（ES2024）の2通り。
+    </p>
+    <div class="code-block">
+      <div class="code-label">groupBy パターン</div>
+      <pre><span class="kw">const</span> items = [
+  { cat: <span class="str">"fruit"</span>,  name: <span class="str">"apple"</span> },
+  { cat: <span class="str">"veg"</span>,    name: <span class="str">"carrot"</span> },
+  { cat: <span class="str">"fruit"</span>,  name: <span class="str">"banana"</span> },
+  { cat: <span class="str">"veg"</span>,    name: <span class="str">"onion"</span> },
+  { cat: <span class="str">"grain"</span>,  name: <span class="str">"rice"</span> }
+];
+
+<span class="cm">// reduce版（どのブラウザでも動く）</span>
+<span class="kw">const</span> grouped = items.<span class="fn">reduce</span>((acc, item) =&gt; {
+  <span class="kw">const</span> key = item.cat;
+  <span class="kw">if</span> (!acc[key]) acc[key] = [];
+  acc[key].<span class="fn">push</span>(item);
+  <span class="kw">return</span> acc;
+}, {});
+
+console.<span class="fn">log</span>(<span class="str">"グループ化:"</span>, grouped);
+console.<span class="fn">log</span>(<span class="str">"fruitだけ:"</span>, grouped.fruit);</pre>
+    </div>
+    <button class="run-btn" onclick="runLab1()">実行して結果を見る</button>
+    <div class="result-area" id="result1"></div>
+  </div>
+</div>
+
+<!-- ===================== LAB 02 ===================== -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>配列 → Set（重複排除）</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>Set</code> を使った重複排除と、オブジェクト配列での重複排除パターン。
+    </p>
+    <div class="code-block">
+      <div class="code-label">Set + オブジェクト重複排除</div>
+      <pre><span class="cm">// プリミティブの重複排除</span>
+<span class="kw">const</span> nums = [<span class="num">1</span>, <span class="num">2</span>, <span class="num">2</span>, <span class="num">3</span>, <span class="num">3</span>, <span class="num">3</span>];
+<span class="kw">const</span> unique = [...<span class="kw">new</span> <span class="fn">Set</span>(nums)];
+console.<span class="fn">log</span>(<span class="str">"重複排除:"</span>, unique);
+
+<span class="cm">// オブジェクト配列: idで重複排除</span>
+<span class="kw">const</span> users = [
+  { id: <span class="num">1</span>, name: <span class="str">"A"</span> },
+  { id: <span class="num">2</span>, name: <span class="str">"B"</span> },
+  { id: <span class="num">1</span>, name: <span class="str">"A"</span> }  <span class="cm">// 重複</span>
+];
+<span class="kw">const</span> seen = <span class="kw">new</span> <span class="fn">Set</span>();
+<span class="kw">const</span> uniqueUsers = users.<span class="fn">filter</span>(u =&gt; {
+  <span class="kw">if</span> (seen.<span class="fn">has</span>(u.id)) <span class="kw">return false</span>;
+  seen.<span class="fn">add</span>(u.id);
+  <span class="kw">return true</span>;
+});
+console.<span class="fn">log</span>(<span class="str">"オブジェクト重複排除:"</span>, uniqueUsers);</pre>
+    </div>
+    <button class="run-btn" onclick="runLab2()">実行して結果を見る</button>
+    <div class="result-area" id="result2"></div>
+  </div>
+</div>
+
+<!-- ===================== LAB 03 ===================== -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>配列 → ツリー構造復元</h3>
+    <span class="lab-tag tag-intermediate">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      DBから取得したフラットな親子レコードを、<code>children</code> プロパティ付きのツリーに復元する。
+      カテゴリツリーやファイルツリーの構築で頻出。
+    </p>
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 変換のイメージ</div>
+      <pre class="ascii-art">
+フラット配列（DBの行データ）       ツリー構造
+┌──────────────────────┐      root (id:1)
+│ {id:1, parent:null}  │  →    ├── child (id:2)
+│ {id:2, parent:1   }  │       └── child (id:3)
+│ {id:3, parent:1   }  │            └── grandchild (id:4)
+│ {id:4, parent:3   }  │
+└──────────────────────┘</pre>
+    </div>
+    <div class="code-block">
+      <div class="code-label">フラット→ツリー変換</div>
+      <pre><span class="kw">const</span> rows = [
+  { id: <span class="num">1</span>, parent: <span class="kw">null</span>, name: <span class="str">"ルート"</span> },
+  { id: <span class="num">2</span>, parent: <span class="num">1</span>,    name: <span class="str">"子A"</span> },
+  { id: <span class="num">3</span>, parent: <span class="num">1</span>,    name: <span class="str">"子B"</span> },
+  { id: <span class="num">4</span>, parent: <span class="num">3</span>,    name: <span class="str">"孫B-1"</span> }
+];
+
+<span class="kw">function</span> <span class="fn">buildTree</span>(items) {
+  <span class="kw">const</span> map = {};
+  <span class="kw">const</span> roots = [];
+
+  <span class="cm">// Pass 1: 全ノードを辞書化 + children初期化</span>
+  items.<span class="fn">forEach</span>(item =&gt; {
+    map[item.id] = { ...item, children: [] };
+  });
+
+  <span class="cm">// Pass 2: 親子関係をつなぐ</span>
+  items.<span class="fn">forEach</span>(item =&gt; {
+    <span class="kw">if</span> (item.parent === <span class="kw">null</span>) {
+      roots.<span class="fn">push</span>(map[item.id]);
+    } <span class="kw">else</span> {
+      map[item.parent].children.<span class="fn">push</span>(map[item.id]);
+    }
+  });
+  <span class="kw">return</span> roots;
+}
+
+<span class="kw">const</span> tree = <span class="fn">buildTree</span>(rows);
+console.<span class="fn">log</span>(JSON.<span class="fn">stringify</span>(tree, <span class="kw">null</span>, <span class="num">2</span>));</pre>
+    </div>
+    <button class="run-btn" onclick="runLab3()">実行して結果を見る</button>
+    <div class="result-area" id="result3"></div>
+  </div>
+</div>
+
+<!-- ===================== LAB 04 ===================== -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>配列 → 集約値（reduce）</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>reduce</code> で合計・最大値・平均・出現回数カウントなど、配列を単一の値にまとめる。
+    </p>
+    <div class="code-block">
+      <div class="code-label">集約パターン 4種</div>
+      <pre><span class="kw">const</span> orders = [
+  { product: <span class="str">"A"</span>, price: <span class="num">100</span> },
+  { product: <span class="str">"B"</span>, price: <span class="num">250</span> },
+  { product: <span class="str">"A"</span>, price: <span class="num">100</span> },
+  { product: <span class="str">"C"</span>, price: <span class="num">80</span> },
+  { product: <span class="str">"B"</span>, price: <span class="num">250</span> },
+  { product: <span class="str">"A"</span>, price: <span class="num">100</span> }
+];
+
+<span class="cm">// 合計</span>
+<span class="kw">const</span> total = orders.<span class="fn">reduce</span>((sum, o) =&gt; sum + o.price, <span class="num">0</span>);
+
+<span class="cm">// 最大値</span>
+<span class="kw">const</span> max = orders.<span class="fn">reduce</span>((m, o) =&gt; o.price &gt; m ? o.price : m, <span class="num">0</span>);
+
+<span class="cm">// 平均</span>
+<span class="kw">const</span> avg = total / orders.length;
+
+<span class="cm">// 出現回数カウント</span>
+<span class="kw">const</span> counts = orders.<span class="fn">reduce</span>((acc, o) =&gt; {
+  acc[o.product] = (acc[o.product] || <span class="num">0</span>) + <span class="num">1</span>;
+  <span class="kw">return</span> acc;
+}, {});
+
+console.<span class="fn">log</span>(<span class="str">"合計:"</span>, total);
+console.<span class="fn">log</span>(<span class="str">"最大:"</span>, max);
+console.<span class="fn">log</span>(<span class="str">"平均:"</span>, avg);
+console.<span class="fn">log</span>(<span class="str">"出現回数:"</span>, counts);</pre>
+    </div>
+    <button class="run-btn" onclick="runLab4()">実行して結果を見る</button>
+    <div class="result-area" id="result4"></div>
+  </div>
+</div>
+
+<!-- ===================== LAB 05 ===================== -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>配列 → 配列（形状変換）</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      flat（フラット化）、chunk（チャンク分割）、zip（2配列合成）の3つ。配列が「形は変わるが配列のまま」のパターン。
+    </p>
+    <div class="code-block">
+      <div class="code-label">flat / chunk / zip</div>
+      <pre><span class="cm">// ① flat: ネスト配列をフラット化</span>
+<span class="kw">const</span> nested = [[<span class="num">1</span>,<span class="num">2</span>],[<span class="num">3</span>,[<span class="num">4</span>,<span class="num">5</span>]]];
+<span class="kw">const</span> flat = nested.<span class="fn">flat</span>(<span class="num">Infinity</span>);
+console.<span class="fn">log</span>(<span class="str">"flat:"</span>, flat);
+
+<span class="cm">// ② chunk: 配列をN個ずつ分割</span>
+<span class="kw">function</span> <span class="fn">chunk</span>(arr, size) {
+  <span class="kw">const</span> result = [];
+  <span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i &lt; arr.length; i += size) {
+    result.<span class="fn">push</span>(arr.<span class="fn">slice</span>(i, i + size));
+  }
+  <span class="kw">return</span> result;
+}
+console.<span class="fn">log</span>(<span class="str">"chunk(3):"</span>, <span class="fn">chunk</span>([<span class="num">1</span>,<span class="num">2</span>,<span class="num">3</span>,<span class="num">4</span>,<span class="num">5</span>,<span class="num">6</span>,<span class="num">7</span>], <span class="num">3</span>));
+
+<span class="cm">// ③ zip: 2つの配列をペアにまとめる</span>
+<span class="kw">const</span> keys = [<span class="str">"name"</span>, <span class="str">"age"</span>, <span class="str">"city"</span>];
+<span class="kw">const</span> vals = [<span class="str">"Tom"</span>, <span class="num">30</span>, <span class="str">"Osaka"</span>];
+<span class="kw">const</span> zipped = keys.<span class="fn">map</span>((k, i) =&gt; [k, vals[i]]);
+console.<span class="fn">log</span>(<span class="str">"zip:"</span>, zipped);
+console.<span class="fn">log</span>(<span class="str">"zip→obj:"</span>, Object.<span class="fn">fromEntries</span>(zipped));</pre>
+    </div>
+    <button class="run-btn" onclick="runLab5()">実行して結果を見る</button>
+    <div class="result-area" id="result5"></div>
+  </div>
+</div>
+
+<!-- ===================== LAB 06 ===================== -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>オブジェクト → 配列に分解</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>Object.keys</code> / <code>values</code> / <code>entries</code> の使い分け。
+      オブジェクトのままでは <code>map</code> / <code>filter</code> が使えないので、配列に変換してから操作する。
+    </p>
+    <div class="code-block">
+      <div class="code-label">3つの分解メソッド</div>
+      <pre><span class="kw">const</span> scores = { math: <span class="num">85</span>, english: <span class="num">72</span>, science: <span class="num">93</span> };
+
+console.<span class="fn">log</span>(<span class="str">"keys:"</span>,    Object.<span class="fn">keys</span>(scores));
+console.<span class="fn">log</span>(<span class="str">"values:"</span>,  Object.<span class="fn">values</span>(scores));
+console.<span class="fn">log</span>(<span class="str">"entries:"</span>, Object.<span class="fn">entries</span>(scores));
+
+<span class="cm">// 実務: entries → filter → fromEntries で条件抽出</span>
+<span class="kw">const</span> high = Object.<span class="fn">fromEntries</span>(
+  Object.<span class="fn">entries</span>(scores).<span class="fn">filter</span>(([k, v]) =&gt; v &gt;= <span class="num">80</span>)
+);
+console.<span class="fn">log</span>(<span class="str">"80点以上:"</span>, high);</pre>
+    </div>
+    <button class="run-btn" onclick="runLab6()">実行して結果を見る</button>
+    <div class="result-area" id="result6"></div>
+  </div>
+</div>
+
+<!-- ===================== LAB 07 ===================== -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>pick / omit（部分抽出）</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      必要なプロパティだけ取り出す <code>pick</code> と、不要なプロパティを除外する <code>omit</code>。
+      APIレスポンスからUIに必要な項目だけを取り出すときに頻出。
+    </p>
+    <div class="code-block">
+      <div class="code-label">pick / omit 自作</div>
+      <pre><span class="kw">const</span> user = {
+  id: <span class="num">1</span>, name: <span class="str">"Tom"</span>, email: <span class="str">"tom@ex.com"</span>,
+  password: <span class="str">"secret"</span>, role: <span class="str">"admin"</span>
+};
+
+<span class="cm">// pick: 必要なキーだけ取り出す</span>
+<span class="kw">function</span> <span class="fn">pick</span>(obj, keys) {
+  <span class="kw">return</span> Object.<span class="fn">fromEntries</span>(
+    keys.<span class="fn">filter</span>(k =&gt; k <span class="kw">in</span> obj).<span class="fn">map</span>(k =&gt; [k, obj[k]])
+  );
+}
+
+<span class="cm">// omit: 不要なキーを除外</span>
+<span class="kw">function</span> <span class="fn">omit</span>(obj, keys) {
+  <span class="kw">const</span> excluded = <span class="kw">new</span> <span class="fn">Set</span>(keys);
+  <span class="kw">return</span> Object.<span class="fn">fromEntries</span>(
+    Object.<span class="fn">entries</span>(obj).<span class="fn">filter</span>(([k]) =&gt; !excluded.<span class="fn">has</span>(k))
+  );
+}
+
+console.<span class="fn">log</span>(<span class="str">"pick:"</span>, <span class="fn">pick</span>(user, [<span class="str">"name"</span>, <span class="str">"email"</span>]));
+console.<span class="fn">log</span>(<span class="str">"omit:"</span>, <span class="fn">omit</span>(user, [<span class="str">"password"</span>]));</pre>
+    </div>
+    <button class="run-btn" onclick="runLab7()">実行して結果を見る</button>
+    <div class="result-area" id="result7"></div>
+  </div>
+</div>
+
+<!-- ===================== LAB 08 ===================== -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>ネスト ↔ フラット変換</h3>
+    <span class="lab-tag tag-intermediate">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      深いネストオブジェクトを <code>"user.addr.city"</code> のようなドット区切りキーに展開（flatten）し、逆にドット区切りからネスト復元（unflatten）する。
+    </p>
+    <div class="code-block">
+      <div class="code-label">flatten / unflatten</div>
+      <pre><span class="cm">// flatten: ネスト → ドットキー</span>
+<span class="kw">function</span> <span class="fn">flatten</span>(obj, prefix = <span class="str">""</span>) {
+  <span class="kw">const</span> result = {};
+  <span class="kw">for</span> (<span class="kw">const</span> [k, v] <span class="kw">of</span> Object.<span class="fn">entries</span>(obj)) {
+    <span class="kw">const</span> key = prefix ? <span class="str">`${prefix}.${k}`</span> : k;
+    <span class="kw">if</span> (v &amp;&amp; <span class="kw">typeof</span> v === <span class="str">"object"</span> &amp;&amp; !Array.<span class="fn">isArray</span>(v)) {
+      Object.<span class="fn">assign</span>(result, <span class="fn">flatten</span>(v, key));
+    } <span class="kw">else</span> {
+      result[key] = v;
+    }
+  }
+  <span class="kw">return</span> result;
+}
+
+<span class="cm">// unflatten: ドットキー → ネスト</span>
+<span class="kw">function</span> <span class="fn">unflatten</span>(obj) {
+  <span class="kw">const</span> result = {};
+  <span class="kw">for</span> (<span class="kw">const</span> [k, v] <span class="kw">of</span> Object.<span class="fn">entries</span>(obj)) {
+    <span class="kw">const</span> parts = k.<span class="fn">split</span>(<span class="str">"."</span>);
+    <span class="kw">let</span> cur = result;
+    parts.<span class="fn">forEach</span>((p, i) =&gt; {
+      <span class="kw">if</span> (i === parts.length - <span class="num">1</span>) { cur[p] = v; }
+      <span class="kw">else</span> { cur[p] = cur[p] || {}; cur = cur[p]; }
+    });
+  }
+  <span class="kw">return</span> result;
+}
+
+<span class="kw">const</span> nested = { user: { name: <span class="str">"Tom"</span>, addr: { city: <span class="str">"Osaka"</span>, zip: <span class="str">"530"</span> } } };
+<span class="kw">const</span> flatObj = <span class="fn">flatten</span>(nested);
+console.<span class="fn">log</span>(<span class="str">"flatten:"</span>, flatObj);
+console.<span class="fn">log</span>(<span class="str">"unflatten:"</span>, <span class="fn">unflatten</span>(flatObj));</pre>
+    </div>
+    <button class="run-btn" onclick="runLab8()">実行して結果を見る</button>
+    <div class="result-area" id="result8"></div>
+  </div>
+</div>
+
+<!-- ===================== LAB 09 ===================== -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>浅いマージ vs 深いマージ</h3>
+    <span class="lab-tag tag-intermediate">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>Object.assign</code> / スプレッド（浅い）と再帰的マージ（深い）の違いを実行して確認。
+    </p>
+    <div class="code-block">
+      <div class="code-label">shallow vs deep merge</div>
+      <pre><span class="kw">const</span> base = { a: <span class="num">1</span>, b: { x: <span class="num">10</span>, y: <span class="num">20</span> } };
+<span class="kw">const</span> patch = { b: { y: <span class="num">99</span>, z: <span class="num">30</span> }, c: <span class="num">3</span> };
+
+<span class="cm">// 浅いマージ: b が丸ごと上書きされる</span>
+<span class="kw">const</span> shallow = { ...base, ...patch };
+console.<span class="fn">log</span>(<span class="str">"浅いマージ:"</span>, JSON.<span class="fn">stringify</span>(shallow));
+<span class="cm">// → b: {y:99, z:30}  ← x:10 が消える！</span>
+
+<span class="cm">// 深いマージ: ネスト内も統合</span>
+<span class="kw">function</span> <span class="fn">deepMerge</span>(target, source) {
+  <span class="kw">const</span> result = { ...target };
+  <span class="kw">for</span> (<span class="kw">const</span> [k, v] <span class="kw">of</span> Object.<span class="fn">entries</span>(source)) {
+    <span class="kw">if</span> (v &amp;&amp; <span class="kw">typeof</span> v === <span class="str">"object"</span> &amp;&amp; !Array.<span class="fn">isArray</span>(v)
+        &amp;&amp; target[k] &amp;&amp; <span class="kw">typeof</span> target[k] === <span class="str">"object"</span>) {
+      result[k] = <span class="fn">deepMerge</span>(target[k], v);
+    } <span class="kw">else</span> {
+      result[k] = v;
+    }
+  }
+  <span class="kw">return</span> result;
+}
+
+<span class="kw">const</span> deep = <span class="fn">deepMerge</span>(base, patch);
+console.<span class="fn">log</span>(<span class="str">"深いマージ:"</span>, JSON.<span class="fn">stringify</span>(deep));
+<span class="cm">// → b: {x:10, y:99, z:30}  ← x:10 が残る</span></pre>
+    </div>
+    <button class="run-btn" onclick="runLab9()">実行して結果を見る</button>
+    <div class="result-area" id="result9"></div>
+  </div>
+</div>
+
+<!-- ===================== LAB 10 ===================== -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>ツリー → フラット配列</h3>
+    <span class="lab-tag tag-intermediate">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Lab03の逆方向。ツリー構造を再帰で走査してフラット配列に戻す。depth情報を付与するパターンも。
+    </p>
+    <div class="code-block">
+      <div class="code-label">tree → flat (with depth)</div>
+      <pre><span class="kw">const</span> tree = {
+  id: <span class="num">1</span>, name: <span class="str">"root"</span>, children: [
+    { id: <span class="num">2</span>, name: <span class="str">"childA"</span>, children: [] },
+    { id: <span class="num">3</span>, name: <span class="str">"childB"</span>, children: [
+      { id: <span class="num">4</span>, name: <span class="str">"grandchild"</span>, children: [] }
+    ]}
+  ]
+};
+
+<span class="kw">function</span> <span class="fn">flattenTree</span>(node, depth = <span class="num">0</span>) {
+  <span class="kw">const</span> { children, ...rest } = node;
+  <span class="kw">return</span> [
+    { ...rest, depth },
+    ...children.<span class="fn">flatMap</span>(c =&gt; <span class="fn">flattenTree</span>(c, depth + <span class="num">1</span>))
+  ];
+}
+
+<span class="kw">const</span> flat = <span class="fn">flattenTree</span>(tree);
+console.<span class="fn">log</span>(<span class="str">"フラット化:"</span>);
+flat.<span class="fn">forEach</span>(n =&gt;
+  console.<span class="fn">log</span>(<span class="str">`${"  ".repeat(n.depth)}${n.name} (depth:${n.depth})`</span>)
+);</pre>
+    </div>
+    <button class="run-btn" onclick="runLab10()">実行して結果を見る</button>
+    <div class="result-area" id="result10"></div>
+  </div>
+</div>
+
+<!-- ===================== LAB 11 ===================== -->
+<div class="lab" id="lab11">
+  <div class="lab-header">
+    <div class="lab-num">11</div>
+    <h3>DOM → JSON ツリー</h3>
+    <span class="lab-tag tag-intermediate">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      実際のDOM要素を再帰的に走査して仮想DOM風のJSONに変換する。React/OutSystemsの内部で起きていることの理解に直結。
+    </p>
+    <div id="lab11-target" style="display:none">
+      <div class="box"><span>Hello</span><em>World</em></div>
+    </div>
+    <div class="code-block">
+      <div class="code-label">DOM → JSON 変換</div>
+      <pre><span class="kw">function</span> <span class="fn">domToJson</span>(el) {
+  <span class="kw">if</span> (el.nodeType === Node.TEXT_NODE) {
+    <span class="kw">return</span> el.textContent.<span class="fn">trim</span>() || <span class="kw">null</span>;
+  }
+  <span class="kw">return</span> {
+    tag: el.tagName.<span class="fn">toLowerCase</span>(),
+    attrs: Object.<span class="fn">fromEntries</span>(
+      [...el.attributes].<span class="fn">map</span>(a =&gt; [a.name, a.value])
+    ),
+    children: [...el.childNodes]
+      .<span class="fn">map</span>(<span class="fn">domToJson</span>)
+      .<span class="fn">filter</span>(c =&gt; c !== <span class="kw">null</span>)
+  };
+}
+
+<span class="cm">// 上のHTML &lt;div class="box"&gt;&lt;span&gt;Hello&lt;/span&gt;&lt;em&gt;World&lt;/em&gt;&lt;/div&gt;</span>
+<span class="kw">const</span> target = document.<span class="fn">querySelector</span>(<span class="str">"#lab11-target &gt; div"</span>);
+<span class="kw">const</span> json = <span class="fn">domToJson</span>(target);
+console.<span class="fn">log</span>(JSON.<span class="fn">stringify</span>(json, <span class="kw">null</span>, <span class="num">2</span>));</pre>
+    </div>
+    <button class="run-btn" onclick="runLab11()">実行して結果を見る</button>
+    <div class="result-area" id="result11"></div>
+  </div>
+</div>
+
+<!-- ===================== LAB 12 ===================== -->
+<div class="lab" id="lab12">
+  <div class="lab-header">
+    <div class="lab-num">12</div>
+    <h3>CSV文字列 → オブジェクト配列</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      CSV文字列を1行目ヘッダー+残りデータとして、構造化されたオブジェクト配列に変換する。
+    </p>
+    <div class="code-block">
+      <div class="code-label">CSV → Array of Objects</div>
+      <pre><span class="kw">const</span> csv = <span class="str">`name,age,city
+Tom,30,Osaka
+Alice,25,Tokyo
+Bob,35,Nagoya`</span>;
+
+<span class="kw">function</span> <span class="fn">parseCSV</span>(text) {
+  <span class="kw">const</span> lines = text.<span class="fn">trim</span>().<span class="fn">split</span>(<span class="str">"\n"</span>);
+  <span class="kw">const</span> headers = lines[<span class="num">0</span>].<span class="fn">split</span>(<span class="str">","</span>);
+  <span class="kw">return</span> lines.<span class="fn">slice</span>(<span class="num">1</span>).<span class="fn">map</span>(line =&gt; {
+    <span class="kw">const</span> vals = line.<span class="fn">split</span>(<span class="str">","</span>);
+    <span class="kw">return</span> Object.<span class="fn">fromEntries</span>(
+      headers.<span class="fn">map</span>((h, i) =&gt; [h, vals[i]])
+    );
+  });
+}
+
+<span class="kw">const</span> data = <span class="fn">parseCSV</span>(csv);
+console.<span class="fn">log</span>(<span class="str">"パース結果:"</span>, data);
+console.<span class="fn">log</span>(<span class="str">"2番目:"</span>, data[<span class="num">1</span>]);</pre>
+    </div>
+    <button class="run-btn" onclick="runLab12()">実行して結果を見る</button>
+    <div class="result-area" id="result12"></div>
+  </div>
+</div>
+
+<!-- ===================== LAB 13 ===================== -->
+<div class="lab" id="lab13">
+  <div class="lab-header">
+    <div class="lab-num">13</div>
+    <h3>URLクエリ文字列 ↔ オブジェクト</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>URLSearchParams</code> を使ったクエリ文字列とオブジェクトの相互変換。フロントのルーティングやAPI呼び出しで必須。
+    </p>
+    <div class="code-block">
+      <div class="code-label">URLSearchParams 双方向変換</div>
+      <pre><span class="cm">// クエリ文字列 → オブジェクト</span>
+<span class="kw">const</span> qs = <span class="str">"page=2&amp;sort=name&amp;filter=active&amp;lang=ja"</span>;
+<span class="kw">const</span> params = <span class="kw">new</span> <span class="fn">URLSearchParams</span>(qs);
+<span class="kw">const</span> obj = Object.<span class="fn">fromEntries</span>(params.<span class="fn">entries</span>());
+console.<span class="fn">log</span>(<span class="str">"→ オブジェクト:"</span>, obj);
+
+<span class="cm">// オブジェクト → クエリ文字列</span>
+<span class="kw">const</span> config = { page: <span class="num">5</span>, sort: <span class="str">"date"</span>, q: <span class="str">"大阪 天気"</span> };
+<span class="kw">const</span> queryStr = <span class="kw">new</span> <span class="fn">URLSearchParams</span>(config).<span class="fn">toString</span>();
+console.<span class="fn">log</span>(<span class="str">"→ クエリ文字列:"</span>, queryStr);
+console.<span class="fn">log</span>(<span class="str">"日本語エンコード確認:"</span>, <span class="fn">decodeURIComponent</span>(queryStr));</pre>
+    </div>
+    <button class="run-btn" onclick="runLab13()">実行して結果を見る</button>
+    <div class="result-area" id="result13"></div>
+  </div>
+</div>
+
+<!-- ===================== LAB 14 ===================== -->
+<div class="lab" id="lab14">
+  <div class="lab-header">
+    <div class="lab-num">14</div>
+    <h3>APIレスポンス正規化</h3>
+    <span class="lab-tag tag-intermediate">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      バックエンドから返ってきたsnake_caseのレスポンスを、フロントエンドのcamelCase＋UI用フラグ付きの形に変換する。
+    </p>
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 なぜ正規化が必要？</div>
+      バックエンド（Python/Ruby）は <code>snake_case</code>、フロント（JS）は <code>camelCase</code> が慣習。
+      さらにUI表示用のフラグ（<code>hasMore</code> 等）を追加で算出する。
+      <pre class="ascii-art">
+API Response               Frontend State
+{                          {
+  "total_count": 85,   →     totalCount: 85,
+  "next_page": 3,             nextPage: 3,
+  "data": [...]               items: [...],
+}                              hasMore: true  ← 算出
+                            }</pre>
+    </div>
+    <div class="code-block">
+      <div class="code-label">API → フロント変換</div>
+      <pre><span class="cm">// バックエンドのレスポンス (snake_case)</span>
+<span class="kw">const</span> apiResponse = {
+  total_count: <span class="num">85</span>,
+  current_page: <span class="num">2</span>,
+  per_page: <span class="num">20</span>,
+  data: [
+    { user_id: <span class="num">1</span>, first_name: <span class="str">"Tom"</span>, is_active: <span class="kw">true</span> },
+    { user_id: <span class="num">2</span>, first_name: <span class="str">"Ann"</span>, is_active: <span class="kw">false</span> }
+  ]
+};
+
+<span class="cm">// snake_case → camelCase 変換</span>
+<span class="kw">function</span> <span class="fn">toCamel</span>(s) {
+  <span class="kw">return</span> s.<span class="fn">replace</span>(/_([a-z])/g, (_, c) =&gt; c.<span class="fn">toUpperCase</span>());
+}
+<span class="kw">function</span> <span class="fn">camelizeKeys</span>(obj) {
+  <span class="kw">if</span> (Array.<span class="fn">isArray</span>(obj)) <span class="kw">return</span> obj.<span class="fn">map</span>(<span class="fn">camelizeKeys</span>);
+  <span class="kw">if</span> (obj &amp;&amp; <span class="kw">typeof</span> obj === <span class="str">"object"</span>) {
+    <span class="kw">return</span> Object.<span class="fn">fromEntries</span>(
+      Object.<span class="fn">entries</span>(obj).<span class="fn">map</span>(([k, v]) =&gt; [<span class="fn">toCamel</span>(k), <span class="fn">camelizeKeys</span>(v)])
+    );
+  }
+  <span class="kw">return</span> obj;
+}
+
+<span class="kw">const</span> camelized = <span class="fn">camelizeKeys</span>(apiResponse);
+
+<span class="cm">// UI用のフラグを追加</span>
+<span class="kw">const</span> uiState = {
+  items: camelized.data,
+  totalCount: camelized.totalCount,
+  currentPage: camelized.currentPage,
+  totalPages: Math.<span class="fn">ceil</span>(camelized.totalCount / camelized.perPage),
+  hasMore: camelized.currentPage * camelized.perPage &lt; camelized.totalCount
+};
+
+console.<span class="fn">log</span>(<span class="str">"UI State:"</span>, JSON.<span class="fn">stringify</span>(uiState, <span class="kw">null</span>, <span class="num">2</span>));</pre>
+    </div>
+    <button class="run-btn" onclick="runLab14()">実行して結果を見る</button>
+    <div class="result-area" id="result14"></div>
+  </div>
+</div>
+
+<!-- ===================== LAB 15 ===================== -->
+<div class="lab" id="lab15">
+  <div class="lab-header">
+    <div class="lab-num">15</div>
+    <h3>イミュータブル更新パターン</h3>
+    <span class="lab-tag tag-intermediate">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      元のオブジェクトを壊さずに、特定部分だけ更新した新しいオブジェクトを作る。
+      React/Redux で state 更新時に毎回使うパターン。
+    </p>
+    <div class="code-block">
+      <div class="code-label">immutable update</div>
+      <pre><span class="kw">const</span> state = {
+  user: { name: <span class="str">"Tom"</span>, address: { city: <span class="str">"Osaka"</span>, zip: <span class="str">"530"</span> } },
+  items: [
+    { id: <span class="num">1</span>, text: <span class="str">"Buy milk"</span>, done: <span class="kw">false</span> },
+    { id: <span class="num">2</span>, text: <span class="str">"Read book"</span>, done: <span class="kw">false</span> },
+    { id: <span class="num">3</span>, text: <span class="str">"Exercise"</span>, done: <span class="kw">true</span> }
+  ]
+};
+
+<span class="cm">// ① ネストした値の更新 (city を変更)</span>
+<span class="kw">const</span> s1 = {
+  ...state,
+  user: { ...state.user,
+    address: { ...state.user.address, city: <span class="str">"Tokyo"</span> }
+  }
+};
+
+<span class="cm">// ② 配列の1要素を更新 (id:2 を done:true に)</span>
+<span class="kw">const</span> s2 = {
+  ...state,
+  items: state.items.<span class="fn">map</span>(item =&gt;
+    item.id === <span class="num">2</span> ? { ...item, done: <span class="kw">true</span> } : item
+  )
+};
+
+console.<span class="fn">log</span>(<span class="str">"元state:"</span>, state.user.address.city);
+console.<span class="fn">log</span>(<span class="str">"s1 city:"</span>, s1.user.address.city);
+console.<span class="fn">log</span>(<span class="str">"元が壊れてない:"</span>, state.user.address.city);
+console.<span class="fn">log</span>(<span class="str">"s2 items:"</span>, s2.items.<span class="fn">map</span>(i =&gt; <span class="str">`${i.text}:${i.done}`</span>));</pre>
+    </div>
+    <button class="run-btn" onclick="runLab15()">実行して結果を見る</button>
+    <div class="result-area" id="result15"></div>
+  </div>
+</div>
+
+<!-- ===================== LAB 16 ===================== -->
+<div class="lab" id="lab16">
+  <div class="lab-header">
+    <div class="lab-num">16</div>
+    <h3>正規化（normalize）と逆正規化</h3>
+    <span class="lab-tag tag-advanced">上級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ネストしたAPIレスポンスをエンティティごとのフラットなテーブルに分解（正規化）し、表示時に再組み立て（逆正規化 / denormalize）する。Redux等の状態管理で必須。
+    </p>
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 正規化のメリット</div>
+      同じ author が複数 post に紐づくとき、ネストしたままだと author 情報が重複する。
+      正規化すれば author は1箇所に保持され、更新が1回で済む。
+      <pre class="ascii-art">
+ネスト（重複あり）              正規化（重複なし）
+{posts: [                     posts:   {1: {authorId:10,...}}
+  {id:1, author:{id:10,...}},  authors: {10: {name:"Tom"}}
+  {id:2, author:{id:10,...}}   ← 10番は1箇所だけ！
+]}  ← 10番が2回出現</pre>
+    </div>
+    <div class="code-block">
+      <div class="code-label">normalize / denormalize</div>
+      <pre><span class="cm">// APIからのネストしたレスポンス</span>
+<span class="kw">const</span> apiData = {
+  posts: [
+    { id: <span class="num">1</span>, title: <span class="str">"Hello"</span>,
+      author: { id: <span class="num">10</span>, name: <span class="str">"Tom"</span> },
+      comments: [
+        { id: <span class="num">100</span>, text: <span class="str">"Great!"</span> },
+        { id: <span class="num">101</span>, text: <span class="str">"Thanks"</span> }
+      ]},
+    { id: <span class="num">2</span>, title: <span class="str">"World"</span>,
+      author: { id: <span class="num">10</span>, name: <span class="str">"Tom"</span> },
+      comments: [
+        { id: <span class="num">102</span>, text: <span class="str">"Nice"</span> }
+      ]}
+  ]
+};
+
+<span class="cm">// ── 正規化 ──</span>
+<span class="kw">function</span> <span class="fn">normalize</span>(data) {
+  <span class="kw">const</span> store = { posts: {}, authors: {}, comments: {} };
+  data.posts.<span class="fn">forEach</span>(post =&gt; {
+    store.authors[post.author.id] = post.author;
+    post.comments.<span class="fn">forEach</span>(c =&gt; { store.comments[c.id] = c; });
+    store.posts[post.id] = {
+      id: post.id,
+      title: post.title,
+      authorId: post.author.id,
+      commentIds: post.comments.<span class="fn">map</span>(c =&gt; c.id)
+    };
+  });
+  <span class="kw">return</span> store;
+}
+
+<span class="cm">// ── 逆正規化（表示用に再組み立て）──</span>
+<span class="kw">function</span> <span class="fn">denormalize</span>(postId, store) {
+  <span class="kw">const</span> post = store.posts[postId];
+  <span class="kw">return</span> {
+    ...post,
+    author: store.authors[post.authorId],
+    comments: post.commentIds.<span class="fn">map</span>(id =&gt; store.comments[id])
+  };
+}
+
+<span class="kw">const</span> store = <span class="fn">normalize</span>(apiData);
+console.<span class="fn">log</span>(<span class="str">"=== 正規化後 ==="</span>);
+console.<span class="fn">log</span>(JSON.<span class="fn">stringify</span>(store, <span class="kw">null</span>, <span class="num">2</span>));
+
+console.<span class="fn">log</span>(<span class="str">"=== 逆正規化（post 1）==="</span>);
+console.<span class="fn">log</span>(JSON.<span class="fn">stringify</span>(<span class="fn">denormalize</span>(<span class="num">1</span>, store), <span class="kw">null</span>, <span class="num">2</span>));</pre>
+    </div>
+    <button class="run-btn" onclick="runLab16()">実行して結果を見る</button>
+    <div class="result-area" id="result16"></div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<!-- ===== SCRIPTS ===== -->
+<script>
+// ── Utility: pretty-print to result area ──
+function showResult(id, ...args) {
+  const el = document.getElementById(id);
+  el.textContent = '';
+  args.forEach(a => {
+    if (typeof a === 'string') {
+      el.textContent += a + '\n';
+    } else {
+      el.textContent += JSON.stringify(a, null, 2) + '\n';
+    }
+  });
+}
+
+// ── Lab runners ──
+function runLab0() {
+  const users = [{id:1,name:"Alice"},{id:2,name:"Bob"},{id:3,name:"Carol"}];
+  const dict1 = users.reduce((acc,u) => { acc[u.id]=u; return acc; }, {});
+  const dict2 = Object.fromEntries(users.map(u=>[u.id,u]));
+  showResult('result0','reduce版:', dict1, '\nfromEntries版:', dict2, '\nID=2を即取得:', dict1[2]);
+}
+
+function runLab1() {
+  const items = [{cat:"fruit",name:"apple"},{cat:"veg",name:"carrot"},{cat:"fruit",name:"banana"},{cat:"veg",name:"onion"},{cat:"grain",name:"rice"}];
+  const grouped = items.reduce((acc,item) => { const k=item.cat; if(!acc[k])acc[k]=[]; acc[k].push(item); return acc; }, {});
+  showResult('result1','グループ化:', grouped, '\nfruitだけ:', grouped.fruit);
+}
+
+function runLab2() {
+  const nums = [1,2,2,3,3,3];
+  const unique = [...new Set(nums)];
+  const users = [{id:1,name:"A"},{id:2,name:"B"},{id:1,name:"A"}];
+  const seen = new Set();
+  const uniqueUsers = users.filter(u => { if(seen.has(u.id)) return false; seen.add(u.id); return true; });
+  showResult('result2','重複排除:', unique, '\nオブジェクト重複排除:', uniqueUsers);
+}
+
+function runLab3() {
+  const rows = [{id:1,parent:null,name:"ルート"},{id:2,parent:1,name:"子A"},{id:3,parent:1,name:"子B"},{id:4,parent:3,name:"孫B-1"}];
+  function buildTree(items) { const map={}; const roots=[];
+    items.forEach(i => { map[i.id]={...i,children:[]}; });
+    items.forEach(i => { if(i.parent===null) roots.push(map[i.id]); else map[i.parent].children.push(map[i.id]); });
+    return roots; }
+  showResult('result3', buildTree(rows));
+}
+
+function runLab4() {
+  const orders = [{product:"A",price:100},{product:"B",price:250},{product:"A",price:100},{product:"C",price:80},{product:"B",price:250},{product:"A",price:100}];
+  const total = orders.reduce((s,o) => s+o.price, 0);
+  const max = orders.reduce((m,o) => o.price>m?o.price:m, 0);
+  const avg = total / orders.length;
+  const counts = orders.reduce((a,o) => { a[o.product]=(a[o.product]||0)+1; return a; }, {});
+  showResult('result4','合計: '+total, '\n最大: '+max, '\n平均: '+avg.toFixed(1), '\n出現回数:', counts);
+}
+
+function runLab5() {
+  const nested = [[1,2],[3,[4,5]]];
+  const flat = nested.flat(Infinity);
+  function chunk(arr,size) { const r=[]; for(let i=0;i<arr.length;i+=size) r.push(arr.slice(i,i+size)); return r; }
+  const keys=["name","age","city"], vals=["Tom",30,"Osaka"];
+  const zipped = keys.map((k,i)=>[k,vals[i]]);
+  showResult('result5','flat:', flat, '\nchunk(3):', chunk([1,2,3,4,5,6,7],3), '\nzip:', zipped, '\nzip→obj:', Object.fromEntries(zipped));
+}
+
+function runLab6() {
+  const scores = {math:85,english:72,science:93};
+  const high = Object.fromEntries(Object.entries(scores).filter(([k,v])=>v>=80));
+  showResult('result6','keys:', Object.keys(scores), '\nvalues:', Object.values(scores), '\nentries:', Object.entries(scores), '\n80点以上:', high);
+}
+
+function runLab7() {
+  const user = {id:1,name:"Tom",email:"tom@ex.com",password:"secret",role:"admin"};
+  function pick(obj,keys) { return Object.fromEntries(keys.filter(k=>k in obj).map(k=>[k,obj[k]])); }
+  function omit(obj,keys) { const ex=new Set(keys); return Object.fromEntries(Object.entries(obj).filter(([k])=>!ex.has(k))); }
+  showResult('result7','pick:', pick(user,["name","email"]), '\nomit:', omit(user,["password"]));
+}
+
+function runLab8() {
+  function flatten(obj,prefix="") { const r={}; for(const [k,v] of Object.entries(obj)) { const key=prefix?`${prefix}.${k}`:k; if(v&&typeof v==="object"&&!Array.isArray(v)) Object.assign(r,flatten(v,key)); else r[key]=v; } return r; }
+  function unflatten(obj) { const r={}; for(const [k,v] of Object.entries(obj)) { const p=k.split("."); let c=r; p.forEach((s,i)=>{ if(i===p.length-1) c[s]=v; else { c[s]=c[s]||{}; c=c[s]; } }); } return r; }
+  const nested = {user:{name:"Tom",addr:{city:"Osaka",zip:"530"}}};
+  const flatObj = flatten(nested);
+  showResult('result8','flatten:', flatObj, '\nunflatten:', unflatten(flatObj));
+}
+
+function runLab9() {
+  const base = {a:1,b:{x:10,y:20}};
+  const patch = {b:{y:99,z:30},c:3};
+  const shallow = {...base,...patch};
+  function deepMerge(t,s) { const r={...t}; for(const [k,v] of Object.entries(s)) { if(v&&typeof v==="object"&&!Array.isArray(v)&&t[k]&&typeof t[k]==="object") r[k]=deepMerge(t[k],v); else r[k]=v; } return r; }
+  const deep = deepMerge(base,patch);
+  showResult('result9','浅いマージ:', shallow, '\n→ b.x が消えた！', '\n\n深いマージ:', deep, '\n→ b.x=10 が残っている');
+}
+
+function runLab10() {
+  const tree = {id:1,name:"root",children:[{id:2,name:"childA",children:[]},{id:3,name:"childB",children:[{id:4,name:"grandchild",children:[]}]}]};
+  function flattenTree(node,depth=0) { const {children,...rest}=node; return [{...rest,depth},...children.flatMap(c=>flattenTree(c,depth+1))]; }
+  const flat = flattenTree(tree);
+  let out = "フラット化:\n";
+  flat.forEach(n => { out += "  ".repeat(n.depth) + n.name + " (depth:" + n.depth + ")\n"; });
+  showResult('result10', out);
+}
+
+function runLab11() {
+  function domToJson(el) {
+    if(el.nodeType===Node.TEXT_NODE) return el.textContent.trim()||null;
+    return { tag:el.tagName.toLowerCase(), attrs:Object.fromEntries([...el.attributes].map(a=>[a.name,a.value])), children:[...el.childNodes].map(domToJson).filter(c=>c!==null) };
+  }
+  const target = document.querySelector("#lab11-target > div");
+  showResult('result11', domToJson(target));
+}
+
+function runLab12() {
+  const csv = "name,age,city\nTom,30,Osaka\nAlice,25,Tokyo\nBob,35,Nagoya";
+  function parseCSV(text) { const lines=text.trim().split("\n"); const h=lines[0].split(","); return lines.slice(1).map(l=>{ const v=l.split(","); return Object.fromEntries(h.map((hh,i)=>[hh,v[i]])); }); }
+  const data = parseCSV(csv);
+  showResult('result12','パース結果:', data, '\n2番目:', data[1]);
+}
+
+function runLab13() {
+  const qs = "page=2&sort=name&filter=active&lang=ja";
+  const params = new URLSearchParams(qs);
+  const obj = Object.fromEntries(params.entries());
+  const config = {page:5,sort:"date",q:"大阪 天気"};
+  const queryStr = new URLSearchParams(config).toString();
+  showResult('result13','→ オブジェクト:', obj, '\n→ クエリ文字列: ' + queryStr, '\n日本語デコード: ' + decodeURIComponent(queryStr));
+}
+
+function runLab14() {
+  const apiResponse = {total_count:85,current_page:2,per_page:20,data:[{user_id:1,first_name:"Tom",is_active:true},{user_id:2,first_name:"Ann",is_active:false}]};
+  function toCamel(s) { return s.replace(/_([a-z])/g,(_,c)=>c.toUpperCase()); }
+  function camelizeKeys(obj) { if(Array.isArray(obj)) return obj.map(camelizeKeys); if(obj&&typeof obj==="object") return Object.fromEntries(Object.entries(obj).map(([k,v])=>[toCamel(k),camelizeKeys(v)])); return obj; }
+  const c = camelizeKeys(apiResponse);
+  const uiState = { items:c.data, totalCount:c.totalCount, currentPage:c.currentPage, totalPages:Math.ceil(c.totalCount/c.perPage), hasMore:c.currentPage*c.perPage<c.totalCount };
+  showResult('result14','UI State:', uiState);
+}
+
+function runLab15() {
+  const state = { user:{name:"Tom",address:{city:"Osaka",zip:"530"}}, items:[{id:1,text:"Buy milk",done:false},{id:2,text:"Read book",done:false},{id:3,text:"Exercise",done:true}] };
+  const s1 = {...state, user:{...state.user, address:{...state.user.address, city:"Tokyo"}}};
+  const s2 = {...state, items:state.items.map(i=>i.id===2?{...i,done:true}:i)};
+  showResult('result15',
+    '元state city: ' + state.user.address.city,
+    '\ns1 city: ' + s1.user.address.city,
+    '\n元が壊れてない: ' + state.user.address.city,
+    '\n\ns2 items:', s2.items.map(i=>`  ${i.text}: ${i.done}`)
+  );
+}
+
+function runLab16() {
+  const apiData = {posts:[{id:1,title:"Hello",author:{id:10,name:"Tom"},comments:[{id:100,text:"Great!"},{id:101,text:"Thanks"}]},{id:2,title:"World",author:{id:10,name:"Tom"},comments:[{id:102,text:"Nice"}]}]};
+  function normalize(data) { const s={posts:{},authors:{},comments:{}}; data.posts.forEach(p=>{ s.authors[p.author.id]=p.author; p.comments.forEach(c=>{s.comments[c.id]=c;}); s.posts[p.id]={id:p.id,title:p.title,authorId:p.author.id,commentIds:p.comments.map(c=>c.id)}; }); return s; }
+  function denormalize(pid,s) { const p=s.posts[pid]; return {...p,author:s.authors[p.authorId],comments:p.commentIds.map(id=>s.comments[id])}; }
+  const store = normalize(apiData);
+  showResult('result16','=== 正規化後 ===', store, '\n=== 逆正規化（post 1）===', denormalize(1,store));
+}
+
+// ── copyCode ──
+function copyCode(btn) {
+  const block = btn.closest('.code-block') || btn.parentElement;
+  const pre = block.querySelector('pre');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+// ── LAB_META ──
+const LAB_META = {
+  lab0: {
+    info:  { type:'info', html:'📘 <strong>reduce</strong> は「配列を何か1つの値にまとめる」汎用メソッド。辞書化は最も頻出の用途。' },
+    verify:{ before:'配列: [{id:1,...}, {id:2,...}, {id:3,...}]', after:'辞書: { 1: {...}, 2: {...}, 3: {...} }<br>→ dict[2] で即アクセス可能' },
+    check: ['① ▶ボタンを押して result 欄に辞書が表示されるか確認','② reduce版と fromEntries版で同じ結果になるか確認','③ <code>dict1[2]</code> で Bob が取得できているか確認']
+  },
+  lab1: {
+    info:  { type:'info', html:'📘 <code>Object.groupBy</code> は ES2024 の新機能。古い環境では <code>reduce</code> で代替する。' },
+    check: ['① グループ化結果に fruit / veg / grain の3キーがあるか確認','② fruit の中に apple と banana の2件が入っているか確認','③ 各グループの要素数が正しいか数える']
+  },
+  lab2: {
+    info:  { type:'warn', html:'⚠️ <code>new Set()</code> はプリミティブ値しか重複判定できない。オブジェクトは参照比較なので、特定のキーで <code>filter</code> + <code>Set</code> を併用する。' },
+    check: ['① プリミティブ: [1,2,3] に重複排除されているか','② オブジェクト: id:1 の重複が除かれて2件になっているか','③ Set.has() で判定していることをコードで確認']
+  },
+  lab3: {
+    info:  { type:'info', html:'📘 <strong>2パスアルゴリズム</strong>: Pass1で全ノードを辞書化 → Pass2で親子を接続。1パスだと「まだ辞書に無い親」参照で失敗する。' },
+    verify:{ before:'フラット配列: 4つの行レコード', after:'ツリー: ルート → [子A, 子B → [孫B-1]]' },
+    check: ['① ルートの children に子Aと子Bの2件が入っているか','② 子B の children に孫B-1 が入っているか','③ 子A の children が空配列 [] か確認']
+  },
+  lab4: {
+    info:  { type:'info', html:'📘 <code>reduce</code> の第2引数（初期値）が重要: 合計なら <code>0</code>、カウントなら <code>{}</code>、配列なら <code>[]</code>。' },
+    check: ['① 合計が 880 になっているか確認','② 最大が 250 になっているか確認','③ 出現回数: A=3, B=2, C=1 になっているか確認']
+  },
+  lab5: {
+    info:  { type:'info', html:'📘 <code>flat(Infinity)</code> は何段ネストでもフラットにする。<code>flat(1)</code> なら1段だけ。' },
+    check: ['① flat: [1,2,3,4,5] の5要素になっているか','② chunk(3): [[1,2,3],[4,5,6],[7]] の3チャンクか（最後は端数）','③ zip→obj: {name:"Tom", age:30, city:"Osaka"} になるか']
+  },
+  lab6: {
+    info:  { type:'info', html:'📘 <code>entries</code> → <code>filter</code> → <code>fromEntries</code> はオブジェクトの条件抽出パイプライン。よく使うので丸暗記推奨。' },
+    check: ['① keys/values/entries の出力形状の違いを確認','② 80点以上フィルタで {math:85, science:93} になるか確認','③ english:72 が除外されているか確認']
+  },
+  lab7: {
+    info:  { type:'warn', html:'⚠️ Lodashの <code>_.pick</code> / <code>_.omit</code> は超頻出。自作版の動作を理解しておくと読みやすくなる。' },
+    check: ['① pick: name と email だけのオブジェクトになっているか','② omit: password だけが除外されているか','③ 存在しないキーを pick に渡しても壊れないか確認']
+  },
+  lab8: {
+    info:  { type:'info', html:'📘 設定ファイル（.env / config）のパース、フォーム状態のシリアライズなどで flatten/unflatten は頻出。' },
+    verify:{ before:'ネスト: {user:{name:"Tom",addr:{city:"Osaka"}}}', after:'フラット: {"user.name":"Tom","user.addr.city":"Osaka","user.addr.zip":"530"}' },
+    check: ['① flatten 結果のキーがドット区切りになっているか','② unflatten で元のネスト構造に復元されているか','③ 往復変換（flatten → unflatten）で元データと一致するか']
+  },
+  lab9: {
+    info:  { type:'err', html:'🚨 <strong>スプレッド構文の罠</strong>: <code>{...base, ...patch}</code> はネストしたオブジェクトを丸ごと上書きする。<code>b.x</code> が消えるバグは頻出。' },
+    verify:{ before:'base.b = {x:10, y:20}', after:'浅いマージ: b={y:99,z:30} ← x消滅<br>深いマージ: b={x:10,y:99,z:30} ← x残る' },
+    check: ['① 浅いマージで b.x が undefined になっていることを確認','② 深いマージで b.x=10, b.y=99, b.z=30 になっていることを確認','③ 元の base オブジェクトが変更されていないことを確認']
+  },
+  lab10: {
+    info:  { type:'info', html:'📘 <code>flatMap</code> は <code>map</code> + <code>flat(1)</code>。再帰でツリーを走査するときにネスト配列を自動フラット化してくれる。' },
+    check: ['① フラット化後が4要素の配列になっているか','② depth が root=0, childA=1, childB=1, grandchild=2 になっているか','③ インデント表示でツリー構造が視覚的に再現されているか']
+  },
+  lab11: {
+    info:  { type:'info', html:'📘 React の仮想DOM（Virtual DOM）は、この JSON 構造と同じ発想。差分検出はこの JSON ツリー同士の比較で行われる。' },
+    check: ['① tag が "div" になっているか','② attrs に class:"box" が入っているか','③ children に span と em の2要素があるか','④ span の children に文字列 "Hello" があるか']
+  },
+  lab12: {
+    info:  { type:'warn', html:'⚠️ この実装は簡易版。実務ではカンマを含む値（<code>"Tokyo, Japan"</code>）やエスケープに対応した Papaparse 等のライブラリを使う。' },
+    check: ['① 3件のオブジェクト配列になっているか確認','② 各オブジェクトが name, age, city のキーを持つか','③ age の値が文字列 "30" であることに注意（型変換なし）']
+  },
+  lab13: {
+    info:  { type:'info', html:'📘 <code>URLSearchParams</code> は自動で URI エンコード/デコードしてくれる。日本語もそのまま渡せる。' },
+    check: ['① クエリ → オブジェクト: 4つのキーが取れているか','② オブジェクト → クエリ: page=5&sort=date&q=... の形式になっているか','③ 日本語 "大阪 天気" が %E5%A4%A7... にエンコードされ、デコードで戻るか']
+  },
+  lab14: {
+    info:  { type:'info', html:'📘 <code>camelizeKeys</code> は再帰関数。配列もオブジェクトも自動で処理するので、深いネストのレスポンスにも対応する。' },
+    check: ['① total_count → totalCount に変換されているか','② items 内の user_id → userId, first_name → firstName になっているか','③ hasMore が true になっているか（2ページ目×20件 < 85件）','④ totalPages が 5 になっているか（ceil(85/20)）']
+  },
+  lab15: {
+    info:  { type:'err', html:'🚨 <strong>イミュータブルの鉄則</strong>: 更新したいプロパティまでの全階層をスプレッドでコピーする。1段でもスキップすると元データが壊れる。' },
+    verify:{ before:'state.user.address.city = "Osaka"<br>items[1].done = false', after:'s1.user.address.city = "Tokyo"<br>s2.items[1].done = true<br>元の state は変更なし' },
+    check: ['① s1 で city が "Tokyo" に変わっているか','② 元の state.user.address.city が "Osaka" のままか','③ s2 で id:2 だけ done:true、他は元のままか']
+  },
+  lab16: {
+    info:  { type:'info', html:'📘 <strong>正規化</strong> = RDBのテーブル設計と同じ発想。エンティティを分離し、IDで参照する。Redux Toolkit の <code>createEntityAdapter</code> もこの構造。' },
+    check: ['① posts テーブルに authorId / commentIds（ID参照）が入っているか','② authors テーブルに id:10 の Tom が1件だけ（重複なし）か','③ 逆正規化で元のネスト構造に戻っているか確認','④ author.name を変更したら全 post に反映される利点を理解']
+  }
+};
+
+// ── Inject info / verify / check ──
+function infoHTML(m){ return m?.info ? `<div class="info-box ${m.info.type||'info'}">${m.info.html}</div>` : ''; }
+function verifyHTML(m){ if (!m?.verify) return '';
+  const {before, after} = m.verify;
+  return `<div class="verify">
+    <div class="verify-col verify-before"><div class="verify-label">Before ▶︎ 実行前</div>${before||''}</div>
+    <div class="verify-col verify-after"><div class="verify-label">After ▶︎ 実行後</div>${after||''}</div>
+  </div>`; }
+function checkHTML(m){ if (!m?.check?.length) return '';
+  return `<div class="check-steps">
+    <div class="check-steps-title">🔍 ブラウザ実機チェック</div>
+    <ol>${m.check.map(s=>`<li>${s}</li>`).join('')}</ol>
+  </div>`; }
+
+document.addEventListener('DOMContentLoaded', () => {
+  // (1) Inject info + verify + check into each lab
+  document.querySelectorAll('.lab').forEach(lab => {
+    const meta = LAB_META[lab.id]; const body = lab.querySelector('.lab-body');
+    if (!body || !meta) return;
+    const frag = document.createElement('div');
+    frag.innerHTML = infoHTML(meta) + verifyHTML(meta) + checkHTML(meta);
+    while (frag.firstChild) body.appendChild(frag.firstChild);
+  });
+
+  // (2) Sidebar active highlight
+  const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+  const map = new Map();
+  links.forEach(a => { const el = document.getElementById(a.getAttribute('href').slice(1)); if (el) map.set(el, a); });
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) { const l = map.get(e.target);
+      if (l) { links.forEach(n=>n.classList.remove('active')); l.classList.add('active'); } }
+  }), { rootMargin:'-30% 0px -60% 0px' });
+  document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+  // (3) Auto-inject code-block headers + Copy button
+  document.querySelectorAll('.code-block').forEach((cb, i) => {
+    if (cb.querySelector('.code-block-header')) return;
+    const existing = cb.querySelector('.code-label');
+    const labelText = existing ? existing.textContent.trim() : `Code #${i+1}`;
+    if (existing) existing.remove();
+    const header = document.createElement('div');
+    header.className = 'code-block-header';
+    header.innerHTML = `<span>${labelText}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+    cb.insertBefore(header, cb.firstChild);
+  });
+});
+</script>
+</body>
+</html>
