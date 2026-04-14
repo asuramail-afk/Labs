@@ -288,6 +288,33 @@ console.log(DogClass <span class="kw">instanceof</span> Function); <span class="
         <code>__proto__</code> は <code>Constructor.prototype</code> を指す。内部構造は同一。
       </p>
 
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 オブジェクトの繋がり方（参照の形）</div>
+        <code>new</code> で作ったインスタンスは、<strong>必ず</strong> <code>__proto__</code> という隠しリンクで
+        コンストラクタの <code>.prototype</code> オブジェクトを指す。これは関数版でも class 版でも全く同じ配線。
+<pre class="ascii-art">
+  const f = new CatFunc('Tama');       const c = new CatClass('Mike');
+
+   [ f：インスタンス ]                 [ c：インスタンス ]
+   ┌────────────────┐                 ┌────────────────┐
+   │ name: 'Tama'   │                 │ name: 'Mike'   │
+   │ __proto__ ─────┼──┐              │ __proto__ ─────┼──┐
+   └────────────────┘  │              └────────────────┘  │
+                       │                                   │
+                       ▼                                   ▼
+   [ CatFunc.prototype ]                [ CatClass.prototype ]
+   ┌────────────────┐                 ┌────────────────┐
+   │ speak: ƒ       │                 │ speak: ƒ       │
+   └────────────────┘                 └────────────────┘
+
+  f.speak() を呼ぶと:
+    ① f 自身に speak は無い
+    ② __proto__ を辿って CatFunc.prototype.speak を発見
+    ③ それを f を this として実行
+  → <strong>どちらの作り方でも道のりは完全に同じ</strong>
+</pre>
+      </div>
+
       <div class="code-block">
         <div class="code-label">プロトタイプ参照の一致確認</div>
         <pre><span class="kw">function</span> <span class="fn">CatFunc</span>(<span class="attr">n</span>) { <span class="kw">this</span>.name = n; }
@@ -324,6 +351,37 @@ console.log(c.speak()); <span class="cm">// "Mike: meow"</span></pre>
         これはコンストラクタ関数で <code>.prototype.method = ...</code> と書くのと同じ。
       </p>
 
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 メソッドは「インスタンスごと」ではなく「型で1個」</div>
+        1000 個インスタンスを作っても、メソッドの実体は <code>prototype</code> に<strong>1個だけ</strong>置かれ、全員が共有する。
+        <code>this.name</code> のようなデータはインスタンスごとに別、メソッドは型で共有——これがJSのメモリ設計。
+<pre class="ascii-art">
+  const b = new Bird('Sparrow');
+
+   [ b：インスタンス ]        ← <em>インスタンス自身のプロパティ</em>
+   ┌────────────────┐            hasOwnProperty('name') → true
+   │ name: 'Sparrow'│
+   │ __proto__ ─────┼──┐
+   └────────────────┘  │
+                       ▼
+   [ Bird.prototype ]         ← <em>メソッドはここ</em>（全インスタンス共有）
+   ┌────────────────┐           hasOwnProperty('fly') → true
+   │ fly: ƒ         │           b.fly === Bird.prototype.fly（<strong>同じ参照</strong>）
+   │ __proto__ ─────┼──┐
+   └────────────────┘  │
+                       ▼
+   [ Object.prototype ]  ← さらに上位。hasOwnProperty, toString などが居る
+   ┌────────────────┐
+   │ hasOwnProperty │
+   │ toString       │
+   │ __proto__: null│   ← 終端
+   └────────────────┘
+
+  もし fly() を <code>this.fly = function(){}</code> のようにインスタンス内に置くと、
+  インスタンス数 × fly のコピーが作られてメモリを無駄遣いする。
+</pre>
+      </div>
+
       <div class="code-block">
         <div class="code-label">hasOwnProperty で格納場所を確認</div>
         <pre><span class="kw">class</span> <span class="fn">Bird</span> {
@@ -359,6 +417,47 @@ console.log(b.fly === Bird.prototype.fly); <span class="cm">// true</span></pre>
       <p class="lab-desc">
         <code>extends</code> による継承と、<code>Object.create()</code> を使ったプロトタイプ手動チェーンは同じ結果を生む。
       </p>
+
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 継承は「プロトタイプ鎖を3段に繋ぐ」だけ</div>
+        extends は魔法ではない。子の <code>prototype.__proto__</code> を親の <code>prototype</code> に繋げているだけ。
+        これを手動で書いたのが <code>Object.create(AnimalF.prototype)</code> のパターン。
+<pre class="ascii-art">
+  const d2 = new DogC('Hachi','Akita');
+
+   [ d2：子インスタンス ]           ← 自分のデータ
+   ┌────────────────────────┐
+   │ name:  'Hachi'         │
+   │ breed: 'Akita'         │
+   │ __proto__ ─────────────┼──┐
+   └────────────────────────┘  │
+                               ▼
+   [ DogC.prototype ]          ← 子クラス固有のメソッドがあればここ
+   ┌────────────────────────┐
+   │ (子メソッド)           │
+   │ __proto__ ─────────────┼──┐   ← <strong>extends で自動連結</strong>される鎖
+   └────────────────────────┘  │
+                               ▼
+   [ AnimalC.prototype ]       ← 親のメソッド
+   ┌────────────────────────┐
+   │ speak: ƒ               │
+   │ __proto__ ─────────────┼──┐
+   └────────────────────────┘  │
+                               ▼
+   [ Object.prototype ]        ← さらに上
+   ┌────────────────────────┐
+   │ toString, ...          │
+   └────────────────────────┘
+
+  d2.speak() の探索順:
+    d2 に無い → DogC.prototype に無い → <strong>AnimalC.prototype で発見</strong>
+    → d2 を this にして実行（name に 'Hachi' が入っているので 'Hachi speaks'）
+
+  手動版も全く同じ鎖を作る:
+    DogF.prototype = Object.create(AnimalF.prototype);
+    ↑ この1行が「__proto__ を親の prototype に向ける」作業
+</pre>
+      </div>
 
       <div class="code-block">
         <div class="code-label">2方式の継承を比較</div>
@@ -409,6 +508,24 @@ console.log(d2.speak()); <span class="cm">// "Hachi speaks"</span></pre>
         これは「シンタックスシュガー＋α」の「＋α」部分。
       </p>
 
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 classの「＋α」= 自動 strict mode で this の暴走を防ぐ</div>
+        昔の関数は「これ何のコンテキスト？」が曖昧で、普通の関数を呼ぶだけで <code>this</code> が <strong>window</strong> を指してしまった。
+        class 本体は常に strict mode で動くので <code>this</code> が <strong>undefined</strong> になり、誤った代入は即エラーになる＝事故が早期に見つかる。
+<pre class="ascii-art">
+  ● 非 strict （昔ながらの関数）
+    function foo() { return this; }
+    foo();                       this  ───▶  [ window ]    （グローバル汚染の温床）
+
+  ● strict （class の中）
+    class X { m() { return (function(){return this;})(); } }
+    new X().m();                 this  ───▶  undefined     （誤って this.x 書くと TypeError）
+
+  同じ関数呼び出しでも「どこで定義したか」で this の接続先が切り替わる。
+  classを使うと、その切り替わりを<strong>書き忘れなく自動で安全側</strong>に倒してくれる。
+</pre>
+      </div>
+
       <div class="code-block">
         <div class="code-label">strict mode 確認</div>
         <pre><span class="kw">class</span> <span class="fn">StrictTest</span> {
@@ -447,6 +564,29 @@ console.log(ns.checkStrict()); <span class="cm">// "object"   (sloppy mode → t
         コンストラクタ関数で <code>prototype</code> に直接代入すると <code>enumerable: true</code>。
         <code>for...in</code> の結果が変わる。
       </p>
+
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 プロパティの「見える／見えない」スイッチ</div>
+        全てのプロパティは 3 つの属性を持つ: <code>writable</code>（書換可）／<code>enumerable</code>（for...in に出る）／<code>configurable</code>（削除・変更可）。
+        <strong>class のメソッドだけ enumerable が false</strong> にされていて、うっかり for...in で混入しない。
+<pre class="ascii-art">
+  ● FuncVer（関数版）の中身
+    FuncVer.prototype = {
+      greet: ƒ   ← { writable:true, enumerable:<span style="color:#22863a"><strong>true</strong></span>,  configurable:true }
+    }
+    for (k in new FuncVer()) → [ "greet" ]   ← 出る（想定外かも）
+
+  ● ClassVer（class版）の中身
+    ClassVer.prototype = {
+      greet: ƒ   ← { writable:true, enumerable:<span style="color:#cb2431"><strong>false</strong></span>, configurable:true }
+    }
+    for (k in new ClassVer()) → [ ]          ← 出ない（自分データだけ拾える）
+
+  実務的ありがたさ:
+    for (const key in user) { ... }  で greet / save / delete のような<em>継承メソッド</em>が
+    紛れ込まないので、ループでデータだけを扱いたい時にバグが減る。
+</pre>
+      </div>
 
       <div class="code-block">
         <div class="code-label">enumerable の比較</div>
@@ -489,6 +629,35 @@ console.log(<span class="str">'Class for...in keys:'</span>, cKeys); <span class
         コンストラクタ関数は <code>new</code> なしで呼べてしまう（バグの温床）。
         classは <code>new</code> なしだとエラー。また、class宣言はhoistingされない。
       </p>
+
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 「呼び方の強制」と「使える時点の違い」</div>
+        <strong>new 強制</strong>: 関数は <code>new</code> を付け忘れても呼べて事故る。class は必ずエラーにしてくれる保険。<br>
+        <strong>hoisting</strong>: 関数宣言は「ファイル先頭に巻き上げ」られ先に呼べる。class は宣言行に来るまで封印(TDZ)。
+<pre class="ascii-art">
+  ● new を忘れた時
+
+    function OldStyle(v) { this.v = v; }
+    OldStyle(42);             this ──▶ window 、戻り値 undefined（<strong>黙って壊れる</strong>）
+
+    class NewStyle { constructor(v){ this.v=v; } }
+    NewStyle(42);             ──▶ TypeError "must be called with new"（<strong>即エラー＝早期発見</strong>）
+
+  ● 実行タイムライン
+
+    ─ファイル先頭─────────────────────────────────────▶  実行順
+       ↑                                               ↑
+       function HoistedFunc  ← ここから既に使える      ↑
+                                                       │
+       （コード進行）                                   │
+                                                       │
+       typeof HoistedClass   ← ここ：TDZ 内 → ReferenceError
+                             │
+       class HoistedClass {} ← ここを通過して初めて使える
+
+    function は「巻き上げ」されるが、class は<strong>書いた位置より前では存在しない</strong>。
+</pre>
+      </div>
 
       <div class="code-block">
         <div class="code-label">new 強制確認</div>
@@ -546,6 +715,32 @@ console.log(<span class="kw">typeof</span> HoistedFunc); <span class="cm">// "fu
         classとコンストラクタ関数の内部的な差分を一覧する。
       </p>
 
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 プロパティに付く3つの「性質札」を比較</div>
+        <code>Object.getOwnPropertyDescriptor(obj, key)</code> で、そのプロパティに付いている性質札を覗ける。
+<pre class="ascii-art">
+  3つの性質札（descriptor）:
+    writable      ─ <strong>値の上書き</strong>を許す?         例: obj.x = 別値
+    enumerable    ─ <strong>for...in / Object.keys</strong> に出る?
+    configurable  ─ <strong>delete や属性変更</strong>を許す?  例: delete obj.x
+
+  class と 関数版 prototype の違いは 1カ所だけ:
+
+  ┌──────────────┬──────────┬─────────────┬──────────────┐
+  │              │ writable │ enumerable  │ configurable │
+  ├──────────────┼──────────┼─────────────┼──────────────┤
+  │ Func.proto   │   true   │  <strong>true</strong>       │    true      │
+  │ Class.proto  │   true   │  <strong>false</strong>      │    true      │
+  └──────────────┴──────────┴─────────────┴──────────────┘
+                                ↑
+                       ここだけ class が違う
+                       → for...in にメソッドが紛れない安全設計
+
+  データモデルとしては全く同じ場所(prototype)に入るけど、
+  <strong>札の書き方だけが微妙に違う</strong>。これが「シンタックスシュガー＋α」の実体。
+</pre>
+      </div>
+
       <div class="code-block">
         <div class="code-label">デスクリプタ全出力</div>
         <pre><span class="kw">function</span> <span class="fn">FnAnimal</span>(<span class="attr">name</span>) { <span class="kw">this</span>.name = name; }
@@ -592,6 +787,44 @@ FnAnimal.prototype.<span class="fn">sleep</span> = <span class="kw">function</sp
       <p class="lab-desc">
         ここまでの各ラボで確認した「同じ部分」と「classで追加された安全機能（+α）」を一覧にまとめる。
       </p>
+
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 全体像：データとメソッドはどこに置かれるか</div>
+        9ラボを通して確かめたのは、データは<em>インスタンス</em>／メソッドは<em>prototype</em>／継承は<em>prototype の鎖</em>、という1本道。
+        class はこの道のりを<strong>書きやすく安全に</strong>するラッピングにすぎない。
+<pre class="ascii-art">
+            ┌─ new で作る ──────────────────┐
+            ▼                                │
+     [ インスタンス ]  ──► 自分のデータ      │
+     ( this.name = ... )  （1人1個）        │
+         │ __proto__                          │
+         ▼                                    │
+     [ Constructor.prototype ]                │  ──── Constructor という「設計図」
+     メソッド（全員で共有・1個だけ）           │       （＝関数 or class）
+         │ __proto__                          │
+         ▼                                    │
+     [ 親.prototype ] … 継承された機能        │
+         │ __proto__                          │
+         ▼                                    │
+     [ Object.prototype ] → null              │
+                                             │
+
+  ● <strong>同じ</strong>部分
+      ・typeof が "function"
+      ・インスタンス→prototype の __proto__ リンク
+      ・メソッドは prototype に1個、全インスタンスで共有
+      ・継承は prototype の鎖を伸ばすだけ
+
+  ● <strong>class だけの +α（安全装置）</strong>
+      ・本体が自動 strict mode（this の暴走防止）
+      ・new なし呼び出しで TypeError
+      ・宣言前は TDZ で参照不可（書く順番を強制）
+      ・メソッドが enumerable:false（for...in に混ざらない）
+      ・super / extends / static / #private などの専用構文
+
+  → <strong>仕組みは同じ、立ち振る舞いだけ厳格化</strong>されたのが class。
+</pre>
+      </div>
 
       <table class="compare-table">
         <thead>
