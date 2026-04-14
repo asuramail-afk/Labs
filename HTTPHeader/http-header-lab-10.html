@@ -1,0 +1,1519 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HTTP Header Lab 10 — COOP / COEP / CORP（Cross-Origin Isolation）</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;700&display=swap');
+
+  :root {
+    --bg: #ffffff;
+    --surface: #f5f7fa;
+    --surface2: #ebeef2;
+    --border: #c8cdd3;
+    --text: #1a1a2e;
+    --text-dim: #5c6370;
+    --accent: #005cc5;
+    --accent2: #22863a;
+    --accent3: #6f42c1;
+    --warn: #b08800;
+    --danger: #cb2431;
+    --code-bg: #f0f4f8;
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    padding: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+    color: var(--accent);
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 0.8rem;
+    margin-bottom: 1.5rem;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+    color: var(--accent2);
+    margin: 2rem 0 1rem;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  h3 {
+    font-size: 1.05rem;
+    color: var(--accent3);
+    margin: 1.5rem 0 0.8rem;
+  }
+
+  p, li { font-size: 0.92rem; margin-bottom: 0.5rem; }
+
+  /* ── Status Bar ── */
+  .status-bar {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.6rem 1rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.82rem;
+    font-family: 'IBM Plex Mono', monospace;
+    flex-wrap: wrap;
+  }
+  .status-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    animation: pulse 1.5s infinite;
+  }
+  .status-dot.ok { background: var(--accent); animation: none; }
+  .status-dot.err { background: var(--danger); animation: none; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* ── Critical Alert ── */
+  .alert-critical {
+    background: #fef2f2;
+    border: 2px solid var(--danger);
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.88rem;
+  }
+  .alert-critical strong { color: var(--danger); }
+  .alert-critical code {
+    background: rgba(203,36,49,0.1);
+    color: var(--danger);
+  }
+
+  /* ── Lab Section ── */
+  .lab-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+  }
+
+  .step {
+    background: var(--surface2);
+    border-left: 3px solid var(--accent2);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 1rem 1.2rem;
+    margin: 1rem 0;
+  }
+  .step-num {
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--accent2);
+    font-weight: 600;
+    font-size: 0.8rem;
+    margin-bottom: 0.3rem;
+  }
+
+  code, pre {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+  }
+  code {
+    background: var(--code-bg);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    color: var(--accent);
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    overflow-x: auto;
+    margin: 0.8rem 0;
+    line-height: 1.6;
+    color: #24292e;
+  }
+  pre .comment { color: #6a737d; }
+  pre .header-name { color: var(--accent2); }
+  pre .header-val  { color: var(--accent); }
+  pre .highlight    { color: var(--warn); font-weight: 600; }
+
+  .result-area pre {
+    min-height: 2.5rem;
+  }
+  .placeholder {
+    color: var(--text-dim);
+    font-style: italic;
+    font-size: 0.8rem;
+  }
+
+  .note {
+    background: #e8f4fd;
+    border: 1px solid #b6d4e8;
+    border-radius: var(--radius);
+    padding: 0.8rem 1rem;
+    margin: 1rem 0;
+    font-size: 0.85rem;
+    color: var(--accent2);
+  }
+  .note::before { content: "💡 "; }
+
+  .warn-box {
+    background: #fff8e1;
+    border: 1px solid #e6d590;
+    border-radius: var(--radius);
+    padding: 0.8rem 1rem;
+    margin: 1rem 0;
+    font-size: 0.85rem;
+    color: var(--warn);
+  }
+  .warn-box::before { content: "⚠️ "; }
+
+  .check-item {
+    background: var(--surface2);
+    border-radius: var(--radius);
+    padding: 0.6rem 1rem;
+    margin: 0.4rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.88rem;
+    transition: opacity 0.3s;
+  }
+  .check-item input[type="checkbox"] {
+    width: 18px; height: 18px;
+    accent-color: var(--accent);
+    flex-shrink: 0;
+  }
+  .check-item.checked { opacity: 0.55; }
+
+  .diagram {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.2rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    overflow-x: auto;
+    white-space: pre;
+    color: var(--text-dim);
+    margin: 1rem 0;
+  }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+  .three-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.8rem;
+    margin: 1rem 0;
+  }
+  @media (max-width: 900px) { .three-col { grid-template-columns: 1fr; } }
+  @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+  .col-card {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.8rem;
+    font-size: 0.8rem;
+  }
+  .col-card h4 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .col-card pre {
+    border: none;
+    padding: 0.4rem 0;
+    margin: 0;
+    font-size: 0.75rem;
+    background: transparent;
+  }
+  .col-card.card-coop { border-color: var(--accent); }
+  .col-card.card-coop h4 { color: var(--accent); }
+  .col-card.card-coep { border-color: var(--accent2); }
+  .col-card.card-coep h4 { color: var(--accent2); }
+  .col-card.card-corp { border-color: var(--accent3); }
+  .col-card.card-corp h4 { color: var(--accent3); }
+
+  a { color: var(--accent2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+
+  /* ── TOC Nav ── */
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+    margin: 1rem 0 2rem;
+  }
+  .toc a {
+    display: inline-block;
+    padding: 0.25rem 0.6rem;
+    margin: 0.15rem;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    background: var(--surface2);
+    transition: background 0.2s;
+  }
+  .toc a:hover { background: var(--border); text-decoration: none; }
+
+  html { scroll-behavior: smooth; }
+
+  .btn {
+    border: none;
+    padding: 0.5rem 1.2rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    font-family: 'Noto Sans JP', sans-serif;
+    margin: 0.3rem;
+    transition: opacity 0.2s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.97); }
+  .btn-accent  { background: var(--accent);  color: var(--bg); }
+  .btn-accent2 { background: var(--accent2); color: var(--bg); }
+  .btn-accent3 { background: var(--accent3); color: var(--bg); }
+  .btn-warn    { background: var(--warn);    color: var(--bg); }
+  .btn-dim     { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+
+  /* ── Indicator Badges ── */
+  .indicator {
+    display: inline-block;
+    font-size: 0.72rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 99px;
+    font-weight: 600;
+    font-family: 'IBM Plex Mono', monospace;
+    vertical-align: middle;
+  }
+  .ind-safe   { background: #e8f5e9; color: var(--accent); }
+  .ind-unsafe { background: #3a1e1e; color: var(--danger); }
+  .ind-warn   { background: #fff8e1; color: var(--warn); }
+  .ind-info   { background: #e3f2fd; color: var(--accent2); }
+
+  /* ── Security Layer Diagram ── */
+  .layer-diagram {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.2rem;
+    margin: 1rem 0;
+  }
+  .layer {
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.8rem;
+    margin: 0.4rem;
+    transition: border-color 0.3s, background 0.3s;
+  }
+  .layer.active-layer {
+    border-color: var(--accent);
+    background: rgba(110, 231, 183, 0.05);
+  }
+  .layer-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+  }
+  .layer-desc {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================ -->
+<!-- STATUS BAR                                    -->
+<!-- ============================================ -->
+<div class="status-bar">
+  <div class="status-item">
+    <div class="status-dot" id="dot-protocol"></div>
+    <span id="status-protocol">プロトコル確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-httpbin"></div>
+    <span id="status-httpbin">httpbin.org 確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-isolation"></div>
+    <span id="status-isolation">Cross-Origin Isolation 確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-devtools"></div>
+    <span>DevTools: <kbd style="background:var(--surface2);padding:0.1rem 0.4rem;border-radius:4px;">F12</kbd></span>
+  </div>
+</div>
+<p style="margin-bottom:0.5rem;font-size:0.82rem;"><a href="http-header-lab-index.html" style="color:var(--accent);text-decoration:none;">← マスター索引に戻る</a></p>
+
+<script>
+// ── Protocol check ──
+(function checkProtocol() {
+  const dot = document.getElementById('dot-protocol');
+  const label = document.getElementById('status-protocol');
+  if (location.protocol === 'file:') {
+    dot.classList.add('err');
+    label.innerHTML = '<strong style="color:var(--danger)">file:// 検出（要修正）</strong>';
+    document.getElementById('file-protocol-alert').style.display = 'block';
+  } else {
+    dot.classList.add('ok');
+    label.textContent = location.protocol + '// ✅';
+  }
+})();
+
+// ── httpbin.org health check ──
+(async function checkHttpbin() {
+  const dot = document.getElementById('dot-httpbin');
+  const label = document.getElementById('status-httpbin');
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch('https://httpbin.org/get', { signal: controller.signal });
+    clearTimeout(timeout);
+    if (res.ok) {
+      dot.classList.add('ok');
+      label.textContent = 'httpbin.org ✅';
+    } else {
+      dot.classList.add('err');
+      label.innerHTML = '<strong style="color:var(--danger)">httpbin.org 応答エラー</strong>';
+    }
+  } catch(e) {
+    dot.classList.add('err');
+    label.innerHTML = '<strong style="color:var(--danger)">httpbin.org ❌ 接続不可</strong>';
+  }
+})();
+
+// ── Cross-Origin Isolation check ──
+(function checkIsolation() {
+  const dot = document.getElementById('dot-isolation');
+  const label = document.getElementById('status-isolation');
+  if (typeof crossOriginIsolated !== 'undefined' && crossOriginIsolated) {
+    dot.classList.add('ok');
+    label.innerHTML = 'Cross-Origin Isolated ✅';
+  } else {
+    dot.classList.add('err');
+    label.innerHTML = 'Not Isolated（通常状態）';
+  }
+})();
+</script>
+
+<h1>🧪 Lab 10: COOP / COEP / CORP（Cross-Origin Isolation）</h1>
+<p style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.3rem;font-family:'IBM Plex Mono',monospace;">最終更新: 2026年3月</p>
+
+<p>
+  Spectre系の脆弱性対策として導入された3つのセキュリティヘッダーを学びます。
+  これらが連携することで「<strong>Cross-Origin Isolation</strong>」が実現し、
+  <code>SharedArrayBuffer</code> や高精度タイマーなど、
+  サイドチャネル攻撃のリスクがある機能が安全に利用可能になります。
+</p>
+<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">⏱ 所要時間：35分</span>
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">難易度：★★★</span>
+</div>
+<p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:1rem;">📋 前提知識：<a href="http-header-lab-06.html">Lab 06</a> + <a href="http-header-lab-09.html">Lab 09</a> 完了推奨（CORS とセキュリティヘッダーの基本）</p>
+
+<div class="lab-box" style="border-color:var(--accent); margin-bottom:1rem;">
+  <h3 style="color:var(--accent); margin-top:0;">🎯 このLabの学習目標</h3>
+  <p style="margin-bottom:0.3rem;">完了すると、以下ができるようになります：</p>
+  <div class="check-item" style="opacity:1;"><span>1. <code>Cross-Origin-Opener-Policy (COOP)</code> でウィンドウ参照を分離する目的を理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>2. <code>Cross-Origin-Embedder-Policy (COEP)</code> でクロスオリジン埋め込みリソースを制限する仕組みを理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>3. <code>Cross-Origin-Resource-Policy (CORP)</code> でリソース共有範囲を制御する方法を理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>4. COOP + COEP の組み合わせで「Cross-Origin Isolation」を有効化し、<code>SharedArrayBuffer</code> を使えるようにする条件を理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>5. DevTools で <code>crossOriginIsolated</code> 状態を確認できる</span></div>
+</div>
+<div class="warn-box" style="border-color:var(--accent3);background:#fce4ec;">
+  <strong style="color:var(--accent3);">💥 実務での失敗例</strong>：CDN上の画像に <code>Cross-Origin-Resource-Policy</code> を設定しなかったため、COEP有効化後にサイト全体の画像が表示されなくなった
+</div>
+
+<!-- ── file:// alert (hidden by default, shown by JS) ── -->
+<div class="alert-critical" id="file-protocol-alert" style="display:none;">
+  <strong>🔴 このページは HTTP サーバー経由で開いてください</strong><br><br>
+  現在 <code>file://</code> で開いています。この状態では <code>fetch()</code> が
+  <strong>CORSエラー</strong>になり、ほとんどの実験が動作しません。<br>
+  Lab 01 の「ローカル Web サーバーのセットアップ」を参照してサーバーを起動してください。
+</div>
+
+<!-- ── DevTools warning ── -->
+<div class="warn-box">
+  <strong style="font-size:1rem; color:var(--danger);">最重要：DevTools を「先に」開いてからリロード</strong><br>
+  <code>F12</code>（Mac: <code>Cmd+Opt+I</code>）→ <strong>Network</strong> タブを選択 →
+  <strong>その後で</strong> <code>Ctrl+Shift+R</code> でリロード。<br>
+  順序が逆だとネットワークログが残りません。全実験でこの手順が前提です。
+</div>
+
+<!-- ── TOC ── -->
+<div class="toc">
+  <strong style="color:var(--text-dim);font-size:0.82rem;">目次:</strong><br>
+  <a href="#overview">🗺 全体像</a>
+  <a href="#exp-10a">10-A: CORP</a>
+  <a href="#exp-10b">10-B: COEP</a>
+  <a href="#exp-10c">10-C: COOP</a>
+  <a href="#exp-10d">10-D: Cross-Origin Isolation</a>
+  <a href="#exp-10e">10-E: OutSystems確認</a>
+  <a href="#checklist">✅ チェックリスト</a>
+</div>
+
+<!-- ============================================ -->
+<h2 id="overview">🗺 背景と全体像</h2>
+
+<p>
+  2018年に発見された <strong>Spectre</strong> 脆弱性により、
+  同じプロセス内のメモリを投機的実行を利用して読み取れることが判明しました。
+  ブラウザは対策として、信頼できないクロスオリジンリソースを
+  同じプロセスに読み込まないよう、3つのヘッダーを導入しました。
+</p>
+
+<div class="diagram">Spectre 攻撃のシナリオ:
+
+  Browser Process
+  ┌─────────────────────────────────────────────┐
+  │ https://evil.example                         │
+  │   ├ 攻撃者の JS                              │
+  │   │  └ SharedArrayBuffer で高精度タイマー構築  │
+  │   │     └ 投機的実行でメモリを読み取り          │
+  │   │                                          │
+  │   └ <img src="https://bank.example/secret">  │ ← 同じプロセス内！
+  │     └ 銀行サイトの機密データがメモリに存在       │
+  └─────────────────────────────────────────────┘
+
+  ↓ COOP + COEP + CORP で防御 ↓
+
+  Process A                    Process B
+  ┌──────────────────┐        ┌──────────────────┐
+  │ https://evil.example │      │ https://bank.example │
+  │   └ JS                │      │   └ データ          │
+  └──────────────────┘        └──────────────────┘
+  → プロセスが分離され、メモリを読み取れない</div>
+
+<h3>3つのヘッダーの役割分担</h3>
+
+<div class="three-col">
+  <div class="col-card card-corp">
+    <h4>CORP（Resource Policy）</h4>
+    <pre>リソース側が宣言:
+「誰が自分を読み込めるか」
+
+Cross-Origin-Resource-Policy:
+  same-origin   ← 同一オリジンのみ
+  same-site     ← 同一サイトのみ
+  cross-origin  ← 誰でもOK
+
+→ 画像・JS・CSS等の
+  個別リソースに設定</pre>
+  </div>
+  <div class="col-card card-coep">
+    <h4>COEP（Embedder Policy）</h4>
+    <pre>ページ側が宣言:
+「埋め込むリソースに制約を要求」
+
+Cross-Origin-Embedder-Policy:
+  unsafe-none     ← 制約なし（デフォルト）
+  require-corp    ← CORP/CORS必須
+  credentialless  ← 認証なしで読み込み
+
+→ HTMLドキュメントに設定
+→ サブリソースに波及</pre>
+  </div>
+  <div class="col-card card-coop">
+    <h4>COOP（Opener Policy）</h4>
+    <pre>ウィンドウ側が宣言:
+「他オリジンとウィンドウ参照を共有するか」
+
+Cross-Origin-Opener-Policy:
+  unsafe-none          ← 共有OK（デフォルト）
+  same-origin          ← 同一オリジンのみ
+  same-origin-allow-popups
+                       ← ポップアップは許可
+  restrict-properties  ← 一部プロパティのみ
+
+→ トップレベルドキュメントに設定</pre>
+  </div>
+</div>
+
+<h3>セキュリティヘッダーの階層（Lab 08〜10の位置づけ）</h3>
+
+<div class="layer-diagram" id="layer-interactive">
+  <div class="layer" id="layer-hsts">
+    <div class="layer-label" style="color:var(--accent2);">Transport Security（HSTS）— Lab 09</div>
+    <div class="layer-desc">通信経路をHTTPSで保護</div>
+    <div class="layer" id="layer-coop-coep" style="margin-top:0.5rem;">
+      <div class="layer-label" style="color:var(--accent);">Origin Isolation（COOP/COEP/CORP）— Lab 10 ← 今ここ</div>
+      <div class="layer-desc">プロセスレベルでオリジンを分離（Spectre対策）</div>
+      <div class="layer" id="layer-csp" style="margin-top:0.5rem;">
+        <div class="layer-label" style="color:var(--accent3);">Content Policy（CSP）— Lab 08</div>
+        <div class="layer-desc">読み込み可能なリソースを制限（XSS対策）</div>
+        <div class="layer" id="layer-pp" style="margin-top:0.5rem;">
+          <div class="layer-label" style="color:var(--warn);">Feature Control（Permissions-Policy）</div>
+          <div class="layer-desc">ブラウザAPIへのアクセスを制限</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Highlight the current layer
+  document.getElementById('layer-coop-coep').classList.add('active-layer');
+</script>
+
+<div class="warn-box" style="border-color:var(--danger);background:#fef2f2;">
+  <strong style="color:var(--danger);">🎯 なぜプロセス分離が必要なのか — Spectre攻撃の脅威</strong><br><br>
+  <span style="font-size:0.85rem;">
+  <strong>プロセス分離なし（危険）</strong>：<br>
+  <code style="color:var(--danger);">悪意のあるサイト</code> と <code>あなたのサイト</code> が同じプロセスで動作<br>
+  → 攻撃者が Spectre（CPUの投機実行の脆弱性）を利用して、<strong>同一プロセス内のメモリを読み取れる</strong><br>
+  → あなたのサイトのセッション情報・個人データが盗まれる<br><br>
+
+  <strong>プロセス分離あり（安全）</strong>：<br>
+  <code style="color:var(--accent);">COOP + COEP</code> を設定すると、ブラウザが <strong>別プロセスで隔離</strong><br>
+  → 他サイトからのメモリ読み取りが <strong>物理的に不可能</strong> になる<br>
+  → <code>SharedArrayBuffer</code> や高精度タイマー（<code>performance.now()</code> μs精度）が安全に使える<br><br>
+
+  <strong>つまり</strong>：COOP/COEP は「Spectre 攻撃を防ぐために、ブラウザにプロセス隔離を指示する」ヘッダーです。
+  </span>
+</div>
+
+<hr>
+
+<!-- ============================================ -->
+<!-- 実験 10-A: CORP                               -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-10a">
+  <h3>実験 10-A: Cross-Origin-Resource-Policy（CORP）を観察する</h3>
+  <p>
+    CORPは<strong>リソース提供側</strong>が設定するヘッダーです。
+    「自分のリソースを他のオリジンが埋め込んでよいか」を制御します。
+  </p>
+
+  <div class="diagram">CORP の3つの値:
+
+  same-origin:
+    https://cdn.example.com/img.png
+    └→ https://cdn.example.com のページからのみ読み込み可
+    └→ https://app.example.com からは ✕ ブロック
+
+  same-site:
+    https://cdn.example.com/img.png
+    └→ https://app.example.com からも ○（同じ example.com）
+    └→ https://other.com からは ✕ ブロック
+
+  cross-origin:
+    https://cdn.example.com/img.png
+    └→ どのオリジンからでも ○ 読み込み可</div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — 実際のサイトのCORPヘッダーを確認</div>
+    <p>
+      下のボタンで、CORPが設定されているサイトのレスポンスヘッダーを確認します。<br>
+      httpbin.org の <code>/response-headers</code> エンドポイントを使って
+      異なるCORP値のレスポンスをシミュレーションします。
+    </p>
+    <button class="btn btn-accent" id="btn-corp-same">same-origin</button>
+    <button class="btn btn-accent2" id="btn-corp-site">same-site</button>
+    <button class="btn btn-accent3" id="btn-corp-cross">cross-origin</button>
+    <button class="btn btn-dim" id="btn-corp-none">設定なし</button>
+    <pre id="corp-result"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    async function checkCORP(value) {
+      const el = document.getElementById('corp-result');
+      el.textContent = '送信中...';
+      try {
+        let url;
+        if (value === 'none') {
+          url = 'https://httpbin.org/get';
+        } else {
+          url = 'https://httpbin.org/response-headers?Cross-Origin-Resource-Policy=' + value;
+        }
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('HTTPエラー: ' + res.status);
+        const corpHeader = res.headers.get('Cross-Origin-Resource-Policy');
+        const allHeaders = [];
+        res.headers.forEach((v, k) => {
+          if (k.toLowerCase().includes('cross-origin') || k.toLowerCase().includes('access-control')) {
+            allHeaders.push('  ' + k + ': ' + v);
+          }
+        });
+        el.textContent = 'Cross-Origin-Resource-Policy: ' + (corpHeader || '(未設定)')
+          + '\n\n関連ヘッダー一覧:\n' + (allHeaders.length ? allHeaders.join('\n') : '  (cross-origin関連ヘッダーなし)')
+          + '\n\n解説:\n'
+          + (value === 'same-origin' ? '  → 同じオリジンのページからのみ読み込み可\n  → 他オリジンの <img> や <script> で読み込むとブロック'
+            : value === 'same-site' ? '  → 同じサイト（eTLD+1が同じ）のページから読み込み可\n  → 例: cdn.example.com → app.example.com は OK'
+            : value === 'cross-origin' ? '  → どのオリジンからでも読み込み可\n  → COEP: require-corp のページから利用する場合に必要'
+            : '  → CORP未設定。ブラウザのデフォルト動作に従う\n  → COEP: require-corp のページからは読み込みがブロックされる可能性');
+      } catch(e) {
+        el.textContent = 'エラー: ' + e.message;
+      }
+    }
+
+    document.getElementById('btn-corp-same').addEventListener('click', () => checkCORP('same-origin'));
+    document.getElementById('btn-corp-site').addEventListener('click', () => checkCORP('same-site'));
+    document.getElementById('btn-corp-cross').addEventListener('click', () => checkCORP('cross-origin'));
+    document.getElementById('btn-corp-none').addEventListener('click', () => checkCORP('none'));
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — DevTools で画像のCORPを確認</div>
+    <p>
+      以下の画像は <code>httpbin.org</code>（クロスオリジン）から読み込まれています。<br>
+      DevTools の Network タブで画像を選択し、Response Headers を確認してください。
+    </p>
+    <img src="https://httpbin.org/image/png" alt="cross-origin image"
+         style="width:80px; height:80px; margin:0.5rem 0; border-radius:8px; border:1px solid var(--border);"
+         loading="lazy">
+    <pre><span class="comment">// DevTools → Network → 画像リクエストを選択 → Response Headers</span>
+
+<span class="header-name">確認ポイント:</span>
+  1. Cross-Origin-Resource-Policy ヘッダーが存在するか？
+  2. 存在する場合、値は何か？
+  3. 存在しない場合 → COEP: require-corp の環境ではブロックされる</pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — CORP と CORS の違いを理解する</div>
+    <pre><span class="header-name">CORS（Lab 06-07で学習済み）:</span>
+  → fetch() / XHR でデータを<span class="highlight">読み取る</span>ための許可
+  → Access-Control-Allow-Origin で制御
+  → JS がレスポンスの中身にアクセスできるかどうか
+
+<span class="header-name">CORP（このLab）:</span>
+  → リソースを<span class="highlight">埋め込む（embed）</span>ための許可
+  → Cross-Origin-Resource-Policy で制御
+  → &lt;img&gt;, &lt;script&gt;, &lt;link&gt; 等でリソースを読み込めるかどうか
+  → Spectre対策 — プロセス内にデータを配置させない
+
+<span class="comment">// つまり:</span>
+<span class="comment">//   CORS = 「データを読んでいいか？」</span>
+<span class="comment">//   CORP = 「そもそもプロセスに入れていいか？」</span></pre>
+  </div>
+
+  <div class="note">
+    <strong>CDNのCORP設定</strong>:
+    パブリックCDNの静的アセット（JS, CSS, フォント）は
+    <code>Cross-Origin-Resource-Policy: cross-origin</code> を設定すべきです。
+    設定しないと、COEP を有効にしたサイトからの読み込みがブロックされます。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/Headers/Cross-Origin-Resource-Policy" target="_blank">MDN — Cross-Origin-Resource-Policy</a></span>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 10-B: COEP                               -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-10b">
+  <h3>実験 10-B: Cross-Origin-Embedder-Policy（COEP）を理解する</h3>
+  <p>
+    COEPは<strong>ページ（埋め込む側）</strong>が設定するヘッダーです。
+    「このページに埋め込まれるリソースはすべてCORP/CORSで明示許可が必要」と宣言します。
+  </p>
+
+  <div class="diagram">COEP の動作:
+
+  COEP: unsafe-none（デフォルト）
+  ┌────────────────────────────┐
+  │ https://mysite.com          │
+  │  ├ &lt;img src="A.com/img"&gt;   │ ← 読み込み ○ （従来通り）
+  │  ├ &lt;img src="B.com/img"&gt;   │ ← 読み込み ○
+  │  └ &lt;script src="C.com/js"&gt; │ ← 読み込み ○
+  └────────────────────────────┘
+
+  COEP: require-corp
+  ┌────────────────────────────┐
+  │ https://mysite.com          │
+  │  ├ &lt;img src="A.com/img"&gt;   │ ← CORP: cross-origin ある → ○
+  │  ├ &lt;img src="B.com/img"&gt;   │ ← CORPなし → ✕ ブロック！
+  │  └ &lt;script src="C.com/js"&gt; │ ← CORS許可あり → ○
+  └────────────────────────────┘
+
+  COEP: credentialless（新しい選択肢）
+  ┌────────────────────────────┐
+  │ https://mysite.com          │
+  │  ├ &lt;img src="A.com/img"&gt;   │ ← Cookie なしで取得 → ○
+  │  ├ &lt;img src="B.com/img"&gt;   │ ← Cookie なしで取得 → ○
+  │  └ fetch("D.com/api")      │ ← CORS必要 → 従来通り
+  └────────────────────────────┘</div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — 現在のページの COEP 状態を確認</div>
+    <button class="btn btn-accent2" id="btn-coep-check">COEP状態を確認</button>
+    <pre id="coep-result"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-coep-check').addEventListener('click', () => {
+      const el = document.getElementById('coep-result');
+      const isolated = (typeof crossOriginIsolated !== 'undefined') ? crossOriginIsolated : false;
+      let sabAvailable = false;
+      try {
+        sabAvailable = typeof SharedArrayBuffer !== 'undefined';
+      } catch(e) {}
+
+      let perfPrecision = 'unknown';
+      try {
+        const t1 = performance.now();
+        const t2 = performance.now();
+        const diff = t2 - t1;
+        // Check resolution
+        const samples = [];
+        for (let i = 0; i < 100; i++) {
+          samples.push(performance.now());
+        }
+        const diffs = [];
+        for (let i = 1; i < samples.length; i++) {
+          const d = samples[i] - samples[i-1];
+          if (d > 0) diffs.push(d);
+        }
+        const minDiff = diffs.length > 0 ? Math.min(...diffs) : 0;
+        perfPrecision = minDiff < 0.01 ? '高精度（5μs）' : minDiff < 0.1 ? '中精度（100μs）' : '低精度（100μs以上 — 粗粒化済み）';
+      } catch(e) {
+        perfPrecision = '測定エラー';
+      }
+
+      el.textContent = 'Cross-Origin Isolation の状態:\n\n'
+        + '  crossOriginIsolated: ' + isolated + '\n'
+        + '  SharedArrayBuffer:   ' + (sabAvailable ? '利用可能 ✅' : '利用不可 ❌') + '\n'
+        + '  performance.now():   ' + perfPrecision + '\n\n'
+        + (isolated
+          ? '→ このページは Cross-Origin Isolated です！\n'
+            + '  COOP: same-origin + COEP: require-corp が設定されています。'
+          : '→ このページは Cross-Origin Isolated ではありません。\n'
+            + '  （ローカル簡易サーバーでは通常この状態です）\n\n'
+            + '  Cross-Origin Isolation を有効にするには:\n'
+            + '    1. サーバーが COOP: same-origin を返す\n'
+            + '    2. サーバーが COEP: require-corp を返す\n'
+            + '    3. 全サブリソースがCORP/CORSで許可されている');
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — COEP の3つの値を比較</div>
+    <pre><span class="header-name">Cross-Origin-Embedder-Policy の値:</span>
+
+<span class="header-val">unsafe-none</span>（デフォルト）
+  → 制約なし。従来のブラウザ動作
+  → Cross-Origin Isolation は無効
+
+<span class="highlight">require-corp</span>（最も厳格）
+  → すべてのクロスオリジンリソースに CORP または CORS が必要
+  → 設定されていないリソースはブロック
+  → Cross-Origin Isolation の条件の一つ
+
+<span class="header-val">credentialless</span>（Chrome 96+）
+  → クロスオリジンリクエストから Cookie 等を自動除去
+  → リソース側に CORP 設定が不要 — 導入が容易
+  → Cross-Origin Isolation の条件としても使える
+
+<span class="comment">// 導入のしやすさ:</span>
+<span class="comment">//   credentialless > require-corp</span>
+<span class="comment">//   （credentialless は既存リソースの変更が不要）</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — COEP 導入時の「壊れる」パターンを体験</div>
+    <p>
+      <code>COEP: require-corp</code> を設定したページから、
+      CORPが設定されていないクロスオリジン画像を読み込もうとすると<strong>ブロック</strong>されます。
+      ここではその仕組みをシミュレーションします。
+    </p>
+    <button class="btn btn-warn" id="btn-coep-sim">COEPブロックをシミュレーション</button>
+    <button class="btn btn-dim" id="btn-coep-sim-reset">クリア</button>
+    <pre id="coep-sim-result"><span class="placeholder">← ボタンを押すとシミュレーション結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-coep-sim').addEventListener('click', async () => {
+      const el = document.getElementById('coep-sim-result');
+      el.textContent = 'シミュレーション中...\n';
+
+      // Test 1: Resource with CORP header
+      let test1 = '';
+      try {
+        const res1 = await fetch('https://httpbin.org/response-headers?Cross-Origin-Resource-Policy=cross-origin');
+        test1 = res1.ok ? '✅ 読み込み成功' : '❌ ' + res1.status;
+        const corp1 = res1.headers.get('Cross-Origin-Resource-Policy');
+        test1 += ' (CORP: ' + (corp1 || 'なし') + ')';
+      } catch(e) {
+        test1 = '❌ ブロック: ' + e.message;
+      }
+
+      // Test 2: Resource without CORP header
+      let test2 = '';
+      try {
+        const res2 = await fetch('https://httpbin.org/get');
+        test2 = res2.ok ? '✅ 読み込み成功' : '❌ ' + res2.status;
+        const corp2 = res2.headers.get('Cross-Origin-Resource-Policy');
+        test2 += ' (CORP: ' + (corp2 || 'なし') + ')';
+      } catch(e) {
+        test2 = '❌ ブロック: ' + e.message;
+      }
+
+      el.textContent = 'シミュレーション結果:\n\n'
+        + '  テスト1: CORPヘッダーあり\n'
+        + '    → ' + test1 + '\n\n'
+        + '  テスト2: CORPヘッダーなし\n'
+        + '    → ' + test2 + '\n\n'
+        + '現在の状態の説明:\n'
+        + '  このページ自体に COEP が設定されていないため、\n'
+        + '  両方とも成功します（ブロックされません）。\n\n'
+        + '  もしサーバーが COEP: require-corp を返していたら:\n'
+        + '    テスト1 → ✅ 成功（CORPが設定されているため）\n'
+        + '    テスト2 → ❌ ブロック（CORPが未設定のため）\n\n'
+        + '→ 実験10-E の OutSystems環境で実際のブロック動作を確認します。';
+    });
+
+    document.getElementById('btn-coep-sim-reset').addEventListener('click', () => {
+      document.getElementById('coep-sim-result').innerHTML =
+        '<span class="placeholder">← ボタンを押すとシミュレーション結果が表示されます</span>';
+    });
+  </script>
+
+  <div class="warn-box">
+    <strong>COEP導入の最大の課題</strong>:
+    サードパーティのリソース（Google Analytics, 広告タグ, SNSウィジェット等）が
+    CORPを設定していない場合、<code>require-corp</code> ではブロックされます。
+    <code>credentialless</code> を使うか、サードパーティの対応を待つ必要があります。
+  </div>
+
+  <div class="note">
+    <strong>credentialless vs require-corp</strong>:
+    <code>credentialless</code> は Chrome 96+/Firefox 119+ で利用可能。
+    クロスオリジンリクエストから Cookie を除去することで、
+    機密データがプロセスに入ることを防ぎます。
+    リソース側の変更が不要なため、導入が圧倒的に楽です。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/Headers/Cross-Origin-Embedder-Policy" target="_blank">MDN — Cross-Origin-Embedder-Policy</a></span>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 10-C: COOP                               -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-10c">
+  <h3>実験 10-C: Cross-Origin-Opener-Policy（COOP）を理解する</h3>
+  <p>
+    COOPは<strong>トップレベルドキュメント</strong>に設定し、
+    <code>window.opener</code> や <code>window.open()</code> で
+    他オリジンのウィンドウとの参照共有を制限します。
+  </p>
+
+  <div class="diagram">COOP の動作:
+
+  COOP: unsafe-none（デフォルト）
+  ┌───────────────────┐         ┌───────────────────┐
+  │ https://a.example   │ ←────→ │ https://b.example   │
+  │  window.open()で    │ opener │  window.opener で   │
+  │  b.example を開く   │ 参照可 │  a.example を参照可 │
+  └───────────────────┘         └───────────────────┘
+
+  COOP: same-origin
+  ┌───────────────────┐    ✕    ┌───────────────────┐
+  │ https://a.example   │ ←──/─→ │ https://b.example   │
+  │  window.open()で    │ 参照   │  window.opener      │
+  │  b.example を開く   │ 切断   │  = null             │
+  └───────────────────┘         └───────────────────┘
+  → 同一プロセスに入らない → Spectre安全</div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — window.opener の存在を確認</div>
+    <button class="btn btn-accent" id="btn-coop-opener">window.opener を確認</button>
+    <pre id="coop-opener-result"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-coop-opener').addEventListener('click', () => {
+      const el = document.getElementById('coop-opener-result');
+      const hasOpener = window.opener !== null && window.opener !== undefined;
+      el.textContent = 'window.opener の状態:\n\n'
+        + '  window.opener: ' + (hasOpener ? '存在する' : 'null（存在しない）') + '\n\n'
+        + (hasOpener
+          ? '→ このページは別のウィンドウから開かれました。\n'
+            + '  opener を通じて元のウィンドウの情報にアクセスできる可能性があります。\n'
+            + '  COOP: same-origin が設定されていれば、これが防止されます。'
+          : '→ このページは直接開かれたか、COOP により opener が切断されています。\n'
+            + '  （通常のタブで開いた場合は null が正常です）')
+        + '\n\n注意:\n'
+        + '  window.opener はフィッシングやタブナビング攻撃に悪用されるリスクがあります。\n'
+        + '  例: opener.location = "https://phishing.example" で元タブをリダイレクト';
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — COOP の4つの値を比較</div>
+    <pre><span class="header-name">Cross-Origin-Opener-Policy の値:</span>
+
+<span class="header-val">unsafe-none</span>（デフォルト）
+  → 他オリジンのウィンドウと opener 参照を共有
+  → 従来の動作。フィッシングリスクあり
+
+<span class="highlight">same-origin</span>（最も安全）
+  → 同一オリジンのウィンドウとのみ opener を共有
+  → Cross-Origin Isolation の条件の一つ
+  → 他オリジンのポップアップとの連携が切れる
+
+<span class="header-val">same-origin-allow-popups</span>
+  → same-origin だが、自分が開いたポップアップとは連携可
+  → OAuth認可フロー等でポップアップが必要な場合に使用
+
+<span class="header-val">restrict-properties</span>（新しい値）
+  → window.closed, window.postMessage() のみ許可
+  → 他のプロパティへのアクセスは切断
+  → same-origin より柔軟だが安全性は確保</pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — ポップアップ連携への影響を体験</div>
+    <p>
+      <code>window.open()</code> でポップアップを開き、
+      そのウィンドウとの参照関係を確認します。
+    </p>
+    <button class="btn btn-accent3" id="btn-coop-popup">ポップアップを開いて確認</button>
+    <pre id="coop-popup-result"><span class="placeholder">← ボタンを押すとポップアップテストの結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-coop-popup').addEventListener('click', () => {
+      const el = document.getElementById('coop-popup-result');
+      el.textContent = 'ポップアップを開いています...\n';
+
+      // Open a same-origin popup (blank page)
+      const popup = window.open('about:blank', '_blank', 'width=400,height=300');
+      if (!popup) {
+        el.textContent = '❌ ポップアップがブロックされました。\n'
+          + 'ブラウザのポップアップブロッカーを一時的に無効にして試してください。';
+        return;
+      }
+
+      // Write content to popup
+      popup.document.write('<html><head><title>COOP Test Popup</title></head><body style="background:#1a1d27;color:#e0e0e8;font-family:monospace;padding:1rem;">'
+        + '<h2 style="color:#6ee7b7;">COOP テスト用ポップアップ</h2>'
+        + '<p>このウィンドウは window.open() で開かれました。</p>'
+        + '<p>window.opener: <strong>' + (popup.opener ? '存在する' : 'null') + '</strong></p>'
+        + '<p style="color:#8b8fa3;">3秒後に自動で閉じます...</p>'
+        + '</body></html>');
+
+      let canAccessOpener = false;
+      try {
+        // Check if the popup can reference back to us
+        canAccessOpener = popup.opener === window;
+      } catch(e) {
+        canAccessOpener = false;
+      }
+
+      el.textContent = 'ポップアップテスト結果:\n\n'
+        + '  ポップアップ window.opener: ' + (canAccessOpener ? '親ウィンドウを参照可 ✅' : '参照不可 ❌') + '\n'
+        + '  親からポップアップへの参照: ' + (popup ? '参照可 ✅' : '参照不可 ❌') + '\n\n'
+        + '現在の状態:\n'
+        + '  このページに COOP が設定されていないため、\n'
+        + '  ポップアップとの相互参照が可能です。\n\n'
+        + '  COOP: same-origin が設定された場合:\n'
+        + '    → クロスオリジンのポップアップの opener が null になる\n'
+        + '    → OAuth等のポップアップフローが壊れる可能性\n'
+        + '    → same-origin-allow-popups で回避可能';
+
+      // Auto-close popup after 3 seconds
+      setTimeout(() => {
+        if (popup && !popup.closed) popup.close();
+      }, 3000);
+    });
+  </script>
+
+  <div class="warn-box">
+    <strong>COOP: same-origin の注意点</strong>:
+    OAuth 2.0 のポップアップ認可フローや、決済ウィンドウ連携では
+    <code>window.opener</code> を利用するケースがあります。
+    <code>same-origin</code> にすると連携が切れるため、
+    <code>same-origin-allow-popups</code> または
+    <code>restrict-properties</code> の利用を検討してください。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/Headers/Cross-Origin-Opener-Policy" target="_blank">MDN — Cross-Origin-Opener-Policy</a></span>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 10-D: Cross-Origin Isolation              -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-10d">
+  <h3>実験 10-D: Cross-Origin Isolation の有効化条件と効果</h3>
+  <p>
+    COOP + COEP を組み合わせると <strong>Cross-Origin Isolation</strong> が有効になり、
+    強力なAPI（<code>SharedArrayBuffer</code> 等）が解放されます。
+  </p>
+
+  <div class="diagram">Cross-Origin Isolation の有効化条件:
+
+  ┌──────────────────────────────────────────┐
+  │ レスポンスヘッダー（両方必要）:              │
+  │                                            │
+  │   Cross-Origin-Opener-Policy: same-origin   │
+  │   Cross-Origin-Embedder-Policy: require-corp│
+  │                    または                    │
+  │   Cross-Origin-Embedder-Policy: credentialless│
+  │                                            │
+  │ + すべてのサブリソースが CORP/CORS で許可     │
+  └──────────────────────────────────────────┘
+            │
+            ▼
+  ┌──────────────────────────────────────────┐
+  │ JS で確認:                                 │
+  │   self.crossOriginIsolated === true         │
+  │                                            │
+  │ 解放される機能:                             │
+  │   ✅ SharedArrayBuffer                      │
+  │   ✅ performance.now() 高精度（5μs）         │
+  │   ✅ performance.measureUserAgentSpecificMemory()│
+  └──────────────────────────────────────────┘</div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — 現在の分離状態と利用可能な機能を総合チェック</div>
+    <button class="btn btn-accent" id="btn-isolation-check">総合チェック実行</button>
+    <pre id="isolation-result"><span class="placeholder">← ボタンを押すと総合チェック結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-isolation-check').addEventListener('click', () => {
+      const el = document.getElementById('isolation-result');
+      const checks = [];
+
+      // 1. crossOriginIsolated
+      const isolated = (typeof crossOriginIsolated !== 'undefined') ? crossOriginIsolated : false;
+      checks.push(['crossOriginIsolated', isolated, isolated ? '有効' : '無効']);
+
+      // 2. SharedArrayBuffer
+      let sab = false;
+      try { sab = typeof SharedArrayBuffer === 'function'; } catch(e) {}
+      checks.push(['SharedArrayBuffer', sab, sab ? '利用可能' : '利用不可']);
+
+      // 3. performance.now() precision
+      const samples = [];
+      for (let i = 0; i < 200; i++) samples.push(performance.now());
+      const diffs = [];
+      for (let i = 1; i < samples.length; i++) {
+        const d = samples[i] - samples[i-1];
+        if (d > 0) diffs.push(d);
+      }
+      const minDiff = diffs.length > 0 ? Math.min(...diffs) : 999;
+      const highPrecision = minDiff < 0.01;
+      checks.push(['performance.now() 精度', highPrecision,
+        highPrecision ? '高精度（~5μs）' : '粗粒化（~100μs）— 最小差分: ' + minDiff.toFixed(4) + 'ms']);
+
+      // 4. measureUserAgentSpecificMemory
+      let memApi = false;
+      try { memApi = typeof performance.measureUserAgentSpecificMemory === 'function'; } catch(e) {}
+      checks.push(['measureUserAgentSpecificMemory()', memApi, memApi ? '利用可能' : '利用不可']);
+
+      let out = '╔══════════════════════════════════════════════════╗\n'
+              + '║  Cross-Origin Isolation 総合チェック              ║\n'
+              + '╚══════════════════════════════════════════════════╝\n\n';
+
+      checks.forEach(([name, ok, desc]) => {
+        out += '  ' + (ok ? '✅' : '❌') + ' ' + name + '\n'
+            +  '     → ' + desc + '\n\n';
+      });
+
+      if (isolated) {
+        out += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'
+            +  '🎉 このページは Cross-Origin Isolated です！\n'
+            +  '  COOP + COEP が正しく設定されています。';
+      } else {
+        out += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'
+            +  '🔒 このページは Cross-Origin Isolated ではありません。\n\n'
+            +  '  有効化に必要なサーバー設定:\n'
+            +  '    Cross-Origin-Opener-Policy: same-origin\n'
+            +  '    Cross-Origin-Embedder-Policy: require-corp\n\n'
+            +  '  ローカル簡易サーバーでは設定できないため、\n'
+            +  '  実験10-E の OutSystems 環境で試します。';
+      }
+
+      el.textContent = out;
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — なぜ SharedArrayBuffer が制限されるのか</div>
+    <pre><span class="header-name">Spectre攻撃における SharedArrayBuffer の役割:</span>
+
+<span class="comment">// SharedArrayBuffer で高精度タイマーを構築（攻撃の前提条件）</span>
+const sab = new SharedArrayBuffer(4);
+const counter = new Int32Array(sab);
+
+<span class="comment">// Worker スレッドでカウンターをインクリメントし続ける</span>
+<span class="comment">// → ナノ秒精度のタイマーとして悪用可能</span>
+<span class="comment">// → キャッシュタイミングの差を検出</span>
+<span class="comment">// → 同じプロセス内の他オリジンのメモリを推測</span>
+
+<span class="highlight">対策: Cross-Origin Isolation なしでは SharedArrayBuffer を無効化</span>
+<span class="comment">// → プロセスが分離されていれば、他オリジンのメモリは存在しない</span>
+<span class="comment">// → 安全に SharedArrayBuffer を使える</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — performance.now() の精度差を体感</div>
+    <p>
+      Cross-Origin Isolation の有無で <code>performance.now()</code> の精度が変わります。
+      現在のページの精度を測定します。
+    </p>
+    <button class="btn btn-accent2" id="btn-perf-test">精度を測定</button>
+    <pre id="perf-result"><span class="placeholder">← ボタンを押すと測定結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-perf-test').addEventListener('click', () => {
+      const el = document.getElementById('perf-result');
+      const samples = [];
+      for (let i = 0; i < 500; i++) samples.push(performance.now());
+
+      const diffs = [];
+      for (let i = 1; i < samples.length; i++) {
+        const d = samples[i] - samples[i-1];
+        if (d > 0) diffs.push(d);
+      }
+
+      if (diffs.length === 0) {
+        el.textContent = 'すべてのサンプルが同一時刻でした（測定不能）';
+        return;
+      }
+
+      diffs.sort((a, b) => a - b);
+      const min = diffs[0];
+      const max = diffs[diffs.length - 1];
+      const median = diffs[Math.floor(diffs.length / 2)];
+
+      // Build histogram
+      const buckets = {};
+      diffs.forEach(d => {
+        const key = d.toFixed(3);
+        buckets[key] = (buckets[key] || 0) + 1;
+      });
+      const topBuckets = Object.entries(buckets)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8);
+
+      let hist = '';
+      const maxCount = Math.max(...topBuckets.map(b => b[1]));
+      topBuckets.forEach(([val, count]) => {
+        const bar = '█'.repeat(Math.round(count / maxCount * 20));
+        hist += '    ' + val.padStart(8) + 'ms │' + bar + ' (' + count + ')\n';
+      });
+
+      el.textContent = 'performance.now() 精度測定結果:\n\n'
+        + '  サンプル数: ' + diffs.length + ' 回の非ゼロ差分\n'
+        + '  最小差分:   ' + min.toFixed(4) + ' ms\n'
+        + '  中央値:     ' + median.toFixed(4) + ' ms\n'
+        + '  最大差分:   ' + max.toFixed(4) + ' ms\n\n'
+        + '  差分の分布（上位8件）:\n'
+        + hist
+        + '\n解説:\n'
+        + (min < 0.01
+          ? '  → 高精度（~5μs）: Cross-Origin Isolated の可能性\n'
+            + '  → Spectre安全のためプロセス分離が前提'
+          : '  → 粗粒化済み（~100μs）: 非Isolated環境の標準動作\n'
+            + '  → ブラウザがタイミング攻撃防止のため精度を落としています');
+    });
+  </script>
+
+  <div class="note">
+    <strong>なぜ精度を下げるのか？</strong>
+    タイミング攻撃ではキャッシュヒット（~数ns）とキャッシュミス（~100ns）の
+    時間差を検出してメモリ内容を推測します。
+    <code>performance.now()</code> の精度を 100μs に粗粒化すれば、
+    この差が検出できなくなります。
+    Cross-Origin Isolation 有効時はプロセスが分離されているため、
+    高精度に戻しても安全です。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/API/Performance/now" target="_blank">MDN — performance.now()</a></span>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 10-E: OutSystems                         -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-10e">
+  <h3>実験 10-E: OutSystems で COOP / COEP / CORP を確認する</h3>
+  <p>
+    OutSystems Personal Environment のレスポンスヘッダーを確認し、
+    Cross-Origin Isolation 関連のヘッダーの有無を調べます。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — OutSystems の画面を開いて Response Headers を確認</div>
+    <pre><span class="comment">// Lab 01 で作成した HeaderLab モジュールの画面を開く:</span>
+https://<span class="highlight">&lt;your-env&gt;</span>.outsystemscloud.com/HeaderLab/
+
+<span class="comment">// DevTools → Network → ドキュメントリクエストを選択 → Response Headers</span>
+
+<span class="header-name">以下のヘッダーを探す:</span>
+  Cross-Origin-Opener-Policy:   <span class="comment">← あるか？値は？</span>
+  Cross-Origin-Embedder-Policy: <span class="comment">← あるか？値は？</span>
+  Cross-Origin-Resource-Policy: <span class="comment">← あるか？値は？</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — REST API のレスポンスヘッダーも確認</div>
+    <pre><span class="comment">// REST API を呼んで比較:</span>
+https://<span class="highlight">&lt;your-env&gt;</span>.outsystemscloud.com/HeaderLab/rest/HeaderTest/GetInfo
+
+<span class="header-name">確認ポイント:</span>
+  1. 画面（HTML）と REST API で COOP/COEP/CORP の設定が異なるか？
+  2. OutSystems がデフォルトで設定しているセキュリティヘッダーは何か？
+  3. crossOriginIsolated は有効か？（Console で確認）</pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — Console で Cross-Origin Isolation を確認</div>
+    <pre><span class="comment">// OutSystems の画面を開いた状態で、DevTools Console に入力:</span>
+
+console.log('crossOriginIsolated:', <span class="highlight">crossOriginIsolated</span>);
+console.log('SharedArrayBuffer:', typeof <span class="highlight">SharedArrayBuffer</span>);
+
+<span class="comment">// 結果例（通常は false）:</span>
+<span class="comment">//   crossOriginIsolated: false</span>
+<span class="comment">//   SharedArrayBuffer: undefined</span>
+
+<span class="comment">// → OutSystems のデフォルト設定では</span>
+<span class="comment">//   COOP/COEP は設定されていない場合が多い</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 4 — OnApplicationReady でヘッダー情報を表示（応用）</div>
+    <pre><span class="comment">// Service Studio で HeaderLab モジュールに追加:</span>
+
+1. 画面に Text ウィジェットを追加
+   → Name: <span class="header-val">IsolationStatus</span>
+
+2. OnApplicationReady イベントで JavaScript ノードを追加:
+<span class="highlight">
+   var status = "Cross-Origin Isolated: " + crossOriginIsolated;
+   status += "\nSharedArrayBuffer: " + (typeof SharedArrayBuffer !== 'undefined');
+   $parameters.StatusText = status;
+</span>
+3. Output Parameter: StatusText (Text)
+4. Assign: IsolationStatus.Text = StatusText
+
+5. Publish → ブラウザで確認</pre>
+  </div>
+
+  <div class="note">
+    <strong>OutSystemsでCOOP/COEPを設定するには</strong>:
+    OutSystems の Factory Configuration や
+    HTTPセキュリティヘッダーの設定画面（LifeTime / Service Center）で
+    カスタムヘッダーを追加できます。
+    ただし、全サブリソース（画像, JS, CSS）に CORP が必要になるため、
+    影響範囲を十分にテストしてください。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/API/Window/crossOriginIsolated" target="_blank">MDN — crossOriginIsolated</a></span>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実践的な設定パターン                           -->
+<!-- ============================================ -->
+<hr>
+<h2>📐 実践的な設定パターン</h2>
+
+<div class="two-col">
+  <div class="col-card card-coop">
+    <h4>パターン A: 最大セキュリティ（WASM/計算処理サイト）</h4>
+    <pre>Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Embedder-Policy: require-corp
+
+サブリソース（自社CDN）:
+  Cross-Origin-Resource-Policy: same-site
+
+サブリソース（公開CDN）:
+  Cross-Origin-Resource-Policy: cross-origin
+
+→ SharedArrayBuffer が利用可能
+→ サードパーティ依存が少ないサイト向け</pre>
+  </div>
+  <div class="col-card card-coep">
+    <h4>パターン B: バランス型（一般的なWebアプリ）</h4>
+    <pre>Cross-Origin-Opener-Policy: same-origin-allow-popups
+Cross-Origin-Embedder-Policy: credentialless
+
+サブリソース:
+  CORP設定は不要（credentialless のため）
+
+→ OAuth ポップアップが動作する
+→ サードパーティリソースも読み込める
+→ Cross-Origin Isolation も有効</pre>
+  </div>
+</div>
+<div class="two-col">
+  <div class="col-card card-corp">
+    <h4>パターン C: 段階的導入（既存大規模サイト）</h4>
+    <pre>Phase 1: CORP のみ設定
+  自社CDNに Cross-Origin-Resource-Policy: cross-origin
+
+Phase 2: COEP を Report-Only で検証
+  Cross-Origin-Embedder-Policy-Report-Only: require-corp
+  → ブロックされるリソースを特定
+
+Phase 3: COEP を有効化
+  Cross-Origin-Embedder-Policy: require-corp
+  または credentialless
+
+Phase 4: COOP を追加
+  Cross-Origin-Opener-Policy: same-origin</pre>
+  </div>
+  <div class="col-card">
+    <h4 style="color:var(--danger);">❌ よくある誤設定</h4>
+    <pre style="color:var(--danger);">1. COEP: require-corp を設定したが
+   CDNリソースにCORPがない
+   → 画像/JS/CSSが読み込めなくなる
+
+2. COOP: same-origin を設定したが
+   OAuth ポップアップが壊れた
+   → same-origin-allow-popups に変更
+
+3. CORPを same-origin にしたが
+   サブドメインからアクセスできない
+   → same-site に変更
+
+4. iframe内のページにCOOPを設定
+   → COOPはトップレベルのみ有効
+   → iframe内では無視される</pre>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- チェックリスト                                 -->
+<!-- ============================================ -->
+<div class="note" style="border-color:var(--accent3);background:#f3e8fd;">
+  🔗 <strong style="color:var(--accent3);">多層防御クロスリファレンス</strong>：COOP/COEP/CORP（このLab）は <a href="http-header-lab-06.html">Lab 06-07 の CORS</a> の上位層です。CORS が「許可されたクロスオリジン通信」なら、Cross-Origin Isolation は「許可されていない通信を完全遮断」する仕組みです。
+</div>
+
+<hr>
+<h2 id="checklist">✅ Lab 10 チェックリスト</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">チェック状態はブラウザに自動保存されます。</p>
+
+<div class="check-item"><input type="checkbox" data-key="lab10-1"> <label>CORPの3つの値（same-origin / same-site / cross-origin）の違いを理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab10-2"> <label>CORPとCORSの違い（埋め込み許可 vs データ読み取り許可）を理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab10-3"> <label>COEPの値（unsafe-none / require-corp / credentialless）を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab10-4"> <label>COEPによるリソースブロックの仕組みを理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab10-5"> <label>COOPの値とwindow.openerへの影響を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab10-6"> <label>crossOriginIsolated の状態を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab10-7"> <label>performance.now() の精度と Cross-Origin Isolation の関係を理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab10-8"> <label>SharedArrayBuffer がSpectre対策で制限されている理由を理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab10-9"> <label>OutSystems でCOOP/COEP/CORPヘッダーの有無を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab10-10"> <label>実践的な設定パターン（最大セキュリティ / バランス型 / 段階的導入）を理解した</label></div>
+
+<div style="margin-top:1rem; text-align:center;">
+  <span id="progress-text" style="font-family:'IBM Plex Mono',monospace; color:var(--accent); font-size:0.9rem;"></span>
+</div>
+
+<!-- ── localStorage for checkboxes ── -->
+<script>
+  const STORAGE_PREFIX = 'httplab_';
+
+  function updateProgress() {
+    const all = document.querySelectorAll('input[type="checkbox"][data-key]');
+    const checked = [...all].filter(cb => cb.checked).length;
+    const el = document.getElementById('progress-text');
+    if (el) el.textContent = checked + ' / ' + all.length + ' 完了';
+  }
+
+  document.querySelectorAll('input[type="checkbox"][data-key]').forEach(cb => {
+    const saved = localStorage.getItem(STORAGE_PREFIX + cb.dataset.key);
+    if (saved === 'true') {
+      cb.checked = true;
+      cb.closest('.check-item')?.classList.add('checked');
+    }
+    cb.addEventListener('change', () => {
+      localStorage.setItem(STORAGE_PREFIX + cb.dataset.key, cb.checked);
+      cb.closest('.check-item')?.classList.toggle('checked', cb.checked);
+      updateProgress();
+    });
+  });
+
+  updateProgress();
+</script>
+
+<hr>
+
+<div class="lab-box" style="border-color:var(--warn);">
+  <h3 style="color:var(--warn);margin-top:0;">🚀 本番環境で確認すべきこと</h3>
+  <p style="font-size:0.82rem;color:var(--text-dim);">このLabの内容をデプロイ前に確認するチェックリストです。</p>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ <code>Cross-Origin-Opener-Policy: same-origin</code> が設定されている</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ <code>Cross-Origin-Embedder-Policy: require-corp</code> が設定されている</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ CDN上の静的アセットに <code>Cross-Origin-Resource-Policy: cross-origin</code> を設定している</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ <code>crossOriginIsolated === true</code> をDevTools Consoleで確認した</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ サードパーティリソースが CORP/CORS に対応していることを確認した（対応していない場合は <code>credentialless</code> を検討）</div>
+</div>
+
+<div class="note">
+  📖 <strong>参照資料</strong>：このLabの内容は <code>http-headers-guide-v2.md</code> の 第2部①「オリジンWebサーバー」の COOP/COEP 部分 に対応しています。より詳しい解説・ヘッダー一覧はガイドを参照してください。
+</div>
+
+<h2>📝 Lab 10 学習ノート</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">メモはブラウザに自動保存されます。</p>
+<textarea id="notes" rows="6" placeholder="気づいたこと、疑問点をメモ..."
+  style="width:100%;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:0.8rem;font-family:'Noto Sans JP',sans-serif;font-size:0.9rem;resize:vertical;margin-top:0.5rem;"></textarea>
+
+<script>
+  const notesEl = document.getElementById('notes');
+  const savedNotes = localStorage.getItem(STORAGE_PREFIX + 'lab10_notes');
+  if (savedNotes) notesEl.value = savedNotes;
+  notesEl.addEventListener('input', () => {
+    localStorage.setItem(STORAGE_PREFIX + 'lab10_notes', notesEl.value);
+  });
+</script>
+
+<hr>
+
+<h2>🔗 クイックリファレンス</h2>
+<div class="lab-box">
+  <pre><span class="header-name">ヘッダー設定の早見表:</span>
+
+<span class="header-val">オリジンWebサーバー（HTML配信）:</span>
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+
+<span class="header-val">自社CDN / 静的配信:</span>
+  Cross-Origin-Resource-Policy: same-site
+  <span class="comment">（または cross-origin — 公開リソースの場合）</span>
+
+<span class="header-val">パブリックCDN / 共有リソース:</span>
+  Cross-Origin-Resource-Policy: cross-origin
+
+<span class="header-val">REST API:</span>
+  Cross-Origin-Resource-Policy: same-origin
+  <span class="comment">（CORS で制御するため CORP は厳格に）</span>
+
+<span class="highlight">確認コマンド（DevTools Console）:</span>
+  crossOriginIsolated          <span class="comment">// true/false</span>
+  typeof SharedArrayBuffer     <span class="comment">// 'function' or 'undefined'</span>
+  performance.now()            <span class="comment">// 精度を観察</span></pre>
+</div>
+
+<p style="color:var(--text-dim); font-size:0.82rem; margin-top:2rem;">
+  ← 前回: <a href="http-header-lab-09.html"><strong>Lab 09 — セキュリティヘッダー</strong></a>（HSTS, X-Content-Type-Options, Referrer-Policy, Permissions-Policy）<br>
+  次回: <a href="http-header-lab-11.html"><strong>Lab 11 — Fetch Metadata</strong></a>（Sec-Fetch-Mode, Sec-Fetch-Site, Sec-Fetch-Dest, Sec-Fetch-User）<br><span style="color:var(--text-dim);font-size:0.78rem;">Cross-Origin Isolation の次は、Fetch Metadata でリクエストのコンテキストを判定する CSRF 防御へ</span>
+</p>
+
+</body>
+</html>

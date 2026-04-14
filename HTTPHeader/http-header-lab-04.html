@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HTTP Header Lab 04 - Cookie基礎</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;700&display=swap');
+  :root {
+    --bg: #ffffff; --surface: #f5f7fa; --surface2: #ebeef2; --border: #c8cdd3;
+    --text: #1a1a2e; --text-dim: #5c6370;
+    --accent: #005cc5; --accent2: #22863a; --accent3: #6f42c1;
+    --warn: #b08800; --danger: #cb2431; --code-bg: #f0f4f8; --radius: 10px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--text); line-height:1.8; padding:2rem; max-width:1100px; margin:0 auto; }
+  h1 { font-size:1.6rem; color:var(--accent); border-bottom:2px solid var(--border); padding-bottom:0.8rem; margin-bottom:1.5rem; font-family:'IBM Plex Mono',monospace; }
+  h2 { font-size:1.25rem; color:var(--accent2); margin:2rem 0 1rem; font-family:'IBM Plex Mono',monospace; }
+  h3 { font-size:1.05rem; color:var(--accent3); margin:1.5rem 0 0.8rem; }
+  p,li { font-size:0.92rem; margin-bottom:0.5rem; }
+  .status-bar { display:flex; gap:1rem; align-items:center; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:0.6rem 1rem; margin-bottom:1.5rem; font-size:0.82rem; font-family:'IBM Plex Mono',monospace; flex-wrap:wrap; }
+  .status-item { display:flex; align-items:center; gap:0.4rem; }
+  .status-dot { width:10px; height:10px; border-radius:50%; background:var(--text-dim); animation:pulse 1.5s infinite; }
+  .status-dot.ok { background:var(--accent); animation:none; }
+  .status-dot.err { background:var(--danger); animation:none; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+  .alert-critical { background:#fef2f2; border:2px solid var(--danger); border-radius:var(--radius); padding:1rem 1.2rem; margin-bottom:1.5rem; font-size:0.88rem; display:none; }
+  .alert-critical strong { color:var(--danger); }
+  .lab-box { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.5rem; margin:1.5rem 0; }
+  .step { background:var(--surface2); border-left:3px solid var(--accent2); border-radius:0 var(--radius) var(--radius) 0; padding:1rem 1.2rem; margin:1rem 0; }
+  .step-num { font-family:'IBM Plex Mono',monospace; color:var(--accent2); font-weight:600; font-size:0.8rem; margin-bottom:0.3rem; }
+  code,pre { font-family:'IBM Plex Mono',monospace; font-size:0.82rem; }
+  code { background:var(--code-bg); padding:0.15rem 0.4rem; border-radius:4px; color:var(--accent); }
+  pre { background:var(--code-bg); border:1px solid var(--border); border-radius:var(--radius); padding:1rem; overflow-x:auto; margin:0.8rem 0; line-height:1.6; color:#24292e; }
+  pre .comment { color:#6a737d; } pre .header-name { color:var(--accent2); } pre .header-val { color:var(--accent); } pre .highlight { color:var(--warn); font-weight:600; }
+  .placeholder { color:var(--text-dim); font-style:italic; font-size:0.8rem; }
+  .note { background:#e8f4fd; border:1px solid #b6d4e8; border-radius:var(--radius); padding:0.8rem 1rem; margin:1rem 0; font-size:0.85rem; color:var(--accent2); }
+  .note::before { content:"💡 "; }
+  .warn-box { background:#fff8e1; border:1px solid #e6d590; border-radius:var(--radius); padding:0.8rem 1rem; margin:1rem 0; font-size:0.85rem; color:var(--warn); }
+  .warn-box::before { content:"⚠️ "; }
+  .check-item { background:var(--surface2); border-radius:var(--radius); padding:0.6rem 1rem; margin:0.4rem 0; display:flex; align-items:center; gap:0.6rem; font-size:0.88rem; transition:opacity 0.3s; }
+  .check-item input[type="checkbox"] { width:18px; height:18px; accent-color:var(--accent); flex-shrink:0; }
+  .check-item.checked { opacity:0.55; }
+  .diagram { background:var(--code-bg); border:1px solid var(--border); border-radius:var(--radius); padding:1.2rem; font-family:'IBM Plex Mono',monospace; font-size:0.78rem; line-height:1.5; overflow-x:auto; white-space:pre; color:var(--text-dim); margin:1rem 0; }
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin:1rem 0; }
+  .three-col { display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.8rem; margin:1rem 0; }
+  @media(max-width:900px){.three-col{grid-template-columns:1fr;}} @media(max-width:768px){.two-col{grid-template-columns:1fr;}}
+  .col-card { background:var(--code-bg); border:1px solid var(--border); border-radius:var(--radius); padding:0.8rem; font-size:0.8rem; }
+  .col-card h4 { font-family:'IBM Plex Mono',monospace; font-size:0.78rem; margin-bottom:0.5rem; padding-bottom:0.4rem; border-bottom:1px solid var(--border); }
+  .col-card pre { border:none; padding:0.4rem 0; margin:0; font-size:0.75rem; background:transparent; }
+  a { color:var(--accent2); text-decoration:none; } a:hover { text-decoration:underline; }
+  hr { border:none; border-top:1px solid var(--border); margin:2.5rem 0; }
+  html { scroll-behavior:smooth; }
+  .btn { border:none; padding:0.5rem 1.2rem; border-radius:6px; cursor:pointer; font-weight:600; font-size:0.85rem; font-family:'Noto Sans JP',sans-serif; margin:0.3rem; transition:opacity 0.2s; }
+  .btn:hover { opacity:0.85; } .btn:active { transform:scale(0.97); } .btn:disabled { opacity:0.4; cursor:not-allowed; }
+  .btn-accent { background:var(--accent); color:var(--bg); }
+  .btn-accent2 { background:var(--accent2); color:var(--bg); }
+  .btn-accent3 { background:var(--accent3); color:var(--bg); }
+  .btn-warn { background:var(--warn); color:var(--bg); }
+  .btn-dim { background:var(--surface2); color:var(--text-dim); border:1px solid var(--border); }
+  .toc { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1rem 1.2rem; margin:1rem 0 2rem; }
+  .toc a { display:inline-block; padding:0.25rem 0.6rem; margin:0.15rem; border-radius:6px; font-size:0.82rem; background:var(--surface2); transition:background 0.2s; }
+  .toc a:hover { background:var(--border); text-decoration:none; }
+  /* cookie table */
+  .cookie-table { width:100%; border-collapse:collapse; font-size:0.82rem; margin:0.8rem 0; }
+  .cookie-table th { background:var(--surface2); color:var(--accent); padding:0.5rem 0.6rem; text-align:left; font-family:'IBM Plex Mono',monospace; border-bottom:2px solid var(--accent); }
+  .cookie-table td { padding:0.45rem 0.6rem; border-bottom:1px solid var(--border); vertical-align:top; }
+  .cookie-table tr:hover { background:var(--surface); }
+</style>
+</head>
+<body>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <div class="status-item"><div class="status-dot" id="dot-protocol"></div><span id="status-protocol">確認中...</span></div>
+  <div class="status-item"><div class="status-dot" id="dot-httpbin"></div><span id="status-httpbin">httpbin.org 確認中...</span></div>
+  <div class="status-item"><div class="status-dot" id="dot-devtools"></div><span>DevTools: <kbd style="background:var(--surface2);padding:0.1rem 0.4rem;border-radius:4px;">F12</kbd></span></div>
+</div>
+<p style="margin-bottom:0.5rem;font-size:0.82rem;"><a href="http-header-lab-index.html" style="color:var(--accent);text-decoration:none;">← マスター索引に戻る</a></p>
+<script>
+(function(){const d=document.getElementById('dot-protocol'),l=document.getElementById('status-protocol');if(location.protocol==='file:'){d.classList.add('err');l.innerHTML='<strong style="color:var(--danger)">file:// 検出</strong>';document.getElementById('file-protocol-alert').style.display='block';}else{d.classList.add('ok');l.textContent=location.protocol+'// ✅';}})();
+(async function(){const d=document.getElementById('dot-httpbin'),l=document.getElementById('status-httpbin');try{const c=new AbortController();const t=setTimeout(()=>c.abort(),5000);const r=await fetch('https://httpbin.org/get',{signal:c.signal});clearTimeout(t);if(r.ok){d.classList.add('ok');l.textContent='httpbin.org ✅';}else{d.classList.add('err');l.innerHTML='<strong style="color:var(--danger)">httpbin.org エラー</strong>';}}catch(e){d.classList.add('err');l.innerHTML='<strong style="color:var(--danger)">httpbin.org ❌</strong>';}})();
+</script>
+
+<div class="alert-critical" id="file-protocol-alert">
+  <strong>🔴 HTTP サーバー経由で開いてください</strong><br>
+  Lab 01 で起動したサーバーが動いていれば
+  <code>http://127.0.0.1:7890/http-header-lab-04.html</code> を開くだけでOKです。
+</div>
+
+<h1>🧪 Lab 04: Cookie基礎</h1>
+<p style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.3rem;font-family:'IBM Plex Mono',monospace;">最終更新: 2026年3月</p>
+<p style="color:var(--text-dim); font-size:0.88rem; margin-bottom:1rem;">
+  ～ Set-Cookie, Cookie, Path, Domain, Expires / Max-Age を体感する ～
+</p>
+<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">⏱ 所要時間：20分</span>
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">難易度：★☆☆</span>
+</div>
+<p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:1rem;">📋 前提知識：<a href="http-header-lab-01.html">Lab 01</a> 完了推奨（HTTPリクエスト/レスポンスの基本）</p>
+
+<div class="lab-box" style="border-color:var(--accent); margin-bottom:1rem;">
+  <h3 style="color:var(--accent); margin-top:0;">🎯 このLabの学習目標</h3>
+  <p style="margin-bottom:0.3rem;">完了すると、以下ができるようになります：</p>
+  <div class="check-item" style="opacity:1;"><span>1. <code>Set-Cookie</code>（レスポンス）と <code>Cookie</code>（リクエスト）の送受信の仕組みを体感する</span></div>
+  <div class="check-item" style="opacity:1;"><span>2. <code>Path</code> と <code>Domain</code> 属性によるCookieの送信範囲制御を確認する</span></div>
+  <div class="check-item" style="opacity:1;"><span>3. <code>Expires</code> と <code>Max-Age</code> によるCookieの寿命管理を体感する</span></div>
+  <div class="check-item" style="opacity:1;"><span>4. セッションCookieと永続Cookieの違いを理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>5. DevTools の Application タブで Cookie を確認・削除する操作を習得する</span></div>
+</div>
+<div class="warn-box" style="border-color:var(--accent3);background:#fce4ec;">
+  <strong style="color:var(--accent3);">💥 実務での失敗例</strong>：<code>Domain</code> 属性を <code>.example.com</code> に設定 → 意図しないサブドメイン（staging.example.com）にもCookieが送信されセッション漏洩
+</div>
+
+<div class="warn-box">
+  <strong style="color:var(--danger);">このLabで使うDevToolsタブ</strong>:
+  Network タブ（ヘッダー確認）に加え、<strong>Application タブ → Cookies</strong> を頻繁に使います。<br>
+  <code>F12</code> → <strong>Application</strong> → 左メニュー → <strong>Cookies</strong> → ドメインを選択
+</div>
+
+<div class="toc">
+  <strong style="color:var(--text-dim);font-size:0.82rem;">目次:</strong><br>
+  <a href="#concept">概念整理</a>
+  <a href="#exp-4a">4-A: Set-Cookie と Cookie</a>
+  <a href="#exp-4b">4-B: Path 属性</a>
+  <a href="#exp-4c">4-C: Domain 属性</a>
+  <a href="#exp-4d">4-D: Expires と Max-Age</a>
+  <a href="#exp-4e">4-E: OutSystems 実践</a>
+  <a href="#checklist">✅ チェックリスト</a>
+</div>
+
+<!-- ── 概念整理 ── -->
+<div class="lab-box" id="concept">
+  <h3>Cookieの全体像</h3>
+
+  <div class="diagram">Cookie のライフサイクル:
+
+  1. サーバーがレスポンスで Cookie を「設定」
+     HTTP/1.1 200 OK
+     Set-Cookie: session_id=abc123; Path=/; Max-Age=3600
+
+  2. ブラウザが Cookie を「保存」
+     → Application タブ → Cookies に表示される
+
+  3. 次回以降のリクエストでブラウザが自動的に「送信」
+     GET /page HTTP/1.1
+     Cookie: session_id=abc123
+     → 条件（Path, Domain, Secure等）に合致する場合のみ送信
+
+  4. Cookie の「消滅」
+     → Max-Age 経過 or Expires 到達 → 自動削除
+     → ブラウザを閉じる → セッションCookie は消滅
+     → サーバーが Max-Age=0 で上書き → 即座に削除</div>
+
+  <div class="two-col">
+    <div class="col-card">
+      <h4 style="color:var(--accent);">Set-Cookie（サーバー → ブラウザ）</h4>
+      <pre>レスポンスヘッダーで送信。
+1つの Set-Cookie で 1つの Cookie を設定。
+複数の Cookie を設定するには
+複数の Set-Cookie ヘッダーが必要。
+
+Set-Cookie: name=value; Path=/; Max-Age=3600
+Set-Cookie: theme=dark; Path=/; Max-Age=86400</pre>
+    </div>
+    <div class="col-card">
+      <h4 style="color:var(--accent2);">Cookie（ブラウザ → サーバー）</h4>
+      <pre>リクエストヘッダーで送信。
+全てのCookieが1つのヘッダーに
+セミコロン区切りで入る。
+属性（Path等）は送信されない。
+
+Cookie: name=value; theme=dark</pre>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Set-Cookie と Cookie の非対称性</strong>:
+    サーバーは <code>Set-Cookie</code> を複数行で属性付きで送りますが、
+    ブラウザは <code>Cookie</code> を1行に「名前=値」だけをまとめて返します。
+    サーバーは「どのPathで設定されたか」等の属性情報を受け取れません。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/Cookies" target="_blank">MDN — HTTP Cookie</a></span>
+  </div>
+</div>
+
+<!-- ── 実験 4-A ── -->
+<div class="lab-box" id="exp-4a">
+  <h3>実験 4-A: Set-Cookie と Cookie の送受信を観察する</h3>
+  <p>httpbin.org の <code>/cookies/set</code> エンドポイントで Cookie を設定し、
+  <code>/cookies</code> で現在の Cookie を確認します。</p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — Cookie を設定する</div>
+    <p>ボタンを押すと httpbin.org に Cookie を設定させます。</p>
+    <button class="btn btn-accent" id="btn-set-cookie">Cookie を設定（lab_user=Tom）</button>
+    <button class="btn btn-accent2" id="btn-read-cookie">現在の Cookie を取得</button>
+    <button class="btn btn-accent3" id="btn-delete-cookie">Cookie を削除</button>
+    <pre id="cookie-result"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-set-cookie').addEventListener('click', async () => {
+      const el = document.getElementById('cookie-result');
+      const btn = document.getElementById('btn-set-cookie');
+      btn.disabled = true;
+      el.textContent = 'Cookie設定中...';
+      console.group('【4-A】Cookie設定');
+      console.log('▶ [Step 1] リクエスト送信: https://httpbin.org/cookies/set?lab_user=Tom');
+      try {
+        const res = await fetch('https://httpbin.org/cookies/set?lab_user=Tom', {
+          credentials: 'include',
+          redirect: 'follow'
+        });
+        console.log('▶ [Step 2] レスポンス受信: Status', res.status, res.statusText);
+        if (!res.ok) throw new Error('HTTPエラー: ' + res.status + ' ' + res.statusText);
+        const data = await res.json();
+        console.log('▶ [Step 3] JSONデータ:', data);
+        const hasCookies = data.cookies && Object.keys(data.cookies).length > 0;
+        el.textContent = (hasCookies ? '✅ Cookie を設定しました！' : '⚠ Cookie の設定が反映されていない可能性があります')
+          + '\n\nhttpbin.org が認識しているCookie:\n'
+          + '  ' + JSON.stringify(data.cookies, null, 2)
+          + '\n\n確認手順:\n'
+          + '  DevTools → Application → Cookies → httpbin.org\n'
+          + '  → lab_user = Tom が表示されているか確認'
+          + (!hasCookies
+            ? '\n\n🔴 Cookieが空の場合（サードパーティCookieブロック）:\n'
+              + '  ブラウザの別タブで直接アクセスしてください:\n'
+              + '  1. https://httpbin.org/cookies/set/lab_user/Tom\n'
+              + '  2. https://httpbin.org/cookies\n'
+              + '  → 同一オリジンなので確実に動作します'
+            : '');
+      } catch(e) {
+        console.error('❌ エラー:', e);
+        const isCorsOrBlock = e.message.includes('Failed to fetch') || e.name === 'TypeError';
+        el.textContent = '❌ エラー: ' + e.message
+          + (isCorsOrBlock
+            ? '\n\n🔴 サードパーティCookieがブロックされている可能性があります。\n\n'
+              + '代替手順（ブラウザの別タブで直接確認）:\n'
+              + '  1. https://httpbin.org/cookies/set/lab_user/Tom を開く\n'
+              + '  2. https://httpbin.org/cookies を開く\n'
+              + '  → 同一オリジンなので確実に動作します'
+            : '\n\nDevTools → Console タブでエラー詳細を確認してください');
+      }
+      console.groupEnd();
+      btn.disabled = false;
+    });
+
+    document.getElementById('btn-read-cookie').addEventListener('click', async () => {
+      const el = document.getElementById('cookie-result');
+      const btn = document.getElementById('btn-read-cookie');
+      btn.disabled = true;
+      el.textContent = 'Cookie読み取り中...';
+      console.group('【4-A】Cookie読み取り');
+      try {
+        const res = await fetch('https://httpbin.org/cookies', { credentials: 'include' });
+        if (!res.ok) throw new Error('HTTPエラー: ' + res.status);
+        const data = await res.json();
+        console.log('受信データ:', data);
+        el.textContent = 'httpbin.org が受け取った Cookie:\n'
+          + '  ' + JSON.stringify(data.cookies, null, 2) + '\n\n'
+          + 'DevTools で確認:\n'
+          + '  Network タブ → このリクエスト → Request Headers → Cookie\n'
+          + '  Application タブ → Cookies → httpbin.org';
+      } catch(e) {
+        el.textContent = 'エラー: ' + e.message
+          + '\n\n代替: ブラウザの別タブで https://httpbin.org/cookies を開いてください';
+      }
+      console.groupEnd();
+      btn.disabled = false;
+    });
+
+    document.getElementById('btn-delete-cookie').addEventListener('click', async () => {
+      const el = document.getElementById('cookie-result');
+      const btn = document.getElementById('btn-delete-cookie');
+      btn.disabled = true;
+      el.textContent = 'Cookie削除中...';
+      try {
+        const res = await fetch('https://httpbin.org/cookies/delete?lab_user=', {
+          credentials: 'include', redirect: 'follow'
+        });
+        if (!res.ok) throw new Error('HTTPエラー: ' + res.status);
+        const data = await res.json();
+        el.textContent = '🗑 Cookie を削除しました\n\n'
+          + '削除方法: サーバーが Max-Age=0 の Set-Cookie を返す\n'
+          + '  Set-Cookie: lab_user=; Max-Age=0; Path=/\n\n'
+          + '現在のCookie:\n  ' + JSON.stringify(data.cookies, null, 2) + '\n\n'
+          + 'DevTools → Application → Cookies で消えていることを確認';
+      } catch(e) { el.textContent = 'エラー: ' + e.message; }
+      btn.disabled = false;
+    });
+  </script>
+
+  <div class="danger-box" style="background:#fef2f2; border:1px solid #f5c6c6; color:var(--danger);">
+    <strong>サードパーティCookie の制約（重要）</strong>:<br>
+    このHTMLは <code>127.0.0.1:7890</code> で動作しており、httpbin.org は<strong>別オリジン</strong>です。
+    最新のブラウザ（特にSafari, Firefox, Chrome Incognito）では、
+    サードパーティCookieがデフォルトでブロックされるため、ボタン操作でCookieが設定されない場合があります。<br><br>
+    <strong>確実な代替手順</strong>:<br>
+    httpbin.org を<strong>ブラウザの別タブで直接開いて</strong>操作してください：<br>
+    ① <a href="https://httpbin.org/cookies/set/lab_user/Tom" target="_blank" style="color:var(--warn);">https://httpbin.org/cookies/set/lab_user/Tom</a> → Cookie設定<br>
+    ② <a href="https://httpbin.org/cookies" target="_blank" style="color:var(--warn);">https://httpbin.org/cookies</a> → Cookie確認<br>
+    ③ DevTools → Application → Cookies → httpbin.org で属性を確認
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — DevTools Application タブでの確認方法</div>
+    <pre><span class="comment">// DevTools → Application → Cookies → ドメイン選択</span>
+
+表示される列:
+  <span class="header-name">Name</span>        Cookie名（lab_user）
+  <span class="header-name">Value</span>       値（Tom）
+  <span class="header-name">Domain</span>      送信先ドメイン（httpbin.org）
+  <span class="header-name">Path</span>        送信先パス（/）
+  <span class="header-name">Expires</span>     有効期限（Session = ブラウザ終了で消滅）
+  <span class="header-name">Size</span>        Cookieのバイトサイズ
+  <span class="header-name">HttpOnly</span>    JSからアクセス不可か
+  <span class="header-name">Secure</span>      HTTPS時のみ送信か
+  <span class="header-name">SameSite</span>    クロスサイト送信ポリシー
+  <span class="header-name">Priority</span>    削除時の優先度
+
+<span class="highlight">右クリック → Delete で個別削除</span>
+<span class="highlight">上部の 🚫 ボタンで全Cookie削除</span></pre>
+  </div>
+</div>
+
+<!-- ── 実験 4-B ── -->
+<div class="lab-box" id="exp-4b">
+  <h3>実験 4-B: Path 属性 — Cookieの送信範囲を制限する</h3>
+  <p>
+    <code>Path</code> 属性は「どのURLパスにリクエストする時にこのCookieを送信するか」を制御します。
+  </p>
+
+  <div class="diagram">Path の動作:
+
+  Set-Cookie: token=abc; Path=/api
+
+  リクエスト先             Cookie送信?
+  ─────────────────────────────────────
+  /api/users              ✅ 送信される（/api で始まる）
+  /api/users/123          ✅ 送信される（/api で始まる）
+  /api                    ✅ 送信される（完全一致）
+  /dashboard              ❌ 送信されない
+  /                       ❌ 送信されない
+  /api-docs               ❌ 送信されない（/api/ ではなく /api- ）
+
+  Set-Cookie: session=xyz; Path=/
+
+  → すべてのパスで送信される（デフォルト）</div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — Path によるCookie送信範囲をJSで体験する</div>
+    <p>同一オリジン（このページ）でPath属性の異なるCookieを設定し、<code>document.cookie</code>での可視性を確認します。</p>
+    <button class="btn btn-accent" id="btn-path-set">Path違いのCookieを3つ設定</button>
+    <button class="btn btn-accent2" id="btn-path-read">document.cookie を読み取り</button>
+    <button class="btn btn-dim" id="btn-path-clear">全削除</button>
+    <pre id="path-result"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-path-set').addEventListener('click', () => {
+      const el = document.getElementById('path-result');
+      // Path=/ — すべてのパスで送信
+      document.cookie = 'cookie_root=全パスで送信; Path=/; Max-Age=120';
+      // Path=/http-header — このLabファイルのパスに一致する場合のみ
+      document.cookie = 'cookie_lab=labパスのみ; Path=/http-header; Max-Age=120';
+      // Path=/other — このページのパスと一致しない
+      document.cookie = 'cookie_other=別パス用; Path=/other; Max-Age=120';
+
+      el.textContent = '3つの Cookie を設定しました:\n\n'
+        + '  1. cookie_root   → Path=/          （全パス）\n'
+        + '  2. cookie_lab    → Path=/http-header（Lab関連パス）\n'
+        + '  3. cookie_other  → Path=/other      （別パス）\n\n'
+        + '現在のURL パス: ' + location.pathname + '\n\n'
+        + '→ 「document.cookie を読み取り」ボタンで\n'
+        + '  どれが見えるか確認してください\n\n'
+        + '→ DevTools → Application → Cookies → ' + location.host + '\n'
+        + '  で3つとも表示されるが、Path列の値が異なることを確認';
+    });
+
+    document.getElementById('btn-path-read').addEventListener('click', () => {
+      const el = document.getElementById('path-result');
+      const cookies = document.cookie;
+      const currentPath = location.pathname;
+      el.textContent = '現在のURL パス: ' + currentPath + '\n\n'
+        + 'document.cookie で読み取れる Cookie:\n'
+        + '  ' + (cookies || '(なし)') + '\n\n'
+        + '解説:\n'
+        + '  cookie_root (Path=/)           → ' + (cookies.includes('cookie_root') ? '✅ 読める（/は全パスに一致）' : '❌ 読めない') + '\n'
+        + '  cookie_lab  (Path=/http-header) → ' + (cookies.includes('cookie_lab') ? '✅ 読める（現在のパスが一致）' : '❌ 読めない（パス不一致）') + '\n'
+        + '  cookie_other (Path=/other)      → ' + (cookies.includes('cookie_other') ? '✅ 読める' : '❌ 読めない（パス不一致）') + '\n\n'
+        + '→ Path が現在のURLパスに一致するCookieのみ読める！\n'
+        + '  （ただし Application タブでは全Cookie が表示される）';
+    });
+
+    document.getElementById('btn-path-clear').addEventListener('click', () => {
+      document.cookie = 'cookie_root=; Path=/; Max-Age=0';
+      document.cookie = 'cookie_lab=; Path=/http-header; Max-Age=0';
+      document.cookie = 'cookie_other=; Path=/other; Max-Age=0';
+      document.getElementById('path-result').textContent = '🗑 3つの Cookie を削除しました\n\n'
+        + 'Application タブで消えていることを確認してください';
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — httpbin.org でも確認（任意）</div>
+    <pre><span class="comment">// ブラウザの別タブで httpbin.org を直接開いて確認:</span>
+
+<span class="comment">// 1. Path=/ のCookieを設定</span>
+https://httpbin.org/cookies/set/global_cookie/hello
+
+<span class="comment">// 2. 確認 — すべてのパスで送信される</span>
+https://httpbin.org/cookies
+https://httpbin.org/anything/test
+<span class="comment">→ 両方で global_cookie=hello が表示される</span></pre>
+  </div>
+
+  <div class="note">
+    <strong>Path のベストプラクティス</strong>:
+    <code>Path=/</code> がデフォルトで最も広い範囲。
+    APIトークンなど限定的なCookieには <code>Path=/api</code> を設定して送信範囲を絞ると、
+    不要なCookie送信によるリクエストヘッダーサイズの増加を防げます（パフォーマンス上の理由）。<br>
+    ただし、<strong>Path はセキュリティ境界ではありません</strong>。別Path のCookieも iframe 等を経由すれば読み取れる場合があります。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/Cookies#path_%E5%B1%9E%E6%80%A7" target="_blank">MDN — Cookie Path属性</a></span>
+  </div>
+</div>
+
+<!-- ── 実験 4-C ── -->
+<div class="lab-box" id="exp-4c">
+  <h3>実験 4-C: Domain 属性 — サブドメインへの共有</h3>
+  <p>
+    <code>Domain</code> 属性は「どのドメインにリクエストする時にCookieを送信するか」を制御します。
+  </p>
+
+  <div class="diagram">Domain の動作:
+
+  ケース1: Domain を省略（推奨 — 最も厳格）
+    Set-Cookie: token=abc
+    設定ドメイン: www.example.com
+    → www.example.com にのみ送信
+    → api.example.com には送信されない ✅ セキュア
+
+  ケース2: Domain を明示（サブドメイン共有）
+    Set-Cookie: token=abc; Domain=example.com
+    → www.example.com  に送信 ✅
+    → api.example.com  に送信 ✅
+    → admin.example.com に送信 ✅ ← 全サブドメインに共有！
+    → example.com      に送信 ✅
+    → other.com        には送信されない ❌
+
+  ケース3: 先頭ドット（レガシー表記）
+    Set-Cookie: token=abc; Domain=.example.com
+    → 現代ブラウザでは Domain=example.com と同じ扱い
+    → 先頭ドットは無視される（RFC 6265）
+
+  ケース4: 上位ドメインへの設定（ブラウザが拒否）
+    www.example.com が Set-Cookie: ...; Domain=.com を設定
+    → ブラウザが拒否する（Public Suffix List に該当するドメインには設定不可）
+    → .co.jp, .github.io なども同様に設定不可</div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — Domain 属性の違いを理解する</div>
+    <pre><span class="comment">// 実務でのよくあるシナリオ:</span>
+
+<span class="header-name">シングルドメイン構成</span>（www.example.com のみ）:
+  → Domain を省略。最もセキュア。
+  → <span class="header-val">Set-Cookie: session=abc; Path=/; Secure; HttpOnly</span>
+
+<span class="header-name">サブドメイン共有構成</span>（www + api + admin）:
+  → Domain を明示して共有。
+  → <span class="header-val">Set-Cookie: session=abc; Domain=example.com; Path=/; Secure; HttpOnly</span>
+  → www, api, admin すべてで同じセッションを使用可能。
+
+<span class="highlight">⚠ Domain を広げるほどリスクも広がる:</span>
+  <span class="comment">admin.example.com にXSS脆弱性がある場合、</span>
+  <span class="comment">Domain=example.com で設定したセッションCookieが盗まれる可能性あり。</span>
+  <span class="comment">→ 可能な限り Domain は省略するのが安全。</span></pre>
+  </div>
+
+  <div class="note">
+    <strong>__Host- プレフィックスとDomain</strong>:
+    <code>__Host-session=abc</code> のように Cookie名に <code>__Host-</code> プレフィックスを付けると、
+    <code>Secure</code> + <code>Path=/</code> + <code>Domain未指定</code> が強制されます。
+    これにより Domain 属性による意図しないサブドメイン共有を防げます。Lab 05 で詳しく扱います。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/Cookies#cookie_%E3%81%AE%E3%83%97%E3%83%AC%E3%83%95%E3%82%A3%E3%83%83%E3%82%AF%E3%82%B9" target="_blank">MDN — Cookieプレフィックス</a></span>
+  </div>
+</div>
+
+<!-- ── 実験 4-D ── -->
+<div class="lab-box" id="exp-4d">
+  <h3>実験 4-D: Expires と Max-Age — Cookieの寿命</h3>
+  <p>
+    Cookieの寿命を制御する2つの方法と、セッションCookie vs 永続Cookieの違いを確認します。
+  </p>
+
+  <div class="two-col">
+    <div class="col-card">
+      <h4 style="color:var(--accent);">セッションCookie</h4>
+      <pre>Expires も Max-Age も指定しない:
+  Set-Cookie: temp=value
+
+→ ブラウザを閉じると消滅
+→ Application タブの Expires 列に
+  「Session」と表示される
+→ 用途: 一時的な状態保持</pre>
+    </div>
+    <div class="col-card">
+      <h4 style="color:var(--accent2);">永続Cookie</h4>
+      <pre>Expires または Max-Age を指定:
+  Set-Cookie: pref=dark; Max-Age=2592000
+
+→ 指定期間まで保持（ブラウザ閉じても残る）
+→ Application タブに具体的な日時が表示
+→ 用途: ログイン状態、設定の記憶
+
+Max-Age=0 → 即座に削除（Cookie消去用）</pre>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — Expires vs Max-Age の違い</div>
+    <pre><span class="header-name">Expires</span>（絶対日時）:
+  Set-Cookie: token=abc; <span class="header-val">Expires=Thu, 01 Jan 2028 00:00:00 GMT</span>
+  → 指定した日時に期限切れ
+  → サーバーとブラウザの時計がずれると不正確
+  → HTTP/1.0 時代の方式
+
+<span class="header-name">Max-Age</span>（相対秒数）:
+  Set-Cookie: token=abc; <span class="header-val">Max-Age=3600</span>
+  → レスポンスを受け取ってから3600秒（1時間）後に期限切れ
+  → 時計のずれに影響されない
+  → <span class="highlight">★ 重要: Max-Age と Expires の両方が指定された場合、Max-Age が優先され Expires は無視される</span>
+
+<span class="comment">// よく使う Max-Age 値:</span>
+  <span class="header-val">Max-Age=3600</span>      → 1時間
+  <span class="header-val">Max-Age=86400</span>     → 1日
+  <span class="header-val">Max-Age=604800</span>    → 1週間
+  <span class="header-val">Max-Age=2592000</span>   → 30日
+  <span class="header-val">Max-Age=31536000</span>  → 1年（永続Cookie の実用上の最大値）
+  <span class="header-val">Max-Age=0</span>          → <span class="highlight">即座に削除</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — セッションCookieの消滅を体験する</div>
+    <p>以下の手順で「セッションCookie」の消滅を確認してください：</p>
+    <pre><span class="comment">// 手順:</span>
+1. httpbin.org でCookieを設定（ExpiresもMax-Ageもなし）:
+   https://httpbin.org/cookies/set/session_test/hello
+
+2. Application → Cookies → httpbin.org で確認:
+   Expires 列に <span class="highlight">「Session」</span> と表示されている
+
+3. ブラウザを完全に閉じる（全タブ・全ウィンドウ）
+   → Ctrl+Shift+Q (Chrome) で完全終了
+
+4. 再度ブラウザを開き、httpbin.org/cookies にアクセス:
+   → session_test は消滅しているはず
+
+<span class="comment">// 注意: Chrome の「前回のページを開く」設定が有効だと</span>
+<span class="comment">// セッションCookieが復元される場合があります。</span></pre>
+  </div>
+
+  <div class="warn-box">
+    <strong>Chrome の「セッション復元」に注意</strong>:
+    Chrome の設定で「前回開いていたページを開く」が有効だと、
+    セッションCookieがブラウザ再起動後も復元されることがあります。
+    テスト時は Incognito モード（<code>Ctrl+Shift+N</code>）を使うと確実です。
+  </div>
+</div>
+
+<!-- ── 実験 4-E: OutSystems ── -->
+<div class="lab-box" id="exp-4e">
+  <h3>実験 4-E: OutSystems で Cookie を設定する</h3>
+  <p>HeaderLab モジュールに Cookie 設定用の REST API メソッドを追加します。</p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — SetCookie メソッドを作成</div>
+    <pre><span class="comment">// Service Studio — HeaderLab モジュール</span>
+
+1. HeaderTest REST API に新しいメソッドを追加:
+   名前: <span class="header-val">SetCookieDemo</span>
+   HTTP Method: <span class="header-val">GET</span>
+
+2. Input Parameter:
+   名前: <span class="header-val">CookieName</span>  (Text型, Mandatory)
+   名前: <span class="header-val">CookieValue</span> (Text型, Mandatory)
+   名前: <span class="header-val">MaxAgeSec</span>   (Integer型, Default=0)
+   Receive In: <span class="header-val">URL</span>（全パラメータ）
+
+3. Output Parameter:
+   名前: <span class="header-val">Message</span> (Text型)
+
+4. フロー:
+   a. If ノード: MaxAgeSec > 0
+      True → <span class="highlight">SetResponseHeader("Set-Cookie",
+        CookieName + "=" + CookieValue
+        + "; Path=/; Max-Age=" + MaxAgeSec)</span>
+      False → <span class="highlight">SetResponseHeader("Set-Cookie",
+        CookieName + "=" + CookieValue
+        + "; Path=/")</span>
+        <span class="comment">// Max-Ageなし → セッションCookie</span>
+
+   b. Assign:
+      Message = "Cookie set: " + CookieName + "=" + CookieValue
+
+5. <span class="highlight">Publish</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 動作確認</div>
+    <pre><span class="comment">// セッションCookie を設定:</span>
+https://&lt;env&gt;.../SetCookieDemo?CookieName=<span class="header-val">test_session</span>&amp;CookieValue=<span class="header-val">hello</span>
+
+<span class="comment">// 永続Cookie を設定（1時間）:</span>
+https://&lt;env&gt;.../SetCookieDemo?CookieName=<span class="header-val">test_persist</span>&amp;CookieValue=<span class="header-val">world</span>&amp;MaxAgeSec=<span class="header-val">3600</span>
+
+<span class="comment">// 確認手順:</span>
+1. DevTools → Network → レスポンスヘッダー:
+   <span class="header-name">Set-Cookie</span>: test_session=hello; Path=/
+   <span class="header-name">Set-Cookie</span>: test_persist=world; Path=/; Max-Age=3600
+
+2. DevTools → Application → Cookies → &lt;env&gt;.outsystemscloud.com:
+   test_session → Expires: <span class="highlight">Session</span>
+   test_persist → Expires: <span class="highlight">具体的な日時</span>
+
+3. OutSystemsの別の画面にアクセス:
+   → Network → Request Headers → Cookie:
+   <span class="header-name">Cookie</span>: test_session=hello; test_persist=world
+   → <span class="highlight">同一ドメインなので自動送信される！</span>
+
+<span class="comment">// Cookie を削除（Max-Age=0 で上書き）:</span>
+https://&lt;env&gt;.../SetCookieDemo?CookieName=<span class="header-val">test_session</span>&amp;CookieValue=<span class="header-val">deleted</span>&amp;MaxAgeSec=<span class="header-val">0</span>
+<span class="comment">// → ブラウザのCookieストアから即座に削除される</span></pre>
+  </div>
+
+  <div class="note">
+    <strong>OutSystems のセッション管理</strong>:
+    OutSystems は独自のセッションCookie（<code>nr1...</code> 等）を自動設定します。
+    Application タブで他のCookieも確認し、プラットフォームが設定するCookieの種類を観察してみてください。
+  </div>
+</div>
+
+<!-- ── Cookie属性 早見表 ── -->
+<div class="lab-box">
+  <h3>Cookie 属性の完全早見表</h3>
+
+  <table class="cookie-table">
+    <thead>
+      <tr><th>属性</th><th>値の例</th><th>効果</th><th>デフォルト</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>Path</code></td><td><code>/api</code></td><td>指定パス以下へのリクエストでのみ送信</td><td>Set-Cookieを返したURLのパス</td></tr>
+      <tr><td><code>Domain</code></td><td><code>example.com</code></td><td>指定ドメイン＋サブドメインに送信</td><td>省略 = 設定ドメインのみ（推奨）</td></tr>
+      <tr><td><code>Expires</code></td><td>日時</td><td>指定日時に期限切れ</td><td>省略 = セッションCookie</td></tr>
+      <tr><td><code>Max-Age</code></td><td><code>3600</code></td><td>N秒後に期限切れ（Expiresより優先）</td><td>省略 = セッションCookie</td></tr>
+      <tr><td><code>Secure</code></td><td>（フラグ）</td><td>HTTPS接続時のみ送信</td><td>Lab 05 で詳述</td></tr>
+      <tr><td><code>HttpOnly</code></td><td>（フラグ）</td><td>JSからアクセス不可</td><td>Lab 05 で詳述</td></tr>
+      <tr><td><code>SameSite</code></td><td><code>Lax</code></td><td>クロスサイト送信ポリシー</td><td>Lab 05 で詳述</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <strong>Secure, HttpOnly, SameSite は Lab 05（Cookieセキュリティ）で詳しく扱います</strong>。
+    Lab 04 では Cookie の基本的な送受信メカニズム（設定・送信・範囲・寿命）に集中します。<br>
+    <strong style="color:var(--accent3);">→ Lab 05 では「XSS攻撃でCookieが盗まれるシナリオ」「CSRF攻撃の防御」など、
+    実務で必須のセキュリティ知識を扱います。非常に重要な回です。</strong>
+  </div>
+</div>
+
+<!-- ── チェックリスト ── -->
+<hr>
+<h2 id="checklist">✅ Lab 04 チェックリスト</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">チェック状態はブラウザに自動保存されます。</p>
+
+<div class="check-item"><input type="checkbox" data-key="lab04-1"> <label>Set-Cookie（レスポンス）で Cookie が設定され、Cookie（リクエスト）で自動送信される流れを体感した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab04-2"> <label>DevTools Application タブ → Cookies で Cookie の一覧と属性を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab04-3"> <label>Path 属性による Cookie 送信範囲の制限を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab04-4"> <label>Domain 省略（設定ドメインのみ）と Domain 明示（サブドメイン共有）の違いを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab04-5"> <label>セッションCookie（Expires/Max-Age なし）がブラウザ終了で消滅することを体感した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab04-6"> <label>Max-Age による永続Cookie の寿命設定を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab04-7"> <label>Max-Age=0 で Cookie を即座に削除できることを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab04-8"> <label>OutSystems の SetResponseHeader で Set-Cookie を設定し、別画面で自動送信を確認した</label></div>
+
+<div style="margin-top:1rem; text-align:center;">
+  <span id="progress-text" style="font-family:'IBM Plex Mono',monospace; color:var(--accent); font-size:0.9rem;"></span>
+</div>
+
+<script>
+  const STORAGE_PREFIX = 'httplab_';
+  function updateProgress() {
+    const all = document.querySelectorAll('input[type="checkbox"][data-key]');
+    const checked = [...all].filter(cb => cb.checked).length;
+    const el = document.getElementById('progress-text');
+    if (!el) return;
+    if (checked === all.length) {
+      el.innerHTML = '🎉 <strong>全 ' + all.length + ' 項目完了！Lab 05（Cookieセキュリティ）へ進みましょう！</strong>';
+    } else if (checked >= all.length - 2) {
+      el.textContent = checked + ' / ' + all.length + ' 完了 — あと少し！';
+    } else {
+      el.textContent = checked + ' / ' + all.length + ' 完了';
+    }
+  }
+  document.querySelectorAll('input[type="checkbox"][data-key]').forEach(cb => {
+    const saved = localStorage.getItem(STORAGE_PREFIX + cb.dataset.key);
+    if (saved === 'true') { cb.checked = true; cb.closest('.check-item')?.classList.add('checked'); }
+    cb.addEventListener('change', () => {
+      localStorage.setItem(STORAGE_PREFIX + cb.dataset.key, cb.checked);
+      cb.closest('.check-item')?.classList.toggle('checked', cb.checked);
+      updateProgress();
+    });
+  });
+  updateProgress();
+</script>
+
+<hr>
+
+<div class="note">
+  📖 <strong>参照資料</strong>：このLabの内容は <code>http-headers-guide-v2.md</code> の 第3部 3-4「Cookie属性リファレンス」 に対応しています。より詳しい解説・ヘッダー一覧はガイドを参照してください。
+</div>
+
+<h2>📝 Lab 04 学習ノート</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">メモはブラウザに自動保存されます。</p>
+<textarea id="notes" rows="6" placeholder="気づいたこと、疑問点をメモ..."
+  style="width:100%;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:0.8rem;font-family:'Noto Sans JP',sans-serif;font-size:0.9rem;resize:vertical;margin-top:0.5rem;"></textarea>
+<script>
+  const notesEl = document.getElementById('notes');
+  const savedNotes = localStorage.getItem(STORAGE_PREFIX + 'lab04_notes');
+  if (savedNotes) notesEl.value = savedNotes;
+  notesEl.addEventListener('input', () => { localStorage.setItem(STORAGE_PREFIX + 'lab04_notes', notesEl.value); });
+</script>
+
+<div style="margin-top:2rem; display:flex; justify-content:space-between; font-size:0.82rem; color:var(--text-dim);">
+  <span>← 前回: <a href="http-header-lab-03.html"><strong>Lab 03 — キャッシュ応用</strong></a></span>
+  <span>次回: <a href="http-header-lab-05.html"><strong>Lab 05 — Cookieセキュリティ</strong></a>（Secure, HttpOnly, SameSite, __Host- prefix）→
+  <br><span style="color:var(--text-dim);font-size:0.78rem;">Cookie の基本構造を理解したら、Secure / HttpOnly / SameSite でセキュリティを固めます</span></span>
+</div>
+
+</body>
+</html>

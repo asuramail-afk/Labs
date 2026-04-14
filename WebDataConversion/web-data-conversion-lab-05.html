@@ -1,0 +1,1333 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Web Data Conversion Lab 05: Cookie・Content-Type</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;700&display=swap');
+
+  :root {
+    --bg: #ffffff;
+    --surface: #f5f7fa;
+    --surface2: #ebeef2;
+    --border: #c8cdd3;
+    --text: #1a1a2e;
+    --text-dim: #5c6370;
+    --accent: #005cc5;
+    --accent2: #22863a;
+    --accent3: #6f42c1;
+    --warn: #b08800;
+    --danger: #cb2431;
+    --code-bg: #f0f4f8;
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    padding: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  h1 { font-size: 1.6rem; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 0.8rem; margin-bottom: 1.5rem; font-family: 'IBM Plex Mono', monospace; }
+  h2 { font-size: 1.25rem; color: var(--accent2); margin: 2rem 0 1rem; font-family: 'IBM Plex Mono', monospace; }
+  h3 { font-size: 1.05rem; color: var(--accent3); margin: 1.5rem 0 0.8rem; }
+  p, li { font-size: 0.92rem; margin-bottom: 0.5rem; }
+
+  /* Status Bar */
+  .status-bar { display: flex; gap: 1rem; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.6rem 1rem; margin-bottom: 1.5rem; font-size: 0.82rem; font-family: 'IBM Plex Mono', monospace; flex-wrap: wrap; }
+  .status-item { display: flex; align-items: center; gap: 0.4rem; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-dim); animation: pulse 1.5s infinite; }
+  .status-dot.ok { background: var(--accent); animation: none; }
+  .status-dot.err { background: var(--danger); animation: none; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* Lab Section */
+  .lab-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin: 1.5rem 0; }
+
+  .step { background: var(--surface2); border-left: 3px solid var(--accent2); border-radius: 0 var(--radius) var(--radius) 0; padding: 1rem 1.2rem; margin: 1rem 0; }
+  .step-num { font-family: 'IBM Plex Mono', monospace; color: var(--accent2); font-weight: 600; font-size: 0.8rem; margin-bottom: 0.3rem; }
+
+  code, pre { font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; }
+  code { background: var(--code-bg); padding: 0.15rem 0.4rem; border-radius: 4px; color: var(--accent); }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; overflow-x: auto; margin: 0.8rem 0; line-height: 1.6; color: #24292e; }
+  pre .comment { color: #6a737d; }
+  pre .header-name { color: var(--accent2); }
+  pre .header-val { color: var(--accent); }
+  pre .highlight { color: var(--warn); font-weight: 600; }
+
+  .placeholder { color: var(--text-dim); font-style: italic; font-size: 0.8rem; }
+
+  .note { background: #e8f4fd; border: 1px solid #b6d4e8; border-radius: var(--radius); padding: 0.8rem 1rem; margin: 1rem 0; font-size: 0.85rem; color: var(--accent2); }
+  .note::before { content: "💡 "; }
+
+  .warn-box { background: #fff8e1; border: 1px solid #e6d590; border-radius: var(--radius); padding: 0.8rem 1rem; margin: 1rem 0; font-size: 0.85rem; color: var(--warn); }
+  .warn-box::before { content: "⚠️ "; }
+
+  .check-item { background: var(--surface2); border-radius: var(--radius); padding: 0.6rem 1rem; margin: 0.4rem 0; display: flex; align-items: center; gap: 0.6rem; font-size: 0.88rem; transition: opacity 0.3s; }
+  .check-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
+  .check-item.checked { opacity: 0.55; }
+
+  .diagram { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; line-height: 1.5; overflow-x: auto; white-space: pre; color: var(--text-dim); margin: 1rem 0; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.8rem; margin: 1rem 0; }
+  @media (max-width: 900px) { .three-col { grid-template-columns: 1fr; } }
+  @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+  .col-card { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.8rem; font-size: 0.8rem; }
+  .col-card h4 { font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; margin-bottom: 0.5rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); }
+  .col-card pre { border: none; padding: 0.4rem 0; margin: 0; font-size: 0.75rem; background: transparent; }
+  .col-card.card-encode { border-color: var(--accent); }
+  .col-card.card-encode h4 { color: var(--accent); }
+  .col-card.card-puny { border-color: var(--accent2); }
+  .col-card.card-puny h4 { color: var(--accent2); }
+  .col-card.card-path { border-color: var(--accent3); }
+  .col-card.card-path h4 { color: var(--accent3); }
+
+  .toc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.2rem; margin: 1rem 0 2rem; }
+  .toc a { display: inline-block; padding: 0.25rem 0.6rem; margin: 0.15rem; border-radius: 6px; font-size: 0.82rem; background: var(--surface2); transition: background 0.2s; }
+  .toc a:hover { background: var(--border); text-decoration: none; }
+
+  a { color: var(--accent2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  html { scroll-behavior: smooth; }
+
+  .btn { border: none; padding: 0.5rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; font-family: 'Noto Sans JP', sans-serif; margin: 0.3rem; transition: opacity 0.2s; }
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.97); }
+  .btn-accent  { background: var(--accent);  color: var(--bg); }
+  .btn-accent2 { background: var(--accent2); color: var(--bg); }
+  .btn-accent3 { background: var(--accent3); color: var(--bg); }
+  .btn-warn    { background: var(--warn);    color: var(--bg); }
+  .btn-dim     { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+
+  .input-area { width: 100%; background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 0.8rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; }
+
+  /* Conversion arrow */
+  .conv-arrow { text-align: center; font-size: 1.5rem; color: var(--accent2); margin: 0.5rem 0; }
+
+  /* Additional styles for Lab 05 */
+  .beginner-box { background: #f0fdf4; border: 1px solid #86efac; border-radius: var(--radius); padding: 1rem 1.2rem; margin: 1rem 0; }
+  .beg-title { font-weight: 700; color: var(--accent2); font-size: 0.88rem; margin-bottom: 0.5rem; }
+  .beginner-box ul { padding-left: 1.2rem; }
+  .beginner-box li { margin-bottom: 0.3rem; }
+
+  .result-box { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin: 0.8rem 0; min-height: 3rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; white-space: pre-wrap; word-break: break-all; }
+  .result-box.result-ok { border-color: var(--accent2); background: #f0fdf4; }
+  .result-box.result-warn { border-color: var(--warn); background: #fff8e1; }
+  .result-box.result-danger { border-color: var(--danger); background: #fff0f0; }
+
+  .label-badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.72rem; font-family: 'IBM Plex Mono', monospace; font-weight: 600; margin-right: 0.3rem; }
+  .badge-before { background: #fee2e2; color: #991b1b; }
+  .badge-after  { background: #dcfce7; color: #166534; }
+  .badge-info   { background: #e0e7ff; color: #3730a3; }
+
+  details { margin: 1rem 0; }
+  details summary { cursor: pointer; font-weight: 600; font-size: 0.88rem; color: var(--accent3); padding: 0.5rem 0; }
+  details summary:hover { opacity: 0.8; }
+  details[open] summary { margin-bottom: 0.5rem; }
+
+  .note-textarea { width: 100%; min-height: 100px; background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 0.7rem 1rem; font-family: 'Noto Sans JP', sans-serif; font-size: 0.85rem; resize: vertical; }
+
+  .nav-links { display: flex; justify-content: space-between; align-items: center; margin-top: 3rem; padding-top: 1.5rem; border-top: 2px solid var(--border); font-size: 0.88rem; }
+  .nav-links a { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1rem; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); transition: background 0.2s; }
+  .nav-links a:hover { background: var(--border); text-decoration: none; }
+
+  /* Compare table */
+  .compare-table { width: 100%; border-collapse: collapse; margin: 0.8rem 0; font-size: 0.82rem; font-family: 'IBM Plex Mono', monospace; }
+  .compare-table th { background: var(--surface2); padding: 0.5rem 0.8rem; text-align: left; border: 1px solid var(--border); color: var(--text-dim); font-weight: 600; }
+  .compare-table td { padding: 0.5rem 0.8rem; border: 1px solid var(--border); vertical-align: top; }
+  .compare-table tr:nth-child(even) td { background: var(--surface); }
+  .td-ok { color: var(--accent2); font-weight: 600; }
+  .td-ng { color: var(--danger); font-weight: 600; }
+
+  /* Cookie attribute toggle */
+  .attr-toggle { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.8rem 0; }
+  .attr-btn { border: 2px solid var(--border); background: var(--surface2); color: var(--text-dim); border-radius: 6px; padding: 0.35rem 0.9rem; cursor: pointer; font-size: 0.8rem; font-family: 'IBM Plex Mono', monospace; font-weight: 600; transition: all 0.2s; }
+  .attr-btn.active { border-color: var(--accent2); background: #dcfce7; color: var(--accent2); }
+  .attr-btn.active-warn { border-color: var(--warn); background: #fff8e1; color: var(--warn); }
+  .attr-btn.active-danger { border-color: var(--danger); background: #fff0f0; color: var(--danger); }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });</script>
+</head>
+<body>
+
+<!-- Status Bar -->
+<div class="status-bar">
+  <div class="status-item">
+    <div class="status-dot" id="dot-protocol"></div>
+    <span id="status-protocol">プロトコル確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-httpbin"></div>
+    <span id="status-httpbin">httpbin.org: checking...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot ok"></div>
+    <span>Console: <kbd style="background:var(--surface2);padding:0.1rem 0.4rem;border-radius:4px;">F12</kbd></span>
+  </div>
+</div>
+<p style="margin-bottom:0.5rem;font-size:0.82rem;"><a href="web-data-conversion-index.html" style="color:var(--accent);text-decoration:none;">← マスター索引に戻る</a></p>
+
+<script>
+(function() {
+  const dot = document.getElementById('dot-protocol');
+  const label = document.getElementById('status-protocol');
+  dot.classList.add('ok');
+  label.textContent = location.protocol === 'file:'
+    ? 'file:// (httpbin.org fetch はブラウザCORSに注意)'
+    : location.protocol + '// ✓';
+})();
+
+(function() {
+  const dot = document.getElementById('dot-httpbin');
+  const label = document.getElementById('status-httpbin');
+  fetch('https://httpbin.org/get', { signal: AbortSignal.timeout(4000) })
+    .then(function(r) {
+      if (r.ok) {
+        dot.classList.add('ok');
+        label.textContent = 'httpbin.org: available ✓';
+      } else {
+        dot.classList.add('err');
+        label.textContent = 'httpbin.org: HTTP ' + r.status;
+      }
+    })
+    .catch(function() {
+      dot.classList.add('err');
+      label.textContent = 'httpbin.org: unavailable (ネットワーク確認)';
+    });
+})();
+</script>
+
+<h1>🌐 Lab 05: Cookie・Content-Type</h1>
+<p style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.3rem;font-family:'IBM Plex Mono',monospace;">Web Data Conversion Lab シリーズ</p>
+
+<p>
+  Webの通信では、データの「種類」を伝える<strong>Content-Type</strong>と、
+  ブラウザにユーザー状態を記憶させる<strong>Cookie</strong>が重要な役割を果たしています。
+  このLabでは Content-Type の違いがサーバー解釈に与える影響、Cookieの設定・属性・セキュリティ機構、
+  そしてブラウザが自動送信する Accept 系ヘッダーによる Content Negotiation を体験します。
+</p>
+
+<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">⏱ 所要時間：25分</span>
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">難易度：★★☆</span>
+</div>
+<p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:1rem;">📋 前提知識：Lab 01（URL・ドメイン関連の変換）</p>
+
+<div class="lab-box" style="border-color:var(--accent); margin-bottom:1rem;">
+  <h3 style="color:var(--accent); margin-top:0;">🎯 このLabの学習目標</h3>
+  <p style="margin-bottom:0.3rem;">完了すると、以下ができるようになります：</p>
+  <div class="check-item" style="opacity:1;"><span>1. Content-Type の違い（JSON / form-urlencoded / text/plain）がサーバー解釈に与える影響を説明できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>2. charset 宣言の役割と、誤設定時の文字化けメカニズムを理解できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>3. <code>document.cookie</code> でCookieを設定・取得・削除し、属性（Expires/Path）を制御できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>4. Secure / HttpOnly / SameSite 属性のセキュリティ効果と制限を説明できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>5. ブラウザが自動送信する Accept 系ヘッダーと q 値による優先度の仕組みを確認できる</span></div>
+</div>
+
+<!-- 概要ダイアグラム -->
+<div class="diagram">Cookie・Content-Type の全体像
+
+  【HTTPリクエスト/レスポンスの「メタ情報」】
+
+  Content-Type ヘッダー（リクエスト/レスポンス共通）
+       │
+       ├─── application/json ────────▶ JSON構造として解釈 { "key": "value" }
+       ├─── application/x-www-form-urlencoded ▶ key=value&key2=value2 形式
+       └─── text/plain ──────────────▶ 生テキストとして解釈
+
+  charset（文字コード宣言）
+       │
+       └─── Content-Type: text/html; charset=utf-8
+            meta charsetより HTTPヘッダーのcharsetが優先される
+
+  Cookie（ブラウザに状態を保存）
+       │
+       ├─── 設定: Set-Cookie: name=value; Expires=...; Path=/
+       ├─── Secure  → HTTPS接続時のみ送信
+       ├─── HttpOnly → JSから参照不可（XSS対策）
+       └─── SameSite → クロスサイトリクエスト時の送信制御
+
+  Accept 系ヘッダー（Content Negotiation）
+       │
+       ├─── Accept: text/html,application/xhtml+xml;q=0.9,*/*;q=0.8
+       ├─── Accept-Language: ja,en-US;q=0.9,en;q=0.8
+       └─── Accept-Encoding: gzip, deflate, br
+            q値（品質値）= 優先度（0〜1、省略時=1.0）</div>
+
+<details style="margin:0.5rem 0;">
+  <summary style="cursor:pointer;color:var(--accent);font-size:0.82rem;font-family:'IBM Plex Mono',monospace;">📊 Mermaidフローチャートを表示</summary>
+  <div class="mermaid">
+flowchart TD
+    A["HTTPリクエスト送信"] --> B["Content-Type設定"]
+    B --> B1["application/json\n→ JSONとして解釈"]
+    B --> B2["application/x-www-form-urlencoded\n→ フォームデータとして解釈"]
+    B --> B3["text/plain\n→ 生テキストとして解釈"]
+
+    A --> C["Cookie送信\n（同一オリジン）"]
+    C --> C1["Secure属性\nHTTPSのみ"]
+    C --> C2["HttpOnly属性\nJS読み取り不可"]
+    C --> C3["SameSite属性\nクロスサイト制御"]
+
+    A --> D["Accept系ヘッダー\n（ブラウザ自動付与）"]
+    D --> D1["Accept\nMIMEタイプ優先度"]
+    D --> D2["Accept-Language\n言語優先度"]
+    D --> D3["Accept-Encoding\n圧縮方式"]
+  </div>
+</details>
+
+<!-- TOC -->
+<div class="toc">
+  <strong style="color:var(--text-dim);font-size:0.82rem;">目次:</strong><br>
+  <a href="#exp-5a">5-A: Content-Typeヘッダーの役割</a>
+  <a href="#exp-5b">5-B: charset（文字コード宣言）</a>
+  <a href="#exp-5c">5-C: Cookieの設定と取得</a>
+  <a href="#exp-5d">5-D: Cookieのセキュリティ属性</a>
+  <a href="#exp-5e">5-E: Content Negotiation</a>
+  <a href="#sec-checklist">✅ チェックリスト</a>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 5-A: Content-Typeヘッダーの役割 -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-5a">
+  <h3>実験 5-A: Content-Typeヘッダーの役割</h3>
+  <p>
+    同じデータを送信しても、<strong>Content-Type</strong> が異なるとサーバーの解釈が変わります。
+    <code>application/json</code>・<code>application/x-www-form-urlencoded</code>・<code>text/plain</code> の3種を
+    httpbin.org/post に送り、サーバーがどう受け取るかを比較します。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — 送信するデータを確認する</div>
+    <p>以下の3ボタンはすべて同じ「内容」を送りますが、<strong>形式（フォーマット）</strong>が異なります。</p>
+    <div class="three-col">
+      <div class="col-card card-encode">
+        <h4>application/json</h4>
+        <pre>{"name":"Alice","age":25}</pre>
+        <p style="font-size:0.72rem;color:var(--text-dim);">JSONオブジェクト形式</p>
+      </div>
+      <div class="col-card card-puny">
+        <h4>application/x-www-form-urlencoded</h4>
+        <pre>name=Alice&amp;age=25</pre>
+        <p style="font-size:0.72rem;color:var(--text-dim);">HTMLフォームのデフォルト形式</p>
+      </div>
+      <div class="col-card card-path">
+        <h4>text/plain</h4>
+        <pre>name=Alice
+age=25</pre>
+        <p style="font-size:0.72rem;color:var(--text-dim);">プレーンテキスト形式</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 3種のContent-TypeでPOSTしてサーバーの受け取り方を比較</div>
+    <p>各ボタンを押してhttpbin.orgのレスポンスを確認してください。<code>json</code> フィールドと <code>form</code> フィールドの違いに注目です。</p>
+    <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.8rem;">
+      <button class="btn btn-accent" onclick="postContentType('json')">① application/json で送信</button>
+      <button class="btn btn-accent2" onclick="postContentType('form')">② form-urlencoded で送信</button>
+      <button class="btn btn-accent3" onclick="postContentType('plain')">③ text/plain で送信</button>
+    </div>
+    <div class="result-box" id="ct-result"><span class="placeholder">ボタンを押してください（httpbin.orgへPOST）</span></div>
+    <script>
+      async function postContentType(type) {
+        const out = document.getElementById('ct-result');
+        out.className = 'result-box';
+        out.innerHTML = '<span class="placeholder">送信中...</span>';
+
+        const configs = {
+          json: {
+            contentType: 'application/json',
+            body: JSON.stringify({ name: 'Alice', age: 25 }),
+            label: 'application/json'
+          },
+          form: {
+            contentType: 'application/x-www-form-urlencoded',
+            body: 'name=Alice&age=25',
+            label: 'application/x-www-form-urlencoded'
+          },
+          plain: {
+            contentType: 'text/plain',
+            body: 'name=Alice\nage=25',
+            label: 'text/plain'
+          }
+        };
+
+        const cfg = configs[type];
+        try {
+          const res = await fetch('https://httpbin.org/post', {
+            method: 'POST',
+            headers: { 'Content-Type': cfg.contentType },
+            body: cfg.body
+          });
+          const data = await res.json();
+
+          let result = '【送信したContent-Type】\n' + cfg.label + '\n\n';
+          result += '【サーバーが認識したContent-Type】\n';
+          result += (data.headers && data.headers['Content-Type'])
+            ? data.headers['Content-Type'] + '\n\n'
+            : '(取得できませんでした)\n\n';
+
+          result += '【json フィールド（JSONとして解析された場合のみ値あり）】\n';
+          result += data.json !== null && data.json !== undefined
+            ? JSON.stringify(data.json, null, 2) + '\n\n'
+            : '  null（JSONとして解釈されなかった）\n\n';
+
+          result += '【form フィールド（urlencoded として解析された場合のみ値あり）】\n';
+          const formData = data.form && Object.keys(data.form).length > 0
+            ? JSON.stringify(data.form, null, 2)
+            : '  {} （urlencoded として解釈されなかった）';
+          result += formData + '\n\n';
+
+          result += '【data フィールド（text/plain の場合に本文がここに入る）】\n';
+          result += (data.data && data.data.length > 0)
+            ? '"' + data.data + '"'
+            : '  (空)';
+
+          out.className = 'result-box result-ok';
+          out.textContent = result;
+        } catch(e) {
+          out.className = 'result-box result-danger';
+          out.textContent = 'エラー: ' + e.message + '\nhttpbin.org に接続できません。ネットワーク接続を確認してください。';
+        }
+      }
+    </script>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — 3種の違いをまとめて比較表で確認</div>
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Content-Type</th>
+          <th>送信ボディ形式</th>
+          <th>サーバーの解釈方法</th>
+          <th>主な用途</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>application/json</code></td>
+          <td><code>{"key":"value"}</code></td>
+          <td class="td-ok">JSONオブジェクトとして解析 → <code>req.body</code></td>
+          <td>REST API、fetch/axios</td>
+        </tr>
+        <tr>
+          <td><code>application/x-www-form-urlencoded</code></td>
+          <td><code>key=value&amp;k2=v2</code></td>
+          <td class="td-ok">key=valueペアとして解析 → フォームフィールド</td>
+          <td>HTMLフォームのデフォルト</td>
+        </tr>
+        <tr>
+          <td><code>text/plain</code></td>
+          <td>生テキスト</td>
+          <td class="td-ng">構造化せずそのまま受け取る</td>
+          <td>デバッグ、シンプルなログ送信</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="beginner-box">
+    <div class="beg-title">🔰 封筒の「種類」で届け先の対応が変わる</div>
+    <ul>
+      <li>Content-Type は「封筒に書かれたラベル」のようなものです</li>
+      <li><strong>「請求書在中」（application/json）</strong>と書かれていれば、受け取り側はJSON処理ルーティンにまわします</li>
+      <li><strong>「申込書」（form-urlencoded）</strong>であれば、フォームパーサーが各フィールドを切り出します</li>
+      <li><strong>ラベルなし（text/plain）</strong>では、受け取り側はそのまま生テキストとして扱うしかありません</li>
+      <li>Content-Type が誤っていると、正しいデータを送っても<strong>サーバーが解釈できない</strong>ため、400 Bad Request になりがちです</li>
+    </ul>
+  </div>
+
+  <details>
+    <summary>📊 Mermaid: Content-Type によるサーバー解釈フロー</summary>
+    <div class="mermaid">
+flowchart LR
+    REQ["POSTリクエスト\n（同じデータ）"]
+    REQ -->|"Content-Type:\napplication/json"| P1["JSONパーサー\n→ req.body.name = 'Alice'"]
+    REQ -->|"Content-Type:\napplication/x-www-form-urlencoded"| P2["フォームパーサー\n→ req.body.name = 'Alice'"]
+    REQ -->|"Content-Type:\ntext/plain"| P3["生テキスト\n→ req.body = 'name=Alice\\nage=25'"]
+
+    P1 --> OK1["✓ APIが正常処理"]
+    P2 --> OK2["✓ フォームが正常処理"]
+    P3 --> WARN["△ 手動パースが必要"]
+    </div>
+  </details>
+
+  <div class="warn-box" style="border-color:var(--accent3);background:#f3e5f5;">
+    <strong style="color:var(--accent3);">📋 初心者まとめ</strong><br>
+    覚える関数: <code>headers: {'Content-Type': 'application/json'}</code><br>
+    よくある落とし穴: JSON送信でContent-Type未指定→サーバーがtext/plainとして処理し、jsonフィールドが空になる<br>
+    正しい使い方: <code>fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) })</code>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 5-B: charset（文字コード宣言） -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-5b">
+  <h3>実験 5-B: charset（文字コード宣言）</h3>
+  <p>
+    <code>Content-Type: text/html; <strong>charset=utf-8</strong></code> の <code>charset</code> 部分は、
+    サーバーがクライアントに「このデータは○○の文字コードで読んでね」と伝える宣言です。
+    誤った charset を指定すると文字化けが発生します。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — 正しいcharsetで日本語テキストをエンコード/デコード</div>
+    <p>UTF-8で「こんにちは」をエンコードしたバイト列を確認します。</p>
+    <input type="text" class="input-area" id="charset-input" value="こんにちは、世界！" placeholder="日本語テキストを入力...">
+    <div class="conv-arrow">↓ TextEncoder("utf-8") ↓</div>
+    <div class="result-box" id="charset-utf8-out"><span class="placeholder">入力すると自動的にUTF-8バイト列を表示</span></div>
+    <script>
+      const charsetInput = document.getElementById('charset-input');
+      function updateCharsetDemo() {
+        const text = charsetInput.value;
+        const out = document.getElementById('charset-utf8-out');
+        if (!text) { out.innerHTML = '<span class="placeholder">入力してください</span>'; return; }
+
+        const encoder = new TextEncoder(); // UTF-8固定
+        const bytes = encoder.encode(text);
+        const hexBytes = Array.from(bytes).map(b => b.toString(16).padStart(2, '0').toUpperCase());
+
+        out.className = 'result-box result-ok';
+        out.textContent =
+          'テキスト: "' + text + '"\n' +
+          'バイト数 (UTF-8): ' + bytes.length + ' bytes\n\n' +
+          '16進数バイト列:\n' + hexBytes.join(' ') + '\n\n' +
+          '→ 日本語1文字 = 3バイト (UTF-8)\n' +
+          '→ ASCII文字1文字 = 1バイト (UTF-8)\n\n' +
+          'Content-Typeヘッダー例:\n' +
+          'Content-Type: text/html; charset=utf-8';
+      }
+      charsetInput.addEventListener('input', updateCharsetDemo);
+      updateCharsetDemo();
+    </script>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 文字化けのシミュレーション（UTF-8データをShift_JISと誤解釈）</div>
+    <p>UTF-8でエンコードされたバイト列を、別の文字コード（Latin-1）として読み込む「文字化け」を体験します。</p>
+    <button class="btn btn-accent" onclick="simulateMojibake()">文字化けシミュレーションを実行</button>
+    <div class="result-box" id="mojibake-out"><span class="placeholder">ボタンを押してください</span></div>
+    <script>
+      function simulateMojibake() {
+        const out = document.getElementById('mojibake-out');
+        const text = 'こんにちは';
+
+        // UTF-8エンコード
+        const utf8Bytes = new TextEncoder().encode(text);
+
+        // 正しいデコード (UTF-8)
+        const correctDecoded = new TextDecoder('utf-8').decode(utf8Bytes);
+
+        // 誤ったデコード (ISO-8859-1 / Latin-1)
+        let wrongDecoded = '';
+        try {
+          wrongDecoded = new TextDecoder('iso-8859-1').decode(utf8Bytes);
+        } catch(e) {
+          wrongDecoded = '(デコードエラー)';
+        }
+
+        out.className = 'result-box result-warn';
+        out.textContent =
+          '元テキスト: "' + text + '"\n' +
+          'UTF-8バイト数: ' + utf8Bytes.length + ' bytes\n\n' +
+          '--- charset=utf-8 で読んだ場合 ---\n' +
+          '"' + correctDecoded + '" ✓ 正常\n\n' +
+          '--- charset=iso-8859-1 で読んだ場合（文字化け！） ---\n' +
+          '"' + wrongDecoded + '" ✗ 文字化け\n\n' +
+          '→ 同じバイト列でも charset 宣言が変わると全く別の文字になる\n' +
+          '→ 日本語メールの文字化けはこのメカニズムが原因';
+      }
+    </script>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — meta charset と HTTPヘッダーの優先順位</div>
+    <div class="diagram">charset の優先順位（高い順）
+
+  1位: HTTP レスポンスヘッダー
+       Content-Type: text/html; charset=utf-8
+       （サーバーが明示的に宣言、最も信頼される）
+
+  2位: HTML内の &lt;meta&gt; タグ
+       &lt;meta charset="UTF-8"&gt;
+       &lt;meta http-equiv="Content-Type" content="text/html; charset=utf-8"&gt;
+       （HTTPヘッダーがない場合にブラウザが参照）
+
+  3位: ブラウザのデフォルト設定
+       （meta charsetもない場合のフォールバック）
+
+  ※ HTTPヘッダーとmetaが矛盾する場合 → HTTPヘッダーが優先される</div>
+  </div>
+
+  <div class="beginner-box">
+    <div class="beg-title">🔰 日本語メールが文字化けする原因</div>
+    <ul>
+      <li>メールを<strong>UTF-8</strong>で書いたが、受信側が<strong>Shift_JIS</strong>として読み込むと文字化けします</li>
+      <li>昔の日本語メールは <code>ISO-2022-JP</code>（JIS）が主流でしたが、現在はUTF-8が標準です</li>
+      <li>メールのMIMEヘッダー <code>Content-Type: text/plain; charset=utf-8</code> が正しく設定されていないと文字化けします</li>
+      <li>Webページも同様に、<code>&lt;meta charset="UTF-8"&gt;</code> を必ず記述し、サーバー側もUTF-8でレスポンスを返すことが重要です</li>
+    </ul>
+  </div>
+
+  <details>
+    <summary>📊 Mermaid: charset 優先順位フロー</summary>
+    <div class="mermaid">
+flowchart TD
+    RECV["ブラウザがHTMLを受信"]
+    RECV --> CHK1{"HTTPレスポンスヘッダーに\ncharsetあり?"}
+    CHK1 -->|"あり"| USE1["Content-Type: text/html; charset=utf-8\nを使用（最優先）"]
+    CHK1 -->|"なし"| CHK2{"&lt;meta charset&gt;\nタグあり?"}
+    CHK2 -->|"あり"| USE2["&lt;meta charset&gt; を使用"]
+    CHK2 -->|"なし"| USE3["ブラウザのデフォルト文字コード\n(→ 文字化けリスク)"]
+
+    USE1 --> RENDER["正常表示"]
+    USE2 --> RENDER
+    USE3 --> MOJIBAKE["文字化けの可能性"]
+    </div>
+  </details>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 5-C: Cookieの設定と取得 -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-5c">
+  <h3>実験 5-C: Cookieの設定と取得</h3>
+  <p>
+    <code>document.cookie</code> でJavaScriptからCookieを設定・取得・削除できます。
+    Cookieは <code>名前=値; 属性</code> の形式で、ブラウザに小さなデータを保存します。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — Cookieを設定する</div>
+    <p>名前と値を入力してCookieを設定してください。</p>
+    <div class="two-col" style="margin-bottom:0.5rem;">
+      <div>
+        <label style="font-size:0.82rem;font-family:'IBM Plex Mono',monospace;color:var(--text-dim);">Cookie名</label>
+        <input type="text" class="input-area" id="cookie-name" value="myApp_userId" style="margin-top:0.3rem;">
+      </div>
+      <div>
+        <label style="font-size:0.82rem;font-family:'IBM Plex Mono',monospace;color:var(--text-dim);">Cookie値</label>
+        <input type="text" class="input-area" id="cookie-value" value="alice_12345" style="margin-top:0.3rem;">
+      </div>
+    </div>
+    <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem;flex-wrap:wrap;">
+      <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.82rem;">
+        <input type="checkbox" id="cookie-expires" checked>
+        Expires（1日後）
+      </label>
+      <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.82rem;">
+        <input type="checkbox" id="cookie-path" checked>
+        Path=/
+      </label>
+    </div>
+    <button class="btn btn-accent" onclick="setCookieDemo()">Cookieを設定</button>
+    <button class="btn btn-dim" onclick="listCookiesDemo()">現在のCookieを一覧表示</button>
+    <div class="result-box" id="cookie-set-out"><span class="placeholder">ボタンを押してください</span></div>
+    <script>
+      function setCookieDemo() {
+        const name = document.getElementById('cookie-name').value.trim();
+        const value = document.getElementById('cookie-value').value.trim();
+        const useExpires = document.getElementById('cookie-expires').checked;
+        const usePath = document.getElementById('cookie-path').checked;
+
+        if (!name) { alert('Cookie名を入力してください'); return; }
+
+        let cookieStr = encodeURIComponent(name) + '=' + encodeURIComponent(value);
+        if (useExpires) {
+          const exp = new Date();
+          exp.setDate(exp.getDate() + 1);
+          cookieStr += '; Expires=' + exp.toUTCString();
+        }
+        if (usePath) {
+          cookieStr += '; Path=/';
+        }
+
+        document.cookie = cookieStr;
+
+        const out = document.getElementById('cookie-set-out');
+        out.className = 'result-box result-ok';
+        out.textContent =
+          '設定したCookie文字列:\n' +
+          cookieStr + '\n\n' +
+          '【document.cookie に代入した内容の解説】\n' +
+          '  名前:    ' + name + '\n' +
+          '  値:      ' + value + '\n' +
+          (useExpires ? '  Expires: 1日後（セッション終了後も保持）\n' : '  Expires: 未設定（セッションCookie、ブラウザを閉じると消える）\n') +
+          (usePath ? '  Path:    / （サイト全体で有効）\n' : '  Path:    未設定（現在のパスのみ有効）\n') +
+          '\n✓ Cookie設定完了。Cookieタブ(DevTools)で確認できます。';
+      }
+
+      function listCookiesDemo() {
+        const out = document.getElementById('cookie-set-out');
+        const raw = document.cookie;
+
+        if (!raw) {
+          out.className = 'result-box result-warn';
+          out.textContent = 'document.cookie = "" （このページにCookieはありません）\n\nヒント: まず上のボタンでCookieを設定してください。';
+          return;
+        }
+
+        const pairs = raw.split('; ').map(function(p) {
+          const idx = p.indexOf('=');
+          if (idx === -1) return { name: p, value: '' };
+          return {
+            name: decodeURIComponent(p.substring(0, idx)),
+            value: decodeURIComponent(p.substring(idx + 1))
+          };
+        });
+
+        let result = 'document.cookie（生の文字列）:\n"' + raw + '"\n\n';
+        result += 'パース後 (' + pairs.length + '件):\n';
+        result += '─────────────────────────────\n';
+        pairs.forEach(function(p, i) {
+          result += (i + 1) + '. 名前: ' + p.name + '\n';
+          result += '   値:   ' + p.value + '\n';
+        });
+        result += '\n⚠ document.cookie では Expires/Path/Secure 等の属性は取得できない\n';
+        result += '  （属性はサーバー→ブラウザ間の制御情報のため、JSには非公開）';
+
+        out.className = 'result-box result-ok';
+        out.textContent = result;
+      }
+    </script>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 複数Cookieの設定と管理</div>
+    <p>ECサイトのカート情報に見立てた複数のCookieを一括設定し、一覧取得します。</p>
+    <button class="btn btn-accent2" onclick="setMultipleCookies()">ECサイト用Cookie一括設定（3件）</button>
+    <button class="btn btn-warn" onclick="deleteAllDemoCookies()">デモCookieを削除</button>
+    <div class="result-box" id="multi-cookie-out"><span class="placeholder">ボタンを押してください</span></div>
+    <script>
+      var demoCookieNames = ['cart_items', 'cart_total', 'last_visit'];
+
+      function setMultipleCookies() {
+        const expDate = new Date();
+        expDate.setDate(expDate.getDate() + 7); // 7日後
+        const expStr = expDate.toUTCString();
+
+        const cookies = [
+          { name: 'cart_items', value: 'item001,item002,item003' },
+          { name: 'cart_total', value: '15800' },
+          { name: 'last_visit', value: new Date().toISOString().substring(0,10) }
+        ];
+
+        cookies.forEach(function(c) {
+          document.cookie = encodeURIComponent(c.name) + '=' + encodeURIComponent(c.value)
+            + '; Expires=' + expStr + '; Path=/';
+        });
+
+        const out = document.getElementById('multi-cookie-out');
+        out.className = 'result-box result-ok';
+        out.textContent =
+          '3件のCookieを設定しました（有効期限: 7日後）\n\n' +
+          cookies.map(function(c) {
+            return '  ' + c.name + ' = "' + c.value + '"';
+          }).join('\n') +
+          '\n\n現在のdocument.cookie:\n"' + document.cookie + '"\n\n' +
+          '→ ブラウザを閉じても7日間はCookieが保持されます\n' +
+          '→ DevToolsのApplicationタブ > Cookiesで確認できます';
+      }
+
+      function deleteAllDemoCookies() {
+        demoCookieNames.forEach(function(name) {
+          document.cookie = encodeURIComponent(name) + '=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/';
+        });
+        // STEP 1で設定したCookieも削除対象に
+        const n = document.getElementById('cookie-name').value.trim();
+        if (n) {
+          document.cookie = encodeURIComponent(n) + '=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/';
+        }
+
+        const out = document.getElementById('multi-cookie-out');
+        out.className = 'result-box result-warn';
+        out.textContent =
+          'デモ用Cookieを削除しました。\n\n' +
+          '【削除の仕組み】\n' +
+          'Cookieは削除APIが存在しません。代わりに\n' +
+          '"Expires=過去の日時" を設定してブラウザに期限切れと認識させます。\n\n' +
+          'document.cookie = "name=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/"\n\n' +
+          '現在のdocument.cookie:\n"' + (document.cookie || '(空)') + '"';
+      }
+    </script>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — Path属性の効果を理解する</div>
+    <div class="diagram">Path属性の効果
+
+  Path=/          → サイト全体（全パス）で送信される
+  Path=/shop      → /shop, /shop/cart, /shop/item のみ送信
+  Path=/admin     → /admin 配下のみ送信（/shopでは送信されない）
+
+  例: ECサイトの場合
+  ─────────────────────────────────────────────────
+  Cookie: cart_session=abc; Path=/shop
+       ↓
+  /shop/cart    のリクエスト → Cookieが送信される  ✓
+  /shop/item/1  のリクエスト → Cookieが送信される  ✓
+  /admin/users  のリクエスト → Cookieが送信されない ✗
+  ─────────────────────────────────────────────────
+  → Pathを適切に設定することで不要なCookie送信を抑制できる</div>
+  </div>
+
+  <div class="beginner-box">
+    <div class="beg-title">🔰 ECサイトのカート情報がブラウザを閉じても残る仕組み</div>
+    <ul>
+      <li>通常、ブラウザを閉じると<strong>セッションCookie</strong>（Expiresなし）は消えます</li>
+      <li><strong>Expires</strong>（または <strong>Max-Age</strong>）を設定すると「永続Cookie」になり、指定期間ブラウザに保存されます</li>
+      <li>ECサイトは <code>cart_id=xxx; Expires=30日後</code> のような永続Cookieでカート内容を30日間保持します</li>
+      <li>ただし Cookie のサイズ制限は約4KB、ドメインごとに約50件まで — 大量データはサーバー側セッションに保存します</li>
+    </ul>
+  </div>
+
+  <div class="warn-box" style="border-color:var(--accent3);background:#f3e5f5;">
+    <strong style="color:var(--accent3);">📋 初心者まとめ</strong><br>
+    覚える関数: <code>document.cookie = "name=" + encodeURIComponent(value)</code><br>
+    よくある落とし穴: 値にセミコロンを含むデータをエンコードせず設定→属性として誤解釈される<br>
+    正しい使い方: 値は必ず <code>encodeURIComponent()</code> でエンコード、読み取り時は <code>decodeURIComponent()</code> で戻す
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 5-D: Cookieのセキュリティ属性 -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-5d">
+  <h3>実験 5-D: Cookieのセキュリティ属性</h3>
+  <p>
+    <strong>Secure</strong>・<strong>HttpOnly</strong>・<strong>SameSite</strong> の3つのセキュリティ属性は、
+    Cookieが悪用されるリスクを大幅に下げます。属性のON/OFFを切り替えて、
+    それぞれの効果と制限を確認しましょう。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — セキュリティ属性のON/OFF切り替えシミュレーター</div>
+    <p>ボタンをクリックしてON/OFFを切り替えると、Cookie文字列と攻撃への耐性が変化します。</p>
+
+    <div class="attr-toggle" id="attr-toggles">
+      <button class="attr-btn" id="btn-secure" onclick="toggleAttr('secure')">Secure: OFF</button>
+      <button class="attr-btn" id="btn-httponly" onclick="toggleAttr('httponly')">HttpOnly: OFF</button>
+      <button class="attr-btn active" id="btn-samesite-lax" onclick="setSameSite('Lax')">SameSite: Lax ✓</button>
+      <button class="attr-btn" id="btn-samesite-strict" onclick="setSameSite('Strict')">SameSite: Strict</button>
+      <button class="attr-btn active-danger" id="btn-samesite-none" onclick="setSameSite('None')">SameSite: None</button>
+    </div>
+
+    <div class="result-box" id="security-attr-out"><!-- 初期表示はJS -->
+      <span class="placeholder">上のボタンで属性を切り替えてください</span>
+    </div>
+    <script>
+      var attrState = {
+        secure: false,
+        httponly: false,
+        samesite: 'Lax'
+      };
+
+      function toggleAttr(attr) {
+        attrState[attr] = !attrState[attr];
+        var btn = document.getElementById('btn-' + attr);
+        if (attrState[attr]) {
+          btn.className = 'attr-btn active';
+          btn.textContent = (attr === 'secure' ? 'Secure' : 'HttpOnly') + ': ON ✓';
+        } else {
+          btn.className = 'attr-btn';
+          btn.textContent = (attr === 'secure' ? 'Secure' : 'HttpOnly') + ': OFF';
+        }
+        updateSecurityDisplay();
+      }
+
+      function setSameSite(val) {
+        attrState.samesite = val;
+        ['Lax','Strict','None'].forEach(function(v) {
+          var id = 'btn-samesite-' + v.toLowerCase();
+          var btn = document.getElementById(id);
+          if (v === val) {
+            btn.className = v === 'None' ? 'attr-btn active-danger' : 'attr-btn active';
+            btn.textContent = 'SameSite: ' + v + ' \u2713';
+          } else {
+            btn.className = v === 'None' ? 'attr-btn active-danger' : 'attr-btn';
+            btn.textContent = 'SameSite: ' + v;
+          }
+        });
+        updateSecurityDisplay();
+      }
+
+      function updateSecurityDisplay() {
+        var out = document.getElementById('security-attr-out');
+        var parts = ['session_token=abc123xyz'];
+        if (attrState.secure) parts.push('Secure');
+        if (attrState.httponly) parts.push('HttpOnly');
+        parts.push('SameSite=' + attrState.samesite);
+        if (attrState.samesite === 'None') parts.push('Secure'); // None requires Secure
+        parts.push('Path=/');
+        parts.push('Expires=' + new Date(Date.now() + 86400000).toUTCString());
+
+        var cookieStr = parts.join('; ');
+
+        // 攻撃耐性評価
+        var xssRisk = attrState.httponly ? '✓ 低（HttpOnlyによりJS読み取り不可）' : '✗ 高（XSSでCookie盗難リスクあり）';
+        var httpRisk = attrState.secure ? '✓ 低（HTTPS接続時のみ送信）' : '✗ 高（HTTP通信でCookieが平文送信される）';
+
+        var csrfRisk;
+        if (attrState.samesite === 'Strict') {
+          csrfRisk = '✓ 最低（外部サイトからのリクエストにCookie一切付与されない）';
+        } else if (attrState.samesite === 'Lax') {
+          csrfRisk = '△ 低〜中（GETのトップレベルナビゲーションのみCookie付与）';
+        } else {
+          csrfRisk = '✗ 高（全クロスサイトリクエストにCookieが付与される）';
+        }
+
+        var noneWarning = (attrState.samesite === 'None')
+          ? '\n⚠ SameSite=None の場合は Secure 属性が必須です（自動付加されます）\n'
+          : '';
+
+        var score = (attrState.secure ? 1 : 0) + (attrState.httponly ? 1 : 0)
+          + (attrState.samesite === 'Strict' ? 2 : attrState.samesite === 'Lax' ? 1 : -1);
+        var secLabel = score >= 3 ? '★★★ 高セキュリティ' : score >= 1 ? '★★☆ 標準' : '★☆☆ 要注意';
+
+        out.className = score >= 2 ? 'result-box result-ok' : (score >= 0 ? 'result-box result-warn' : 'result-box result-danger');
+        out.textContent =
+          'Set-Cookie: ' + cookieStr + '\n' +
+          noneWarning +
+          '\n【セキュリティ評価】 ' + secLabel + '\n' +
+          '─────────────────────────────────────────\n' +
+          'XSS攻撃リスク:  ' + xssRisk + '\n' +
+          'HTTP盗聴リスク: ' + httpRisk + '\n' +
+          'CSRF攻撃リスク: ' + csrfRisk;
+      }
+
+      // 初期表示
+      updateSecurityDisplay();
+    </script>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — HttpOnly の効果を体験する（JS読み取りテスト）</div>
+    <p>
+      <code>HttpOnly</code>属性はサーバー側でのみ設定でき、JavaScriptからはアクセスできません。
+      ここでは「HttpOnly<strong>なし</strong>」の通常Cookieをdocument.cookieで読み取れることを確認します。
+    </p>
+    <button class="btn btn-accent" onclick="testHttpOnly()">通常CookieのJS読み取りテスト</button>
+    <div class="result-box" id="httponly-out"><span class="placeholder">ボタンを押してください</span></div>
+    <script>
+      function testHttpOnly() {
+        // HttpOnly属性なしのCookieを設定（JSから設定できる = HttpOnlyなし）
+        document.cookie = 'test_readable=visible_to_js; Path=/; Max-Age=60';
+        // HttpOnly付きCookieはJSから設定不可、サーバーのSet-Cookieヘッダーのみで設定可能
+
+        const allCookies = document.cookie;
+        const found = allCookies.split('; ').find(function(c) { return c.startsWith('test_readable='); });
+
+        const out = document.getElementById('httponly-out');
+        out.className = 'result-box result-ok';
+        out.textContent =
+          '【通常Cookie（HttpOnly なし）】\n' +
+          'document.cookie から読み取り: ' + (found ? '"' + found + '" ✓ 読み取れた' : '(見つかりません)') + '\n\n' +
+          '【HttpOnly Cookie（サーバー設定）】\n' +
+          'document.cookie には表示されない\n' +
+          '→ JavaScriptで読み取り: 不可能 ✓（XSS攻撃でも盗めない）\n\n' +
+          '【XSS攻撃シナリオ】\n' +
+          '悪意あるスクリプトが実行されても:\n' +
+          '  通常Cookie    → document.cookie で盗難可能 ✗\n' +
+          '  HttpOnly Cookie → document.cookie に現れない ✓\n\n' +
+          '→ セッショントークンには必ずHttpOnly属性を付けてください';
+      }
+    </script>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — SameSite属性の動作比較表</div>
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>SameSite値</th>
+          <th>クロスサイトGET</th>
+          <th>クロスサイトPOST</th>
+          <th>CSRF対策</th>
+          <th>主な用途</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code class="td-ok">Strict</code></td>
+          <td class="td-ng">送信されない</td>
+          <td class="td-ng">送信されない</td>
+          <td class="td-ok">最強</td>
+          <td>管理画面、金融系</td>
+        </tr>
+        <tr>
+          <td><code style="color:var(--warn)">Lax</code>（デフォルト）</td>
+          <td class="td-ok">送信される（リンク遷移）</td>
+          <td class="td-ng">送信されない</td>
+          <td class="td-ok">中程度</td>
+          <td>一般的なWebサイト</td>
+        </tr>
+        <tr>
+          <td><code class="td-ng">None</code></td>
+          <td class="td-ok">送信される</td>
+          <td class="td-ok">送信される</td>
+          <td class="td-ng">なし</td>
+          <td>クロスオリジンAPI、広告</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="warn-box" style="margin-top:0.8rem;">SameSite=None を使う場合は必ず Secure 属性も同時に設定する必要があります（ブラウザの仕様）。</div>
+  </div>
+
+  <div class="beginner-box">
+    <div class="beg-title">🔰 銀行サイトのログイン情報が盗まれない仕組み</div>
+    <ul>
+      <li><strong>HttpOnly</strong>: セッショントークンがJSから読めないため、XSS攻撃でスクリプトを仕込まれてもCookieを盗めません</li>
+      <li><strong>Secure</strong>: HTTPS通信でのみCookieが送信されるため、HTTP盗聴（中間者攻撃）でCookieが漏れません</li>
+      <li><strong>SameSite=Strict</strong>: 外部サイトからのリクエストにCookieが付かないため、CSRF攻撃（ユーザーを騙して送金させる攻撃）が防げます</li>
+      <li>銀行サイトでは通常 <code>Set-Cookie: session=xxx; HttpOnly; Secure; SameSite=Strict</code> のように3属性セットで使います</li>
+    </ul>
+  </div>
+
+  <details>
+    <summary>📊 Mermaid: XSS・CSRF攻撃とCookie属性の防御</summary>
+    <div class="mermaid">
+flowchart TD
+    A["攻撃者"] -->|"XSS: 悪意あるスクリプト注入"| B{"document.cookie\nで読み取り試行"}
+    B -->|"HttpOnly なし"| C["✗ Cookie盗難成功\nsession=abc123"]
+    B -->|"HttpOnly あり"| D["✓ 読み取れない\n(document.cookieに表示されない)"]
+
+    A -->|"CSRF: 外部サイトから\nフォームを自動送信"| E{"SameSite属性?"}
+    E -->|"None"| F["✗ Cookieが付与される\n→ 不正リクエスト成功"]
+    E -->|"Lax"| G["△ GETは付与\nPOSTは付与されない"]
+    E -->|"Strict"| H["✓ 一切付与されない\n→ CSRF完全防御"]
+    </div>
+  </details>
+
+  <div class="warn-box" style="border-color:var(--accent3);background:#f3e5f5;">
+    <strong style="color:var(--accent3);">📋 初心者まとめ</strong><br>
+    覚える関数: <code>Secure; HttpOnly; SameSite=Lax</code><br>
+    よくある落とし穴: SameSite=NoneでSecureを付け忘れ→ブラウザがCookieを無視する<br>
+    正しい使い方: クロスサイト送信が必要な場合は必ず <code>SameSite=None; Secure</code> をセットで指定する
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 5-E: Content Negotiation -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-5e">
+  <h3>実験 5-E: Content Negotiation（内容交渉）</h3>
+  <p>
+    ブラウザはリクエスト時に <strong>Accept</strong>・<strong>Accept-Language</strong>・<strong>Accept-Encoding</strong> 等のヘッダーを自動送信します。
+    サーバーはこれらを見て、最適な形式・言語・圧縮方式でレスポンスを返します。
+    httpbin.org/get を通じて、実際のリクエストヘッダーを確認しましょう。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — ブラウザが送信するAccept系ヘッダーを確認</div>
+    <p>このページからhttpbin.orgにGETリクエストを送り、実際に送信されたヘッダーを確認します。</p>
+    <button class="btn btn-accent" onclick="checkAcceptHeaders()">Accept系ヘッダーを確認</button>
+    <div class="result-box" id="accept-headers-out"><span class="placeholder">ボタンを押してください（httpbin.org/getにGETリクエストを送信）</span></div>
+    <script>
+      async function checkAcceptHeaders() {
+        const out = document.getElementById('accept-headers-out');
+        out.className = 'result-box';
+        out.innerHTML = '<span class="placeholder">取得中...</span>';
+        try {
+          const res = await fetch('https://httpbin.org/get', {
+            headers: {
+              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+              'Accept-Language': 'ja,en-US;q=0.9,en;q=0.8',
+              'Accept-Encoding': 'gzip, deflate, br'
+            }
+          });
+          const data = await res.json();
+          const headers = data.headers || {};
+
+          const acceptHdr = headers['Accept'] || '(送信されませんでした)';
+          const acceptLang = headers['Accept-Language'] || '(送信されませんでした)';
+          const acceptEnc = headers['Accept-Encoding'] || '(送信されませんでした)';
+          const userAgent = headers['User-Agent'] || '(なし)';
+
+          out.className = 'result-box result-ok';
+          out.textContent =
+            '【実際のリクエストヘッダー（httpbin.org から取得）】\n\n' +
+            'Accept:\n  ' + acceptHdr + '\n\n' +
+            'Accept-Language:\n  ' + acceptLang + '\n\n' +
+            'Accept-Encoding:\n  ' + acceptEnc + '\n\n' +
+            'User-Agent（参考）:\n  ' + userAgent.substring(0, 80) + (userAgent.length > 80 ? '...' : '');
+        } catch(e) {
+          out.className = 'result-box result-danger';
+          out.textContent = 'エラー: ' + e.message + '\nhttpbin.org に接続できません。';
+        }
+      }
+    </script>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — q値（品質値）による優先度の仕組み</div>
+    <p>Accept ヘッダーの中の <code>;q=0.9</code> という数値が優先度（品質値）です。パースして優先順に並べ替えます。</p>
+    <input type="text" class="input-area" id="accept-input" value="text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8">
+    <div class="conv-arrow">↓ q値で優先度をパース ↓</div>
+    <div class="result-box" id="qvalue-out"><span class="placeholder">入力するとq値による優先順位を表示</span></div>
+    <script>
+      var acceptInput = document.getElementById('accept-input');
+      function parseAcceptHeader() {
+        const raw = acceptInput.value.trim();
+        const out = document.getElementById('qvalue-out');
+        if (!raw) { out.innerHTML = '<span class="placeholder">入力してください</span>'; return; }
+
+        const parts = raw.split(',').map(function(s) {
+          s = s.trim();
+          const qMatch = s.match(/;q=([0-9.]+)/);
+          const q = qMatch ? parseFloat(qMatch[1]) : 1.0;
+          const type = s.replace(/;q=[0-9.]+/, '').trim();
+          return { type: type, q: q };
+        });
+
+        parts.sort(function(a, b) { return b.q - a.q; });
+
+        let result = '優先順位（高い順）:\n';
+        result += '─────────────────────────────────────────\n';
+        parts.forEach(function(p, i) {
+          const qStr = ('q=' + p.q.toFixed(1)).padEnd(6);
+          result += (i + 1) + '.  ' + qStr + '  ' + p.type + '\n';
+        });
+        result += '\n【ルール】\n';
+        result += '  ;q= 省略時  → q=1.0（最優先）\n';
+        result += '  ;q=0.9     → 2番目に好む\n';
+        result += '  */*         → ワイルドカード（何でも受け付ける）\n\n';
+        result += '→ サーバーはこのリストを見て、対応できる最高優先度の形式でレスポンスを返す';
+
+        out.className = 'result-box result-ok';
+        out.textContent = result;
+      }
+      acceptInput.addEventListener('input', parseAcceptHeader);
+      parseAcceptHeader();
+    </script>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — Accept-Language と海外サイトの自動日本語表示</div>
+    <div class="diagram">Accept-Language ヘッダーによる Content Negotiation
+
+  ブラウザが送信:
+    Accept-Language: ja,en-US;q=0.9,en;q=0.8
+
+  サーバーの判断フロー:
+    1. "ja" のコンテンツあるか？ → YES → 日本語ページを返す ✓
+    2. "ja" がなければ → "en-US" のコンテンツあるか？ → 英語ページを返す
+    3. どの言語コンテンツもなければ → デフォルト言語で返す
+
+  実例: Google.com
+    日本語ブラウザ → Accept-Language: ja → 自動的にja.google.com相当の内容
+    英語ブラウザ   → Accept-Language: en → en.google.com相当の内容
+
+  q値の読み方:
+    ja           = q=1.0  （最も好む言語: 日本語）
+    en-US;q=0.9  = q=0.9  （次に好む: 米国英語）
+    en;q=0.8     = q=0.8  （さらに次: 英語全般）</div>
+
+    <button class="btn btn-accent2" onclick="checkLangNegotiation()">実際のAccept-Languageヘッダーを確認</button>
+    <div class="result-box" id="lang-neg-out"><span class="placeholder">ボタンを押してください</span></div>
+    <script>
+      async function checkLangNegotiation() {
+        const out = document.getElementById('lang-neg-out');
+        out.className = 'result-box';
+        out.innerHTML = '<span class="placeholder">取得中...</span>';
+        try {
+          const res = await fetch('https://httpbin.org/get');
+          const data = await res.json();
+          const acceptLang = (data.headers && data.headers['Accept-Language']) || '(取得できませんでした)';
+
+          // ブラウザのnavigator.languagesも確認
+          const navLangs = navigator.languages ? navigator.languages.join(', ') : navigator.language;
+
+          out.className = 'result-box result-ok';
+          out.textContent =
+            '【このブラウザの言語設定】\n' +
+            'navigator.languages: ' + navLangs + '\n\n' +
+            '【HTTPヘッダーとして実際に送信された値（httpbin.orgで確認）】\n' +
+            'Accept-Language: ' + acceptLang + '\n\n' +
+            '【解釈】\n' +
+            acceptLang.split(',').map(function(part, i) {
+              part = part.trim();
+              const qMatch = part.match(/;q=([0-9.]+)/);
+              const q = qMatch ? parseFloat(qMatch[1]) : 1.0;
+              const lang = part.replace(/;q=[0-9.]+/, '').trim();
+              return (i+1) + '. ' + lang.padEnd(12) + ' (優先度 q=' + q.toFixed(1) + ')';
+            }).join('\n') +
+            '\n\n→ 海外サイトがこのヘッダーを読んで自動的に日本語で表示します';
+        } catch(e) {
+          out.className = 'result-box result-danger';
+          out.textContent = 'エラー: ' + e.message;
+        }
+      }
+    </script>
+  </div>
+
+  <div class="beginner-box">
+    <div class="beg-title">🔰 海外サイトが日本語で表示される仕組み</div>
+    <ul>
+      <li>ブラウザはOSの言語設定を参照し、自動的に <code>Accept-Language: ja,en-US;q=0.9,en;q=0.8</code> を送信します</li>
+      <li>サーバーはこのヘッダーを見て、対応言語の中で最も優先度の高い言語のコンテンツを返します</li>
+      <li><strong>q値（クオリティ値）</strong>は0〜1の数値で優先度を示します（省略時は1.0＝最高優先度）</li>
+      <li>このような「クライアントが希望を伝え、サーバーが最適な形式を選ぶ」仕組みを <strong>Content Negotiation（内容交渉）</strong>と呼びます</li>
+      <li>言語だけでなく、形式（Accept）・圧縮方式（Accept-Encoding）・文字コード（Accept-Charset）でも同様の仕組みが働きます</li>
+    </ul>
+  </div>
+
+  <details>
+    <summary>📊 Mermaid: Content Negotiation の全体フロー</summary>
+    <div class="mermaid">
+flowchart LR
+    BR["ブラウザ\n（日本語設定）"]
+
+    BR -->|"Accept: text/html,*/*;q=0.8\nAccept-Language: ja,en;q=0.9\nAccept-Encoding: gzip, br"| SRV["サーバー"]
+
+    SRV --> CHK1{"日本語\nコンテンツあり?"}
+    CHK1 -->|"YES"| R1["HTTP/1.1 200 OK\nContent-Type: text/html; charset=utf-8\nContent-Language: ja\nContent-Encoding: gzip\n\n日本語HTML（gzip圧縮済み）"]
+    CHK1 -->|"NO"| CHK2{"英語\nコンテンツあり?"}
+    CHK2 -->|"YES"| R2["HTTP/1.1 200 OK\nContent-Language: en\n\n英語HTML"]
+    CHK2 -->|"NO"| R3["HTTP/1.1 406 Not Acceptable"]
+    </div>
+  </details>
+</div>
+
+<hr>
+
+<!-- ============================================================
+     チェックリスト
+     ============================================================ -->
+<h2 id="sec-checklist">✅ 実験チェックリスト</h2>
+<p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:0.8rem;">完了した実験にチェックを入れてください（ブラウザに保存されます）</p>
+
+<div id="checklist-container">
+  <label class="check-item" id="chk-wdc-lab05-1">
+    <input type="checkbox" data-key="wdc-lab05-1" onchange="saveCheck(this)">
+    <span>5-A: application/json / form-urlencoded / text/plain の3種でPOSTし、サーバーの解釈の違いを確認した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab05-2">
+    <input type="checkbox" data-key="wdc-lab05-2" onchange="saveCheck(this)">
+    <span>5-A: Content-Typeが違うとサーバーの <code>json</code> / <code>form</code> / <code>data</code> フィールドの違いを説明できる</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab05-3">
+    <input type="checkbox" data-key="wdc-lab05-3" onchange="saveCheck(this)">
+    <span>5-B: UTF-8の日本語1文字が3バイトであることをバイト列で確認した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab05-4">
+    <input type="checkbox" data-key="wdc-lab05-4" onchange="saveCheck(this)">
+    <span>5-B: 文字化けシミュレーションで、同じバイト列でもcharsetが変わると別の文字になることを体験した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab05-5">
+    <input type="checkbox" data-key="wdc-lab05-5" onchange="saveCheck(this)">
+    <span>5-B: HTTPヘッダーのcharsetがmetaタグより優先されることを理解した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab05-6">
+    <input type="checkbox" data-key="wdc-lab05-6" onchange="saveCheck(this)">
+    <span>5-C: document.cookieでCookieを設定・一覧取得し、Expires/Path属性の効果を確認した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab05-7">
+    <input type="checkbox" data-key="wdc-lab05-7" onchange="saveCheck(this)">
+    <span>5-C: ECサイト用Cookie3件を一括設定し、削除（Expires=過去日時）の仕組みを理解した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab05-8">
+    <input type="checkbox" data-key="wdc-lab05-8" onchange="saveCheck(this)">
+    <span>5-D: Secure / HttpOnly / SameSite のON/OFFでCookie文字列とセキュリティ評価が変わることを確認した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab05-9">
+    <input type="checkbox" data-key="wdc-lab05-9" onchange="saveCheck(this)">
+    <span>5-D: HttpOnlyにより通常CookieはJS読み取り可能だが、HttpOnly Cookieは不可能であることを理解した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab05-10">
+    <input type="checkbox" data-key="wdc-lab05-10" onchange="saveCheck(this)">
+    <span>5-D: SameSite=Strict / Lax / None の違いとCSRF対策効果を説明できる</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab05-11">
+    <input type="checkbox" data-key="wdc-lab05-11" onchange="saveCheck(this)">
+    <span>5-E: httpbin.org経由でブラウザが自動送信するAccept / Accept-Language / Accept-Encoding ヘッダーを確認した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab05-12">
+    <input type="checkbox" data-key="wdc-lab05-12" onchange="saveCheck(this)">
+    <span>5-E: q値（品質値）をパースして優先順位に並べ替え、Content Negotiationの仕組みを理解した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab05-13">
+    <input type="checkbox" data-key="wdc-lab05-13" onchange="saveCheck(this)">
+    <span>5-E: このブラウザのAccept-Languageヘッダーを確認し、海外サイトが日本語表示される理由を説明できる</span>
+  </label>
+</div>
+
+<hr>
+
+<!-- ============================================================
+     学習ノート
+     ============================================================ -->
+<h2 id="sec-notes">📝 学習ノート</h2>
+<p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:0.5rem;">気づきや疑問点をメモしてください（ブラウザに保存されます）</p>
+<textarea id="study-notes" class="note-textarea" placeholder="例: Content-TypeをJSONにし忘れると400 Bad Requestになる理由が分かった。SameSite=NoneはSecureセットが必須という仕様が面白い..." oninput="saveNotes()"></textarea>
+
+<!-- Nav Links -->
+<div class="nav-links">
+  <a href="web-data-conversion-lab-04.html">← Lab 04: セキュリティ・特殊な変換</a>
+  <a href="web-data-conversion-index.html">📋 マスター索引</a>
+  <a href="web-data-conversion-lab-06.html">Lab 06 →</a>
+</div>
+
+<!-- ============================================================
+     JavaScript
+     ============================================================ -->
+<script>
+// ─── 定数 ────────────────────────────────────────────────────
+const STORAGE_PREFIX = 'wdclab_';
+
+// ─── チェックリスト ──────────────────────────────────────────
+
+function saveCheck(checkbox) {
+  const key = STORAGE_PREFIX + checkbox.dataset.key;
+  localStorage.setItem(key, checkbox.checked ? '1' : '0');
+  const label = checkbox.closest('label');
+  if (label) {
+    label.classList.toggle('checked', checkbox.checked);
+  }
+}
+
+function loadChecks() {
+  document.querySelectorAll('#checklist-container input[type="checkbox"]').forEach(function(cb) {
+    const key = STORAGE_PREFIX + cb.dataset.key;
+    const saved = localStorage.getItem(key);
+    if (saved === '1') {
+      cb.checked = true;
+      const label = cb.closest('label');
+      if (label) label.classList.add('checked');
+    }
+  });
+}
+
+// ─── 学習ノート ──────────────────────────────────────────────
+
+function saveNotes() {
+  localStorage.setItem(STORAGE_PREFIX + 'lab05-notes', document.getElementById('study-notes').value);
+}
+
+function loadNotes() {
+  const saved = localStorage.getItem(STORAGE_PREFIX + 'lab05-notes');
+  if (saved) document.getElementById('study-notes').value = saved;
+}
+
+// ─── 初期化 ──────────────────────────────────────────────────
+
+window.addEventListener('DOMContentLoaded', function() {
+  loadChecks();
+  loadNotes();
+});
+</script>
+
+</body>
+</html>

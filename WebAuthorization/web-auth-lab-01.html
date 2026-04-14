@@ -1,0 +1,2201 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Web認証Lab 01: 認証フロー</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;700&display=swap');
+
+  :root {
+    --bg: #ffffff;
+    --surface: #f5f7fa;
+    --surface2: #ebeef2;
+    --border: #c8cdd3;
+    --text: #1a1a2e;
+    --text-dim: #5c6370;
+    --accent: #005cc5;
+    --accent2: #22863a;
+    --accent3: #6f42c1;
+    --warn: #b08800;
+    --danger: #cb2431;
+    --code-bg: #f0f4f8;
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    padding: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+    color: var(--accent);
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 0.8rem;
+    margin-bottom: 1.5rem;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+    color: var(--accent2);
+    margin: 2rem 0 1rem;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  h3 {
+    font-size: 1.05rem;
+    color: var(--accent3);
+    margin: 1.5rem 0 0.8rem;
+  }
+
+  p, li { font-size: 0.92rem; margin-bottom: 0.5rem; }
+
+  .status-bar {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.6rem 1rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.82rem;
+    font-family: 'IBM Plex Mono', monospace;
+    flex-wrap: wrap;
+  }
+  .status-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    animation: pulse 1.5s infinite;
+  }
+  .status-dot.ok { background: var(--accent); animation: none; }
+  .status-dot.err { background: var(--danger); animation: none; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .alert-critical {
+    background: #fef2f2;
+    border: 2px solid var(--danger);
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.88rem;
+    display: none;
+  }
+  .alert-critical strong { color: var(--danger); }
+  .alert-critical code {
+    background: rgba(203,36,49,0.1);
+    color: var(--danger);
+  }
+
+  .lab-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+  }
+
+  .step {
+    background: var(--surface2);
+    border-left: 3px solid var(--accent2);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 1rem 1.2rem;
+    margin: 1rem 0;
+  }
+  .step-num {
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--accent2);
+    font-weight: 600;
+    font-size: 0.8rem;
+    margin-bottom: 0.3rem;
+  }
+
+  code, pre {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+  }
+  code {
+    background: var(--code-bg);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    color: var(--accent);
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    overflow-x: auto;
+    margin: 0.8rem 0;
+    line-height: 1.6;
+    color: #24292e;
+  }
+  pre .comment { color: #6a737d; }
+  pre .header-name { color: var(--accent2); }
+  pre .header-val  { color: var(--accent); }
+  pre .highlight    { color: var(--warn); font-weight: 600; }
+
+  .result-area pre { min-height: 2.5rem; }
+  .placeholder {
+    color: var(--text-dim);
+    font-style: italic;
+    font-size: 0.8rem;
+  }
+
+  .note {
+    background: #e8f4fd;
+    border: 1px solid #b3d7f5;
+    border-radius: var(--radius);
+    padding: 0.8rem 1rem;
+    margin: 1rem 0;
+    font-size: 0.85rem;
+    color: var(--accent2);
+  }
+  .note::before { content: "💡 "; }
+
+  .warn-box {
+    background: #fff8e1;
+    border: 1px solid #ffe082;
+    border-radius: var(--radius);
+    padding: 0.8rem 1rem;
+    margin: 1rem 0;
+    font-size: 0.85rem;
+    color: var(--warn);
+  }
+  .warn-box::before { content: "⚠️ "; }
+
+  .danger-box {
+    background: #fef2f2;
+    border: 1px solid #f5c6cb;
+    border-radius: var(--radius);
+    padding: 0.8rem 1rem;
+    margin: 1rem 0;
+    font-size: 0.85rem;
+    color: var(--danger);
+  }
+  .danger-box::before { content: "🔴 "; }
+
+  .check-item {
+    background: var(--surface2);
+    border-radius: var(--radius);
+    padding: 0.6rem 1rem;
+    margin: 0.4rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.88rem;
+    transition: opacity 0.3s;
+  }
+  .check-item input[type="checkbox"] {
+    width: 18px; height: 18px;
+    accent-color: var(--accent);
+    flex-shrink: 0;
+  }
+  .check-item.checked { opacity: 0.55; }
+
+  .diagram {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.2rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    overflow-x: auto;
+    white-space: pre;
+    color: var(--text-dim);
+    margin: 1rem 0;
+  }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+  @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+  .col-card {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.8rem;
+    font-size: 0.8rem;
+  }
+  .col-card h4 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .col-card pre {
+    border: none;
+    padding: 0.4rem 0;
+    margin: 0;
+    font-size: 0.75rem;
+    background: transparent;
+  }
+
+  a { color: var(--accent2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+    margin: 1rem 0 2rem;
+  }
+  .toc a {
+    display: inline-block;
+    padding: 0.25rem 0.6rem;
+    margin: 0.15rem;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    background: var(--surface2);
+    transition: background 0.2s;
+  }
+  .toc a:hover { background: var(--border); text-decoration: none; }
+
+  html { scroll-behavior: smooth; }
+
+  .btn {
+    border: none;
+    padding: 0.5rem 1.2rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    font-family: 'Noto Sans JP', sans-serif;
+    margin: 0.3rem;
+    transition: opacity 0.2s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.97); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-accent  { background: var(--accent);  color: var(--bg); }
+  .btn-accent2 { background: var(--accent2); color: var(--bg); }
+  .btn-accent3 { background: var(--accent3); color: var(--bg); }
+  .btn-warn    { background: var(--warn);    color: var(--bg); }
+  .btn-dim     { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+
+  /* Flow animation */
+  .flow-step {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.8rem 1rem;
+    margin: 0.5rem 0;
+    opacity: 0.3;
+    transition: all 0.5s ease;
+    font-size: 0.85rem;
+  }
+  .flow-step.active {
+    opacity: 1;
+    border-color: var(--accent);
+    box-shadow: 0 0 12px rgba(0, 92, 197, 0.15);
+  }
+  .flow-step .flow-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+  }
+
+  /* Token display */
+  .token-display {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.8rem;
+    margin: 0.5rem 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    word-break: break-all;
+    line-height: 1.6;
+  }
+  .token-part-header { color: var(--danger); font-weight: 600; }
+  .token-part-payload { color: var(--accent3); font-weight: 600; }
+  .token-part-sig { color: var(--accent2); font-weight: 600; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });</script>
+</head>
+<body>
+
+<!-- ============================================ -->
+<!-- STATUS BAR                                    -->
+<!-- ============================================ -->
+<div class="status-bar">
+  <div class="status-item">
+    <div class="status-dot" id="dot-protocol"></div>
+    <span id="status-protocol">プロトコル確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-httpbin"></div>
+    <span id="status-httpbin">httpbin.org 確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-devtools"></div>
+    <span>DevTools: <kbd style="background:var(--surface2);padding:0.1rem 0.4rem;border-radius:4px;">F12</kbd></span>
+  </div>
+</div>
+
+<script>
+(function checkProtocol() {
+  const dot = document.getElementById('dot-protocol');
+  const label = document.getElementById('status-protocol');
+  if (location.protocol === 'file:') {
+    dot.classList.add('err');
+    label.innerHTML = '<strong style="color:var(--danger)">file:// 検出（要修正）</strong>';
+    document.getElementById('file-protocol-alert').style.display = 'block';
+  } else {
+    dot.classList.add('ok');
+    label.textContent = location.protocol + '// ✅';
+  }
+})();
+
+(async function checkHttpbin() {
+  const dot = document.getElementById('dot-httpbin');
+  const label = document.getElementById('status-httpbin');
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch('https://httpbin.org/get', { signal: controller.signal });
+    clearTimeout(timeout);
+    if (res.ok) {
+      dot.classList.add('ok');
+      label.textContent = 'httpbin.org ✅';
+    } else {
+      dot.classList.add('err');
+      label.innerHTML = '<strong style="color:var(--danger)">httpbin.org 応答エラー</strong>';
+    }
+  } catch(e) {
+    dot.classList.add('err');
+    label.innerHTML = '<strong style="color:var(--danger)">httpbin.org ❌ 接続不可</strong>';
+  }
+})();
+</script>
+
+<div class="alert-critical" id="file-protocol-alert">
+  <strong>🔴 このページは HTTP サーバー経由で開いてください</strong><br><br>
+  現在 <code>file://</code> で開いています。この状態では <code>fetch()</code> が
+  <strong>CORSエラー</strong>になり、ほとんどの実験が動作しません。<br>
+  web-auth-index.html のセットアップガイドを参照してサーバーを起動してください。
+</div>
+
+<p style="margin-bottom:1rem;">
+  <a href="web-auth-index.html" style="color:var(--accent2); font-size:0.88rem;">← マスター索引に戻る</a>
+</p>
+
+<h1>🧪 Lab 01: 認証フロー（Authorization, WWW-Authenticate, OAuth 2.0）</h1>
+<p style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.3rem;font-family:'IBM Plex Mono',monospace;">最終更新: 2026年4月</p>
+
+<div class="note" style="background:#e8f5e9;border-color:#a5d6a7;color:#2e7d32;">
+  <strong>🔰 初心者向け解説</strong><br>
+  <strong>利用シーン:</strong> ログイン機能のあるWebサービス全般。SNS・ネットショッピング・社内システムなど、「誰がアクセスしているか」を確認する仕組みが必要な場面で使います。<br>
+  <strong>なぜ必要？:</strong> 認証がないと誰でも他人のデータにアクセスできてしまいます。適切な認証なしにAPIやページを公開すると、個人情報の漏洩・なりすましログイン・不正操作などのリスクが生じます。<br>
+  <strong>身近な例え:</strong> 図書館の入館カード確認と同じです。「あなたは誰ですか？（認証）」→「この本棚は会員のみ閲覧可（認可）」という2段階の判断が、Webでは HTTP ヘッダーを通じて行われます。
+</div>
+
+<div class="lab-box" style="border-color:var(--accent); margin-bottom:1rem;">
+  <h3 style="color:var(--accent); margin-top:0;">🎯 このLabの学習目標</h3>
+  <p style="margin-bottom:0.3rem;">完了すると、以下ができるようになります：</p>
+  <div class="check-item" style="opacity:1;"><span>1. <code>Authorization: Basic</code> ヘッダーの仕組みと Base64 ≠ 暗号化であることを説明できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>2. <code>Set-Cookie</code> / <code>Cookie</code> によるセッション管理の流れを再現できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>3. JWT の3部構成（Header.Payload.Signature）を分解・検証できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>4. OAuth 2.0 認可コードフロー（PKCE付き）の6ステップを説明できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>5. トークンの保存場所（localStorage vs HttpOnly Cookie）のセキュリティリスクを比較できる</span></div>
+</div>
+
+<div class="warn-box" style="border-color:var(--accent3);background:#fce4ec;">
+  <strong style="color:var(--accent3);">💥 実務での失敗例</strong>：Basic認証をHTTP（非HTTPS）環境で使用 → Base64エンコードされた認証情報が平文で傍受され、全ユーザーのパスワードが漏洩した
+</div>
+
+<p>
+  Webアプリケーションにおける認証・認可で使われるHTTPヘッダーを、
+  実際にブラウザから送受信して理解します。
+  <strong>Basic認証 → セッション認証 → JWT → OAuth 2.0/OIDC</strong> の順に、
+  各方式のヘッダーの違いと安全性を体験します。
+</p>
+<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">⏱ 所要時間：35分</span>
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">難易度：★★☆</span>
+</div>
+<p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:1rem;">📋 前提知識：なし（シリーズの出発点。HTTPリクエスト/レスポンスの基本概念があるとスムーズ）</p>
+
+<div class="diagram">認証方式の全体像（このLabで扱う範囲）
+
+┌─────────────────────────────────────────────────────┐
+│ ① Basic / Digest認証                                │  ← HTTPヘッダーだけで完結
+│    Authorization: Basic base64(user:pass)            │
+│    WWW-Authenticate: Basic realm="..."               │
+├─────────────────────────────────────────────────────┤
+│ ② セッション認証（Cookie）                            │  ← サーバーが状態を保持
+│    Set-Cookie: session_id=xxx; HttpOnly; SameSite    │
+│    Cookie: session_id=xxx                            │
+├─────────────────────────────────────────────────────┤
+│ ③ JWT（JSON Web Token）                              │  ← サーバーはステートレス
+│    Authorization: Bearer eyJhbGci...                 │
+├─────────────────────────────────────────────────────┤
+│ ④ OAuth 2.0 + OpenID Connect                        │  ← 認可の委譲
+│    認可コード → アクセストークン → APIアクセス          │
+│    IDトークン（JWT）でユーザー認証                     │
+└─────────────────────────────────────────────────────┘
+
+重要なHTTPヘッダー:
+  リクエスト:  Authorization, Cookie
+  レスポンス:  WWW-Authenticate, Set-Cookie, Location (リダイレクト)
+               Cache-Control: no-store (トークン応答)</div>
+
+<details style="margin:0.5rem 0;">
+  <summary style="cursor:pointer;color:var(--accent);font-size:0.82rem;font-family:'IBM Plex Mono',monospace;">📊 Mermaid版を表示</summary>
+  <div class="mermaid">
+flowchart TB
+    A["① Basic/Digest認証<br>Authorization: Basic base64(user:pass)"] --> B["② セッション認証<br>Set-Cookie: session_id=xxx"]
+    B --> C["③ JWT<br>Authorization: Bearer eyJhbGci..."]
+    C --> D["④ OAuth 2.0 + OIDC<br>認可コード → アクセストークン"]
+    style A fill:#e3f2fd
+    style B fill:#e8f5e9
+    style C fill:#fff3e0
+    style D fill:#fce4ec
+  </div>
+</details>
+
+<div class="warn-box">
+  <strong style="font-size:1rem; color:var(--danger);">最重要：DevTools を「先に」開いてからリロード</strong><br>
+  <code>F12</code>（Mac: <code>Cmd+Opt+I</code>）→ <strong>Network</strong> タブを選択 →
+  <strong>その後で</strong> <code>Ctrl+Shift+R</code> でリロード。<br>
+  順序が逆だとネットワークログが残りません。全実験でこの手順が前提です。
+</div>
+
+<!-- ── TOC ── -->
+<div class="toc">
+  <strong style="color:var(--text-dim);font-size:0.82rem;">目次:</strong><br>
+  <a href="#exp-auth1a">Auth1-A: Basic認証</a>
+  <a href="#exp-auth1b">Auth1-B: セッション認証</a>
+  <a href="#exp-auth1c">Auth1-C: JWT</a>
+  <a href="#exp-auth1d">Auth1-D: OAuth 2.0フロー</a>
+  <a href="#exp-auth1e">Auth1-E: トークン保存場所</a>
+  <a href="#exp-auth1f">Auth1-F: OutSystems確認</a>
+  <a href="#checklist">✅ チェックリスト</a>
+  <a href="#framework">🔧 設定例</a>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 Auth1-A: Basic認証                        -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-auth1a">
+  <h3>実験 Auth1-A: Basic認証のヘッダーを観察する</h3>
+  <p>
+    最もシンプルな認証方式です。ユーザー名とパスワードを <code>Base64</code> エンコードして
+    <code>Authorization</code> ヘッダーで送信します。
+  </p>
+
+  <div class="note" style="background:#e8f5e9;border-color:#a5d6a7;color:#2e7d32;">
+    <strong>🔰 初心者向け解説</strong><br>
+    <strong>利用シーン:</strong> 社内の簡易ツールや開発環境の保護など、手軽に認証を追加したい場面。現在は単独では推奨されませんが、仕組みの理解に最適です。<br>
+    <strong>なぜ必要？:</strong> Base64は「変換」であって「暗号化」ではありません。HTTPS なしで使うと、パスワードが通信経路上で丸見えになります。Basic認証の限界を知ることで、なぜより安全な方式が生まれたかを理解できます。<br>
+    <strong>身近な例え:</strong> 名前と合言葉を毎回受付で言う方式。「合言葉を変換して渡す」だけなので、その変換ルール（Base64）を知っていれば誰でも元に戻せます。
+  </div>
+
+  <div class="diagram">Basic認証の流れ
+
+Browser                              Server
+  │                                    │
+  │  GET /protected                    │
+  │ ─────────────────────────────────▶ │
+  │                                    │
+  │  401 Unauthorized                  │
+  │  WWW-Authenticate: Basic realm="…" │  ← 「認証が必要です」
+  │ ◀───────────────────────────────── │
+  │                                    │
+  │  （ブラウザがログインダイアログ表示）   │
+  │                                    │
+  │  GET /protected                    │
+  │  Authorization: Basic dXNlcjpwYXNz │  ← Base64(user:pass)
+  │ ─────────────────────────────────▶ │
+  │                                    │
+  │  200 OK (リソース返却)              │
+  │ ◀───────────────────────────────── │</div>
+
+<details style="margin:0.5rem 0;">
+  <summary style="cursor:pointer;color:var(--accent);font-size:0.82rem;font-family:'IBM Plex Mono',monospace;">📊 Mermaid版を表示</summary>
+  <div class="mermaid">
+sequenceDiagram
+    participant B as Browser
+    participant S as Server
+    B->>S: GET /protected
+    S-->>B: 401 Unauthorized + WWW-Authenticate Basic
+    Note over B: ログインダイアログ表示
+    B->>S: GET /protected + Authorization Basic dXNlcjpwYXNz
+    S-->>B: 200 OK (リソース返却)
+  </div>
+</details>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — Base64エンコードの仕組みを体験</div>
+    <p>
+      Basic認証では <code>ユーザー名:パスワード</code> を Base64 でエンコードして送ります。
+      下のフォームで実際にエンコード・デコードしてみましょう。
+    </p>
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; margin:0.5rem 0;">
+      <input type="text" id="basic-user" value="testuser" placeholder="ユーザー名"
+        style="width:140px; background:var(--surface2); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:0.5rem; font-family:'IBM Plex Mono',monospace; font-size:0.82rem;">
+      <span style="color:var(--text-dim);">:</span>
+      <input type="text" id="basic-pass" value="secret123" placeholder="パスワード"
+        style="width:140px; background:var(--surface2); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:0.5rem; font-family:'IBM Plex Mono',monospace; font-size:0.82rem;">
+      <button class="btn btn-accent" id="btn-basic-encode">Base64 エンコード</button>
+    </div>
+    <pre id="basic-encode-result"><span class="placeholder">← ユーザー名:パスワードを入力してエンコード</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-basic-encode').addEventListener('click', () => {
+      const el = document.getElementById('basic-encode-result');
+      const user = document.getElementById('basic-user').value;
+      const pass = document.getElementById('basic-pass').value;
+      const raw = user + ':' + pass;
+      const encoded = btoa(raw);
+      const decoded = atob(encoded);
+
+      console.group('【Auth1-A】Basic認証 Base64エンコード');
+      console.log('元の文字列:', raw);
+      console.log('Base64:', encoded);
+      console.log('デコード結果:', decoded);
+      console.groupEnd();
+
+      el.textContent =
+        '元の文字列:    ' + raw + '\n'
+        + 'Base64:        ' + encoded + '\n'
+        + 'デコード:      ' + decoded + '\n\n'
+        + 'Authorization ヘッダーの値:\n'
+        + '  Basic ' + encoded + '\n\n'
+        + '⚠ Base64は「暗号化」ではなく「エンコード」です！\n'
+        + '  誰でも簡単にデコードできるため、\n'
+        + '  HTTPS なしでは平文同然で危険です。';
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — httpbin.org でBasic認証を体験する</div>
+    <p>
+      httpbin.org の <code>/basic-auth/{user}/{passwd}</code> エンドポイントを使います。
+      正しい認証情報を送ると <code>200</code>、間違えると <code>401</code> が返ります。
+    </p>
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin:0.5rem 0;">
+      <button class="btn btn-accent" id="btn-basic-ok">正しい認証情報で送信</button>
+      <button class="btn btn-danger" id="btn-basic-fail" style="background:var(--danger);color:var(--bg);">間違った認証情報で送信</button>
+    </div>
+    <pre id="basic-auth-result"><span class="placeholder">← ボタンを押して認証の成功/失敗を体験</span></pre>
+  </div>
+
+  <script>
+    async function tryBasicAuth(user, pass, expectedUser, expectedPass) {
+      const el = document.getElementById('basic-auth-result');
+      const btns = document.querySelectorAll('#btn-basic-ok, #btn-basic-fail');
+      btns.forEach(b => b.disabled = true);
+      el.textContent = '送信中...';
+
+      const credentials = btoa(user + ':' + pass);
+      console.group('【Auth1-A】Basic認証リクエスト');
+      console.log('送信する Authorization:', 'Basic ' + credentials);
+
+      try {
+        const res = await fetch('https://httpbin.org/basic-auth/' + expectedUser + '/' + expectedPass, {
+          headers: { 'Authorization': 'Basic ' + credentials }
+        });
+
+        console.log('レスポンスステータス:', res.status);
+
+        if (res.ok) {
+          const data = await res.json();
+          console.log('レスポンスボディ:', data);
+          el.textContent =
+            '✅ 認証成功！ (HTTP ' + res.status + ')\n\n'
+            + '送信したヘッダー:\n'
+            + '  Authorization: Basic ' + credentials + '\n\n'
+            + 'サーバーの応答:\n'
+            + '  authenticated: ' + data.authenticated + '\n'
+            + '  user: ' + data.user + '\n\n'
+            + 'DevTools Network タブで確認:\n'
+            + '  Request Headers → Authorization: Basic ' + credentials;
+        } else {
+          el.textContent =
+            '🔴 認証失敗！ (HTTP ' + res.status + ' Unauthorized)\n\n'
+            + '送信したヘッダー:\n'
+            + '  Authorization: Basic ' + credentials + '\n'
+            + '  (デコード: ' + user + ':' + pass + ')\n\n'
+            + 'サーバーの応答ヘッダー:\n'
+            + '  WWW-Authenticate: Basic realm="..."\n'
+            + '  ← 「正しい認証情報を送り直してください」という意味\n\n'
+            + 'DevTools で Response Headers を確認してください。';
+        }
+      } catch(e) {
+        el.textContent = '通信エラー: ' + e.message;
+        console.error('エラー:', e);
+      }
+      console.groupEnd();
+      btns.forEach(b => b.disabled = false);
+    }
+
+    document.getElementById('btn-basic-ok').addEventListener('click', () =>
+      tryBasicAuth('testuser', 'secret123', 'testuser', 'secret123'));
+    document.getElementById('btn-basic-fail').addEventListener('click', () =>
+      tryBasicAuth('wrong', 'bad', 'testuser', 'secret123'));
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — ブラウザネイティブの認証ダイアログを体験</div>
+    <p>
+      以下のリンクをクリックすると、ブラウザ標準の認証ダイアログが表示されます。<br>
+      ユーザー名: <code>testuser</code>、パスワード: <code>secret123</code> を入力してください。
+    </p>
+    <p>
+      <a href="https://httpbin.org/basic-auth/testuser/secret123" target="_blank"
+         style="display:inline-block; padding:0.4rem 1rem; background:var(--surface2); border:1px solid var(--accent2); border-radius:6px;">
+        🔗 httpbin.org/basic-auth/testuser/secret123 を新しいタブで開く
+      </a>
+    </p>
+  </div>
+
+  <div class="danger-box">
+    <strong>Basic認証の危険性</strong>:
+    Base64 は暗号化ではなく単なるエンコードです。ブラウザの DevTools の Console で
+    <code>atob("dGVzdHVzZXI6c2VjcmV0MTIz")</code> と入力すればすぐにデコードできます。
+    <strong>HTTPS なしでは絶対に使わないでください</strong>。
+    また、Basic認証にはログアウト機能がありません（ブラウザを閉じるまで認証情報が残ります）。
+  </div>
+
+  <div class="note">
+    <strong>WWW-Authenticate ヘッダー</strong>:
+    サーバーが <code>401</code> を返すとき、このヘッダーで「どの認証方式が必要か」をクライアントに伝えます。
+    <code>Basic realm="..."</code> の <code>realm</code> は認証領域の名前で、
+    ブラウザのダイアログに表示されます。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/Headers/WWW-Authenticate" target="_blank">MDN — WWW-Authenticate</a></span>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 Auth1-B: セッション認証                    -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-auth1b">
+  <h3>実験 Auth1-B: セッション認証（Cookie）の仕組みをシミュレーションする</h3>
+  <p>
+    ログイン後にサーバーがセッションIDを発行し、<code>Set-Cookie</code> でブラウザに渡す方式です。
+    以降のリクエストではブラウザが自動で <code>Cookie</code> ヘッダーを送信します。
+  </p>
+
+  <div class="note" style="background:#e8f5e9;border-color:#a5d6a7;color:#2e7d32;">
+    <strong>🔰 初心者向け解説</strong><br>
+    <strong>利用シーン:</strong> ほとんどの一般的なWebサービス（ECサイト、掲示板、社内システムなど）のログイン機能。OutSystems の標準ログインもこの方式です。<br>
+    <strong>なぜ必要？:</strong> HTTPは本来「記憶がない（ステートレス）」プロトコルです。セッション Cookie がないと、ページを移動するたびに毎回ログインが必要になります。また HttpOnly 属性なしでは JavaScript から Cookie が読め、XSS 攻撃でパスワードの代わりにセッションIDが盗まれます。<br>
+    <strong>身近な例え:</strong> 遊園地の入園スタンプと同じ。入口でスタンプを押してもらい（Set-Cookie）、各アトラクションの入り口でスタンプを見せる（Cookie送信）。スタンプは服の内側（HttpOnly）に押すことで他人に見られません。
+  </div>
+
+  <div class="diagram">セッション認証の流れ
+
+Browser                              Server (セッションDB)
+  │                                    │
+  │  POST /login                       │
+  │  Content-Type: application/json    │
+  │  Body: {"user":"tom","pass":"xxx"} │
+  │ ─────────────────────────────────▶ │
+  │                                    │  ← sessions["abc123"] = {userId: "tom"}
+  │  200 OK                            │
+  │  Set-Cookie: session_id=abc123;    │
+  │    HttpOnly; Secure; SameSite=Lax  │
+  │ ◀───────────────────────────────── │
+  │                                    │
+  │  GET /profile                      │
+  │  Cookie: session_id=abc123         │  ← ブラウザが自動送信！
+  │ ─────────────────────────────────▶ │
+  │                                    │  ← sessions["abc123"] を検索
+  │  200 OK {"name":"tom",...}         │
+  │ ◀───────────────────────────────── │</div>
+
+<details style="margin:0.5rem 0;">
+  <summary style="cursor:pointer;color:var(--accent);font-size:0.82rem;font-family:'IBM Plex Mono',monospace;">📊 Mermaid版を表示</summary>
+  <div class="mermaid">
+sequenceDiagram
+    participant B as Browser
+    participant S as Server
+    B->>S: POST /login (user + password)
+    S-->>B: 200 OK + Set-Cookie session_id=abc123
+    Note over B: Cookieを自動保存
+    B->>S: GET /profile + Cookie session_id=abc123
+    S-->>B: 200 OK (ユーザーデータ)
+    B->>S: POST /logout + Cookie session_id=abc123
+    S-->>B: 200 OK + Set-Cookie Max-Age=0
+  </div>
+</details>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — セッション認証フローをJSでシミュレーション</div>
+    <p>
+      サーバー側のセッション管理をブラウザ内で再現します。
+      「ログイン」→「データ取得」→「ログアウト」の流れを体験しましょう。
+    </p>
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin:0.5rem 0;">
+      <button class="btn btn-accent" id="btn-session-login">① ログイン</button>
+      <button class="btn btn-accent2" id="btn-session-access" disabled>② プロフィール取得</button>
+      <button class="btn btn-accent3" id="btn-session-logout" disabled>③ ログアウト</button>
+      <button class="btn btn-dim" id="btn-session-reset">リセット</button>
+    </div>
+    <pre id="session-result"><span class="placeholder">← ①→②→③ の順番にボタンを押してください</span></pre>
+  </div>
+
+  <script>
+  (function() {
+    // サーバー側シミュレーション
+    const mockServer = {
+      sessions: {},
+
+      login(username, password) {
+        // 実際のサーバーではDBでパスワード検証
+        if (username === 'tom' && password === 'secret') {
+          const sessionId = 'sess_' + Math.random().toString(36).substring(2, 10)
+                            + '_' + Date.now().toString(36);
+          this.sessions[sessionId] = {
+            userId: username,
+            loginAt: new Date().toISOString(),
+            expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString() // 30分
+          };
+          return {
+            status: 200,
+            headers: {
+              'Set-Cookie': '__Host-session_id=' + sessionId + '; Path=/; Secure; HttpOnly; SameSite=Lax',
+              'Cache-Control': 'no-store'
+            },
+            body: { message: 'ログイン成功' },
+            _sessionId: sessionId
+          };
+        }
+        return { status: 401, body: { error: '認証失敗' } };
+      },
+
+      getProfile(sessionId) {
+        const session = this.sessions[sessionId];
+        if (!session) {
+          return { status: 401, body: { error: 'セッションが無効です' } };
+        }
+        return {
+          status: 200,
+          body: {
+            userId: session.userId,
+            loginAt: session.loginAt,
+            expiresAt: session.expiresAt
+          }
+        };
+      },
+
+      logout(sessionId) {
+        delete this.sessions[sessionId];
+        return {
+          status: 200,
+          headers: {
+            'Set-Cookie': '__Host-session_id=; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=0'
+          },
+          body: { message: 'ログアウト完了' }
+        };
+      }
+    };
+
+    let currentSessionId = null;
+    const el = document.getElementById('session-result');
+    const btnLogin = document.getElementById('btn-session-login');
+    const btnAccess = document.getElementById('btn-session-access');
+    const btnLogout = document.getElementById('btn-session-logout');
+    const btnReset = document.getElementById('btn-session-reset');
+
+    function appendLog(text) {
+      if (el.querySelector('.placeholder')) el.textContent = '';
+      el.textContent += text + '\n';
+    }
+
+    btnLogin.addEventListener('click', () => {
+      el.textContent = '';
+      console.group('【Auth1-B】セッション認証シミュレーション — ログイン');
+
+      appendLog('━━━ ① ログインリクエスト ━━━');
+      appendLog('');
+      appendLog('→ POST /login');
+      appendLog('  Content-Type: application/json');
+      appendLog('  Body: {"username":"tom","password":"secret"}');
+
+      const res = mockServer.login('tom', 'secret');
+      currentSessionId = res._sessionId;
+
+      console.log('セッションID:', currentSessionId);
+      console.log('レスポンスヘッダー:', res.headers);
+
+      appendLog('');
+      appendLog('← ' + res.status + ' OK');
+      appendLog('  Set-Cookie: ' + res.headers['Set-Cookie']);
+      appendLog('  Cache-Control: ' + res.headers['Cache-Control']);
+      appendLog('');
+      appendLog('📌 ポイント:');
+      appendLog('  • HttpOnly → JSから Cookie にアクセスできない（XSS対策）');
+      appendLog('  • SameSite=Lax → 別サイトからのPOSTでCookieを送らない（CSRF対策）');
+      appendLog('  • Secure → HTTPS接続時のみCookieを送信');
+      appendLog('  • Cache-Control: no-store → ログイン応答をキャッシュしない');
+      appendLog('');
+      appendLog('→ ② を押してプロフィールを取得してみましょう');
+
+      console.groupEnd();
+      btnLogin.disabled = true;
+      btnAccess.disabled = false;
+      btnLogout.disabled = false;
+    });
+
+    btnAccess.addEventListener('click', () => {
+      console.group('【Auth1-B】セッション認証シミュレーション — データ取得');
+
+      appendLog('');
+      appendLog('━━━ ② プロフィール取得 ━━━');
+      appendLog('');
+      appendLog('→ GET /profile');
+      appendLog('  Cookie: __Host-session_id=' + currentSessionId);
+      appendLog('  ↑ ブラウザが自動でCookieを付与（JSで明示的に書く必要なし）');
+
+      const res = mockServer.getProfile(currentSessionId);
+
+      console.log('セッション検索結果:', res.body);
+
+      appendLog('');
+      appendLog('← ' + res.status + ' OK');
+      appendLog('  Body: ' + JSON.stringify(res.body, null, 2).split('\n').join('\n  '));
+      appendLog('');
+      appendLog('→ ③ を押してログアウトしましょう');
+
+      console.groupEnd();
+    });
+
+    btnLogout.addEventListener('click', () => {
+      console.group('【Auth1-B】セッション認証シミュレーション — ログアウト');
+
+      appendLog('');
+      appendLog('━━━ ③ ログアウト ━━━');
+      appendLog('');
+      appendLog('→ POST /logout');
+      appendLog('  Cookie: __Host-session_id=' + currentSessionId);
+
+      const res = mockServer.logout(currentSessionId);
+
+      console.log('セッション削除完了');
+
+      appendLog('');
+      appendLog('← ' + res.status + ' OK');
+      appendLog('  Set-Cookie: ' + res.headers['Set-Cookie']);
+      appendLog('  ↑ Max-Age=0 でCookieを即座に削除');
+      appendLog('');
+
+      // ログアウト後にアクセスを試みる
+      appendLog('━━━ ログアウト後のアクセステスト ━━━');
+      appendLog('');
+      appendLog('→ GET /profile');
+      appendLog('  Cookie: (削除済み — 送信されない)');
+      const res2 = mockServer.getProfile(currentSessionId);
+      appendLog('');
+      appendLog('← ' + res2.status + ' Unauthorized');
+      appendLog('  Body: ' + JSON.stringify(res2.body));
+      appendLog('');
+      appendLog('✅ ログアウトでセッションが無効化されました！');
+
+      currentSessionId = null;
+
+      console.groupEnd();
+      btnLogin.disabled = false;
+      btnAccess.disabled = true;
+      btnLogout.disabled = true;
+    });
+
+    btnReset.addEventListener('click', () => {
+      currentSessionId = null;
+      mockServer.sessions = {};
+      el.innerHTML = '<span class="placeholder">← ①→②→③ の順番にボタンを押してください</span>';
+      btnLogin.disabled = false;
+      btnAccess.disabled = true;
+      btnLogout.disabled = true;
+    });
+  })();
+  </script>
+
+  <div class="note">
+    <strong>__Host- プレフィックスの意味</strong>:
+    <code>__Host-session_id</code> のように <code>__Host-</code> で始めると、
+    ブラウザが自動的に <code>Secure</code>、<code>Path=/</code>、<code>Domain</code>未指定を強制します。
+    Cookie のセキュリティを最も高くする推奨パターンです。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/Cookies#cookie_prefixes" target="_blank">MDN — Cookie プレフィックス</a></span>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — httpbin.org でSet-Cookie / Cookie の実際の送受信を確認</div>
+    <p>httpbin.org の <code>/cookies/set</code> でCookieを設定し、<code>/cookies</code> で確認します。</p>
+    <button class="btn btn-accent" id="btn-cookie-set">Cookie を設定</button>
+    <button class="btn btn-accent2" id="btn-cookie-check">Cookie を確認</button>
+    <pre id="cookie-result"><span class="placeholder">← 「Cookie を設定」→「Cookie を確認」の順に押してください</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-cookie-set').addEventListener('click', async () => {
+      const el = document.getElementById('cookie-result');
+      const btn = document.getElementById('btn-cookie-set');
+      btn.disabled = true;
+      el.textContent = 'Cookie設定中...';
+
+      console.group('【Auth1-B】httpbin.org Cookie設定');
+      try {
+        // httpbin.org /cookies/set は redirect するので manual で
+        const res = await fetch('https://httpbin.org/cookies/set?lab12_demo=hello_auth', {
+          redirect: 'manual',
+          credentials: 'include'
+        });
+        console.log('レスポンスステータス:', res.status, res.type);
+        el.textContent =
+          'Cookie 設定リクエスト送信完了\n\n'
+          + '注意: httpbin.org のCookieはサードパーティCookieとして\n'
+          + '扱われるため、ブラウザによってはブロックされます。\n\n'
+          + 'DevTools → Network タブで cookies/set リクエストの\n'
+          + 'Response Headers → Set-Cookie を確認してください。\n\n'
+          + '→ 次に「Cookie を確認」を押してください';
+      } catch(e) {
+        el.textContent = 'エラー: ' + e.message + '\n\n'
+          + 'サードパーティCookieがブロックされている可能性があります。\n'
+          + 'DevTools → Network タブで確認してください。';
+        console.error(e);
+      }
+      console.groupEnd();
+      btn.disabled = false;
+    });
+
+    document.getElementById('btn-cookie-check').addEventListener('click', async () => {
+      const el = document.getElementById('cookie-result');
+      const btn = document.getElementById('btn-cookie-check');
+      btn.disabled = true;
+      el.textContent = 'Cookie確認中...';
+
+      console.group('【Auth1-B】httpbin.org Cookie確認');
+      try {
+        const res = await fetch('https://httpbin.org/cookies', { credentials: 'include' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        console.log('受信したCookies:', data.cookies);
+
+        const cookies = data.cookies || {};
+        const cookieKeys = Object.keys(cookies);
+
+        el.textContent =
+          'httpbin.org が受け取った Cookie:\n'
+          + '  ' + JSON.stringify(cookies, null, 2).split('\n').join('\n  ') + '\n\n'
+          + (cookieKeys.length === 0
+            ? '⚠ Cookieが空です。\n'
+              + '  サードパーティCookieがブロックされています。\n'
+              + '  これは現代のブラウザでは正常な動作です（Lab 05 参照）。\n\n'
+              + '  DevTools → Application → Cookies で確認すると、\n'
+              + '  httpbin.org ドメインのCookieが空になっているはずです。'
+            : '✅ Cookie が送受信されています！\n'
+              + '  DevTools → Application → Cookies → httpbin.org で\n'
+              + '  Cookieの属性（HttpOnly, Secure, SameSite等）を確認してください。');
+      } catch(e) {
+        el.textContent = 'エラー: ' + e.message;
+        console.error(e);
+      }
+      console.groupEnd();
+      btn.disabled = false;
+    });
+  </script>
+
+  <div class="warn-box">
+    <strong>サードパーティCookieのブロック</strong>:
+    このページのオリジン（<code id="current-origin-display"></code>）から httpbin.org への
+    Cookie送受信は「サードパーティCookie」として扱われます。
+    Safari/Firefox ではデフォルトでブロックされ、Chrome でもブロックが進んでいます。
+    <strong>Cookie が空でも正常です</strong> — むしろセキュリティが機能している証拠です。
+  </div>
+  <script>
+    document.getElementById('current-origin-display').textContent = location.origin;
+  </script>
+</div>
+
+<!-- ── Cookie vs Session コラム ── -->
+<div class="lab-box" style="border-left:4px solid var(--warn);">
+  <h3>💡 よく混同されるポイント — Cookie と Session の違い</h3>
+  <p>「Cookie認証」「セッション認証」という言葉が混同されやすいポイントです。</p>
+  <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.85rem;margin:0.8rem 0;">
+    <thead>
+      <tr style="background:var(--surface2);">
+        <th style="padding:0.6rem 0.8rem;border-bottom:2px solid var(--border);text-align:left;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent2);">項目</th>
+        <th style="padding:0.6rem 0.8rem;border-bottom:2px solid var(--border);text-align:left;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent2);">Cookie</th>
+        <th style="padding:0.6rem 0.8rem;border-bottom:2px solid var(--border);text-align:left;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent2);">Session</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td style="padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);">何か</td><td style="padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);">ブラウザの保存機能（クライアント側）</td><td style="padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);">サーバーが保持するユーザー状態（サーバー側）</td></tr>
+      <tr><td style="padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);">保存場所</td><td style="padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);">ブラウザ（ユーザーの端末）</td><td style="padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);">サーバーのメモリ / DB（Redis等）</td></tr>
+      <tr><td style="padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);">中身</td><td style="padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);">セッション ID という「鍵」の文字列</td><td style="padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);">鍵に対応する「実際のユーザー情報」</td></tr>
+      <tr><td style="padding:0.5rem 0.8rem;">たとえ</td><td style="padding:0.5rem 0.8rem;">図書館の貸出カード（番号のみ）</td><td style="padding:0.5rem 0.8rem;">図書館の台帳（番号→誰が何を借りているか）</td></tr>
+    </tbody>
+  </table></div>
+  <p style="font-size:0.85rem;"><strong>Cookie は「どこに置いたか（ID）」を持ち、Session は「置いた中身」を持ちます。</strong></p>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 Auth1-C: JWT                              -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-auth1c">
+  <h3>実験 Auth1-C: JWT（JSON Web Token）の構造を分解する</h3>
+  <p>
+    JWTは <code>ヘッダー.ペイロード.署名</code> の3部分で構成されるトークンです。
+    <code>Authorization: Bearer {JWT}</code> ヘッダーで送信します。
+    サーバーはセッションDBを持たず、トークンの署名を検証するだけで認証できます（ステートレス）。
+  </p>
+
+  <div class="note" style="background:#e8f5e9;border-color:#a5d6a7;color:#2e7d32;">
+    <strong>🔰 初心者向け解説</strong><br>
+    <strong>利用シーン:</strong> 複数のサーバーにまたがるマイクロサービス、モバイルアプリのAPI認証、複数ドメイン間でのログイン共有（SSO）など。<br>
+    <strong>なぜ必要？:</strong> セッション認証はサーバーがセッション情報を持つため、サーバーが増えるとデータ共有が難しくなります。JWT は「トークン自体に情報が入っている」のでサーバー側にデータベース不要。ただし Payload は誰でも読めるため、パスワードなどの秘密情報を入れてはいけません。<br>
+    <strong>身近な例え:</strong> 駅の乗車券（QRコード）のようなもの。改札（サーバー）は毎回データベースを参照しなくても、QRコード（JWT）の内容を読んで有効か確認できます。コードを改ざんすると署名が合わなくなり弾かれます。
+  </div>
+
+  <div class="diagram">JWT の構造
+
+eyJhbGciOiJIUzI1NiJ9.eyJ1c2VyIjoiVG9tIn0.xxxxx
+├─────── Header ──────┤├──── Payload ─────┤├ Sig ┤
+
+Header  = {"alg":"HS256","typ":"JWT"}    ← 署名アルゴリズム
+Payload = {"user":"Tom","exp":1234567}   ← ユーザー情報 + 有効期限
+Signature = HMAC-SHA256(                 ← 改ざん検知用
+              base64(Header) + "." + base64(Payload),
+              秘密鍵
+            )
+
+送信時:
+  Authorization: Bearer eyJhbGci...（JWT全体）</div>
+
+<details style="margin:0.5rem 0;">
+  <summary style="cursor:pointer;color:var(--accent);font-size:0.82rem;font-family:'IBM Plex Mono',monospace;">📊 Mermaid版を表示</summary>
+  <div class="mermaid">
+flowchart LR
+    H["Header<br>(アルゴリズム)"] --- P["Payload<br>(ユーザー情報)"] --- SIG["Signature<br>(署名)"]
+    style H fill:#fce4ec,color:#c62828
+    style P fill:#f3e5f5,color:#6a1b9a
+    style SIG fill:#e3f2fd,color:#1565c0
+  </div>
+</details>
+
+<div class="note" style="background:#fff8e1;border-color:#ffe082;color:#6d4c00;">
+  <strong>「Bearer」とは？（語源で理解する）</strong><br>
+  Bearer（ベアラー）= 英語で「持参人・運ぶ人」の意味。銀行の「持参人払い小切手」と同じ仕組みです。<br>
+  <strong>このトークンを持っている人なら誰でも通してしまいます</strong>（JWT であれば署名の検証は行いますが、そのトークンを持ってきたのが正規のユーザー本人かどうかは Bearer の仕組みでは区別しません）。<br>
+  だからこそ、Bearer トークンは盗まれると即悪用されます。<strong>有効期限を短く（15分〜1時間）</strong>設定し、HTTPS で保護することが必須です。
+</div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — JWTを生成して構造を確認する</div>
+    <p>擬似的なJWTを生成し、3つの部分に分解して中身を確認します。</p>
+    <button class="btn btn-accent" id="btn-jwt-create">JWTを生成</button>
+    <pre id="jwt-create-result"><span class="placeholder">← ボタンを押してJWTの構造を確認</span></pre>
+  </div>
+
+  <script>
+    // Base64URL encode (JWT用)
+    function base64urlEncode(obj) {
+      const json = JSON.stringify(obj);
+      return btoa(json).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+    function base64urlDecode(str) {
+      let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+      while (base64.length % 4) base64 += '=';
+      return JSON.parse(atob(base64));
+    }
+
+    document.getElementById('btn-jwt-create').addEventListener('click', () => {
+      const el = document.getElementById('jwt-create-result');
+
+      const header = { alg: 'HS256', typ: 'JWT' };
+      const payload = {
+        sub: '1234567890',
+        name: 'Tom',
+        role: 'developer',
+        iat: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + 3600  // 1時間後に期限切れ
+      };
+
+      const headerB64 = base64urlEncode(header);
+      const payloadB64 = base64urlEncode(payload);
+      // 署名は本来サーバー側で秘密鍵を使って生成（ここではダミー）
+      const signatureB64 = 'dGhpc19pc19hX2Zha2Vfc2lnbmF0dXJl';
+
+      const jwt = headerB64 + '.' + payloadB64 + '.' + signatureB64;
+
+      console.group('【Auth1-C】JWT生成');
+      console.log('Header:', header);
+      console.log('Payload:', payload);
+      console.log('JWT全体:', jwt);
+      console.groupEnd();
+
+      const expDate = new Date(payload.exp * 1000);
+
+      el.textContent = '';
+      el.textContent =
+        '━━━ 生成されたJWT ━━━\n\n'
+        + jwt + '\n\n'
+        + '━━━ 3部分に分解 ━━━\n\n'
+        + '① Header（赤）:\n'
+        + '  Base64URL: ' + headerB64 + '\n'
+        + '  デコード:  ' + JSON.stringify(header, null, 2).split('\n').join('\n             ') + '\n\n'
+        + '② Payload（ピンク）:\n'
+        + '  Base64URL: ' + payloadB64 + '\n'
+        + '  デコード:  ' + JSON.stringify(payload, null, 2).split('\n').join('\n             ') + '\n\n'
+        + '  • sub: ユーザー識別子\n'
+        + '  • name: ユーザー名\n'
+        + '  • role: 権限情報\n'
+        + '  • iat: 発行時刻 (' + new Date(payload.iat * 1000).toLocaleString('ja-JP') + ')\n'
+        + '  • exp: 有効期限 (' + expDate.toLocaleString('ja-JP') + ')\n\n'
+        + '③ Signature（青）:\n'
+        + '  Base64URL: ' + signatureB64 + '\n'
+        + '  ← サーバーの秘密鍵で生成（ここではダミー）\n\n'
+        + '━━━ 送信時のヘッダー ━━━\n\n'
+        + 'Authorization: Bearer ' + jwt;
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — JWTをデコードして中身を確認する</div>
+    <p>JWTをペーストすると自動でデコードします（署名検証はしません — クライアントには秘密鍵がないため）。</p>
+    <textarea id="jwt-input" rows="3" placeholder="JWTをペースト（またはSTEP 1で生成したものを使用）"
+      style="width:100%;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:0.5rem;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;resize:vertical;"></textarea>
+    <button class="btn btn-accent2" id="btn-jwt-decode">デコード</button>
+    <pre id="jwt-decode-result"><span class="placeholder">← JWTをペーストしてデコード</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-jwt-decode').addEventListener('click', () => {
+      const el = document.getElementById('jwt-decode-result');
+      const input = document.getElementById('jwt-input').value.trim();
+      if (!input) { el.textContent = 'JWTを入力してください'; return; }
+
+      const parts = input.split('.');
+      if (parts.length !== 3) {
+        el.textContent = '❌ JWTは3つの部分（Header.Payload.Signature）で構成されます。\n'
+          + '   ドット（.）で区切られた3部分が必要です。\n'
+          + '   現在: ' + parts.length + '部分が検出されました。';
+        return;
+      }
+
+      console.group('【Auth1-C】JWTデコード');
+      try {
+        const header = base64urlDecode(parts[0]);
+        const payload = base64urlDecode(parts[1]);
+
+        console.log('Header:', header);
+        console.log('Payload:', payload);
+
+        let expInfo = '';
+        if (payload.exp) {
+          const expDate = new Date(payload.exp * 1000);
+          const now = new Date();
+          const isExpired = now > expDate;
+          expInfo = '\n\n有効期限チェック:\n'
+            + '  exp: ' + expDate.toLocaleString('ja-JP') + '\n'
+            + '  現在: ' + now.toLocaleString('ja-JP') + '\n'
+            + '  状態: ' + (isExpired ? '🔴 期限切れ' : '✅ 有効');
+        }
+
+        el.textContent =
+          '✅ デコード成功\n\n'
+          + 'Header:\n  ' + JSON.stringify(header, null, 2).split('\n').join('\n  ') + '\n\n'
+          + 'Payload:\n  ' + JSON.stringify(payload, null, 2).split('\n').join('\n  ')
+          + expInfo + '\n\n'
+          + '⚠ 注意: Payload は暗号化されていません！\n'
+          + '  誰でもデコードして中身を読めます。\n'
+          + '  → パスワードや秘密情報をPayloadに含めてはいけません。';
+      } catch(e) {
+        el.textContent = '❌ デコードエラー: ' + e.message + '\n'
+          + '  Base64URLとして正しくない形式です。';
+        console.error(e);
+      }
+      console.groupEnd();
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — httpbin.org で Bearer トークンを送信する</div>
+    <p><code>Authorization: Bearer {token}</code> を送信し、サーバーが受け取ったヘッダーを確認します。</p>
+    <button class="btn btn-accent" id="btn-bearer-send">Bearer トークンを送信</button>
+    <pre id="bearer-result"><span class="placeholder">← ボタンを押してBearer認証ヘッダーを送信</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-bearer-send').addEventListener('click', async () => {
+      const el = document.getElementById('bearer-result');
+      const btn = document.getElementById('btn-bearer-send');
+      btn.disabled = true;
+      el.textContent = '送信中...';
+
+      // 擬似JWT生成
+      const header = base64urlEncode({ alg: 'HS256', typ: 'JWT' });
+      const payload = base64urlEncode({
+        sub: '1234567890', name: 'Tom', iat: Math.floor(Date.now() / 1000)
+      });
+      const fakeJwt = header + '.' + payload + '.fake_signature_for_demo';
+
+      console.group('【Auth1-C】Bearer トークン送信');
+      console.log('送信するJWT:', fakeJwt);
+
+      try {
+        const res = await fetch('https://httpbin.org/headers', {
+          headers: { 'Authorization': 'Bearer ' + fakeJwt }
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+
+        console.log('サーバーが受け取ったヘッダー:', data.headers);
+
+        el.textContent =
+          '✅ Bearer トークン送信成功\n\n'
+          + 'サーバーが受け取った Authorization ヘッダー:\n'
+          + '  ' + data.headers['Authorization'] + '\n\n'
+          + 'DevTools Network タブで確認:\n'
+          + '  Request Headers → Authorization: Bearer eyJ...\n\n'
+          + '━━━ Basic認証 vs Bearer認証 の比較 ━━━\n\n'
+          + '  Basic:  Authorization: Basic dXNlcjpwYXNz\n'
+          + '          ↑ ユーザー名:パスワードのBase64\n\n'
+          + '  Bearer: Authorization: Bearer eyJhbGci...\n'
+          + '          ↑ JWT（署名付きトークン）\n\n'
+          + '  どちらも Authorization ヘッダーを使うが、\n'
+          + '  スキーム（Basic / Bearer）が異なる。';
+      } catch(e) {
+        el.textContent = 'エラー: ' + e.message;
+        console.error(e);
+      }
+      console.groupEnd();
+      btn.disabled = false;
+    });
+  </script>
+
+  <div class="two-col">
+    <div class="col-card" style="border-color:var(--accent);">
+      <h4 style="color:var(--accent);">✅ セッション認証の長所</h4>
+      <pre style="color:var(--text);">• サーバー側で即座に無効化できる
+  (セッションDBから削除するだけ)
+• HttpOnly Cookieで XSS 耐性が高い
+• ブラウザが自動でCookieを送信
+  (JSでヘッダーを書く手間なし)</pre>
+    </div>
+    <div class="col-card" style="border-color:var(--accent3);">
+      <h4 style="color:var(--accent3);">✅ JWTの長所</h4>
+      <pre style="color:var(--text);">• サーバーがステートレス
+  (セッションDB不要 → スケールしやすい)
+• マイクロサービス間で検証可能
+  (秘密鍵/公開鍵で署名検証)
+• Payload にユーザー情報を含められる
+  (DB問い合わせ不要)</pre>
+    </div>
+  </div>
+
+  <div class="danger-box">
+    <strong>JWTの注意点</strong>:
+    Payload は暗号化されていません（Base64URLエンコードのみ）。
+    パスワードやクレジットカード番号などの機密情報を含めないでください。
+    また、発行済みJWTの即時無効化はできません（有効期限まで有効）。
+    そのため、<strong>アクセストークンの有効期限は短く（15分〜1時間）</strong>設定し、
+    リフレッシュトークンで更新する設計が推奨されます。
+  </div>
+
+  <!-- アクセストークン vs リフレッシュトークン -->
+  <div class="lab-box" style="margin-top:1rem;border-left:4px solid var(--accent3);">
+    <h3>💡 よく混同されるポイント — アクセストークン vs リフレッシュトークン</h3>
+    <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.85rem;margin:0.8rem 0;">
+      <thead>
+        <tr style="background:var(--surface2);">
+          <th style="padding:0.6rem 0.8rem;border-bottom:2px solid var(--border);text-align:left;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent2);">項目</th>
+          <th style="padding:0.6rem 0.8rem;border-bottom:2px solid var(--border);text-align:left;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent2);">アクセストークン</th>
+          <th style="padding:0.6rem 0.8rem;border-bottom:2px solid var(--border);text-align:left;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent2);">リフレッシュトークン</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td style="padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);">有効期限</td><td style="padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);">短い（15分〜1時間）</td><td style="padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);">長い（数日〜数週間）</td></tr>
+        <tr><td style="padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);">使う目的</td><td style="padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);">API を呼び出すときに毎回付ける</td><td style="padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);">アクセストークンを再発行するためだけ</td></tr>
+        <tr><td style="padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);">送り先</td><td style="padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);">リソースサーバー（API）</td><td style="padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);">認証サーバーのみ</td></tr>
+        <tr><td style="padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);">保存場所</td><td style="padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);">HttpOnly Cookie（短命なのでリスク低）</td><td style="padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);">HttpOnly Cookie + SameSite=Strict（厳重に）</td></tr>
+        <tr><td style="padding:0.5rem 0.8rem;">盗まれたら</td><td style="padding:0.5rem 0.8rem;">期限まで使われる（短命なので被害小）</td><td style="padding:0.5rem 0.8rem;color:var(--danger);">長期間乗っ取られ続ける（被害大）</td></tr>
+      </tbody>
+    </table></div>
+    <p style="font-size:0.82rem;color:var(--text-dim);">たとえ: アクセストークン = 映画館の当日券 / リフレッシュトークン = 年間パス</p>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 Auth1-D: OAuth 2.0                        -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-auth1d">
+  <h3>実験 Auth1-D: OAuth 2.0 認可コードフローを視覚的に理解する</h3>
+  <p>
+    OAuth 2.0 はユーザーのパスワードを第三者に渡さずに、リソースへのアクセス権を委譲する仕組みです。
+    「Googleでログイン」などソーシャルログインの基盤技術です。
+  </p>
+
+  <div class="note" style="background:#e8f5e9;border-color:#a5d6a7;color:#2e7d32;">
+    <strong>🔰 初心者向け解説</strong><br>
+    <strong>利用シーン:</strong> 「Google/GitHub/LINEでログイン」「カレンダーアプリがGoogleカレンダーを読み込む」など、別サービスの機能やデータを自分のアプリに取り込む場面すべて。<br>
+    <strong>なぜ必要？:</strong> ユーザーのパスワードを直接受け取ると、アプリ側が漏洩した場合に Google アカウント自体が危険になります。OAuth 2.0 は「パスワードではなくアクセス権（トークン）だけを渡す」ことで、被害を限定的にします。また、いつでも特定のアプリへの権限だけを取り消せます。<br>
+    <strong>身近な例え:</strong> ホテルのカードキーと同じ。マスターキー（パスワード）は渡さず、期間限定・部屋限定のカードキー（アクセストークン）だけを渡します。期限が切れれば自動的に無効になります。
+  </div>
+
+  <div class="diagram">OAuth 2.0 認可コードフロー（4者の関係）
+
+┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐
+│ ユーザー  │   │ アプリ    │   │ 認可      │   │ リソース  │
+│ (あなた)  │   │ (Client) │   │ サーバー  │   │ サーバー  │
+└────┬─────┘   └────┬─────┘   └────┬─────┘   └────┬─────┘
+     │  ①「Googleで │              │              │
+     │  ログイン」   │              │              │
+     │ ─────────▶   │              │              │
+     │              │  ② 認可URL   │              │
+     │ ◀─────────── │  にリダイレクト│              │
+     │              │              │              │
+     │  ③ ログイン画面               │              │
+     │ ──────────────────────────▶  │              │
+     │  ④ 同意して認可               │              │
+     │ ◀──────────────────────────  │              │
+     │              │              │              │
+     │  ⑤ 認可コード│              │              │
+     │  付きリダイレクト             │              │
+     │ ─────────▶   │              │              │
+     │              │  ⑥ 認可コード│              │
+     │              │  → トークン交換              │
+     │              │ ────────────▶│              │
+     │              │  ⑦ アクセス  │              │
+     │              │  トークン返却 │              │
+     │              │ ◀────────────│              │
+     │              │              │              │
+     │              │  ⑧ APIアクセス               │
+     │              │  Authorization: Bearer token │
+     │              │ ─────────────────────────▶   │
+     │              │  ⑨ データ返却                │
+     │              │ ◀─────────────────────────   │</div>
+
+<details style="margin:0.5rem 0;">
+  <summary style="cursor:pointer;color:var(--accent);font-size:0.82rem;font-family:'IBM Plex Mono',monospace;">📊 Mermaid版を表示</summary>
+  <div class="mermaid">
+sequenceDiagram
+    participant U as ユーザー
+    participant C as クライアントアプリ
+    participant A as 認可サーバー
+    participant R as リソースサーバー
+    C->>A: ① 認可リクエスト (client_id, scope)
+    A->>U: ② ログイン画面表示
+    U->>A: ③ ログイン＋同意
+    A->>C: ④ 認可コード返却 (redirect_uri?code=xxx)
+    C->>A: ⑤ トークン交換 (code + client_secret)
+    A->>C: ⑥ アクセストークン発行
+    C->>R: ⑦ APIアクセス (Authorization Bearer token)
+    R->>C: データ返却
+  </div>
+</details>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — OAuth 2.0 フローをステップごとにアニメーション表示</div>
+    <p>各ステップのHTTPリクエスト/レスポンスを順番に確認しましょう。</p>
+    <button class="btn btn-accent" id="btn-oauth-start">フローを開始</button>
+    <button class="btn btn-accent2" id="btn-oauth-next" disabled>次のステップ →</button>
+    <button class="btn btn-dim" id="btn-oauth-reset">リセット</button>
+  </div>
+
+  <div id="oauth-flow-container">
+    <div class="flow-step" id="oauth-step-1">
+      <div class="flow-label" style="color:var(--accent);">STEP ① ユーザーが「Googleでログイン」をクリック</div>
+      <p style="margin:0;">アプリのログインボタンを押すと、アプリは認可サーバーのURLを組み立てます。</p>
+    </div>
+    <div class="flow-step" id="oauth-step-2">
+      <div class="flow-label" style="color:var(--accent2);">STEP ② 認可サーバーへリダイレクト（HTTP 302）</div>
+      <pre style="border:none;background:transparent;padding:0.3rem 0;margin:0;font-size:0.75rem;">HTTP/1.1 302 Found
+Location: https://accounts.google.com/o/oauth2/auth
+  ?response_type=code          ← 「認可コードをください」
+  &client_id=MY_APP_ID         ← アプリの識別子
+  &redirect_uri=https://myapp.com/callback
+  &scope=openid profile email  ← 要求する権限
+  &state=random_csrf_token     ← CSRF防止トークン
+  &code_challenge=E9Melh...    ← PKCE チャレンジ
+  &code_challenge_method=S256</pre>
+    </div>
+    <div class="flow-step" id="oauth-step-3">
+      <div class="flow-label" style="color:var(--accent3);">STEP ③ ユーザーが認可サーバーでログイン＆同意</div>
+      <p style="margin:0;">Googleのログイン画面が表示され、ユーザーがID/パスワードを入力。<br>
+      「このアプリにプロフィール情報へのアクセスを許可しますか？」に同意します。<br>
+      <strong>重要: パスワードは認可サーバー（Google）だけが受け取り、アプリには渡されません！</strong></p>
+    </div>
+    <div class="flow-step" id="oauth-step-4">
+      <div class="flow-label" style="color:var(--warn);">STEP ④ 認可コード付きでアプリにリダイレクト（HTTP 302）</div>
+      <pre style="border:none;background:transparent;padding:0.3rem 0;margin:0;font-size:0.75rem;">HTTP/1.1 302 Found
+Location: https://myapp.com/callback
+  ?code=4/P7q7W91a-oM...   ← 認可コード（一時的なチケット）
+  &state=random_csrf_token  ← 送ったstateと一致するか検証！</pre>
+    </div>
+    <div class="flow-step" id="oauth-step-5">
+      <div class="flow-label" style="color:var(--accent);">STEP ⑤ アプリが認可コードをトークンと交換（サーバー間通信）</div>
+      <pre style="border:none;background:transparent;padding:0.3rem 0;margin:0;font-size:0.75rem;"><span class="comment">// アプリのバックエンドから認可サーバーへ直接リクエスト
+// （ブラウザを経由しない = トークン漏洩リスクを低減）</span>
+
+POST /token HTTP/1.1
+Host: oauth2.googleapis.com
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=authorization_code
+&code=4/P7q7W91a-oM...       ← ④で受け取った認可コード
+&client_id=MY_APP_ID
+&client_secret=MY_SECRET      ← アプリの秘密鍵
+&redirect_uri=https://myapp.com/callback
+&code_verifier=dBjftJeZ4CVP... ← PKCE 検証子</pre>
+    </div>
+    <div class="flow-step" id="oauth-step-6">
+      <div class="flow-label" style="color:var(--accent2);">STEP ⑥ トークンレスポンス</div>
+      <pre style="border:none;background:transparent;padding:0.3rem 0;margin:0;font-size:0.75rem;">HTTP/1.1 200 OK
+Content-Type: application/json
+<span class="highlight">Cache-Control: no-store</span>       ← 絶対にキャッシュ禁止！
+
+{
+  "access_token": "ya29.a0AfH6SM...",   ← APIアクセス用（短寿命: 1時間）
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "refresh_token": "1//0gdMEg...",      ← 再発行用（長寿命）
+  "id_token": "eyJhbGciOiJSUz..."       ← OIDC: ユーザー情報（JWT）
+}</pre>
+    </div>
+    <div class="flow-step" id="oauth-step-7">
+      <div class="flow-label" style="color:var(--accent3);">STEP ⑦ アクセストークンでAPIにアクセス</div>
+      <pre style="border:none;background:transparent;padding:0.3rem 0;margin:0;font-size:0.75rem;">GET /userinfo HTTP/1.1
+Host: www.googleapis.com
+<span class="highlight">Authorization: Bearer ya29.a0AfH6SM...</span>  ← アクセストークン
+
+← 200 OK
+{
+  "sub": "1234567890",
+  "name": "Tom",
+  "email": "tom@example.com",
+  "picture": "https://..."
+}</pre>
+    </div>
+  </div>
+
+  <pre id="oauth-summary" style="margin-top:0.8rem;"><span class="placeholder">← 「フローを開始」を押してステップごとに確認</span></pre>
+
+  <script>
+  (function() {
+    const steps = ['oauth-step-1','oauth-step-2','oauth-step-3','oauth-step-4','oauth-step-5','oauth-step-6','oauth-step-7'];
+    let current = -1;
+    const btnStart = document.getElementById('btn-oauth-start');
+    const btnNext = document.getElementById('btn-oauth-next');
+    const btnReset = document.getElementById('btn-oauth-reset');
+    const summaryEl = document.getElementById('oauth-summary');
+
+    const explanations = [
+      'ユーザーが「Googleでログイン」をクリック。\nアプリは認可URL（client_id, scope, state, PKCE等）を組み立てます。',
+      'HTTP 302 でユーザーのブラウザを認可サーバーにリダイレクト。\n重要なパラメータ:\n  • response_type=code（認可コードフロー）\n  • state（CSRF防止）\n  • code_challenge（PKCE — 認可コード傍受防止）',
+      'ユーザーが認可サーバー上でログイン＆同意。\nパスワードは認可サーバーだけが受け取ります。\nアプリにはパスワードが渡りません！',
+      '認可サーバーがアプリのcallback URLに認可コード付きでリダイレクト。\n• 認可コードは一時的（数分で有効期限切れ）\n• stateパラメータでCSRF攻撃を検知',
+      'アプリのバックエンドが認可コードをアクセストークンに交換。\n• ブラウザを経由しないサーバー間通信\n• client_secretで本物のアプリであることを証明\n• code_verifierでPKCEを完了',
+      'アクセストークン（+ リフレッシュトークン + IDトークン）を取得。\n• Cache-Control: no-store が必須！\n• アクセストークンは短寿命（通常1時間）\n• リフレッシュトークンでアクセストークンを再発行',
+      'アクセストークンを Authorization: Bearer ヘッダーで送信し、APIにアクセス。\nトークンが有効な間、ユーザー情報やリソースにアクセスできます。'
+    ];
+
+    function resetFlow() {
+      current = -1;
+      steps.forEach(id => document.getElementById(id).classList.remove('active'));
+      summaryEl.innerHTML = '<span class="placeholder">← 「フローを開始」を押してステップごとに確認</span>';
+      btnStart.disabled = false;
+      btnNext.disabled = true;
+    }
+
+    function showStep() {
+      steps.forEach((id, i) => {
+        document.getElementById(id).classList.toggle('active', i <= current);
+      });
+      summaryEl.textContent = '━━━ STEP ' + (current + 1) + '/7 の解説 ━━━\n\n' + explanations[current];
+
+      if (current >= steps.length - 1) {
+        btnNext.disabled = true;
+        summaryEl.textContent += '\n\n🎉 フロー完了！\n\n'
+          + 'まとめ:\n'
+          + '  • パスワードはアプリに渡らない（認可サーバーのみ）\n'
+          + '  • 認可コードは一時的 → アクセストークンに交換\n'
+          + '  • アクセストークンは短寿命 → リフレッシュトークンで更新\n'
+          + '  • トークンレスポンスは Cache-Control: no-store 必須\n'
+          + '  • PKCE で認可コード傍受攻撃を防止';
+      }
+    }
+
+    btnStart.addEventListener('click', () => {
+      current = 0;
+      btnStart.disabled = true;
+      btnNext.disabled = false;
+      showStep();
+    });
+
+    btnNext.addEventListener('click', () => {
+      if (current < steps.length - 1) {
+        current++;
+        showStep();
+      }
+    });
+
+    btnReset.addEventListener('click', resetFlow);
+  })();
+  </script>
+
+  <div class="note">
+    <strong>PKCE（Proof Key for Code Exchange）</strong>:
+    認可コードが傍受された場合に、攻撃者がトークンに交換できないようにする仕組みです。
+    アプリが事前に <code>code_verifier</code>（ランダム文字列）を生成し、
+    そのハッシュ（<code>code_challenge</code>）を認可リクエストに含めます。
+    トークン交換時に元の <code>code_verifier</code> を送ることで、
+    正当なアプリであることを証明します。<br>
+    <strong>PKCEが必要な理由（攻撃シナリオ）</strong>: 万一、認可コード（<code>code=4/P7q7...</code>）を攻撃者に傍受されても、トークンへの交換には <code>code_verifier</code>（クライアントだけが知るランダム値）が必要です。ハッシュから元の値を逆算できないため、<strong>認可コードだけ盗んでもアクセストークンを手に入れられません</strong>。<br>
+    <strong>OAuth 2.1 仕様ドラフトでは全クライアントに PKCE が必須</strong>となる方向です。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/Headers/Authorization" target="_blank">MDN — Authorization</a></span>
+  </div>
+
+  <div class="note">
+    <strong>OpenID Connect（OIDC）</strong>:
+    OAuth 2.0は「認可（Authorization）」のフレームワークであり、
+    ユーザーが誰であるかを確認する「認証（Authentication）」の仕組みは含まれていません。
+    OIDCはOAuth 2.0の上に認証レイヤーを追加し、
+    <code>id_token</code>（JWT形式）でユーザーの本人確認を可能にします。
+    「Googleでログイン」は正確にはOIDCを使っています。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://openid.net/developers/how-connect-works/" target="_blank">OpenID Connect — How It Works</a></span>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 Auth1-E: トークン保存場所の比較            -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-auth1e">
+  <h3>実験 Auth1-E: トークンの保存場所とセキュリティリスクを比較する</h3>
+  <p>
+    認証トークンをブラウザのどこに保存するかは、セキュリティ上の最重要判断です。
+    各保存場所のリスクを実際に体験しましょう。
+  </p>
+
+  <div class="note" style="background:#e8f5e9;border-color:#a5d6a7;color:#2e7d32;">
+    <strong>🔰 初心者向け解説</strong><br>
+    <strong>利用シーン:</strong> SPA（React/Vue等）やモバイルアプリでJWTを使う際に必ず直面する設計判断。「どこに保存すればいいか」はセキュリティの核心です。<br>
+    <strong>なぜ必要？:</strong> 間違った場所（localStorage等）にトークンを保存すると、XSS攻撃（悪意のあるJavaScriptの実行）で一瞬でトークンが盗まれます。HttpOnly Cookie なら JavaScript からアクセスできないため、XSS 攻撃を受けてもトークンは守られます。<br>
+    <strong>身近な例え:</strong> 大切な暗証番号を「財布の中のメモ（localStorage）」に書くか「頭の中（HttpOnly Cookie）」に記憶するかの違い。財布を盗まれたらメモは読まれますが、頭の中の記憶は盗めません。
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — 各保存場所のXSS耐性を確認</div>
+    <p>
+      XSS（クロスサイトスクリプティング）攻撃は、悪意のあるJSコードが
+      ページに注入される攻撃です。保存場所によってトークンが盗まれるかどうかが変わります。
+    </p>
+    <button class="btn btn-accent" id="btn-storage-demo">保存 & XSS テスト</button>
+    <button class="btn btn-dim" id="btn-storage-clear">クリア</button>
+    <pre id="storage-result"><span class="placeholder">← ボタンを押して各保存場所のリスクを確認</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-storage-demo').addEventListener('click', () => {
+      const el = document.getElementById('storage-result');
+      const demoToken = 'eyJhbGciOiJIUzI1NiJ9.eyJ1c2VyIjoiVG9tIn0.demo_token';
+
+      console.group('【Auth1-E】トークン保存場所テスト');
+
+      // 1. JS変数
+      const tokenInVar = demoToken;
+      console.log('① JS変数:', tokenInVar);
+
+      // 2. localStorage
+      try {
+        localStorage.setItem('demo_token', demoToken);
+        const storedToken = localStorage.getItem('demo_token');
+        console.log('② localStorage:', storedToken);
+      } catch(e) {
+        console.log('② localStorage: アクセスエラー', e.message);
+      }
+
+      // 3. sessionStorage
+      try {
+        sessionStorage.setItem('demo_token', demoToken);
+        const storedToken = sessionStorage.getItem('demo_token');
+        console.log('③ sessionStorage:', storedToken);
+      } catch(e) {
+        console.log('③ sessionStorage: アクセスエラー', e.message);
+      }
+
+      // 4. Cookie (HttpOnly ではないもの)
+      document.cookie = 'demo_token=' + demoToken + '; path=/; SameSite=Strict';
+      const cookieToken = document.cookie.split(';').find(c => c.trim().startsWith('demo_token='));
+      console.log('④ Cookie (非HttpOnly):', cookieToken);
+
+      // 5. HttpOnly Cookie はJSからアクセス不可
+      console.log('⑤ HttpOnly Cookie: JSからアクセス不可（表示できない）');
+
+      console.groupEnd();
+
+      el.textContent =
+        '━━━ 各保存場所からXSS攻撃でトークンを盗めるか？ ━━━\n\n'
+        + '① JS変数（メモリ）:\n'
+        + '   取得: window.tokenInVar → "' + tokenInVar.substring(0, 30) + '..."\n'
+        + '   XSS耐性: ❌ 盗取可能\n\n'
+        + '② localStorage:\n'
+        + '   取得: localStorage.getItem("demo_token") → "' + (localStorage.getItem('demo_token') || '').substring(0, 30) + '..."\n'
+        + '   XSS耐性: ❌ 盗取可能（タブを閉じても残る！）\n\n'
+        + '③ sessionStorage:\n'
+        + '   取得: sessionStorage.getItem("demo_token") → "' + (sessionStorage.getItem('demo_token') || '').substring(0, 30) + '..."\n'
+        + '   XSS耐性: ❌ 盗取可能（タブを閉じると消える）\n\n'
+        + '④ Cookie（非HttpOnly）:\n'
+        + '   取得: document.cookie → "' + (cookieToken || '').substring(0, 40) + '..."\n'
+        + '   XSS耐性: ❌ 盗取可能\n\n'
+        + '⑤ HttpOnly Cookie:\n'
+        + '   取得: document.cookie → 表示されない！\n'
+        + '   XSS耐性: ✅ JSからアクセスできないため盗取不可\n\n'
+        + '━━━ 結論 ━━━\n\n'
+        + '  🔴 localStorage / sessionStorage / JS変数 → XSSで盗まれる\n'
+        + '  🔴 非HttpOnly Cookie → XSSで盗まれる\n'
+        + '  ✅ HttpOnly Cookie → XSSでも盗まれない\n\n'
+        + '  → トークンは HttpOnly Cookie に保存するのが最も安全！\n'
+        + '    ただし CSRF 対策（SameSite属性）は必要です。\n\n'
+        + 'DevTools → Application → Local Storage / Session Storage / Cookies\n'
+        + 'で実際に保存されたデータを確認してみてください。';
+    });
+
+    document.getElementById('btn-storage-clear').addEventListener('click', () => {
+      localStorage.removeItem('demo_token');
+      sessionStorage.removeItem('demo_token');
+      document.cookie = 'demo_token=; path=/; max-age=0';
+      document.getElementById('storage-result').innerHTML =
+        '<span class="placeholder">← 保存データをクリアしました</span>';
+    });
+  </script>
+
+  <div class="danger-box">
+    <strong>トークン保存の推奨設定</strong>:<br><br>
+    <code>アクセストークン → HttpOnly Cookie（短寿命: 15分〜1時間）</code><br>
+    <code>リフレッシュトークン → HttpOnly Cookie + SameSite=Strict</code><br><br>
+    避けるべき保存先:<br>
+    <code>❌ localStorage</code> — XSSで盗取可能。タブを閉じても残り続ける<br>
+    <code>❌ sessionStorage</code> — XSSで盗取可能<br>
+    <code>❌ JS変数</code> — XSSで盗取可能<br>
+    <code>❌ URLパラメータ</code> — Refererヘッダーで外部に漏洩
+  </div>
+
+  <div class="note">
+    <strong>DevTools で保存データを確認</strong>:
+    <code>F12</code> → <strong>Application</strong> タブ →
+    左サイドバーの <strong>Local Storage</strong> / <strong>Session Storage</strong> / <strong>Cookies</strong>
+    を開くと、保存されたデータの一覧と属性が見えます。
+    <code>HttpOnly</code> な Cookie は「HttpOnly」列にチェックが入っています。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/Cookies" target="_blank">MDN — HTTP Cookie</a></span>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 Auth1-F: OutSystems                       -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-auth1f">
+  <h3>実験 Auth1-F: OutSystems で認証関連ヘッダーを確認する</h3>
+  <p>OutSystems の REST API で <code>Authorization</code> ヘッダーの受信と、認証エラーレスポンスを体験します。</p>
+
+  <div class="note" style="background:#e8f5e9;border-color:#a5d6a7;color:#2e7d32;">
+    <strong>🔰 初心者向け解説</strong><br>
+    <strong>利用シーン:</strong> OutSystems で REST API を公開するときに「APIキーやトークンで認証を実装したい」「401 エラーと WWW-Authenticate ヘッダーを返したい」場面。<br>
+    <strong>なぜ必要？:</strong> OutSystems の REST API はデフォルトで認証なしに公開されます。OnAuthentication コールバックを使わずに公開すると、誰でもデータを読み書きできる状態になります。本実験では実際に 401 応答を返す仕組みを体験し、認証実装の流れを理解します。<br>
+    <strong>身近な例え:</strong> 会社の受付（OutSystems APIエンドポイント）に「社員証（Authorization ヘッダー）」の確認係（OnAuthentication）を設置するイメージ。社員証がなければ「入れません（401）」、あれば通過させます。
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — REST APIにBasic認証チェックを追加</div>
+    <pre><span class="comment">// Service Studio 操作手順:</span>
+
+1. HeaderLab モジュールを開く
+
+2. REST API <span class="header-val">HeaderTest</span> に新しいメソッドを追加:
+   名前: <span class="header-val">SecuredEndpoint</span>
+   HTTP Method: <span class="header-val">GET</span>
+
+3. Input Parameter を追加（Source: Header）:
+   名前: <span class="header-val">Authorization</span>  (Text型)
+   ※「Header」を選択すると、HTTPヘッダーから値を取得できます
+
+4. Output Parameter を追加:
+   名前: <span class="header-val">Result</span> (Text型)
+   名前: <span class="header-val">AuthReceived</span> (Text型)
+
+5. フロー内で以下のロジックを組む:
+
+   <span class="highlight">If条件:</span> Authorization = ""
+
+   True (認証なし):
+     → <span class="highlight">SetResponseHeader</span>("WWW-Authenticate", "Basic realm=""HeaderLab""")
+     → <span class="highlight">SetStatusCode</span>(401)
+     → Assign: Result = "Unauthorized"
+                AuthReceived = "(なし)"
+
+   False (認証あり):
+     → Assign: Result = "認証ヘッダー受信OK"
+                AuthReceived = Authorization
+
+6. <span class="highlight">Publish</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 認証なしでアクセスして 401 を確認</div>
+    <pre><span class="comment">// ブラウザで直接アクセス:</span>
+https://&lt;your-env&gt;.outsystemscloud.com/HeaderLab/rest/HeaderTest/SecuredEndpoint
+
+<span class="comment">// DevTools Response Headers で確認:</span>
+<span class="header-name">WWW-Authenticate</span>: <span class="header-val">Basic realm="HeaderLab"</span>
+<span class="comment">// ステータス: 401 Unauthorized</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — このHTMLから Authorization ヘッダー付きでアクセス</div>
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; margin:0.5rem 0;">
+      <input type="text" id="os-auth-url" placeholder="https://xxx.outsystemscloud.com/HeaderLab/rest/HeaderTest/SecuredEndpoint"
+        style="flex:1; min-width:300px; background:var(--surface2); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:0.5rem 0.8rem; font-family:'IBM Plex Mono',monospace; font-size:0.82rem;">
+    </div>
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin:0.5rem 0;">
+      <button class="btn btn-accent" id="btn-os-no-auth">認証なしで送信</button>
+      <button class="btn btn-accent2" id="btn-os-with-auth">Basic認証付きで送信</button>
+    </div>
+    <pre id="os-auth-result"><span class="placeholder">← OutSystems APIのURLを入力してテスト</span></pre>
+  </div>
+
+  <script>
+    // URL保存
+    const osAuthUrlEl = document.getElementById('os-auth-url');
+    const savedOsAuthUrl = localStorage.getItem('httplab_os_auth_url');
+    if (savedOsAuthUrl) osAuthUrlEl.value = savedOsAuthUrl;
+    osAuthUrlEl.addEventListener('input', () => {
+      localStorage.setItem('httplab_os_auth_url', osAuthUrlEl.value);
+    });
+
+    document.getElementById('btn-os-no-auth').addEventListener('click', async () => {
+      const el = document.getElementById('os-auth-result');
+      const url = osAuthUrlEl.value.trim();
+      if (!url) { el.textContent = 'URLを入力してください'; return; }
+
+      const btn = document.getElementById('btn-os-no-auth');
+      btn.disabled = true;
+      el.textContent = '送信中...（認証ヘッダーなし）';
+
+      console.group('【Auth1-F】OutSystems 認証なしリクエスト');
+      try {
+        const res = await fetch(url);
+        const text = await res.text();
+        console.log('ステータス:', res.status);
+        console.log('レスポンス:', text);
+
+        let wwwAuth = res.headers.get('WWW-Authenticate') || '(CORSで非公開の可能性)';
+
+        el.textContent =
+          'HTTP ' + res.status + (res.status === 401 ? ' Unauthorized' : '') + '\n\n'
+          + 'Response Headers:\n'
+          + '  WWW-Authenticate: ' + wwwAuth + '\n\n'
+          + 'Body: ' + text.substring(0, 200) + '\n\n'
+          + (res.status === 401
+            ? '✅ 期待通り！認証なしでは 401 が返りました。\n'
+              + '→ 次に「Basic認証付きで送信」を試してください。'
+            : '⚠ CORSエラーの場合は Lab 06 を参照してください。');
+      } catch(e) {
+        el.textContent = 'エラー: ' + e.message + '\n\n'
+          + 'CORSエラーの場合:\n'
+          + '  OutSystems側でCORS設定が必要です。\n'
+          + '  → ブラウザの新しいタブで直接URLにアクセスして\n'
+          + '    DevToolsで確認してください。';
+        console.error(e);
+      }
+      console.groupEnd();
+      btn.disabled = false;
+    });
+
+    document.getElementById('btn-os-with-auth').addEventListener('click', async () => {
+      const el = document.getElementById('os-auth-result');
+      const url = osAuthUrlEl.value.trim();
+      if (!url) { el.textContent = 'URLを入力してください'; return; }
+
+      const btn = document.getElementById('btn-os-with-auth');
+      btn.disabled = true;
+      el.textContent = '送信中...（Basic認証付き）';
+
+      const credentials = btoa('testuser:secret123');
+
+      console.group('【Auth1-F】OutSystems Basic認証リクエスト');
+      console.log('Authorization: Basic ' + credentials);
+      try {
+        const res = await fetch(url, {
+          headers: { 'Authorization': 'Basic ' + credentials }
+        });
+        const text = await res.text();
+        console.log('ステータス:', res.status);
+        console.log('レスポンス:', text);
+
+        let body;
+        try { body = JSON.parse(text); } catch(e) { body = text; }
+
+        el.textContent =
+          'HTTP ' + res.status + '\n\n'
+          + '送信したヘッダー:\n'
+          + '  Authorization: Basic ' + credentials + '\n'
+          + '  (デコード: testuser:secret123)\n\n'
+          + 'レスポンス:\n  ' + (typeof body === 'object' ? JSON.stringify(body, null, 2).split('\n').join('\n  ') : body) + '\n\n'
+          + (res.ok
+            ? '✅ OutSystems が Authorization ヘッダーを受け取れました！\n'
+              + '  AuthReceived の値が送信した値と一致するか確認してください。'
+            : '⚠ CORSエラーの場合は新しいタブで直接アクセスしてください。');
+      } catch(e) {
+        el.textContent = 'エラー: ' + e.message + '\n\n'
+          + 'CORSでブロックされた場合:\n'
+          + '  ブラウザの新しいタブで直接URLにアクセスすると\n'
+          + '  ブラウザ標準の認証ダイアログが表示されます。';
+        console.error(e);
+      }
+      console.groupEnd();
+      btn.disabled = false;
+    });
+  </script>
+
+  <div class="warn-box">
+    <strong>OutSystems PaaS環境の注意点</strong>:
+    OutSystems の CDN レイヤーが一部のヘッダー（<code>WWW-Authenticate</code> など）を
+    上書きまたは除去する場合があります。DevTools で確認した結果が
+    期待と異なる場合は、CDNの影響を考慮してください。
+    また、CORS が未設定の場合はこのページからのfetchはブロックされます。
+    その場合は新しいタブで直接URLにアクセスして確認してください。
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 4 — OutSystems のセッション管理を確認</div>
+    <p>
+      OutSystems の Reactive Web App にログインした状態で DevTools を開き、
+      <strong>Application → Cookies</strong> を確認してください。
+    </p>
+    <pre><span class="comment">// OutSystemsが発行するセッション関連Cookie（例）:</span>
+
+<span class="header-name">osVisitor</span>          <span class="comment">← 訪問者ID</span>
+<span class="header-name">nr1{env}.session</span>   <span class="comment">← セッションCookie</span>
+<span class="header-name">nr2{env}.session</span>   <span class="comment">← セッションCookie（Reactive）</span>
+
+<span class="comment">// 確認ポイント:</span>
+  • HttpOnly が ✅ になっているか？
+  • Secure が ✅ になっているか？
+  • SameSite の値は何か？
+  • Domain / Path の範囲は？</pre>
+  </div>
+
+  <div class="note">
+    <strong>OutSystemsの認証機能</strong>:
+    OutSystems には組み込みの認証機構（<code>User_Login</code> / <code>User_Logout</code> アクション）があります。
+    これはセッションベースの認証で、内部的に HttpOnly Cookie でセッション管理されています。
+    REST API に対する認証には、OnAuthentication コールバックを使って
+    カスタムの認証ロジック（Basic認証、トークン認証など）を実装できます。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://success.outsystems.com/documentation/11/developing_an_application/use_data/exposing_rest_apis/built_in_http_authentication/" target="_blank">OutSystems — REST API Authentication</a></span>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 方式比較まとめ                                -->
+<!-- ============================================ -->
+<hr>
+<h2>📊 認証方式の比較まとめ</h2>
+
+<div class="diagram">認証方式の選定フローチャート
+
+  どんなアプリ？
+  │
+  ├─ 伝統的なWebアプリ（SSR）
+  │   → セッション認証（Cookie + HttpOnly + SameSite）+ MFA
+  │
+  ├─ SPA / モバイルアプリ
+  │   → OAuth 2.0 + OIDC + PKCE
+  │     アクセストークンは HttpOnly Cookie で保存
+  │
+  ├─ API間通信（サーバー同士）
+  │   → API Key または OAuth Client Credentials
+  │
+  ├─ 企業SSO（社内システム統合）
+  │   → SAML 2.0 または OIDC
+  │
+  └─ パスワードレス認証
+      → FIDO2 / パスキー（WebAuthn）
+
+━━━ 共通の必須事項 ━━━
+
+  ✅ HTTPS は全方式で必須
+  ✅ トークンのキャッシュ禁止: Cache-Control: no-store
+  ✅ CSRF対策: SameSite Cookie / state パラメータ
+  ✅ XSS対策: HttpOnly Cookie / CSP nonce</div>
+
+<details style="margin:0.5rem 0;">
+  <summary style="cursor:pointer;color:var(--accent);font-size:0.82rem;font-family:'IBM Plex Mono',monospace;">📊 Mermaid版を表示</summary>
+  <div class="mermaid">
+flowchart TD
+    START["認証方式の選定"] --> Q1{"外部サービスとの連携が必要？"}
+    Q1 -- Yes --> OAUTH["OAuth 2.0 / OIDC"]
+    Q1 -- No --> Q2{"SPA / モバイルアプリ？"}
+    Q2 -- Yes --> JWT["JWT + OAuth 2.0"]
+    Q2 -- No --> Q3{"企業SSO？"}
+    Q3 -- Yes --> SAML["SAML 2.0 / OIDC"]
+    Q3 -- No --> SESSION["セッション + Cookie"]
+    SESSION --> MFA["+ MFA推奨"]
+    JWT --> MFA2["+ MFA推奨"]
+  </div>
+</details>
+
+<!-- ── 6方式×8軸 比較表 ── -->
+<div class="lab-box" style="margin-top:1.5rem; overflow-x:auto;">
+  <h3>📊 認証方式 6方式 × 8軸 比較表（MD v1.7）</h3>
+  <p style="font-size:0.82rem; color:var(--text-dim); margin-bottom:0.8rem;">
+    ◎ = 優秀 ／ ○ = 良好 ／ △ = 条件付き ／ × = 苦手
+  </p>
+  <table style="width:100%; border-collapse:collapse; font-size:0.82rem; min-width:700px;">
+    <thead>
+      <tr style="background:var(--surface-alt,#1e2a3a); color:var(--accent);">
+        <th style="padding:0.5rem 0.6rem; border:1px solid var(--border); text-align:left; min-width:90px;">軸 ＼ 方式</th>
+        <th style="padding:0.5rem 0.6rem; border:1px solid var(--border); text-align:center;">Basic<br>認証</th>
+        <th style="padding:0.5rem 0.6rem; border:1px solid var(--border); text-align:center;">セッション<br>認証</th>
+        <th style="padding:0.5rem 0.6rem; border:1px solid var(--border); text-align:center;">JWT</th>
+        <th style="padding:0.5rem 0.6rem; border:1px solid var(--border); text-align:center;">OAuth 2.0<br>/OIDC</th>
+        <th style="padding:0.5rem 0.6rem; border:1px solid var(--border); text-align:center;">API Key<br><span style="font-size:0.75rem;font-weight:normal;">（補足）</span></th>
+        <th style="padding:0.5rem 0.6rem; border:1px solid var(--border); text-align:center;">FIDO2<br>/パスキー</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); font-weight:bold; background:var(--surface);">主な用途</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; color:#aaa;">社内ツール<br>開発環境</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center;">一般Webアプリ<br>(SSR)</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center;">SPA<br>モバイル</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center;">外部連携<br>SNSログイン</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center;">API間通信<br>サーバー間</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center;">パスワード<br>レス認証</td>
+      </tr>
+      <tr style="background:var(--surface-alt2,rgba(255,255,255,0.03));">
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); font-weight:bold; background:var(--surface);">状態管理</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; color:#aaa;">なし<br>(ステートレス)</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center;">サーバー側<br>(ステートフル)</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center;">なし<br>(ステートレス)</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center;">認可サーバー側</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center;">なし<br>(ステートレス)</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center;">なし<br>(チャレンジ応答)</td>
+      </tr>
+      <tr>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); font-weight:bold; background:var(--surface);">クライアント<br>保存先</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; color:#aaa;">なし<br>(毎回送信)</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center;">HttpOnly<br>Cookie</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center;">HttpOnly Cookie<br>推奨</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center;">HttpOnly Cookie<br>推奨</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center;">環境変数<br>(サーバー側)</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center;">秘密鍵<br>(デバイス内)</td>
+      </tr>
+      <tr style="background:var(--surface-alt2,rgba(255,255,255,0.03));">
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); font-weight:bold; background:var(--surface);">スケーラビリティ</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center;">◎</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; color:#e67e22;">△<br><span style="font-size:0.75rem;">DBセッション管理必要</span></td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; color:#2ecc71;">◎<br><span style="font-size:0.75rem;">ステートレス</span></td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; color:#2ecc71;">◎</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; color:#2ecc71;">◎</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; color:#2ecc71;">◎</td>
+      </tr>
+      <tr>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); font-weight:bold; background:var(--surface);">即時無効化</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; color:#e67e22;">△<br><span style="font-size:0.75rem;">パスワード変更のみ</span></td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; color:#2ecc71;">◎<br><span style="font-size:0.75rem;">セッションDB削除</span></td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; color:#e74c3c;">×<br><span style="font-size:0.75rem;">有効期限まで有効</span></td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; color:#3498db;">○<br><span style="font-size:0.75rem;">トークン失効リスト</span></td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; color:#3498db;">○<br><span style="font-size:0.75rem;">Key削除で即時</span></td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; color:#2ecc71;">◎<br><span style="font-size:0.75rem;">認証情報登録削除</span></td>
+      </tr>
+      <tr style="background:var(--surface-alt2,rgba(255,255,255,0.03));">
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); font-weight:bold; background:var(--surface);">実装容易性</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; color:#2ecc71;">◎<br><span style="font-size:0.75rem;">HTTPヘッダーのみ</span></td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; color:#3498db;">○<br><span style="font-size:0.75rem;">サーバー実装必要</span></td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; color:#3498db;">○<br><span style="font-size:0.75rem;">ライブラリあり</span></td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; color:#e67e22;">△<br><span style="font-size:0.75rem;">認可サーバー連携</span></td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; color:#2ecc71;">◎<br><span style="font-size:0.75rem;">ヘッダー追加のみ</span></td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; color:#e67e22;">△<br><span style="font-size:0.75rem;">WebAuthn API実装</span></td>
+      </tr>
+      <tr>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); font-weight:bold; background:var(--surface);">フィッシング<br>耐性</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; color:#e74c3c;">×<br><span style="font-size:0.75rem;">パスワード盗まれる</span></td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; color:#e67e22;">△<br><span style="font-size:0.75rem;">パスワード依存</span></td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; color:#e67e22;">△<br><span style="font-size:0.75rem;">認証情報依存</span></td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; color:#3498db;">○<br><span style="font-size:0.75rem;">MFA組み合わせで向上</span></td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; color:#e67e22;">△<br><span style="font-size:0.75rem;">Key漏洩リスク</span></td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; color:#2ecc71;">◎<br><span style="font-size:0.75rem;">rpId紐付けで完全耐性</span></td>
+      </tr>
+      <tr style="background:var(--surface-alt2,rgba(255,255,255,0.03));">
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); font-weight:bold; background:var(--surface);">主なリスク</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; font-size:0.78rem; color:#e74c3c;">盗聴/MITM<br>HTTPS必須</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; font-size:0.78rem; color:#e67e22;">CSRF<br>SessionFixation</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; font-size:0.78rem; color:#e67e22;">XSSでToken窃取<br>即時無効化不可</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; font-size:0.78rem; color:#e67e22;">認可コード漏洩<br>→PKCE必須</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; font-size:0.78rem; color:#e67e22;">Key露出<br>ローテーション必要</td>
+        <td style="padding:0.45rem 0.6rem; border:1px solid var(--border); text-align:center; font-size:0.78rem; color:#3498db;">デバイス紛失<br>→バックアップ必要</td>
+      </tr>
+    </tbody>
+  </table>
+  <p style="font-size:0.78rem; color:var(--text-dim); margin-top:0.6rem;">
+    ※ API Key・SAML は補足的な章（Lab 01 では詳細扱いなし）。MFA の詳細は Lab 02 を参照。
+  </p>
+</div>
+
+<!-- ── チェックリスト ── -->
+<hr>
+<h2 id="checklist">✅ Auth Lab 01 チェックリスト</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">チェック状態はブラウザに自動保存されます。</p>
+
+<div class="check-item"><input type="checkbox" data-key="auth1-1"> <label>Base64 エンコード/デコードを体験し、暗号化ではないことを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="auth1-2"> <label>Authorization: Basic ヘッダーでの認証成功/失敗を体験した</label></div>
+<div class="check-item"><input type="checkbox" data-key="auth1-3"> <label>401 応答時の WWW-Authenticate ヘッダーの役割を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="auth1-4"> <label>セッション認証の「ログイン→データ取得→ログアウト」の流れを体験した</label></div>
+<div class="check-item"><input type="checkbox" data-key="auth1-5"> <label>Set-Cookie の HttpOnly / SameSite / Secure 各属性の意味を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="auth1-6"> <label>JWTの3部分（Header.Payload.Signature）をデコードして中身を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="auth1-7"> <label>Authorization: Bearer ヘッダーで JWT を送信しサーバー受信を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="auth1-8"> <label>OAuth 2.0 認可コードフローの7ステップを順番に理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="auth1-9"> <label>PKCE / state / nonce の各セキュリティ対策の目的を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="auth1-10"> <label>localStorage / sessionStorage / HttpOnly Cookie の XSS 耐性の違いを体験した</label></div>
+<div class="check-item"><input type="checkbox" data-key="auth1-11"> <label>OutSystems で Authorization ヘッダーの受信と 401 応答を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="auth1-12"> <label>OutSystems のセッション Cookie の属性を DevTools で確認した</label></div>
+
+<div style="margin-top:1rem; text-align:center;">
+  <span id="progress-text" style="font-family:'IBM Plex Mono',monospace; color:var(--accent); font-size:0.9rem;"></span>
+</div>
+
+<script>
+  const STORAGE_PREFIX = 'httplab_';
+
+  function updateProgress() {
+    const all = document.querySelectorAll('input[type="checkbox"][data-key]');
+    const checked = [...all].filter(cb => cb.checked).length;
+    const el = document.getElementById('progress-text');
+    if (el) {
+      el.textContent = checked + ' / ' + all.length + ' 完了';
+      if (checked === all.length) {
+        el.textContent += ' 🎉 Auth Lab 01 完了！';
+      }
+    }
+  }
+
+  document.querySelectorAll('input[type="checkbox"][data-key]').forEach(cb => {
+    const saved = localStorage.getItem(STORAGE_PREFIX + cb.dataset.key);
+    if (saved === 'true') {
+      cb.checked = true;
+      cb.closest('.check-item')?.classList.add('checked');
+    }
+    cb.addEventListener('change', () => {
+      localStorage.setItem(STORAGE_PREFIX + cb.dataset.key, cb.checked);
+      cb.closest('.check-item')?.classList.toggle('checked', cb.checked);
+      updateProgress();
+    });
+  });
+
+  updateProgress();
+</script>
+
+<hr>
+<h2 id="framework">🔧 フレームワーク別設定例</h2>
+<p style="font-size:0.85rem;color:var(--text-dim);">このLabで学んだ認証ヘッダーを各環境で設定する方法です。</p>
+
+<div style="overflow-x:auto;">
+<table style="width:100%;border-collapse:collapse;font-size:0.78rem;font-family:'IBM Plex Mono',monospace;margin:1rem 0;">
+  <thead>
+    <tr style="background:var(--surface2);color:var(--accent2);">
+      <th style="padding:0.6rem;border:1px solid var(--border);text-align:left;min-width:120px;">環境</th>
+      <th style="padding:0.6rem;border:1px solid var(--border);text-align:left;">設定方法</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="padding:0.6rem;border:1px solid var(--border);color:var(--accent);white-space:nowrap;">Express</td>
+      <td style="padding:0.6rem;border:1px solid var(--border);"><code>app.use(session({ cookie: { httpOnly: true, secure: true, sameSite: 'lax' } }))</code></td>
+    </tr>
+    <tr>
+      <td style="padding:0.6rem;border:1px solid var(--border);color:var(--accent);white-space:nowrap;">Next.js</td>
+      <td style="padding:0.6rem;border:1px solid var(--border);"><code>// API Route: cookies().set('session', value, { httpOnly: true, secure: true, sameSite: 'lax' })</code></td>
+    </tr>
+    <tr>
+      <td style="padding:0.6rem;border:1px solid var(--border);color:var(--accent);white-space:nowrap;">Passport.js</td>
+      <td style="padding:0.6rem;border:1px solid var(--border);"><code>passport.authenticate('oauth2', { scope: ['openid', 'profile'] })</code></td>
+    </tr>
+    <tr>
+      <td style="padding:0.6rem;border:1px solid var(--border);color:var(--accent);white-space:nowrap;">OutSystems</td>
+      <td style="padding:0.6rem;border:1px solid var(--border);"><code>OnAuthentication コールバックで Authorization ヘッダーを検証</code></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<hr>
+
+<div class="lab-box" style="border-color:var(--warn);">
+  <h3 style="color:var(--warn);margin-top:0;">🚀 本番環境で確認すべきこと</h3>
+  <p style="font-size:0.82rem;color:var(--text-dim);">このLabの内容をデプロイ前に確認するチェックリストです。</p>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ Basic認証は HTTPS 経由でのみ使用している（HTTP では Base64 が平文で流れる）</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ セッション Cookie に <code>Secure; HttpOnly; SameSite=Lax</code> を設定している</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ JWT の秘密鍵は環境変数で管理し、コードにハードコードしていない</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ OAuth 2.0 で PKCE を使用している（特にパブリッククライアント）</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ アクセストークンは短寿命（15分〜1時間）に設定している</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ トークンを localStorage ではなく HttpOnly Cookie に保存している</div>
+</div>
+
+<div class="note">
+  📖 <strong>参照資料</strong>：このLabの内容は <code>WebAuthorization.md</code> の 第1章（Basic認証）、第2章（セッション認証）、第3章（JWT）、第4章（OAuth 2.0/OIDC）、第7章（トークン保存場所とXSSリスク） に対応しています。より詳しい解説・コード例はガイドを参照してください。
+</div>
+
+<div class="note">
+  📚 <strong>ガイドの補足トピック（Lab未収録）</strong>：以下の内容は <code>WebAuthorization.md</code> で詳しく解説しています：<br>
+  ・<strong>第5章 API Key</strong> — サーバー間通信でのシンプルな認証方式（<code>X-API-Key</code> ヘッダー）<br>
+  ・<strong>第6章 SAML 2.0</strong> — エンタープライズ SSO の XML ベース標準（Active Directory連携等）<br>
+  ・<strong>第9章 比較・選定ガイド</strong> — 6方式×8軸の比較マトリクス + ユースケース別フローチャート<br>
+  ・<strong>第10章 OutSystems実装</strong> — Traditional Web / Reactive Web での認証実装詳細
+</div>
+
+<h2>📝 Auth Lab 01 学習ノート</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">メモはブラウザに自動保存されます。</p>
+<textarea id="notes" rows="6" placeholder="気づいたこと、疑問点をメモ...&#10;&#10;例:&#10;• Basic認証はログアウトできない問題がある&#10;• JWTのPayloadは暗号化されていない点に注意&#10;• OAuth 2.0のPKCEが重要な理由"
+  style="width:100%;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:0.8rem;font-family:'Noto Sans JP',sans-serif;font-size:0.9rem;resize:vertical;margin-top:0.5rem;"></textarea>
+
+<script>
+  const notesEl = document.getElementById('notes');
+  const savedNotes = localStorage.getItem(STORAGE_PREFIX + 'auth1_notes');
+  if (savedNotes) notesEl.value = savedNotes;
+  notesEl.addEventListener('input', () => {
+    localStorage.setItem(STORAGE_PREFIX + 'auth1_notes', notesEl.value);
+  });
+</script>
+
+<hr>
+
+<p style="color:var(--text-dim); font-size:0.82rem; margin-top:1rem;">
+  ← <a href="web-auth-index.html">マスター索引</a>
+</p>
+<p style="color:var(--text-dim); font-size:0.82rem; margin-top:0.5rem;">
+  次回: <a href="web-auth-lab-02.html"><strong>Auth Lab 02 — MFA・パスキー</strong></a>（TOTP, FIDO2/WebAuthn, パスキー）
+  <br><span style="color:var(--text-dim);font-size:0.78rem;">認証フローを理解したら、次はパスワードに頼らない多要素認証へ</span>
+</p>
+
+</body>
+</html>

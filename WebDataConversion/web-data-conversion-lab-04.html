@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Web Data Conversion Lab 04: セキュリティ・特殊な変換</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;700&display=swap');
+
+  :root {
+    --bg: #ffffff;
+    --surface: #f5f7fa;
+    --surface2: #ebeef2;
+    --border: #c8cdd3;
+    --text: #1a1a2e;
+    --text-dim: #5c6370;
+    --accent: #005cc5;
+    --accent2: #22863a;
+    --accent3: #6f42c1;
+    --warn: #b08800;
+    --danger: #cb2431;
+    --code-bg: #f0f4f8;
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    padding: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  h1 { font-size: 1.6rem; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 0.8rem; margin-bottom: 1.5rem; font-family: 'IBM Plex Mono', monospace; }
+  h2 { font-size: 1.25rem; color: var(--accent2); margin: 2rem 0 1rem; font-family: 'IBM Plex Mono', monospace; }
+  h3 { font-size: 1.05rem; color: var(--accent3); margin: 1.5rem 0 0.8rem; }
+  p, li { font-size: 0.92rem; margin-bottom: 0.5rem; }
+
+  /* Status Bar */
+  .status-bar { display: flex; gap: 1rem; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.6rem 1rem; margin-bottom: 1.5rem; font-size: 0.82rem; font-family: 'IBM Plex Mono', monospace; flex-wrap: wrap; }
+  .status-item { display: flex; align-items: center; gap: 0.4rem; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-dim); animation: pulse 1.5s infinite; }
+  .status-dot.ok { background: var(--accent); animation: none; }
+  .status-dot.err { background: var(--danger); animation: none; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* Lab Section */
+  .lab-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin: 1.5rem 0; }
+
+  .step { background: var(--surface2); border-left: 3px solid var(--accent2); border-radius: 0 var(--radius) var(--radius) 0; padding: 1rem 1.2rem; margin: 1rem 0; }
+  .step-num { font-family: 'IBM Plex Mono', monospace; color: var(--accent2); font-weight: 600; font-size: 0.8rem; margin-bottom: 0.3rem; }
+
+  code, pre { font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; }
+  code { background: var(--code-bg); padding: 0.15rem 0.4rem; border-radius: 4px; color: var(--accent); }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; overflow-x: auto; margin: 0.8rem 0; line-height: 1.6; color: #24292e; }
+  pre .comment { color: #6a737d; }
+  pre .header-name { color: var(--accent2); }
+  pre .header-val { color: var(--accent); }
+  pre .highlight { color: var(--warn); font-weight: 600; }
+
+  .placeholder { color: var(--text-dim); font-style: italic; font-size: 0.8rem; }
+
+  .note { background: #e8f4fd; border: 1px solid #b6d4e8; border-radius: var(--radius); padding: 0.8rem 1rem; margin: 1rem 0; font-size: 0.85rem; color: var(--accent2); }
+  .note::before { content: "💡 "; }
+
+  .warn-box { background: #fff8e1; border: 1px solid #e6d590; border-radius: var(--radius); padding: 0.8rem 1rem; margin: 1rem 0; font-size: 0.85rem; color: var(--warn); }
+  .warn-box::before { content: "⚠️ "; }
+
+  .check-item { background: var(--surface2); border-radius: var(--radius); padding: 0.6rem 1rem; margin: 0.4rem 0; display: flex; align-items: center; gap: 0.6rem; font-size: 0.88rem; transition: opacity 0.3s; }
+  .check-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
+  .check-item.checked { opacity: 0.55; }
+
+  .diagram { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; line-height: 1.5; overflow-x: auto; white-space: pre; color: var(--text-dim); margin: 1rem 0; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.8rem; margin: 1rem 0; }
+  @media (max-width: 900px) { .three-col { grid-template-columns: 1fr; } }
+  @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+  .col-card { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.8rem; font-size: 0.8rem; }
+  .col-card h4 { font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; margin-bottom: 0.5rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); }
+  .col-card pre { border: none; padding: 0.4rem 0; margin: 0; font-size: 0.75rem; background: transparent; }
+  .col-card.card-encode { border-color: var(--accent); }
+  .col-card.card-encode h4 { color: var(--accent); }
+  .col-card.card-puny { border-color: var(--accent2); }
+  .col-card.card-puny h4 { color: var(--accent2); }
+  .col-card.card-path { border-color: var(--accent3); }
+  .col-card.card-path h4 { color: var(--accent3); }
+
+  .toc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.2rem; margin: 1rem 0 2rem; }
+  .toc a { display: inline-block; padding: 0.25rem 0.6rem; margin: 0.15rem; border-radius: 6px; font-size: 0.82rem; background: var(--surface2); transition: background 0.2s; }
+  .toc a:hover { background: var(--border); text-decoration: none; }
+
+  a { color: var(--accent2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  html { scroll-behavior: smooth; }
+
+  .btn { border: none; padding: 0.5rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; font-family: 'Noto Sans JP', sans-serif; margin: 0.3rem; transition: opacity 0.2s; }
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.97); }
+  .btn-accent  { background: var(--accent);  color: var(--bg); }
+  .btn-accent2 { background: var(--accent2); color: var(--bg); }
+  .btn-accent3 { background: var(--accent3); color: var(--bg); }
+  .btn-warn    { background: var(--warn);    color: var(--bg); }
+  .btn-dim     { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+
+  .input-area { width: 100%; background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 0.8rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; }
+
+  /* Conversion arrow */
+  .conv-arrow { text-align: center; font-size: 1.5rem; color: var(--accent2); margin: 0.5rem 0; }
+
+  /* Lab 04 追加スタイル */
+  .beginner-box { background: #f0fdf4; border: 1px solid #86efac; border-radius: var(--radius); padding: 1rem 1.2rem; margin: 1rem 0; font-size: 0.85rem; }
+  .beginner-box .beg-title { font-weight: 700; color: var(--accent2); margin-bottom: 0.5rem; font-size: 0.9rem; }
+  .beginner-box ul { padding-left: 1.2rem; }
+  .beginner-box li { margin-bottom: 0.3rem; }
+
+  .result-box { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin: 0.8rem 0; min-height: 3rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; white-space: pre-wrap; word-break: break-all; }
+  .result-box.result-ok { border-color: var(--accent2); background: #f0fdf4; }
+  .result-box.result-warn { border-color: var(--warn); background: #fff8e1; }
+  .result-box.result-danger { border-color: var(--danger); background: #fff0f0; }
+
+  .label-badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.72rem; font-family: 'IBM Plex Mono', monospace; font-weight: 600; margin-right: 0.3rem; }
+  .badge-before { background: #fee2e2; color: #991b1b; }
+  .badge-after  { background: #dcfce7; color: #166534; }
+  .badge-info   { background: #e0e7ff; color: #3730a3; }
+
+  details { margin: 1rem 0; }
+  details summary { cursor: pointer; font-weight: 600; font-size: 0.88rem; color: var(--accent3); padding: 0.5rem 0; }
+  details summary:hover { opacity: 0.8; }
+  details[open] summary { margin-bottom: 0.5rem; }
+
+  .note-textarea { width: 100%; min-height: 100px; background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 0.7rem 1rem; font-family: 'Noto Sans JP', sans-serif; font-size: 0.85rem; resize: vertical; }
+
+  .nav-links { display: flex; justify-content: space-between; align-items: center; margin-top: 3rem; padding-top: 1.5rem; border-top: 2px solid var(--border); font-size: 0.88rem; }
+  .nav-links a { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1rem; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); transition: background 0.2s; }
+  .nav-links a:hover { background: var(--border); text-decoration: none; }
+
+  /* Pipeline step display */
+  .pipeline-step { display: flex; align-items: flex-start; gap: 0.8rem; margin: 0.5rem 0; padding: 0.7rem 1rem; background: var(--surface2); border-radius: var(--radius); }
+  .pipeline-num { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: white; display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; font-weight: 600; flex-shrink: 0; }
+  .pipeline-content { flex: 1; }
+  .pipeline-label { font-size: 0.78rem; font-family: 'IBM Plex Mono', monospace; color: var(--text-dim); margin-bottom: 0.2rem; }
+  .pipeline-value { font-size: 0.82rem; font-family: 'IBM Plex Mono', monospace; color: var(--text); word-break: break-all; }
+  .pipeline-size { font-size: 0.72rem; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 0.1rem 0.4rem; margin-left: 0.4rem; color: var(--text-dim); }
+
+  /* Compare table */
+  .compare-table { width: 100%; border-collapse: collapse; margin: 0.8rem 0; font-size: 0.82rem; font-family: 'IBM Plex Mono', monospace; }
+  .compare-table th { background: var(--surface2); padding: 0.5rem 0.8rem; text-align: left; border: 1px solid var(--border); color: var(--text-dim); font-weight: 600; }
+  .compare-table td { padding: 0.5rem 0.8rem; border: 1px solid var(--border); vertical-align: top; }
+  .compare-table tr:nth-child(even) td { background: var(--surface); }
+  .td-ok { color: var(--accent2); font-weight: 600; }
+  .td-ng { color: var(--danger); font-weight: 600; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });</script>
+</head>
+<body>
+
+<!-- Status Bar -->
+<div class="status-bar">
+  <div class="status-item">
+    <div class="status-dot" id="dot-protocol"></div>
+    <span id="status-protocol">プロトコル確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-crypto"></div>
+    <span id="status-crypto">crypto.subtle: checking...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-devtools"></div>
+    <span>Console: <kbd style="background:var(--surface2);padding:0.1rem 0.4rem;border-radius:4px;">F12</kbd></span>
+  </div>
+</div>
+<p style="margin-bottom:0.5rem;font-size:0.82rem;"><a href="web-data-conversion-index.html" style="color:var(--accent);text-decoration:none;">← マスター索引に戻る</a></p>
+
+<script>
+(function() {
+  const dot = document.getElementById('dot-protocol');
+  const label = document.getElementById('status-protocol');
+  dot.classList.add('ok');
+  label.textContent = location.protocol === 'file:'
+    ? 'file:// (crypto.subtle は https:// または localhost 推奨)'
+    : location.protocol + '// ✓';
+})();
+
+(function() {
+  const dot = document.getElementById('dot-crypto');
+  const label = document.getElementById('status-crypto');
+  if (window.crypto && window.crypto.subtle) {
+    dot.classList.add('ok');
+    label.textContent = 'crypto.subtle: available ✓';
+  } else {
+    dot.classList.add('err');
+    label.textContent = 'crypto.subtle: unavailable (https:// または localhost で開いてください)';
+  }
+})();
+</script>
+
+<h1>🔐 Lab 04: セキュリティ・特殊な変換</h1>
+<p style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.3rem;font-family:'IBM Plex Mono',monospace;">Web Data Conversion Lab シリーズ</p>
+
+<p>
+  Webアプリの裏側では、データの<strong>改ざん検知</strong>や<strong>暗号化通信</strong>が常に動いています。
+  このLabでは <code>crypto.subtle</code> によるSHA-256ハッシュ・AES-GCM暗号化、FormDataによるマルチパート送信、
+  そして <code>structuredClone</code> によるディープコピーを体験します。
+</p>
+
+<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">⏱ 所要時間：25分</span>
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">難易度：★★☆</span>
+</div>
+<p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:1rem;">📋 前提知識：Lab 03（バイナリ・通信効率の変換）</p>
+
+<div class="lab-box" style="border-color:var(--accent); margin-bottom:1rem;">
+  <h3 style="color:var(--accent); margin-top:0;">🎯 このLabの学習目標</h3>
+  <p style="margin-bottom:0.3rem;">完了すると、以下ができるようになります：</p>
+  <div class="check-item" style="opacity:1;"><span>1. <code>crypto.subtle.digest</code> でSHA-256ハッシュを生成し、雪崩効果を確認できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>2. <code>crypto.subtle.generateKey / encrypt / decrypt</code> でAES-GCM暗号化の往復を実行できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>3. <code>FormData</code> でテキストとファイルを一括構築し、Boundaryの役割を説明できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>4. <code>structuredClone</code> と <code>JSON.stringify/parse</code> の型保持の違いを比較できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>5. SHA-256 / AES-GCM / FormData を並列実行し、データ変遷を把握できる</span></div>
+</div>
+
+<!-- 概要ダイアグラム -->
+<div class="diagram">セキュリティ変換の全体像
+
+  【平文テキスト】
+       │
+       ├─── SHA-256 ─────────────────────▶ 256ビット固定長ハッシュ
+       │    crypto.subtle.digest            e3b0c44298fc... (64桁16進数)
+       │    一方向・不可逆                  1文字変えると全桁変わる（雪崩効果）
+       │
+       ├─── AES-GCM 暗号化 ──────────────▶ 暗号文 (平文より大きい)
+       │    generateKey → encrypt           IV(12B) + 暗号データ + 認証タグ(16B)
+       │    対称鍵 (128/256bit)             同じ鍵＋IV → decrypt → 元の平文
+       │
+       ├─── FormData 構築 ───────────────▶ multipart/form-data
+       │    append(name, value)             --boundary\r\nContent-Disposition:...\r\n
+       │    ファイル + テキスト混在         Boundaryはブラウザが自動生成
+       │
+       └─── structuredClone ─────────────▶ 完全なディープコピー
+            vs JSON.stringify/parse         Date/Map/Set/ArrayBuffer 型を保持
+                                            循環参照も可（JSONは不可）</div>
+
+<details style="margin:0.5rem 0;">
+  <summary style="cursor:pointer;color:var(--accent);font-size:0.82rem;font-family:'IBM Plex Mono',monospace;">📊 Mermaidフローチャートを表示</summary>
+  <div class="mermaid">
+flowchart TD
+    A["平文テキスト"] --> B["crypto.subtle.digest\nSHA-256"]
+    A --> C["crypto.subtle.generateKey\nAES-GCM 256bit"]
+    A --> D["FormData.append()"]
+    A --> E["structuredClone()"]
+
+    B --> B1["256bit固定長ハッシュ\n（16進数64桁）"]
+    C --> C1["encrypt\n暗号文 + 認証タグ"]
+    C1 --> C2["decrypt\n元の平文に戻る"]
+    C --> C3["別の鍵で decrypt\n→ 失敗/文字化け"]
+    D --> D1["multipart/form-data\n--boundary--で区切られた本文"]
+    E --> E1["Date/Map/Set が型ごと複製\n参照は共有されない"]
+  </div>
+</details>
+
+<!-- TOC -->
+<div class="toc">
+  <strong style="color:var(--text-dim);font-size:0.82rem;">目次:</strong><br>
+  <a href="#exp-4a">4-A: SHA-256ハッシュ</a>
+  <a href="#exp-4b">4-B: AES-GCM暗号化</a>
+  <a href="#exp-4c">4-C: FormData</a>
+  <a href="#exp-4d">4-D: structuredClone</a>
+  <a href="#exp-4e">4-E: 総合実験</a>
+  <a href="#sec-checklist">✅ チェックリスト</a>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 4-A: SHA-256ハッシュ -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-4a">
+  <h3>実験 4-A: SHA-256ハッシュ — データの「指紋」を作る</h3>
+  <p>
+    <strong>SHA-256</strong>（Secure Hash Algorithm 256bit）は、任意の長さのデータから256ビット（64桁の16進数）の固定長の「指紋」を作り出す関数です。
+    同じ入力からは必ず同じハッシュが得られ、元のデータには戻せません（一方向性）。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — テキストのSHA-256ハッシュをリアルタイム表示</div>
+    <p>文字を変えるたびにハッシュが完全に変わることを観察してください（雪崩効果）。</p>
+    <input type="text" class="input-area" id="sha-input" value="Hello, World!" placeholder="ハッシュを計算したいテキストを入力...">
+    <div class="conv-arrow">↓ crypto.subtle.digest("SHA-256", ...) ↓</div>
+    <div class="result-box" id="sha-output"><span class="placeholder">入力するとSHA-256ハッシュが表示されます</span></div>
+  </div>
+
+  <script>
+    async function computeSHA256(text) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(text);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    const shaInput = document.getElementById('sha-input');
+
+    async function updateSHA() {
+      const text = shaInput.value;
+      const out = document.getElementById('sha-output');
+      if (!text) {
+        out.innerHTML = '<span class="placeholder">入力してください</span>';
+        return;
+      }
+      if (!window.crypto || !window.crypto.subtle) {
+        out.className = 'result-box result-danger';
+        out.textContent = 'crypto.subtle が利用できません。\nhttps:// または localhost で開いてください。';
+        return;
+      }
+      try {
+        const hash = await computeSHA256(text);
+        out.className = 'result-box result-ok';
+        out.textContent = 'SHA-256:\n' + hash + '\n\n'
+          + '入力文字数: ' + text.length + ' 文字\n'
+          + '出力ビット数: 256 bit（固定）\n'
+          + '出力16進桁数: ' + hash.length + ' 桁（固定）';
+      } catch(e) {
+        out.className = 'result-box result-danger';
+        out.textContent = 'エラー: ' + e.message;
+      }
+    }
+
+    shaInput.addEventListener('input', updateSHA);
+    updateSHA();
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 雪崩効果を確認する（1文字違いで全桁が変わる）</div>
+    <p>「Hello」と「hello」のように1文字違いで全く異なるハッシュになることを確認します。</p>
+    <button class="btn btn-accent" onclick="doAvalanche()">雪崩効果デモを実行</button>
+    <div class="result-box" id="avalanche-out"><span class="placeholder">ボタンを押してください</span></div>
+    <script>
+      async function doAvalanche() {
+        const out = document.getElementById('avalanche-out');
+        if (!window.crypto || !window.crypto.subtle) {
+          out.className = 'result-box result-danger';
+          out.textContent = 'crypto.subtle が利用できません。';
+          return;
+        }
+        const pairs = [
+          ['Hello', 'hello'],
+          ['password', 'password1'],
+          ['abc', 'abd'],
+          ['', ' ']
+        ];
+        let result = '';
+        for (const [a, b] of pairs) {
+          const ha = await computeSHA256(a);
+          const hb = await computeSHA256(b);
+          // 異なるビット数を数える
+          let diffBits = 0;
+          for (let i = 0; i < ha.length; i += 2) {
+            const ba = parseInt(ha.substr(i, 2), 16);
+            const bb = parseInt(hb.substr(i, 2), 16);
+            let xor = ba ^ bb;
+            while (xor) { diffBits += xor & 1; xor >>= 1; }
+          }
+          result += '"' + (a || '(空文字)') + '"  vs  "' + (b || '(スペース)') + '"\n';
+          result += '入力A: ' + ha.substring(0, 32) + '...\n';
+          result += '入力B: ' + hb.substring(0, 32) + '...\n';
+          result += '相違ビット数: ' + diffBits + ' / 256 bit (' + (diffBits / 256 * 100).toFixed(1) + '%)\n\n';
+        }
+        out.className = 'result-box result-ok';
+        out.textContent = result.trim();
+      }
+    </script>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — 決定性を確認する（同じ入力→同じハッシュ）</div>
+    <p>同じ文字列を2回ハッシュ計算しても必ず同じ結果になることを確認します。</p>
+    <button class="btn btn-accent2" onclick="doDeterministic()">決定性チェックを実行</button>
+    <div class="result-box" id="deterministic-out"><span class="placeholder">ボタンを押してください</span></div>
+    <script>
+      async function doDeterministic() {
+        const out = document.getElementById('deterministic-out');
+        if (!window.crypto || !window.crypto.subtle) {
+          out.className = 'result-box result-danger';
+          out.textContent = 'crypto.subtle が利用できません。';
+          return;
+        }
+        const texts = ['Hello, World!', 'パスワード123', '{"user":"alice","role":"admin"}'];
+        let result = '--- 同一入力を3回ハッシュ計算（全て一致するはず）---\n\n';
+        for (const text of texts) {
+          const h1 = await computeSHA256(text);
+          const h2 = await computeSHA256(text);
+          const h3 = await computeSHA256(text);
+          const allMatch = (h1 === h2 && h2 === h3);
+          result += '"' + text + '"\n';
+          result += '1回目: ' + h1.substring(0, 40) + '...\n';
+          result += '2回目: ' + h2.substring(0, 40) + '...\n';
+          result += '3回目: ' + h3.substring(0, 40) + '...\n';
+          result += allMatch ? '✓ 3回とも完全一致\n\n' : '✗ 不一致（想定外）\n\n';
+        }
+        out.className = 'result-box result-ok';
+        out.textContent = result.trim();
+      }
+    </script>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 4 — SHA-256は一方向（元に戻せない）</div>
+    <p>ハッシュ値からは元の文字列を復元できません。これが「一方向性」です。</p>
+    <div class="warn-box">SHA-256は<strong>不可逆関数</strong>です。ハッシュ値 → 元データへの逆算は（計算量的に）不可能とされています。パスワードをそのままDBに保存せず、ハッシュ値を保存する理由はこの一方向性にあります。</div>
+    <button class="btn btn-warn" onclick="doOneWayDemo()">一方向性デモ</button>
+    <div class="result-box" id="oneway-out"><span class="placeholder">ボタンを押してください</span></div>
+    <script>
+      async function doOneWayDemo() {
+        const out = document.getElementById('oneway-out');
+        if (!window.crypto || !window.crypto.subtle) {
+          out.className = 'result-box result-danger';
+          out.textContent = 'crypto.subtle が利用できません。';
+          return;
+        }
+        const original = 'mySecretPassword';
+        const hash = await computeSHA256(original);
+        out.className = 'result-box result-warn';
+        out.textContent =
+          '元の文字列: "' + original + '"\n'
+          + 'SHA-256:    ' + hash + '\n\n'
+          + '【ハッシュ値からの復元を試みる】\n'
+          + '  逆算アルゴリズム → 存在しない\n'
+          + '  全列挙（ブルートフォース）→ 2^256 通り ≈ 10^77 通り（宇宙の原子数 ≈ 10^80）\n'
+          + '  レインボーテーブル → saltを加えることで無効化可能\n\n'
+          + '→ 実用上は元の文字列を知っている人にしか検証できません\n'
+          + '   これがDBにパスワードをハッシュで保存する理由です';
+      }
+    </script>
+  </div>
+
+  <div class="beginner-box">
+    <div class="beg-title">🔰 パスワード保存 / ファイル改ざん検知でのSHA-256</div>
+    <ul>
+      <li><strong>パスワード保存</strong>: DBには平文ではなく <code>SHA-256(パスワード + salt)</code> を保存します。ログイン時は入力値を同じ手順でハッシュ化して比較します</li>
+      <li><strong>ファイル改ざん検知</strong>: ダウンロードしたファイルのSHA-256と公式サイト掲載の値を照合することでファイルが改ざんされていないか確認できます</li>
+      <li><strong>データ整合性</strong>: APIレスポンスのハッシュをヘッダに含め、受信側で再計算して比較することで通信途中の破損を検知できます</li>
+      <li><strong>注意</strong>: パスワード専用にはより安全な <code>bcrypt</code> や <code>Argon2</code> が推奨されます（SHA-256は高速すぎるためブルートフォースに弱い）</li>
+    </ul>
+  </div>
+
+  <div class="warn-box" style="border-color:var(--accent3);background:#f3e5f5;">
+    <strong style="color:var(--accent3);">📋 初心者まとめ</strong><br>
+    覚える関数: <code>crypto.subtle.digest('SHA-256', bytes)</code><br>
+    よくある落とし穴: ハッシュ値を暗号化と勘違いして「復号しよう」とする（ハッシュは一方向）<br>
+    正しい使い方: 元データを同じ手順で再ハッシュして比較する（ハッシュ値同士を照合）
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 4-B: AES-GCM暗号化 -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-4b">
+  <h3>実験 4-B: AES-GCM暗号化シミュレーション — TLSの裏側</h3>
+  <p>
+    <strong>AES-GCM</strong>は、Webで最も広く使われている対称鍵暗号方式です。HTTPSのTLS通信でも内部的に使用されており、
+    暗号化と認証（改ざん検知）を同時に行えます。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — テキストを暗号化して復号する（往復デモ）</div>
+    <input type="text" class="input-area" id="aes-input" value="秘密のメッセージです！" placeholder="暗号化したいテキストを入力...">
+    <button class="btn btn-accent" onclick="doAESEncryptDecrypt()">🔐 暗号化 → 復号を実行</button>
+    <div class="result-box" id="aes-output"><span class="placeholder">ボタンを押すと暗号化と復号を行います</span></div>
+  </div>
+
+  <script>
+    let aesKeyGlobal = null;
+
+    async function doAESEncryptDecrypt() {
+      const out = document.getElementById('aes-output');
+      const plaintext = document.getElementById('aes-input').value;
+      if (!window.crypto || !window.crypto.subtle) {
+        out.className = 'result-box result-danger';
+        out.textContent = 'crypto.subtle が利用できません。https:// または localhost で開いてください。';
+        return;
+      }
+      if (!plaintext) {
+        out.className = 'result-box result-warn';
+        out.textContent = 'テキストを入力してください';
+        return;
+      }
+      try {
+        out.className = 'result-box';
+        out.textContent = '処理中...';
+
+        // 1. 鍵を生成
+        const key = await crypto.subtle.generateKey(
+          { name: 'AES-GCM', length: 256 },
+          true,
+          ['encrypt', 'decrypt']
+        );
+        aesKeyGlobal = key;
+
+        // 2. IV（初期化ベクター）を生成
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+
+        // 3. 暗号化
+        const encoded = new TextEncoder().encode(plaintext);
+        const cipherBuffer = await crypto.subtle.encrypt(
+          { name: 'AES-GCM', iv: iv },
+          key,
+          encoded
+        );
+        const cipherBytes = new Uint8Array(cipherBuffer);
+
+        // 4. 復号
+        const decBuffer = await crypto.subtle.decrypt(
+          { name: 'AES-GCM', iv: iv },
+          key,
+          cipherBuffer
+        );
+        const decrypted = new TextDecoder().decode(decBuffer);
+
+        // 鍵をエクスポートして表示用に変換
+        const exportedKey = await crypto.subtle.exportKey('raw', key);
+        const keyHex = Array.from(new Uint8Array(exportedKey), b => b.toString(16).padStart(2,'0')).join('').substring(0, 32);
+        const ivHex = Array.from(iv, b => b.toString(16).padStart(2,'0')).join('');
+        const cipherHex = Array.from(cipherBytes.slice(0, 16), b => b.toString(16).padStart(2,'0')).join('');
+
+        out.className = 'result-box result-ok';
+        out.textContent =
+          '【暗号化】\n'
+          + '平文:       "' + plaintext + '"\n'
+          + '平文バイト数: ' + encoded.length + ' bytes\n\n'
+          + '鍵 (256bit, 先頭のみ): ' + keyHex + '...\n'
+          + 'IV (12 bytes):         ' + ivHex + '\n\n'
+          + '暗号文 (先頭16bytes): ' + cipherHex + '...\n'
+          + '暗号文バイト数:       ' + cipherBytes.length + ' bytes\n'
+          + '  内訳: 暗号データ(' + (cipherBytes.length - 16) + 'B) + 認証タグ(16B)\n\n'
+          + '【復号】\n'
+          + '復号結果: "' + decrypted + '"\n'
+          + '往復確認: ' + (plaintext === decrypted ? '✓ 完全一致' : '✗ 不一致');
+      } catch(e) {
+        out.className = 'result-box result-danger';
+        out.textContent = 'エラー: ' + e.message;
+      }
+    }
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 暗号文のバイト数は平文より大きい</div>
+    <p>AES-GCMでは暗号文 = 平文のバイト数 + <strong>16バイト（認証タグ）</strong>になります。</p>
+    <button class="btn btn-accent2" onclick="doAESSizeCompare()">バイト数比較</button>
+    <div class="result-box" id="aes-size-out"><span class="placeholder">ボタンを押してください</span></div>
+    <script>
+      async function doAESSizeCompare() {
+        const out = document.getElementById('aes-size-out');
+        if (!window.crypto || !window.crypto.subtle) {
+          out.className = 'result-box result-danger';
+          out.textContent = 'crypto.subtle が利用できません。';
+          return;
+        }
+        const texts = ['A', 'Hello', '日本語テスト', '{"user":"alice","data":[1,2,3,4,5]}'];
+        const key = await crypto.subtle.generateKey(
+          { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
+        );
+        let result = '入力テキスト           │ 平文(bytes) │ 暗号文(bytes) │ 差分\n';
+        result +=    '─────────────────────────────────────────────────────────\n';
+        for (const text of texts) {
+          const encoded = new TextEncoder().encode(text);
+          const iv = crypto.getRandomValues(new Uint8Array(12));
+          const cipher = await crypto.subtle.encrypt(
+            { name: 'AES-GCM', iv }, key, encoded
+          );
+          const cipherBytes = new Uint8Array(cipher).length;
+          const label = ('"' + text + '"').padEnd(24);
+          result += label + '│ ' + String(encoded.length).padEnd(12) + '│ ' + String(cipherBytes).padEnd(14) + '│ +' + (cipherBytes - encoded.length) + '\n';
+        }
+        result += '\n→ 差分は常に +16 bytes（GCMの認証タグ）';
+        out.className = 'result-box result-ok';
+        out.textContent = result;
+      }
+    </script>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — 鍵が違うと復号失敗する体験</div>
+    <p>正しい鍵と別の鍵で復号を試みます。別の鍵ではエラーになることを確認します。</p>
+    <button class="btn btn-warn" onclick="doWrongKeyDecrypt()">別の鍵で復号してみる</button>
+    <div class="result-box" id="wrong-key-out"><span class="placeholder">ボタンを押してください</span></div>
+    <script>
+      async function doWrongKeyDecrypt() {
+        const out = document.getElementById('wrong-key-out');
+        if (!window.crypto || !window.crypto.subtle) {
+          out.className = 'result-box result-danger';
+          out.textContent = 'crypto.subtle が利用できません。';
+          return;
+        }
+        try {
+          const plaintext = 'TLSの暗号化デモ';
+          const encoded = new TextEncoder().encode(plaintext);
+
+          // 正しい鍵で暗号化
+          const correctKey = await crypto.subtle.generateKey(
+            { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
+          );
+          const iv = crypto.getRandomValues(new Uint8Array(12));
+          const cipherBuffer = await crypto.subtle.encrypt(
+            { name: 'AES-GCM', iv }, correctKey, encoded
+          );
+
+          // 正しい鍵で復号
+          const decBuffer = await crypto.subtle.decrypt(
+            { name: 'AES-GCM', iv }, correctKey, cipherBuffer
+          );
+          const decrypted = new TextDecoder().decode(decBuffer);
+
+          // 別の（間違った）鍵で復号を試みる
+          const wrongKey = await crypto.subtle.generateKey(
+            { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
+          );
+          let wrongResult = '';
+          try {
+            await crypto.subtle.decrypt(
+              { name: 'AES-GCM', iv }, wrongKey, cipherBuffer
+            );
+            wrongResult = '✗ 予想外: 復号できてしまいました（理論上ありえない）';
+          } catch(e) {
+            wrongResult = '✓ エラー発生: ' + e.name + '\n  → 認証タグの検証に失敗。改ざん・鍵の不一致を検知';
+          }
+
+          out.className = 'result-box result-ok';
+          out.textContent =
+            '平文: "' + plaintext + '"\n\n'
+            + '【正しい鍵で復号】\n'
+            + '  結果: "' + decrypted + '" ✓\n\n'
+            + '【別の鍵で復号】\n'
+            + '  ' + wrongResult;
+        } catch(e) {
+          out.className = 'result-box result-danger';
+          out.textContent = 'エラー: ' + e.message;
+        }
+      }
+    </script>
+  </div>
+
+  <div class="beginner-box">
+    <div class="beg-title">🔰 HTTPSで通信が守られる仕組み</div>
+    <ul>
+      <li><strong>TLSハンドシェイク</strong>: ブラウザとサーバーが「共通の秘密の鍵」を安全に交換します（RSAや楕円曲線暗号を使用）</li>
+      <li><strong>AES-GCMで暗号化</strong>: 交換した鍵を使い、HTTPリクエスト・レスポンス本文をAES-GCMで暗号化します</li>
+      <li><strong>認証タグ</strong>: GCMモードは暗号化と同時に16バイトの「認証タグ」を生成。受信側でタグを検証し、通信途中の改ざんを検知できます</li>
+      <li><strong>IVの役割</strong>: 同じ平文を同じ鍵で暗号化しても異なる暗号文になるようIVを毎回ランダム生成します</li>
+      <li><strong>デベロッパーツール</strong>: Networkタブで通信を見ても暗号化されているため中身は見えません</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 4-C: FormData -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-4c">
+  <h3>実験 4-C: FormData — 複数データをまとめて送る</h3>
+  <p>
+    <code>FormData</code>は、テキストフィールドとファイルを一括してHTTPリクエストに組み立てるためのAPIです。
+    <code>Content-Type: multipart/form-data</code>形式でエンコードされ、各フィールドは<strong>Boundary（境界線）</strong>で区切られます。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — テキストフィールドのFormData構築</div>
+    <p>複数のフィールドをFormDataに追加し、中身を確認します。</p>
+    <div class="two-col">
+      <div>
+        <label style="font-size:0.82rem;">ユーザー名</label>
+        <input type="text" class="input-area" id="fd-name" value="Alice" style="margin-top:0.3rem;">
+      </div>
+      <div>
+        <label style="font-size:0.82rem;">メールアドレス</label>
+        <input type="text" class="input-area" id="fd-email" value="alice@example.com" style="margin-top:0.3rem;">
+      </div>
+    </div>
+    <div style="margin-top:0.5rem;">
+      <label style="font-size:0.82rem;">コメント</label>
+      <input type="text" class="input-area" id="fd-comment" value="こんにちは！" style="margin-top:0.3rem;">
+    </div>
+    <button class="btn btn-accent" onclick="buildFormData()" style="margin-top:0.5rem;">FormDataを構築して中身を確認</button>
+    <div class="result-box" id="fd-output"><span class="placeholder">ボタンを押すとFormDataの構造を表示します</span></div>
+    <script>
+      function buildFormData() {
+        const out = document.getElementById('fd-output');
+        const name = document.getElementById('fd-name').value;
+        const email = document.getElementById('fd-email').value;
+        const comment = document.getElementById('fd-comment').value;
+
+        const fd = new FormData();
+        fd.append('username', name);
+        fd.append('email', email);
+        fd.append('comment', comment);
+        fd.append('timestamp', new Date().toISOString());
+
+        // FormDataの中身を疑似表示
+        const boundary = '----FormBoundaryXxXxXxXx';
+        let body = 'Content-Type: multipart/form-data; boundary=' + boundary + '\n\n';
+        const fields = [
+          ['username', name],
+          ['email', email],
+          ['comment', comment],
+          ['timestamp', new Date().toISOString()]
+        ];
+        for (const [k, v] of fields) {
+          body += '--' + boundary + '\n';
+          body += 'Content-Disposition: form-data; name="' + k + '"\n\n';
+          body += v + '\n';
+        }
+        body += '--' + boundary + '--\n\n';
+
+        body += '【FormData API での確認】\n';
+        body += 'fd.get("username") → "' + fd.get('username') + '"\n';
+        body += 'fd.get("email")    → "' + fd.get('email') + '"\n';
+        body += 'fd.has("comment")  → ' + fd.has('comment') + '\n';
+        body += 'fd.has("missing")  → ' + fd.has('missing') + '\n\n';
+        body += '※ Boundary の文字列はブラウザが自動生成します\n';
+        body += '※ 実際の送信時はdevtools > Networkタブ > Payloadで確認できます';
+
+        out.className = 'result-box result-ok';
+        out.textContent = body;
+      }
+    </script>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — ファイル選択を含むFormData</div>
+    <p>ファイルを選択してFormDataに追加した場合の構造を確認します。</p>
+    <input type="file" id="fd-file" style="margin:0.5rem 0;font-size:0.85rem;">
+    <button class="btn btn-accent2" onclick="buildFormDataWithFile()">ファイル込みのFormDataを確認</button>
+    <div class="result-box" id="fd-file-out"><span class="placeholder">ファイルを選択してボタンを押してください（ファイルなしでも動作します）</span></div>
+    <script>
+      function buildFormDataWithFile() {
+        const out = document.getElementById('fd-file-out');
+        const fileInput = document.getElementById('fd-file');
+        const fd = new FormData();
+        fd.append('username', 'Alice');
+
+        const boundary = '----WebKitFormBoundaryAaBbCcDd';
+        let result = 'Content-Type: multipart/form-data; boundary=' + boundary + '\n\n';
+        result += '--' + boundary + '\n';
+        result += 'Content-Disposition: form-data; name="username"\n\n';
+        result += 'Alice\n';
+
+        if (fileInput.files.length > 0) {
+          const file = fileInput.files[0];
+          fd.append('profile_image', file);
+          result += '--' + boundary + '\n';
+          result += 'Content-Disposition: form-data; name="profile_image"; filename="' + file.name + '"\n';
+          result += 'Content-Type: ' + (file.type || 'application/octet-stream') + '\n\n';
+          result += '[バイナリデータ: ' + file.size.toLocaleString() + ' bytes]\n';
+          result += '\n【ファイル情報】\n';
+          result += '  名前: ' + file.name + '\n';
+          result += '  サイズ: ' + file.size.toLocaleString() + ' bytes\n';
+          result += '  MIME type: ' + (file.type || '(不明)') + '\n';
+          result += '  最終更新: ' + new Date(file.lastModified).toLocaleString() + '\n';
+        } else {
+          result += '【ファイル未選択の場合の模擬表示】\n';
+          result += '--' + boundary + '\n';
+          result += 'Content-Disposition: form-data; name="profile_image"; filename="avatar.png"\n';
+          result += 'Content-Type: image/png\n\n';
+          result += '[バイナリデータ（PNG画像）: 12,345 bytes]\n';
+        }
+        result += '--' + boundary + '--\n\n';
+        result += '※ Content-Type ヘッダを手動で "multipart/form-data" に設定してはいけません\n';
+        result += '  → boundary パラメータが含まれないためサーバーがパースできません\n';
+        result += '  → fetch() に FormData を渡すと自動で正しい Content-Type が設定されます';
+
+        out.className = 'result-box result-ok';
+        out.textContent = result;
+      }
+    </script>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — Boundary と Content-Type の関係</div>
+    <p>なぜ <code>Content-Type</code> を手動で <code>"multipart/form-data"</code> に設定してはいけないのかを確認します。</p>
+    <button class="btn btn-accent3" onclick="doBoundaryExplain()">Boundary の仕組みを確認</button>
+    <div class="result-box" id="boundary-out"><span class="placeholder">ボタンを押してください</span></div>
+    <script>
+      function doBoundaryExplain() {
+        const out = document.getElementById('boundary-out');
+        out.className = 'result-box result-ok';
+        out.textContent =
+          '【正しい fetch の書き方】\n\n'
+          + 'const fd = new FormData();\n'
+          + 'fd.append("name", "Alice");\n\n'
+          + '// ✓ 正解: Content-Type を指定しない\n'
+          + 'fetch("/api/upload", { method: "POST", body: fd });\n'
+          + '// → ブラウザが自動的に以下のヘッダを付与:\n'
+          + '//   Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryXxx\n\n'
+          + '// ✗ 間違い: 手動で Content-Type を設定する\n'
+          + 'fetch("/api/upload", {\n'
+          + '  method: "POST",\n'
+          + '  body: fd,\n'
+          + '  headers: { "Content-Type": "multipart/form-data" } // ← これがNG！\n'
+          + '});\n'
+          + '// → boundary パラメータが欠落するためサーバーがパースできない\n\n'
+          + '【Boundary の役割】\n'
+          + '  各フィールドを区切る一意な文字列です\n'
+          + '  ブラウザはフィールドの値の中に含まれない文字列を自動生成します\n'
+          + '  サーバーはこの文字列を目印にフィールドを分割してパースします';
+      }
+    </script>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 4 — DevToolsでFormDataを確認する手順</div>
+    <div class="note">実際に送信はしませんが、DevToolsで確認する手順を説明します。</div>
+    <pre><span class="comment">// 1. F12 キーで DevTools を開く
+// 2. "Network" タブをクリック
+// 3. フォームを送信する（fetch/XHR/form submit）
+// 4. リクエスト一覧から該当のリクエストをクリック
+// 5. "Payload" タブ（または "Request"）をクリック
+// 6. "Form Data" セクションに各フィールドが表示される</span>
+
+<span class="header-name">Headers（送信される例）</span>:
+  <span class="header-val">Content-Type:</span> multipart/form-data; boundary=----WebKitFormBoundaryAa1Bb2Cc3
+
+<span class="header-name">Payload（Parsed形式）</span>:
+  username: Alice
+  email: alice@example.com
+  profile_image: (binary) avatar.png</pre>
+  </div>
+
+  <div class="beginner-box">
+    <div class="beg-title">🔰 会員登録フォームでプロフィール画像+名前を一度に送信</div>
+    <ul>
+      <li>会員登録フォームでは「名前」「メール」「プロフィール画像」などを同時に送信する必要があります</li>
+      <li>テキストは文字列ですが、画像はバイナリデータ — 形式が違うデータを<strong>一つのリクエスト</strong>にまとめるのがFormDataです</li>
+      <li><code>multipart/form-data</code>形式では各パートが独自のContent-Typeを持てるため、テキストと画像を混在させられます</li>
+      <li>サーバー側（Node.js, Python等）では <code>multer</code> や <code>multipart</code> ライブラリでパースします</li>
+    </ul>
+  </div>
+
+  <div class="warn-box" style="border-color:var(--accent3);background:#f3e5f5;">
+    <strong style="color:var(--accent3);">📋 初心者まとめ</strong><br>
+    覚える関数: <code>new FormData()</code><br>
+    よくある落とし穴: fetchのContent-Typeを手動で <code>multipart/form-data</code> に指定するとboundaryが消えて解析エラー<br>
+    正しい使い方: FormDataをそのまま <code>fetch(url, { body: formData })</code> に渡す（Content-Type指定しない）
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 4-D: structuredClone -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-4d">
+  <h3>実験 4-D: structuredClone — ディープコピー</h3>
+  <p>
+    <code>structuredClone()</code>はブラウザ標準のディープコピー関数です。
+    <code>JSON.stringify/parse</code>では失われる <code>Date</code>, <code>Map</code>, <code>Set</code>, <code>ArrayBuffer</code> などの型を
+    そのまま複製できます。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — JSON.stringify/parse と structuredClone の型保持を比較</div>
+    <button class="btn btn-accent" onclick="doDeepCopyCompare()">型保持の比較を実行</button>
+    <div class="result-box" id="clone-compare-out"><span class="placeholder">ボタンを押してください</span></div>
+    <script>
+      function doDeepCopyCompare() {
+        const out = document.getElementById('clone-compare-out');
+
+        const original = {
+          date: new Date('2024-01-15T10:30:00Z'),
+          map: new Map([['key1', 'value1'], ['key2', 42]]),
+          set: new Set([1, 2, 3, 'hello']),
+          buffer: new ArrayBuffer(8),
+          regexp: /hello/gi,
+          nested: { arr: [1, 2, 3], name: 'Alice' },
+          undef: undefined,
+          num: 42,
+          str: 'text'
+        };
+
+        // JSON.stringify/parse
+        let jsonCopy;
+        try {
+          jsonCopy = JSON.parse(JSON.stringify(original));
+        } catch(e) {
+          jsonCopy = { error: e.message };
+        }
+
+        // structuredClone
+        let scCopy;
+        try {
+          // undef と regexp は structuredClone でもエラーになる場合があるので除外
+          const toClone = {
+            date: original.date,
+            map: original.map,
+            set: original.set,
+            buffer: original.buffer,
+            nested: original.nested,
+            num: original.num,
+            str: original.str
+          };
+          scCopy = structuredClone(toClone);
+        } catch(e) {
+          scCopy = { error: e.message };
+        }
+
+        const rows = [
+          {
+            type: 'Date',
+            orig: original.date.constructor.name + ' (' + original.date.toISOString().substring(0,10) + ')',
+            json: (jsonCopy.date !== undefined) ? (typeof jsonCopy.date) + ': "' + jsonCopy.date + '"' : 'undefined',
+            sc: scCopy.date ? scCopy.date.constructor.name + ' (' + scCopy.date.toISOString().substring(0,10) + ')' : '—'
+          },
+          {
+            type: 'Map',
+            orig: 'Map(2)',
+            json: (jsonCopy.map !== undefined) ? (typeof jsonCopy.map) + ': ' + JSON.stringify(jsonCopy.map) : 'undefined',
+            sc: scCopy.map ? 'Map(' + scCopy.map.size + ')' : '—'
+          },
+          {
+            type: 'Set',
+            orig: 'Set(4)',
+            json: (jsonCopy.set !== undefined) ? (typeof jsonCopy.set) + ': ' + JSON.stringify(jsonCopy.set) : 'undefined',
+            sc: scCopy.set ? 'Set(' + scCopy.set.size + ')' : '—'
+          },
+          {
+            type: 'ArrayBuffer',
+            orig: 'ArrayBuffer(8)',
+            json: (jsonCopy.buffer !== undefined) ? JSON.stringify(jsonCopy.buffer) : 'undefined',
+            sc: scCopy.buffer ? 'ArrayBuffer(' + scCopy.buffer.byteLength + ')' : '—'
+          },
+          {
+            type: 'undefined',
+            orig: 'undefined',
+            json: '（キー自体が消える）',
+            sc: 'N/A (今回除外)'
+          },
+          {
+            type: 'RegExp',
+            orig: '/hello/gi',
+            json: '（{}に変換）',
+            sc: 'N/A (今回除外)'
+          }
+        ];
+
+        let result = '型            │ 元データ            │ JSON方式               │ structuredClone\n';
+        result +=    '──────────────────────────────────────────────────────────────────────────────\n';
+        for (const r of rows) {
+          const t = r.type.padEnd(14);
+          const o = r.orig.padEnd(22);
+          const j = (r.json.includes('string') || r.json.includes('{}') || r.json.includes('消える') || r.json.includes('変換') || r.json.includes('undefined')) ? '✗ ' + r.json : '  ' + r.json;
+          const s = (r.sc.startsWith('Map') || r.sc.startsWith('Set') || r.sc.startsWith('Array') || r.sc.startsWith('Date')) ? '✓ ' + r.sc : '  ' + r.sc;
+          result += t + '│ ' + o + '│ ' + j.padEnd(24) + '│ ' + s + '\n';
+        }
+        result += '\n✓ = 型が保持される  ✗ = 型が失われる（文字列や空オブジェクトになる）';
+
+        out.className = 'result-box result-ok';
+        out.textContent = result;
+      }
+    </script>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 参照の独立を確認する（ディープコピーの本質）</div>
+    <p>コピー先を変更しても元のオブジェクトに影響しないことを確認します。</p>
+    <button class="btn btn-accent2" onclick="doReferenceCheck()">参照独立チェック</button>
+    <div class="result-box" id="reference-out"><span class="placeholder">ボタンを押してください</span></div>
+    <script>
+      function doReferenceCheck() {
+        const out = document.getElementById('reference-out');
+
+        const original = {
+          name: 'Alice',
+          cart: [
+            { id: 1, name: 'リンゴ', price: 100 },
+            { id: 2, name: 'バナナ', price: 80 }
+          ]
+        };
+
+        // シャローコピー（参照が共有される）
+        const shallow = Object.assign({}, original);
+
+        // JSON方式
+        const jsonCopy = JSON.parse(JSON.stringify(original));
+
+        // structuredClone
+        const scCopy = structuredClone(original);
+
+        // コピーを変更
+        shallow.cart.push({ id: 3, name: '追加(shallow)', price: 0 });
+        shallow.cart[0].price = 999;
+
+        jsonCopy.cart.push({ id: 4, name: '追加(json)', price: 0 });
+        jsonCopy.cart[0].price = 777;
+
+        scCopy.cart.push({ id: 5, name: '追加(sc)', price: 0 });
+        scCopy.cart[0].price = 555;
+
+        const result =
+          '【コピーを変更した後の元データを確認】\n\n'
+          + '元データ (original):\n'
+          + '  cart[0].price = ' + original.cart[0].price + '  (シャローコピー変更の影響: ' + (original.cart[0].price === 999 ? '✗ 受けた' : '✓ なし') + ')\n'
+          + '  cart.length   = ' + original.cart.length + '  (期待値: 2)\n\n'
+          + 'シャロー (Object.assign):\n'
+          + '  cart は元と同じ参照 → 元データも変わる\n'
+          + '  original.cart[0].price が 999 になった: ' + (original.cart[0].price === 999 ? '✓ はい（影響あり）' : '✗ なし') + '\n\n'
+          + 'JSON方式 (JSON.parse/stringify):\n'
+          + '  jsonCopy.cart[0].price = ' + jsonCopy.cart[0].price + ' (元データへの影響なし)\n'
+          + '  jsonCopy.cart.length   = ' + jsonCopy.cart.length + '\n\n'
+          + 'structuredClone:\n'
+          + '  scCopy.cart[0].price = ' + scCopy.cart[0].price + ' (元データへの影響なし)\n'
+          + '  scCopy.cart.length   = ' + scCopy.cart.length + '\n\n'
+          + '→ JSON方式と structuredClone はどちらも参照が独立しています\n'
+          + '→ structuredClone の優位性は Map/Set/Date/ArrayBuffer の型保持にあります';
+
+        out.className = 'result-box result-ok';
+        out.textContent = result;
+      }
+    </script>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — Worker間 postMessage での利用</div>
+    <p><code>structuredClone</code>が内部で使用される代表的な場面：<code>postMessage</code></p>
+    <pre><span class="comment">// メインスレッド → Web Worker へデータを送る</span>
+const worker = new Worker('worker.js');
+
+const data = {
+  date: new Date(),
+  buffer: new ArrayBuffer(1024),  <span class="comment">// 転送 or コピー可能</span>
+  map: new Map([['key', 'val']])
+};
+
+<span class="comment">// postMessage は内部で structuredClone と同じ仕組みを使う</span>
+worker.postMessage(data);
+
+<span class="comment">// ArrayBuffer は Transfer（移動）でゼロコピー転送も可能</span>
+worker.postMessage({ buffer: data.buffer }, [data.buffer]);
+<span class="comment">// → 転送後 data.buffer は使用不可（byteLength=0）になる</span></pre>
+    <div class="note">
+      <code>postMessage</code> は内部で <strong>Structured Clone Algorithm</strong> を使います。
+      これと同じアルゴリズムを明示的に呼び出すのが <code>structuredClone()</code> です（Chrome 98+ / Firefox 94+）。
+    </div>
+  </div>
+
+  <div class="beginner-box">
+    <div class="beg-title">🔰 カート情報のコピーでバグが起きる原因</div>
+    <ul>
+      <li>ECサイトで「カートの内容を一時保存して別の画面に持ち越す」場面を想像してください</li>
+      <li><code>const tempCart = cart</code>（代入）は<strong>参照コピー</strong>— tempCartを変更するとcartも変わります</li>
+      <li><code>Object.assign({}, cart)</code>は<strong>シャローコピー</strong>— 1階層目はコピーされますが、ネストしたオブジェクトは参照が共有されます</li>
+      <li><code>structuredClone(cart)</code>なら<strong>完全独立</strong>— 変更が元に伝播しないため、安全なスナップショットを作れます</li>
+      <li><code>JSON.stringify/parse</code>でも同様のコピーは可能ですが、Dateオブジェクト等が文字列に変換されるリスクがあります</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 4-E: 総合実験 -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-4e">
+  <h3>実験 4-E: 総合実験 — セキュリティ変換まとめ</h3>
+  <p>
+    入力テキストに対して <strong>SHA-256</strong>・<strong>AES-GCM</strong>・<strong>FormData</strong> の3変換を並列実行し、
+    各変換の入力→出力をデータ変遷として一覧表示します。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — 入力テキストを決める</div>
+    <textarea class="input-area" id="combined-input" rows="3" style="resize:vertical;">{
+  "user": "Alice",
+  "action": "purchase",
+  "amount": 5000
+}</textarea>
+    <button class="btn btn-accent" onclick="runCombined()">🚀 3変換を並列実行</button>
+  </div>
+
+  <div id="combined-steps" style="display:none;">
+    <div class="step">
+      <div class="step-num">STEP 2 — データ変遷</div>
+
+      <div class="pipeline-step">
+        <div class="pipeline-num">IN</div>
+        <div class="pipeline-content">
+          <div class="pipeline-label">入力テキスト</div>
+          <div class="pipeline-value" id="cs-input">—</div>
+          <span class="pipeline-size" id="cs-input-size">—</span>
+        </div>
+      </div>
+
+      <div style="text-align:center;color:var(--text-dim);font-size:0.8rem;margin:0.3rem 0;">↓ 並列実行</div>
+
+      <div class="three-col">
+        <div class="col-card card-encode">
+          <h4>SHA-256</h4>
+          <div class="pipeline-value" id="cs-sha" style="font-size:0.75rem;word-break:break-all;">—</div>
+          <div style="margin-top:0.4rem;font-size:0.72rem;color:var(--text-dim);">
+            <span id="cs-sha-size">—</span>
+          </div>
+        </div>
+        <div class="col-card card-puny">
+          <h4>AES-GCM 暗号化</h4>
+          <div class="pipeline-value" id="cs-aes" style="font-size:0.75rem;word-break:break-all;">—</div>
+          <div style="margin-top:0.4rem;font-size:0.72rem;color:var(--text-dim);">
+            <span id="cs-aes-size">—</span>
+          </div>
+        </div>
+        <div class="col-card card-path">
+          <h4>FormData フィールド数</h4>
+          <div class="pipeline-value" id="cs-fd" style="font-size:0.75rem;">—</div>
+          <div style="margin-top:0.4rem;font-size:0.72rem;color:var(--text-dim);">
+            <span id="cs-fd-size">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">STEP 3 — 変換サマリー</div>
+      <div class="result-box" id="combined-summary"><span class="placeholder">実行後に表示されます</span></div>
+    </div>
+  </div>
+
+  <details style="margin:1rem 0;">
+    <summary>📊 Mermaid: セキュリティ変換データフローを表示</summary>
+    <div class="mermaid">
+flowchart LR
+    IN["入力テキスト\n(任意の文字列)"]
+
+    IN -->|"TextEncoder\n→ digest"| SHA["SHA-256\n256bit固定長\n64桁16進数"]
+    IN -->|"generateKey\n→ encrypt"| AES["AES-GCM暗号文\n平文+16byte\n認証タグ付き"]
+    IN -->|"FormData\n.append()"| FD["multipart/form-data\n--boundary--区切り\nContent-Disposition"]
+
+    SHA --> OUT1["改ざん検知\nパスワード保存"]
+    AES --> OUT2["安全な通信\nTLS/HTTPS"]
+    FD --> OUT3["ファイルアップロード\n会員登録フォーム"]
+    </div>
+  </details>
+
+  <script>
+    async function runCombined() {
+      const inputText = document.getElementById('combined-input').value;
+      if (!inputText.trim()) return;
+
+      document.getElementById('combined-steps').style.display = 'block';
+      const summary = document.getElementById('combined-summary');
+      summary.className = 'result-box';
+      summary.textContent = '処理中...';
+
+      const inputBytes = new TextEncoder().encode(inputText).length;
+      document.getElementById('cs-input').textContent = inputText.length > 60 ? inputText.substring(0, 60) + '...' : inputText;
+      document.getElementById('cs-input-size').textContent = inputText.length + ' chars / ' + inputBytes + ' bytes';
+
+      const results = {};
+
+      // SHA-256
+      try {
+        if (window.crypto && window.crypto.subtle) {
+          const hashHex = await computeSHA256(inputText);
+          document.getElementById('cs-sha').textContent = hashHex.substring(0, 32) + '\n' + hashHex.substring(32);
+          document.getElementById('cs-sha-size').textContent = '256 bit (64 hex chars)';
+          results.sha = { ok: true, value: hashHex };
+        } else {
+          document.getElementById('cs-sha').textContent = 'crypto.subtle 非対応';
+          results.sha = { ok: false };
+        }
+      } catch(e) {
+        document.getElementById('cs-sha').textContent = 'エラー: ' + e.message;
+        results.sha = { ok: false };
+      }
+
+      // AES-GCM
+      try {
+        if (window.crypto && window.crypto.subtle) {
+          const key = await crypto.subtle.generateKey(
+            { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
+          );
+          const iv = crypto.getRandomValues(new Uint8Array(12));
+          const encoded = new TextEncoder().encode(inputText);
+          const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
+          const cipherBytes = new Uint8Array(cipher);
+          const cipherHex = Array.from(cipherBytes.slice(0, 16), b => b.toString(16).padStart(2,'0')).join('');
+          document.getElementById('cs-aes').textContent = cipherHex + '...\n(先頭16バイトのみ表示)';
+          document.getElementById('cs-aes-size').textContent = inputBytes + 'B → ' + cipherBytes.length + 'B (+16B 認証タグ)';
+          results.aes = { ok: true, plainBytes: inputBytes, cipherBytes: cipherBytes.length };
+        } else {
+          document.getElementById('cs-aes').textContent = 'crypto.subtle 非対応';
+          results.aes = { ok: false };
+        }
+      } catch(e) {
+        document.getElementById('cs-aes').textContent = 'エラー: ' + e.message;
+        results.aes = { ok: false };
+      }
+
+      // FormData
+      try {
+        const fd = new FormData();
+        fd.append('raw_text', inputText);
+        fd.append('length', String(inputText.length));
+        fd.append('timestamp', new Date().toISOString());
+        fd.append('encoding', 'UTF-8');
+        const fieldCount = 4;
+        document.getElementById('cs-fd').textContent = fieldCount + ' フィールド\n(raw_text / length / timestamp / encoding)';
+        document.getElementById('cs-fd-size').textContent = '本文サイズ: ' + inputText.length + ' chars + メタデータ';
+        results.fd = { ok: true, fields: fieldCount };
+      } catch(e) {
+        document.getElementById('cs-fd').textContent = 'エラー: ' + e.message;
+        results.fd = { ok: false };
+      }
+
+      // サマリー
+      const shaStatus = results.sha && results.sha.ok ? '✓ ' + results.sha.value.substring(0, 16) + '...' : '✗ 非対応';
+      const aesStatus = results.aes && results.aes.ok
+        ? '✓ ' + results.aes.plainBytes + 'B → ' + results.aes.cipherBytes + 'B (+16B認証タグ)'
+        : '✗ 非対応';
+      const fdStatus = results.fd && results.fd.ok ? '✓ ' + results.fd.fields + ' フィールド構築完了' : '✗ エラー';
+
+      summary.className = 'result-box result-ok';
+      summary.textContent =
+        '変換サマリー\n'
+        + '─────────────────────────────────────────────────\n'
+        + '入力:        ' + inputText.length + ' 文字 (' + inputBytes + ' bytes)\n'
+        + '─────────────────────────────────────────────────\n'
+        + 'SHA-256:     ' + shaStatus + '\n'
+        + 'AES-GCM:     ' + aesStatus + '\n'
+        + 'FormData:    ' + fdStatus + '\n'
+        + '─────────────────────────────────────────────────\n'
+        + '並列実行完了 ✓\n\n'
+        + '各変換の特徴:\n'
+        + '  SHA-256   → 一方向・固定長・改ざん検知\n'
+        + '  AES-GCM   → 双方向・鍵依存・認証付き暗号化\n'
+        + '  FormData  → 構造化・Boundary分離・ファイル混在可';
+    }
+  </script>
+</div>
+
+<hr>
+
+<!-- ============================================================
+     チェックリスト
+     ============================================================ -->
+<h2 id="sec-checklist">✅ 実験チェックリスト</h2>
+<p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:0.8rem;">完了した実験にチェックを入れてください（ブラウザに保存されます）</p>
+
+<div id="checklist-container">
+  <label class="check-item" id="chk-wdc-lab04-1">
+    <input type="checkbox" data-key="wdc-lab04-1" onchange="saveCheck(this)">
+    <span>4-A: テキストのSHA-256ハッシュをリアルタイムで生成し、64桁の16進数を確認した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab04-2">
+    <input type="checkbox" data-key="wdc-lab04-2" onchange="saveCheck(this)">
+    <span>4-A: 1文字変えるとハッシュが完全に変わる（雪崩効果）を確認した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab04-3">
+    <input type="checkbox" data-key="wdc-lab04-3" onchange="saveCheck(this)">
+    <span>4-A: 同じ入力が同じハッシュになる（決定性）を3回計算して確認した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab04-4">
+    <input type="checkbox" data-key="wdc-lab04-4" onchange="saveCheck(this)">
+    <span>4-A: SHA-256が一方向であること（元に戻せない）を理解した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab04-5">
+    <input type="checkbox" data-key="wdc-lab04-5" onchange="saveCheck(this)">
+    <span>4-B: AES-GCMで暗号化→復号の往復を実行し、元のテキストに戻ることを確認した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab04-6">
+    <input type="checkbox" data-key="wdc-lab04-6" onchange="saveCheck(this)">
+    <span>4-B: 暗号文のバイト数が平文より16バイト大きい（認証タグ）ことを確認した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab04-7">
+    <input type="checkbox" data-key="wdc-lab04-7" onchange="saveCheck(this)">
+    <span>4-B: 別の鍵で復号するとエラーになることを体験した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab04-8">
+    <input type="checkbox" data-key="wdc-lab04-8" onchange="saveCheck(this)">
+    <span>4-C: FormDataにテキストフィールドを追加し、multipart/form-data形式の構造を確認した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab04-9">
+    <input type="checkbox" data-key="wdc-lab04-9" onchange="saveCheck(this)">
+    <span>4-C: BoundaryがContent-Typeに含まれる理由と、手動指定してはいけない理由を理解した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab04-10">
+    <input type="checkbox" data-key="wdc-lab04-10" onchange="saveCheck(this)">
+    <span>4-D: JSON.stringify/parse でDate/Map/Setの型が失われることを比較表で確認した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab04-11">
+    <input type="checkbox" data-key="wdc-lab04-11" onchange="saveCheck(this)">
+    <span>4-D: structuredClone でDate/Map/Set/ArrayBufferの型が保持されることを確認した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab04-12">
+    <input type="checkbox" data-key="wdc-lab04-12" onchange="saveCheck(this)">
+    <span>4-D: コピー先の変更が元データに影響しない（参照の独立）を確認した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab04-13">
+    <input type="checkbox" data-key="wdc-lab04-13" onchange="saveCheck(this)">
+    <span>4-E: SHA-256 / AES-GCM / FormData の3変換を並列実行し、データ変遷を確認した</span>
+  </label>
+</div>
+
+<hr>
+
+<!-- ============================================================
+     学習ノート
+     ============================================================ -->
+<h2 id="sec-notes">📝 学習ノート</h2>
+<p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:0.5rem;">気づきや疑問点をメモしてください（ブラウザに保存されます）</p>
+<textarea id="study-notes" class="note-textarea" placeholder="例: AES-GCMの認証タグが改ざん検知に使われる仕組みが面白い。structuredCloneはJSON方式より遅いのか速いのか気になる..." oninput="saveNotes()"></textarea>
+
+<!-- Nav Links -->
+<div class="nav-links">
+  <a href="web-data-conversion-lab-03.html">← Lab 03: バイナリ・通信効率の変換</a>
+  <a href="web-data-conversion-index.html">📋 マスター索引</a>
+  <a href="web-data-conversion-lab-05.html">Lab 05 →</a>
+</div>
+
+<!-- ============================================================
+     JavaScript
+     ============================================================ -->
+<script>
+// ─── 定数 ────────────────────────────────────────────────────
+const STORAGE_PREFIX = 'wdclab_';
+
+// ─── チェックリスト ──────────────────────────────────────────
+
+function saveCheck(checkbox) {
+  const key = STORAGE_PREFIX + checkbox.dataset.key;
+  localStorage.setItem(key, checkbox.checked ? '1' : '0');
+  const label = checkbox.closest('label');
+  if (label) {
+    label.classList.toggle('checked', checkbox.checked);
+  }
+}
+
+function loadChecks() {
+  document.querySelectorAll('#checklist-container input[type="checkbox"]').forEach(function(cb) {
+    const key = STORAGE_PREFIX + cb.dataset.key;
+    const saved = localStorage.getItem(key);
+    if (saved === '1') {
+      cb.checked = true;
+      const label = cb.closest('label');
+      if (label) label.classList.add('checked');
+    }
+  });
+}
+
+// ─── 学習ノート ──────────────────────────────────────────────
+
+function saveNotes() {
+  localStorage.setItem(STORAGE_PREFIX + 'lab04-notes', document.getElementById('study-notes').value);
+}
+
+function loadNotes() {
+  const saved = localStorage.getItem(STORAGE_PREFIX + 'lab04-notes');
+  if (saved) document.getElementById('study-notes').value = saved;
+}
+
+// ─── 初期化 ──────────────────────────────────────────────────
+
+window.addEventListener('DOMContentLoaded', function() {
+  loadChecks();
+  loadNotes();
+});
+</script>
+
+</body>
+</html>

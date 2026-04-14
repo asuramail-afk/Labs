@@ -1,0 +1,1598 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Web Data Conversion Lab 06: 通信の自動処理</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;700&display=swap');
+
+  :root {
+    --bg: #ffffff;
+    --surface: #f5f7fa;
+    --surface2: #ebeef2;
+    --border: #c8cdd3;
+    --text: #1a1a2e;
+    --text-dim: #5c6370;
+    --accent: #005cc5;
+    --accent2: #22863a;
+    --accent3: #6f42c1;
+    --warn: #b08800;
+    --danger: #cb2431;
+    --code-bg: #f0f4f8;
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    padding: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  h1 { font-size: 1.6rem; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 0.8rem; margin-bottom: 1.5rem; font-family: 'IBM Plex Mono', monospace; }
+  h2 { font-size: 1.25rem; color: var(--accent2); margin: 2rem 0 1rem; font-family: 'IBM Plex Mono', monospace; }
+  h3 { font-size: 1.05rem; color: var(--accent3); margin: 1.5rem 0 0.8rem; }
+  p, li { font-size: 0.92rem; margin-bottom: 0.5rem; }
+
+  /* Status Bar */
+  .status-bar { display: flex; gap: 1rem; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.6rem 1rem; margin-bottom: 1.5rem; font-size: 0.82rem; font-family: 'IBM Plex Mono', monospace; flex-wrap: wrap; }
+  .status-item { display: flex; align-items: center; gap: 0.4rem; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-dim); animation: pulse 1.5s infinite; }
+  .status-dot.ok { background: var(--accent); animation: none; }
+  .status-dot.err { background: var(--danger); animation: none; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* Lab Section */
+  .lab-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin: 1.5rem 0; }
+
+  .step { background: var(--surface2); border-left: 3px solid var(--accent2); border-radius: 0 var(--radius) var(--radius) 0; padding: 1rem 1.2rem; margin: 1rem 0; }
+  .step-num { font-family: 'IBM Plex Mono', monospace; color: var(--accent2); font-weight: 600; font-size: 0.8rem; margin-bottom: 0.3rem; }
+
+  code, pre { font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; }
+  code { background: var(--code-bg); padding: 0.15rem 0.4rem; border-radius: 4px; color: var(--accent); }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; overflow-x: auto; margin: 0.8rem 0; line-height: 1.6; color: #24292e; }
+  pre .comment { color: #6a737d; }
+  pre .header-name { color: var(--accent2); }
+  pre .header-val { color: var(--accent); }
+  pre .highlight { color: var(--warn); font-weight: 600; }
+
+  .placeholder { color: var(--text-dim); font-style: italic; font-size: 0.8rem; }
+
+  .note { background: #e8f4fd; border: 1px solid #b6d4e8; border-radius: var(--radius); padding: 0.8rem 1rem; margin: 1rem 0; font-size: 0.85rem; color: var(--accent2); }
+  .note::before { content: "💡 "; }
+
+  .warn-box { background: #fff8e1; border: 1px solid #e6d590; border-radius: var(--radius); padding: 0.8rem 1rem; margin: 1rem 0; font-size: 0.85rem; color: var(--warn); }
+  .warn-box::before { content: "⚠️ "; }
+
+  .check-item { background: var(--surface2); border-radius: var(--radius); padding: 0.6rem 1rem; margin: 0.4rem 0; display: flex; align-items: center; gap: 0.6rem; font-size: 0.88rem; transition: opacity 0.3s; }
+  .check-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
+  .check-item.checked { opacity: 0.55; }
+
+  .diagram { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; line-height: 1.5; overflow-x: auto; white-space: pre; color: var(--text-dim); margin: 1rem 0; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.8rem; margin: 1rem 0; }
+  @media (max-width: 900px) { .three-col { grid-template-columns: 1fr; } }
+  @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+  .col-card { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.8rem; font-size: 0.8rem; }
+  .col-card h4 { font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; margin-bottom: 0.5rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); }
+  .col-card pre { border: none; padding: 0.4rem 0; margin: 0; font-size: 0.75rem; background: transparent; }
+  .col-card.card-encode { border-color: var(--accent); }
+  .col-card.card-encode h4 { color: var(--accent); }
+  .col-card.card-puny { border-color: var(--accent2); }
+  .col-card.card-puny h4 { color: var(--accent2); }
+  .col-card.card-path { border-color: var(--accent3); }
+  .col-card.card-path h4 { color: var(--accent3); }
+
+  .toc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.2rem; margin: 1rem 0 2rem; }
+  .toc a { display: inline-block; padding: 0.25rem 0.6rem; margin: 0.15rem; border-radius: 6px; font-size: 0.82rem; background: var(--surface2); transition: background 0.2s; }
+  .toc a:hover { background: var(--border); text-decoration: none; }
+
+  a { color: var(--accent2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  html { scroll-behavior: smooth; }
+
+  .btn { border: none; padding: 0.5rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; font-family: 'Noto Sans JP', sans-serif; margin: 0.3rem; transition: opacity 0.2s; }
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.97); }
+  .btn-accent  { background: var(--accent);  color: var(--bg); }
+  .btn-accent2 { background: var(--accent2); color: var(--bg); }
+  .btn-accent3 { background: var(--accent3); color: var(--bg); }
+  .btn-warn    { background: var(--warn);    color: var(--bg); }
+  .btn-dim     { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+
+  .input-area { width: 100%; background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 0.8rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; }
+
+  /* Conversion arrow */
+  .conv-arrow { text-align: center; font-size: 1.5rem; color: var(--accent2); margin: 0.5rem 0; }
+
+  /* Additional styles for Lab 06 */
+  .beginner-box { background: #f0fdf4; border: 1px solid #86efac; border-radius: var(--radius); padding: 1rem 1.2rem; margin: 1rem 0; }
+  .beg-title { font-weight: 700; color: var(--accent2); font-size: 0.88rem; margin-bottom: 0.5rem; }
+  .beginner-box ul { padding-left: 1.2rem; }
+  .beginner-box li { margin-bottom: 0.3rem; }
+
+  .result-box { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin: 0.8rem 0; min-height: 3rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; white-space: pre-wrap; word-break: break-all; }
+  .result-box.result-ok { border-color: var(--accent2); background: #f0fdf4; }
+  .result-box.result-warn { border-color: var(--warn); background: #fff8e1; }
+  .result-box.result-danger { border-color: var(--danger); background: #fff0f0; }
+
+  .label-badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.72rem; font-family: 'IBM Plex Mono', monospace; font-weight: 600; margin-right: 0.3rem; }
+  .badge-before { background: #fee2e2; color: #991b1b; }
+  .badge-after  { background: #dcfce7; color: #166534; }
+  .badge-info   { background: #e0e7ff; color: #3730a3; }
+  .badge-warn   { background: #fef9c3; color: #854d0e; }
+
+  details { margin: 1rem 0; }
+  details summary { cursor: pointer; font-weight: 600; font-size: 0.88rem; color: var(--accent3); padding: 0.5rem 0; }
+  details summary:hover { opacity: 0.8; }
+  details[open] summary { margin-bottom: 0.5rem; }
+
+  .note-textarea { width: 100%; min-height: 100px; background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 0.7rem 1rem; font-family: 'Noto Sans JP', sans-serif; font-size: 0.85rem; resize: vertical; }
+
+  .nav-links { display: flex; justify-content: space-between; align-items: center; margin-top: 3rem; padding-top: 1.5rem; border-top: 2px solid var(--border); font-size: 0.88rem; }
+  .nav-links a { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1rem; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); transition: background 0.2s; }
+  .nav-links a:hover { background: var(--border); text-decoration: none; }
+
+  /* Compare table */
+  .compare-table { width: 100%; border-collapse: collapse; margin: 0.8rem 0; font-size: 0.82rem; font-family: 'IBM Plex Mono', monospace; }
+  .compare-table th { background: var(--surface2); padding: 0.5rem 0.8rem; text-align: left; border: 1px solid var(--border); color: var(--text-dim); font-weight: 600; }
+  .compare-table td { padding: 0.5rem 0.8rem; border: 1px solid var(--border); vertical-align: top; }
+  .compare-table tr:nth-child(even) td { background: var(--surface); }
+  .td-ok { color: var(--accent2); font-weight: 600; }
+  .td-ng { color: var(--danger); font-weight: 600; }
+  .td-warn { color: var(--warn); font-weight: 600; }
+
+  .bytes-bar { height: 18px; border-radius: 4px; display: inline-block; margin-right: 0.4rem; vertical-align: middle; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });</script>
+</head>
+<body>
+
+<!-- Status Bar -->
+<div class="status-bar">
+  <div class="status-item">
+    <div class="status-dot" id="dot-protocol"></div>
+    <span id="status-protocol">プロトコル確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-httpbin"></div>
+    <span id="status-httpbin">httpbin.org: checking...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot ok"></div>
+    <span>DevTools: <kbd style="background:var(--surface2);padding:0.1rem 0.4rem;border-radius:4px;">F12</kbd></span>
+  </div>
+</div>
+<p style="margin-bottom:0.5rem;font-size:0.82rem;"><a href="web-data-conversion-index.html" style="color:var(--accent);text-decoration:none;">← マスター索引に戻る</a></p>
+
+<script>
+(function() {
+  var dot = document.getElementById('dot-protocol');
+  var label = document.getElementById('status-protocol');
+  dot.classList.add('ok');
+  label.textContent = location.protocol === 'file:'
+    ? 'file:// (httpbin.org fetch はブラウザCORSに注意)'
+    : location.protocol + '// ✓ (TLS: ' + (location.protocol === 'https:' ? '有効' : '未使用') + ')';
+})();
+
+(function() {
+  var dot = document.getElementById('dot-httpbin');
+  var label = document.getElementById('status-httpbin');
+  fetch('https://httpbin.org/get', { signal: AbortSignal.timeout(4000) })
+    .then(function(r) {
+      if (r.ok) {
+        dot.classList.add('ok');
+        label.textContent = 'httpbin.org: available ✓';
+      } else {
+        dot.classList.add('err');
+        label.textContent = 'httpbin.org: HTTP ' + r.status;
+      }
+    })
+    .catch(function() {
+      dot.classList.add('err');
+      label.textContent = 'httpbin.org: unavailable (ネットワーク確認)';
+    });
+})();
+</script>
+
+<h1>🔒 Lab 06: 通信の自動処理</h1>
+<p style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.3rem;font-family:'IBM Plex Mono',monospace;">Web Data Conversion Lab シリーズ</p>
+
+<p>
+  Webブラウザは通信の安全性・互換性・効率性を高めるため、開発者が意識しなくても多くの処理を<strong>自動で行います</strong>。
+  TLS暗号化・CORSプリフライト・コンテンツ圧縮・HSTS・セキュリティヘッダーなど、
+  「ブラウザが勝手にやってくれること」を実際のHTTP通信で確認しながら学びましょう。
+</p>
+
+<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">⏱ 所要時間：30分</span>
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">難易度：★★★</span>
+</div>
+<p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:1rem;">📋 前提知識：Lab 03（HTTP メソッド・ステータスコード）</p>
+
+<div class="lab-box" style="border-color:var(--accent); margin-bottom:1rem;">
+  <h3 style="color:var(--accent); margin-top:0;">🎯 このLabの学習目標</h3>
+  <p style="margin-bottom:0.3rem;">完了すると、以下ができるようになります：</p>
+  <div class="check-item" style="opacity:1;"><span>1. TLS (HTTPS) が暗号化する対象としない対象（IP・SNI・DNS）を区別して説明できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>2. CORSプリフライト（OPTIONSリクエスト）が発生する条件と、発生しない条件を説明できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>3. Content-Encoding: gzip でブラウザが自動展開する仕組みと、転送サイズ削減の効果を確認できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>4. HSTS の動作原理と Mixed Content 問題を説明できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>5. Sec-Fetch-* ヘッダーの各値の意味と、fetchのmodeオプションによる変化を確認できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>6. MIMEスニッフィングと X-Content-Type-Options: nosniff のXSS対策効果を説明できる</span></div>
+</div>
+
+<!-- 概要ダイアグラム -->
+<div class="diagram">通信の自動処理 全体像
+
+  【ブラウザが自動で行う通信処理】
+
+  送信前処理
+       ├─── TLS ハンドシェイク  ─▶ 通信内容を暗号化（AES-GCM等）
+       ├─── HSTS チェック       ─▶ HTTP→HTTPS に自動アップグレード
+       ├─── Sec-Fetch-* 付与   ─▶ リクエスト文脈を自動記述
+       └─── CORS プリフライト  ─▶ cross-origin時にOPTIONS先行送信
+
+  受信後処理
+       ├─── Content-Encoding展開 ─▶ gzip/br を自動解凍
+       ├─── MIME スニッフィング  ─▶ Content-Type を推測（nosniffで禁止）
+       └─── Mixed Content制限   ─▶ HTTPSページ内のHTTP要素をブロック
+
+  暗号化範囲（TLS）
+       ├─── 暗号化される ─── HTTPヘッダー・Body・クエリ文字列・パス
+       └─── 暗号化されない ── 宛先IPアドレス / SNI（ドメイン名）/ DNS問い合わせ</div>
+
+<details style="margin:0.5rem 0;">
+  <summary style="cursor:pointer;color:var(--accent);font-size:0.82rem;font-family:'IBM Plex Mono',monospace;">📊 Mermaidフローチャートを表示</summary>
+  <div class="mermaid">
+flowchart TD
+    A["ブラウザがリクエスト発行"] --> B{"HTTPS?"}
+    B -->|"No"| B1["HTTP送信\n（平文）"]
+    B -->|"Yes"| B2["TLS ハンドシェイク\n→ 通信内容を暗号化"]
+    B1 --> C{"HSTSあり?"}
+    C -->|"Yes"| B2
+    C -->|"No"| D["サーバー到達"]
+    B2 --> D
+
+    A --> E{"cross-origin?"}
+    E -->|"No"| F["そのまま送信"]
+    E -->|"Yes"| G{"シンプルリクエスト?"}
+    G -->|"Yes"| F
+    G -->|"No"| H["OPTIONS プリフライト送信\n→ 許可確認"]
+    H --> F
+
+    A --> I["Sec-Fetch-* 自動付与\n（Dest/Mode/Site/User）"]
+    D --> J["レスポンス受信"]
+    J --> K{"Content-Encoding?"}
+    K -->|"gzip/br"| L["自動展開\n→ JSには展開済みデータ"]
+    K -->|"なし"| M["そのまま利用"]
+    L --> M
+    M --> N{"nosniff?"}
+    N -->|"あり"| O["Content-Typeを厳守"]
+    N -->|"なし"| P["MIMEスニッフィング\n（XSSリスク）"]
+  </div>
+</details>
+
+<!-- TOC -->
+<div class="toc">
+  <strong style="font-size:0.82rem;">目次</strong><br>
+  <a href="#sec-6a">実験 6-A: TLS暗号化</a>
+  <a href="#sec-6b">実験 6-B: CORSプリフライト</a>
+  <a href="#sec-6c">実験 6-C: Content-Encoding（圧縮）</a>
+  <a href="#sec-6d">実験 6-D: HSTS</a>
+  <a href="#sec-6e">実験 6-E: Sec-Fetch-*</a>
+  <a href="#sec-6f">実験 6-F: MIMEスニッフィング</a>
+  <a href="#sec-notes">学習ノート</a>
+</div>
+
+<!-- ============================================================ -->
+<!-- 6-A: TLS暗号化の仕組み                                       -->
+<!-- ============================================================ -->
+<h2 id="sec-6a">実験 6-A: TLS暗号化の仕組み</h2>
+
+<div class="beginner-box">
+  <div class="beg-title">🔰 初心者向け解説</div>
+  <p>手紙を金庫に入れて送るようなイメージです。鍵を持っていない人には中身が読めません。TLSはその「デジタル金庫」を自動でセットアップしてくれる仕組みです。</p>
+  <ul>
+    <li>手紙の中身 = HTTPのヘッダー・Body・URLのパス・クエリ文字列 → <strong>暗号化される</strong></li>
+    <li>封筒の宛先 = 宛先のIPアドレス・ドメイン名 (SNI) → <strong>暗号化されない</strong></li>
+    <li>郵便局の名前 = DNS問い合わせ → 通常は<strong>暗号化されない</strong>（DoH使用時は暗号化）</li>
+  </ul>
+</div>
+
+<div class="lab-box">
+  <h3 style="margin-top:0;">Step 1: 現在の接続プロトコルを確認</h3>
+  <div class="step">
+    <div class="step-num">STEP 1 — location.protocol で確認</div>
+    <p>ブラウザのコンソールで実行してみましょう：</p>
+    <pre><span class="comment">// 現在のプロトコルを確認</span>
+console.log(location.protocol);      <span class="comment">// "https:" または "file:"</span>
+console.log(location.href);          <span class="comment">// 完全なURL</span>
+
+<span class="comment">// HTTPSかどうかを判定</span>
+const isHTTPS = location.protocol === 'https:';
+console.log('TLS有効:', isHTTPS);</pre>
+  </div>
+
+  <div id="protocol-check-result" class="result-box">
+    <span class="placeholder">下のボタンをクリックすると結果が表示されます</span>
+  </div>
+  <button class="btn btn-accent" onclick="checkProtocol()">プロトコル確認</button>
+
+  <h3>Step 2: AES-GCMによる暗号化シミュレーション</h3>
+  <div class="step">
+    <div class="step-num">STEP 2 — crypto.subtle で暗号化／復号</div>
+    <p>TLSが内部で使うAES-GCM暗号化を <code>crypto.subtle</code> APIでシミュレートします：</p>
+    <pre><span class="comment">// AES-GCMキーを生成</span>
+const key = await crypto.subtle.generateKey(
+  { name: 'AES-GCM', length: 256 },
+  true,
+  ['encrypt', 'decrypt']
+);
+
+<span class="comment">// 平文を暗号化</span>
+const plaintext = 'Hello, TLS World!';
+const encoded = new TextEncoder().encode(plaintext);
+const iv = crypto.getRandomValues(new Uint8Array(12)); <span class="comment">// 初期化ベクトル</span>
+const ciphertext = await crypto.subtle.encrypt(
+  { name: 'AES-GCM', iv },
+  key,
+  encoded
+);
+
+<span class="comment">// 復号</span>
+const decrypted = await crypto.subtle.decrypt(
+  { name: 'AES-GCM', iv },
+  key,
+  ciphertext
+);
+console.log(new TextDecoder().decode(decrypted)); <span class="comment">// 元の平文に戻る</span></pre>
+  </div>
+
+  <div>
+    <input type="text" class="input-area" id="tls-plaintext" value="Hello, TLS World! 秘密のメッセージ" style="margin-bottom:0.5rem;">
+    <button class="btn btn-accent" onclick="simulateTLS()">暗号化 → 復号を実行</button>
+  </div>
+  <div id="tls-result" class="result-box">
+    <span class="placeholder">ボタンをクリックすると実行されます</span>
+  </div>
+
+  <h3>Step 3: TLSが暗号化するもの・しないもの</h3>
+  <table class="compare-table">
+    <tr>
+      <th>項目</th>
+      <th>暗号化</th>
+      <th>理由・補足</th>
+    </tr>
+    <tr>
+      <td>HTTPヘッダー（Cookie, Authorization 等）</td>
+      <td class="td-ok">される ✓</td>
+      <td>TLS層より上のデータすべて</td>
+    </tr>
+    <tr>
+      <td>リクエストBody（POSTデータ）</td>
+      <td class="td-ok">される ✓</td>
+      <td>フォームデータ・JSONも保護</td>
+    </tr>
+    <tr>
+      <td>URLのパス・クエリ文字列</td>
+      <td class="td-ok">される ✓</td>
+      <td>/search?q=secret も暗号化</td>
+    </tr>
+    <tr>
+      <td>宛先IPアドレス</td>
+      <td class="td-ng">されない ✗</td>
+      <td>TCPレイヤーで必要（経路上に露出）</td>
+    </tr>
+    <tr>
+      <td>SNI（TLSハンドシェイク内のドメイン名）</td>
+      <td class="td-ng">されない ✗</td>
+      <td>通常のTLSでは平文露出（ECHで解決予定）</td>
+    </tr>
+    <tr>
+      <td>DNS問い合わせ</td>
+      <td class="td-warn">△ 通常は平文</td>
+      <td>DoH (DNS over HTTPS) 使用時は暗号化</td>
+    </tr>
+  </table>
+
+  <div class="note">HTTPS であっても「どのサイトに接続したか」は ISP やネットワーク管理者に見えることがあります。ECH（Encrypted Client Hello）や DoH を使うことで、この情報も保護できます。</div>
+
+  <h3>チェックリスト</h3>
+  <div class="check-item" id="chk-6a-1"><input type="checkbox" data-key="wdc-lab06-1" onchange="saveCheck(this)"> <span><code>location.protocol</code> で接続プロトコルを確認した</span></div>
+  <div class="check-item" id="chk-6a-2"><input type="checkbox" data-key="wdc-lab06-2" onchange="saveCheck(this)"> <span><code>crypto.subtle.encrypt</code> / <code>decrypt</code> で暗号化・復号を実行した</span></div>
+  <div class="check-item" id="chk-6a-3"><input type="checkbox" data-key="wdc-lab06-3" onchange="saveCheck(this)"> <span>TLSが暗号化する項目（ヘッダー・Body）と、しない項目（IP・SNI・DNS）を理解した</span></div>
+</div>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 6-B: CORS プリフライトの仕組み                               -->
+<!-- ============================================================ -->
+<h2 id="sec-6b">実験 6-B: CORSプリフライトの仕組み</h2>
+
+<div class="beginner-box">
+  <div class="beg-title">🔰 初心者向け解説</div>
+  <p>別の建物（オリジン）に入るとき、まず受付（OPTIONS リクエスト）で「入ってもいいですか？」と確認するイメージです。受付が「OKです」と返したときだけ、本来の用件（GET/POST等）を伝えられます。ただし、簡単な手紙（シンプルリクエスト）を渡すだけなら受付確認なしで通れます。</p>
+</div>
+
+<div class="lab-box">
+  <div class="diagram">CORSプリフライトの判定
+
+  ┌──────────────────────────────────────────────────────────┐
+  │  クロスオリジンリクエスト                                    │
+  │                                                            │
+  │  シンプルリクエスト（OPTIONS不要）      プリフライト必要       │
+  │  ───────────────────────            ─────────────────    │
+  │  メソッド: GET / HEAD / POST         メソッド: PUT / DELETE  │
+  │  Content-Type:                       Content-Type:          │
+  │    text/plain                          application/json      │
+  │    application/x-www-form-urlencoded   multipart/form-data※ │
+  │    multipart/form-data                                       │
+  │  カスタムヘッダーなし                  Authorization ヘッダー  │
+  └──────────────────────────────────────────────────────────┘
+
+  プリフライトのシーケンス:
+  Browser          Server
+    │               │
+    │─OPTIONS──────▶│  (Access-Control-Request-Method: POST)
+    │               │  (Access-Control-Request-Headers: Content-Type)
+    │◀──200 OK─────│  (Access-Control-Allow-Origin: *)
+    │               │  (Access-Control-Allow-Methods: POST)
+    │─POST─────────▶│  （本来のリクエスト）
+    │◀──200 OK─────│</div>
+
+  <h3 style="margin-top:0;">Step 1: application/json POST → OPTIONSが発生することを確認</h3>
+  <div class="step">
+    <div class="step-num">STEP 1 — DevToolsのNetworkタブを開いてからボタンを押す</div>
+    <p>F12 → Network タブを開き、フィルターを「All」にしてから「JSONリクエスト送信」を押してください。<code>OPTIONS</code> リクエストが先に発生するのが確認できます。</p>
+  </div>
+  <button class="btn btn-accent" onclick="sendJsonPost()">JSON POSTを送信（OPTIONSあり）</button>
+  <div id="cors-json-result" class="result-box">
+    <span class="placeholder">DevTools Network で OPTIONS リクエストを確認してください</span>
+  </div>
+
+  <h3>Step 2: text/plain POST → OPTIONSが発生しないことを確認</h3>
+  <div class="step">
+    <div class="step-num">STEP 2 — シンプルリクエストはプリフライトなし</div>
+    <p>同じく Network タブを開いた状態で「text/plain POSTを送信」を押してください。今度は <code>OPTIONS</code> リクエストが<strong>発生しない</strong>はずです。</p>
+  </div>
+  <button class="btn btn-accent2" onclick="sendTextPost()">text/plain POSTを送信（OPTIONSなし）</button>
+  <div id="cors-text-result" class="result-box">
+    <span class="placeholder">DevTools Network で OPTIONS が出ないことを確認してください</span>
+  </div>
+
+  <h3>Step 3: fetchのmodeオプションで挙動を変える</h3>
+  <pre><span class="comment">// mode: 'cors'（デフォルト）— プリフライトが必要なら送信</span>
+fetch('https://httpbin.org/post', {
+  method: 'POST',
+  mode: 'cors',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ test: true })
+});
+
+<span class="comment">// mode: 'no-cors' — レスポンスは opaque（内容が読めない）</span>
+fetch('https://httpbin.org/post', {
+  method: 'POST',
+  mode: 'no-cors',
+  body: 'text/plain only'
+});
+
+<span class="comment">// mode: 'same-origin' — クロスオリジンなら例外を投げる</span>
+fetch('https://httpbin.org/get', { mode: 'same-origin' })
+  .catch(e => console.log('same-origin block:', e.message));</pre>
+
+  <div class="note">DevTools の Network タブで「OPTIONS」と検索すると、プリフライトリクエストだけを絞り込めます。OPTIONS レスポンスの <code>Access-Control-Allow-*</code> ヘッダーを確認してみましょう。</div>
+
+  <details>
+    <summary>📊 CORS プリフライト フローチャート</summary>
+    <div class="mermaid">
+flowchart TD
+    A["fetch() 呼び出し"] --> B{"クロスオリジン?"}
+    B -->|"No (同一オリジン)"| Z["そのまま送信"]
+    B -->|"Yes"| C{"シンプルリクエスト?"}
+    C -->|"Yes\n(GET/POST+text/plain等)"| Z
+    C -->|"No\n(JSON/PUT/DELETE等)"| D["OPTIONS プリフライト送信"]
+    D --> E{"サーバーが許可?"}
+    E -->|"Allow-Origin: *\nor 一致するOrigin"| F["本来のリクエスト送信"]
+    E -->|"許可なし"| G["CORSエラー\nTypeError: Failed to fetch"]
+    F --> H["レスポンス取得"]
+    </div>
+  </details>
+
+  <h3>チェックリスト</h3>
+  <div class="check-item" id="chk-6b-1"><input type="checkbox" data-key="wdc-lab06-4" onchange="saveCheck(this)"> <span>DevToolsでJSON POSTに対して OPTIONS リクエストが先に送られることを確認した</span></div>
+  <div class="check-item" id="chk-6b-2"><input type="checkbox" data-key="wdc-lab06-5" onchange="saveCheck(this)"> <span>text/plain POSTではOPTIONSが発生しない（シンプルリクエスト）を確認した</span></div>
+  <div class="check-item" id="chk-6b-3"><input type="checkbox" data-key="wdc-lab06-6" onchange="saveCheck(this)"> <span><code>Access-Control-Allow-Origin</code> / <code>Access-Control-Allow-Methods</code> ヘッダーを確認した</span></div>
+
+  <div class="warn-box" style="border-color:var(--accent3);background:#f3e5f5;">
+    <strong style="color:var(--accent3);">📋 初心者まとめ</strong><br>
+    覚える関数: <code>application/json</code> はプリフライト（OPTIONSリクエスト）が発生する<br>
+    よくある落とし穴: CORSエラーをJSのバグと勘違いしてコードを修正し続ける（実際はサーバー設定の問題）<br>
+    正しい使い方: サーバー側で <code>Access-Control-Allow-Origin</code> ヘッダーを設定する（JS側での対処は不可）
+  </div>
+</div>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 6-C: Content-Encoding（圧縮の自動展開）                      -->
+<!-- ============================================================ -->
+<h2 id="sec-6c">実験 6-C: Content-Encoding（圧縮の自動展開）</h2>
+
+<div class="beginner-box">
+  <div class="beg-title">🔰 初心者向け解説</div>
+  <p>宅配便で圧縮袋に入れて送ると送料が安くなるイメージです。受け取った側（ブラウザ）が自動で袋を膨らませるので、JavaScriptからは最初から展開済みのデータとして見えます。開発者は圧縮・展開を意識しなくてよいのが便利な点です。</p>
+</div>
+
+<div class="lab-box">
+  <div class="diagram">Content-Encoding の流れ
+
+  サーバー                              ブラウザ
+    │                                      │
+    │  元データ: 5,000 bytes               │
+    │  gzip圧縮後: ~1,200 bytes            │
+    │                                      │
+    │─── HTTP Response ──────────────────▶│
+    │    Content-Encoding: gzip            │
+    │    Content-Type: application/json    │
+    │    [compressed 1,200 bytes]          │
+    │                                      │
+    │                                 自動展開
+    │                              (開発者が意識不要)
+    │                                      │
+    │                            JSには 5,000 bytes
+    │                            の展開済みデータ</div>
+
+  <h3 style="margin-top:0;">Step 1: gzip圧縮レスポンスを取得</h3>
+  <div class="step">
+    <div class="step-num">STEP 1 — httpbin.org/gzip でgzip圧縮レスポンスを取得</div>
+    <p><code>httpbin.org/gzip</code> は <code>Content-Encoding: gzip</code> でレスポンスを返します。ブラウザが自動展開するため、JSからは展開済みのJSONが見えます。</p>
+  </div>
+  <button class="btn btn-accent" onclick="fetchGzip()">gzip レスポンスを取得</button>
+  <button class="btn btn-accent2" onclick="fetchNormal()">通常レスポンス（/get）を取得</button>
+  <div id="gzip-result" class="result-box">
+    <span class="placeholder">ボタンをクリックして取得します</span>
+  </div>
+
+  <h3>Step 2: DevToolsで転送サイズと実際のサイズを確認</h3>
+  <div class="step">
+    <div class="step-num">STEP 2 — Network タブで Size 列を確認</div>
+    <ol style="padding-left:1.2rem;">
+      <li>DevTools → Network タブを開く</li>
+      <li>上のボタンでリクエストを実行する</li>
+      <li>リクエスト行をクリック → <strong>Headers</strong> タブで <code>content-encoding: gzip</code> を探す</li>
+      <li>リクエスト一覧の <strong>Size</strong> 列: 上段が転送サイズ（圧縮後）、下段が実際のサイズ</li>
+    </ol>
+  </div>
+
+  <h3>Step 3: 圧縮率の比較</h3>
+  <table class="compare-table">
+    <tr>
+      <th>エンドポイント</th>
+      <th>Content-Encoding</th>
+      <th>転送サイズ（目安）</th>
+      <th>展開後サイズ（目安）</th>
+      <th>圧縮率</th>
+    </tr>
+    <tr>
+      <td><code>/gzip</code></td>
+      <td><code class="td-ok">gzip</code></td>
+      <td>~300 bytes</td>
+      <td>~500 bytes</td>
+      <td class="td-ok">~40%削減</td>
+    </tr>
+    <tr>
+      <td><code>/get</code></td>
+      <td>（なし）</td>
+      <td>~450 bytes</td>
+      <td>~450 bytes</td>
+      <td class="td-ng">0%削減</td>
+    </tr>
+    <tr>
+      <td>一般的なHTMLページ</td>
+      <td><code>gzip</code> / <code>br</code></td>
+      <td>~30 KB</td>
+      <td>~100 KB</td>
+      <td class="td-ok">~70%削減</td>
+    </tr>
+  </table>
+
+  <div class="note">Brotli (<code>br</code>) は gzip より高い圧縮率を持ちます。ブラウザは <code>Accept-Encoding: gzip, deflate, br</code> を自動送信し、サーバーが対応形式を選択します。</div>
+
+  <details>
+    <summary>📊 Content-Encoding フローチャート</summary>
+    <div class="mermaid">
+flowchart LR
+    A["ブラウザ\nAccept-Encoding: gzip, br"] -->|"リクエスト"| B["サーバー"]
+    B -->|"gzip圧縮レスポンス\nContent-Encoding: gzip"| C["ブラウザ受信"]
+    C --> D["自動展開\n(透過的処理)"]
+    D --> E["JS: response.json()\n→ 展開済みデータ"]
+    D --> F["DevTools Size列\n上: 転送 / 下: 実際"]
+    </div>
+  </details>
+
+  <h3>チェックリスト</h3>
+  <div class="check-item" id="chk-6c-1"><input type="checkbox" data-key="wdc-lab06-7" onchange="saveCheck(this)"> <span><code>httpbin.org/gzip</code> からgzip圧縮レスポンスを取得し、JSには展開済みデータが届くことを確認した</span></div>
+  <div class="check-item" id="chk-6c-2"><input type="checkbox" data-key="wdc-lab06-8" onchange="saveCheck(this)"> <span>DevTools Network の Size 列で転送サイズと実際のサイズの違いを確認した</span></div>
+  <div class="check-item" id="chk-6c-3"><input type="checkbox" data-key="wdc-lab06-9" onchange="saveCheck(this)"> <span><code>Content-Encoding: gzip</code> レスポンスヘッダーをDevToolsで確認した</span></div>
+</div>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 6-D: HSTS（HTTP→HTTPS強制変換）                              -->
+<!-- ============================================================ -->
+<h2 id="sec-6d">実験 6-D: HSTS（HTTP→HTTPS強制変換）</h2>
+
+<div class="beginner-box">
+  <div class="beg-title">🔰 初心者向け解説</div>
+  <p>一度セキュリティゲート（HTTPS）を通ったら、以降ずっとセキュリティゲート経由になるイメージです。ブラウザが「このサイトはHTTPSで接続すること」と記憶するため、次回からHTTPでアクセスしようとしても、自動的にHTTPSに切り替わります。</p>
+</div>
+
+<div class="lab-box">
+  <h3 style="margin-top:0;">Step 1: 現在のプロトコルと HSTS の確認</h3>
+  <div id="hsts-protocol-info" class="result-box result-ok">確認中...</div>
+  <button class="btn btn-accent" onclick="checkHSTSStatus()">HSTS ステータス確認</button>
+
+  <h3>Step 2: HSTS の動作フロー</h3>
+  <div class="diagram">HSTS（HTTP Strict Transport Security）の動作
+
+  初回アクセス（HTTPSで接続した場合）:
+  ┌──────────────────────────────────────────────────────────┐
+  │  ブラウザ                            サーバー              │
+  │    │─── HTTPS GET / ─────────────▶  │                   │
+  │    │◀── 200 OK ──────────────────── │                   │
+  │    │    Strict-Transport-Security:   │                   │
+  │    │    max-age=31536000; includeSubDomains            │
+  │    │                                 │                   │
+  │    ├── ブラウザが記憶 ──▶ 「1年間HTTPSを使う」           │
+  └──────────────────────────────────────────────────────────┘
+
+  次回以降（HTTPでアクセスしようとした場合）:
+  ┌──────────────────────────────────────────────────────────┐
+  │  ブラウザ                            サーバー              │
+  │    │ http://example.com              │                   │
+  │    │                                 │                   │
+  │    ├── HSTSリスト確認 ──▶ 記録あり   │                   │
+  │    │                                 │                   │
+  │    ├── 自動でhttps://に変換          │                   │
+  │    │─── HTTPS GET / ─────────────▶  │                   │
+  │    │    ※サーバーに届く前に変換済み  │                   │
+  └──────────────────────────────────────────────────────────┘</div>
+
+  <h3>Step 3: Mixed Content の問題</h3>
+  <p>HTTPSページの中でHTTPリソースを読み込もうとすると、ブラウザがブロックします。</p>
+  <table class="compare-table">
+    <tr>
+      <th>リソース種別</th>
+      <th>HTTPS内でHTTP読み込み</th>
+      <th>ブラウザの対応</th>
+    </tr>
+    <tr>
+      <td><code>&lt;script src="http://..."&gt;</code></td>
+      <td class="td-ng">Active Mixed Content</td>
+      <td>ブロック（エラー）</td>
+    </tr>
+    <tr>
+      <td><code>&lt;iframe src="http://..."&gt;</code></td>
+      <td class="td-ng">Active Mixed Content</td>
+      <td>ブロック（エラー）</td>
+    </tr>
+    <tr>
+      <td><code>&lt;img src="http://..."&gt;</code></td>
+      <td class="td-warn">Passive Mixed Content</td>
+      <td>警告（将来はブロック）</td>
+    </tr>
+    <tr>
+      <td>fetch('http://...')</td>
+      <td class="td-ng">Active Mixed Content</td>
+      <td>ブロック（エラー）</td>
+    </tr>
+  </table>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — upgrade-insecure-requests</div>
+    <p>HTTPSページのHTMLに以下の <code>&lt;meta&gt;</code> タグを追加すると、ページ内のHTTPリソースを自動的にHTTPSにアップグレードしようとします：</p>
+    <pre><span class="comment">&lt;!-- HTMLのheadに追加 --&gt;</span>
+&lt;meta http-equiv="Content-Security-Policy"
+      content="upgrade-insecure-requests"&gt;
+
+<span class="comment">// または CSP ヘッダーで指定</span>
+<span class="header-name">Content-Security-Policy</span>: <span class="header-val">upgrade-insecure-requests</span></pre>
+  </div>
+
+  <div class="warn-box">Mixed Content の警告はDevToolsのConsoleタブに表示されます。「Mixed Content」で検索するとすぐに見つかります。</div>
+
+  <details>
+    <summary>📊 HSTS フローチャート</summary>
+    <div class="mermaid">
+flowchart TD
+    A["ユーザーが http:// でアクセス"] --> B{"HSTSリストに登録済み?"}
+    B -->|"Yes"| C["ブラウザが自動で\nhttps:// に変換\n（307 Internal Redirect）"]
+    B -->|"No"| D["HTTPでサーバーに接続"]
+    D --> E["サーバーが 301 Redirect\nhttps:// へ"]
+    E --> F["HTTPSで再接続"]
+    F --> G{"Strict-Transport-Security\nヘッダーあり?"}
+    G -->|"Yes"| H["HSTSリストに登録\n(max-age 期間)"]
+    G -->|"No"| I["次回もHTTPで接続可能"]
+    C --> J["HTTPSで接続完了"]
+    H --> J
+    </div>
+  </details>
+
+  <h3>チェックリスト</h3>
+  <div class="check-item" id="chk-6d-1"><input type="checkbox" data-key="wdc-lab06-10" onchange="saveCheck(this)"> <span>現在のページのプロトコルと、HTTPSページかどうかを確認した</span></div>
+  <div class="check-item" id="chk-6d-2"><input type="checkbox" data-key="wdc-lab06-11" onchange="saveCheck(this)"> <span>HSTSが「ブラウザに記憶させる」仕組みであること（サーバー側でリダイレクトするのではない）を理解した</span></div>
+  <div class="check-item" id="chk-6d-3"><input type="checkbox" data-key="wdc-lab06-12" onchange="saveCheck(this)"> <span>Active Mixed Content と Passive Mixed Content の違いと、ブロック対象を確認した</span></div>
+
+  <div class="warn-box" style="border-color:var(--accent3);background:#f3e5f5;">
+    <strong style="color:var(--accent3);">📋 初心者まとめ</strong><br>
+    覚える関数: HTTPSは必須、HSTSは <code>Strict-Transport-Security</code> ヘッダーでブラウザに記憶させる<br>
+    よくある落とし穴: HTTPSページ内にHTTP画像を埋め込みMixed Contentブロック（コンソールにエラーが出る）<br>
+    正しい使い方: すべてのリソースをHTTPS化、またはCSPで <code>upgrade-insecure-requests</code> を指定する
+  </div>
+</div>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 6-E: Sec-Fetch-* ヘッダー                                    -->
+<!-- ============================================================ -->
+<h2 id="sec-6e">実験 6-E: Sec-Fetch-* ヘッダー</h2>
+
+<div class="beginner-box">
+  <div class="beg-title">🔰 初心者向け解説</div>
+  <p>宅配便の伝票に「この荷物は○○から△△へ、目的は□□です」と自動記入されるイメージです。ブラウザが「このリクエストは誰が・どこから・何のために送ったか」を自動的にヘッダーに書き込みます。サーバーはこれを見て、怪しいリクエストを拒否できます。</p>
+</div>
+
+<div class="lab-box">
+  <h3 style="margin-top:0;">Step 1: httpbin.org/headers で Sec-Fetch-* を確認</h3>
+  <div class="step">
+    <div class="step-num">STEP 1 — ブラウザが自動付与する Sec-Fetch-* ヘッダーを確認</div>
+    <p><code>httpbin.org/headers</code> は受け取ったすべてのリクエストヘッダーをJSONで返します。<code>Sec-Fetch-*</code> 系ヘッダーを確認しましょう：</p>
+  </div>
+
+  <div class="two-col">
+    <div>
+      <p><strong>mode: cors（デフォルト）</strong></p>
+      <button class="btn btn-accent" onclick="fetchSecHeaders('cors')">cors モードで取得</button>
+    </div>
+    <div>
+      <p><strong>mode: no-cors</strong></p>
+      <button class="btn btn-dim" onclick="fetchSecHeadersNoCors()">no-cors モードで取得</button>
+    </div>
+  </div>
+  <div id="sec-fetch-result" class="result-box">
+    <span class="placeholder">ボタンをクリックして Sec-Fetch-* ヘッダーを取得します</span>
+  </div>
+
+  <h3>Step 2: Sec-Fetch-* 各ヘッダーの意味</h3>
+  <table class="compare-table">
+    <tr>
+      <th>ヘッダー</th>
+      <th>主な値</th>
+      <th>意味</th>
+    </tr>
+    <tr>
+      <td><code>Sec-Fetch-Dest</code></td>
+      <td><code>empty</code> / <code>document</code> / <code>image</code> / <code>script</code> / <code>style</code></td>
+      <td>リクエストの目的地（何として使われるか）</td>
+    </tr>
+    <tr>
+      <td><code>Sec-Fetch-Mode</code></td>
+      <td><code>cors</code> / <code>navigate</code> / <code>no-cors</code> / <code>same-origin</code></td>
+      <td>リクエストのモード（fetch の mode オプションと対応）</td>
+    </tr>
+    <tr>
+      <td><code>Sec-Fetch-Site</code></td>
+      <td><code>cross-site</code> / <code>same-origin</code> / <code>same-site</code> / <code>none</code></td>
+      <td>リクエスト元とターゲットの関係</td>
+    </tr>
+    <tr>
+      <td><code>Sec-Fetch-User</code></td>
+      <td><code>?1</code> / （送信なし）</td>
+      <td>ユーザー操作（クリック等）によるナビゲーションか否か</td>
+    </tr>
+  </table>
+
+  <h3>Step 3: Sec-Fetch-Site の値の種類</h3>
+  <div class="diagram">Sec-Fetch-Site の判定ルール
+
+  same-origin  : オリジン完全一致（スキーム + ドメイン + ポートすべて同じ）
+                 例) https://example.com から https://example.com/api
+
+  same-site    : eTLD+1が一致（スキームも一致）
+                 例) https://a.example.com から https://b.example.com
+
+  cross-site   : eTLD+1が異なる
+                 例) https://example.com から https://httpbin.org
+
+  none         : ユーザーが直接URLを入力した場合（アドレスバーナビゲーション）</div>
+
+  <pre><span class="comment">// fetchのmodeオプションとSec-Fetch-Modeの対応</span>
+fetch(url, { mode: 'cors' })        <span class="comment">// Sec-Fetch-Mode: cors</span>
+fetch(url, { mode: 'no-cors' })     <span class="comment">// Sec-Fetch-Mode: no-cors</span>
+fetch(url, { mode: 'same-origin' }) <span class="comment">// Sec-Fetch-Mode: same-origin</span>
+
+<span class="comment">// navigateは&lt;a href&gt;クリックや location.href 変更時</span>
+<span class="comment">// Sec-Fetch-Mode: navigate</span></pre>
+
+  <div class="note">Sec-Fetch-* ヘッダーは JavaScript から変更できません。ブラウザが信頼できる情報源として自動付与します。サーバーはこれを参照して CSRF 対策を強化できます。</div>
+
+  <details>
+    <summary>📊 Sec-Fetch-* フローチャート</summary>
+    <div class="mermaid">
+flowchart TD
+    A["fetch() 呼び出し"] --> B["ブラウザが自動付与"]
+    B --> C["Sec-Fetch-Dest: empty\n(JS fetch の場合)"]
+    B --> D["Sec-Fetch-Mode: cors\n(mode オプションと対応)"]
+    B --> E{"オリジン関係"}
+    E -->|"完全一致"| F["Sec-Fetch-Site: same-origin"]
+    E -->|"eTLD+1一致"| G["Sec-Fetch-Site: same-site"]
+    E -->|"異なる"| H["Sec-Fetch-Site: cross-site"]
+    B --> I{"ユーザー操作?"}
+    I -->|"クリック等"| J["Sec-Fetch-User: ?1"]
+    I -->|"JS自動実行"| K["Sec-Fetch-User: (なし)"]
+    </div>
+  </details>
+
+  <h3>チェックリスト</h3>
+  <div class="check-item" id="chk-6e-1"><input type="checkbox" data-key="wdc-lab06-13" onchange="saveCheck(this)"> <span>httpbin.org/headers で <code>Sec-Fetch-Dest</code>, <code>Sec-Fetch-Mode</code>, <code>Sec-Fetch-Site</code> の値を確認した</span></div>
+  <div class="check-item" id="chk-6e-2"><input type="checkbox" data-key="wdc-lab06-14" onchange="saveCheck(this)"> <span>fetch の <code>mode</code> オプションを変えると <code>Sec-Fetch-Mode</code> の値が変わることを確認した</span></div>
+  <div class="check-item" id="chk-6e-3"><input type="checkbox" data-key="wdc-lab06-15" onchange="saveCheck(this)"> <span>Sec-Fetch-* ヘッダーはJSから変更できない（ブラウザが自動付与）ことを理解した</span></div>
+</div>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 6-F: MIME スニッフィングと nosniff                           -->
+<!-- ============================================================ -->
+<h2 id="sec-6f">実験 6-F: MIMEスニッフィングとnosniff</h2>
+
+<div class="beginner-box">
+  <div class="beg-title">🔰 初心者向け解説</div>
+  <p>荷物にラベルが貼られていても、ブラウザが「中身を見て自分で判断」しようとするのが MIMEスニッフィングです。これはXSSの脆弱性につながることがあります。<code>X-Content-Type-Options: nosniff</code> を指定すると「ラベル通りに扱え、中身を勝手に推測するな」と指示できます。</p>
+</div>
+
+<div class="lab-box">
+  <h3 style="margin-top:0;">Step 1: MIMEスニッフィングの問題</h3>
+  <div class="diagram">MIMEスニッフィングとXSSリスク
+
+  ┌──────────────────────────────────────────────────────────────┐
+  │  問題のシナリオ（nosniffなし）                                  │
+  │                                                               │
+  │  攻撃者がアップロード: evil.txt                               │
+  │  ファイルの中身:                                              │
+  │    &lt;html&gt;&lt;script&gt;document.cookie // XSSコード&lt;/script&gt;&lt;/html&gt;   │
+  │                                                               │
+  │  サーバーのレスポンス:                                         │
+  │    Content-Type: text/plain  ← テキストとして送信             │
+  │                                                               │
+  │  ブラウザの判断（nosniffなし）:                                │
+  │    「中身を見ると HTMLっぽい...HTMLとして実行しよう！」         │
+  │    → XSSが実行される！                                        │
+  │                                                               │
+  │  nosniff ありの場合:                                          │
+  │    Content-Type: text/plain を厳守 → テキストとして表示のみ   │
+  └──────────────────────────────────────────────────────────────┘</div>
+
+  <h3>Step 2: X-Content-Type-Options ヘッダーの確認</h3>
+  <div class="step">
+    <div class="step-num">STEP 2 — レスポンスヘッダーで nosniff を確認</div>
+    <p>様々なWebサイトのレスポンスヘッダーで <code>X-Content-Type-Options: nosniff</code> が設定されているか確認します：</p>
+  </div>
+  <button class="btn btn-accent" onclick="checkNosniff()">httpbin.org のヘッダーを確認</button>
+  <div id="nosniff-result" class="result-box">
+    <span class="placeholder">ボタンをクリックしてヘッダーを確認します</span>
+  </div>
+
+  <h3>Step 3: Content-Type と nosniff の対応表</h3>
+  <table class="compare-table">
+    <tr>
+      <th>Content-Type</th>
+      <th>nosniffなし</th>
+      <th>nosniffあり</th>
+      <th>リスク</th>
+    </tr>
+    <tr>
+      <td><code>text/plain</code>（HTML混入）</td>
+      <td class="td-ng">HTMLとして実行される可能性</td>
+      <td class="td-ok">テキストとして表示</td>
+      <td>XSS</td>
+    </tr>
+    <tr>
+      <td><code>image/png</code>（SVG混入）</td>
+      <td class="td-ng">SVG (= HTML相当) として実行</td>
+      <td class="td-ok">画像として処理</td>
+      <td>XSS</td>
+    </tr>
+    <tr>
+      <td><code>application/json</code>（JS混入）</td>
+      <td class="td-ng">JSとして実行される可能性</td>
+      <td class="td-ok">JSONとして処理</td>
+      <td>スクリプト実行</td>
+    </tr>
+    <tr>
+      <td><code>text/css</code>（正当なCSS）</td>
+      <td class="td-ok">通常通り</td>
+      <td class="td-ok">通常通り</td>
+      <td>なし</td>
+    </tr>
+  </table>
+
+  <h3>Step 4: nosniff の正しい実装</h3>
+  <pre><span class="comment">// サーバー側（Node.js / Express 例）</span>
+app.use(function(req, res, next) {
+  res.setHeader('<span class="header-name">X-Content-Type-Options</span>', '<span class="header-val">nosniff</span>');
+  next();
+});
+
+<span class="comment">// または helmet.js で一括設定（推奨）</span>
+const helmet = require('helmet');
+app.use(helmet()); <span class="comment">// nosniff も含む複数のセキュリティヘッダーを設定</span>
+
+<span class="comment">// ブラウザJSからは確認のみ（設定はできない）</span>
+<span class="comment">// DevTools → Network → レスポンスヘッダーで確認</span></pre>
+
+  <div class="note">
+    <strong>Content-Type を正確に設定するのが根本対策です。</strong>
+    <ul style="padding-left:1.2rem;margin-top:0.4rem;">
+      <li>ユーザーがアップロードしたファイルをそのまま配信するのは危険</li>
+      <li>Content-Type を ファイル拡張子ではなく実際の内容に基づいて設定する</li>
+      <li><code>X-Content-Type-Options: nosniff</code> はすべてのレスポンスに設定が推奨</li>
+    </ul>
+  </div>
+
+  <h3>Step 5: ブラウザのMIMEスニッフィング動作を確認</h3>
+  <div class="step">
+    <div class="step-num">STEP 5 — コンソールでContent-Typeの影響を観察</div>
+    <pre><span class="comment">// fetch でレスポンスのContent-Typeを確認</span>
+const res = await fetch('https://httpbin.org/get');
+console.log(res.headers.get('content-type'));
+<span class="comment">// "application/json" が返るはず</span>
+
+<span class="comment">// HTMLとして解釈されるか確認（text/htmlの場合）</span>
+const resHtml = await fetch('https://httpbin.org/html');
+console.log(resHtml.headers.get('content-type'));
+<span class="comment">// "text/html; charset=utf-8"</span>
+
+const text = await resHtml.text();
+console.log(text.substring(0, 200));
+<span class="comment">// HTMLソースが取得できる</span></pre>
+  </div>
+
+  <button class="btn btn-accent" onclick="checkMimeType()">各エンドポイントのContent-Typeを確認</button>
+  <div id="mime-result" class="result-box">
+    <span class="placeholder">ボタンをクリックして確認します</span>
+  </div>
+
+  <details>
+    <summary>📊 MIMEスニッフィング・nosniff フローチャート</summary>
+    <div class="mermaid">
+flowchart TD
+    A["サーバーがレスポンス送信"] --> B["Content-Type: text/plain"]
+    B --> C["レスポンスBody: HTMLコード混入"]
+    C --> D{"X-Content-Type-Options?"}
+    D -->|"nosniff あり"| E["text/plain として厳守\n→ テキスト表示のみ"]
+    D -->|"nosniff なし"| F["ブラウザがMIMEスニッフィング"]
+    F --> G{"Bodyの内容を判定"}
+    G -->|"HTML/JSと判断"| H["HTMLとして実行\n→ XSSリスク"]
+    G -->|"テキストと判断"| I["テキスト表示"]
+    </div>
+  </details>
+
+</div>
+
+<div class="lab-box">
+  <h3>補足: ブラウザが自動で行うその他の処理</h3>
+
+  <div class="note" style="background:#e8f5e9;border-color:#a5d6a7;color:#2e7d32;">
+    <strong>🔰 初心者向け</strong><br>
+    以下はDevToolsで直接確認しにくいですが、ブラウザが裏側で自動的に行っている処理です。
+  </div>
+
+  <div class="step">
+    <div class="step-num">HTTP Canonicalization（ヘッダー正規化）</div>
+    <p>ブラウザはHTTPヘッダーを送受信時に自動で正規化します。</p>
+    <ul style="font-size:0.85rem;margin-top:0.5rem;">
+      <li><strong>HTTP/2でのヘッダー名小文字化</strong>: <code>Content-Type</code> → <code>content-type</code></li>
+      <li><strong>重複ヘッダーの結合</strong>: 同名ヘッダーをカンマ区切りで結合（<code>Set-Cookie</code>を除く）</li>
+      <li><strong>空白のトリム</strong>: ヘッダー値の前後の空白を除去</li>
+      <li><strong>改行の拒否</strong>: ヘッダー値に改行を含めるとエラー（ヘッダーインジェクション防止）</li>
+    </ul>
+  </div>
+
+  <div class="step">
+    <div class="step-num">Cookie自動フィルタリング</div>
+    <p>ブラウザはリクエスト送信時に、Cookie属性に基づいて送信するCookieを自動選別します。</p>
+    <ul style="font-size:0.85rem;margin-top:0.5rem;">
+      <li><strong>Domain</strong>: 一致するドメインへのリクエストでのみ送信</li>
+      <li><strong>Path</strong>: 一致するパス以下へのリクエストでのみ送信</li>
+      <li><strong>Secure</strong>: HTTPS接続でのみ送信</li>
+      <li><strong>SameSite</strong>: Strict=同一サイトのみ、Lax=トップレベルナビゲーション時はクロスサイトOK、None=全て（Secure必須）</li>
+      <li><strong>HttpOnly</strong>: <code>document.cookie</code>からアクセス不可（XSS対策）</li>
+    </ul>
+  </div>
+</div>
+
+<div class="lab-box" id="exp-6f-checklist">
+  <h3>チェックリスト</h3>
+  <div class="check-item" id="chk-6f-1"><input type="checkbox" data-key="wdc-lab06-16" onchange="saveCheck(this)"> <span>MIMEスニッフィングがどのようなXSSリスクを生むか説明できる</span></div>
+  <div class="check-item" id="chk-6f-2"><input type="checkbox" data-key="wdc-lab06-17" onchange="saveCheck(this)"> <span><code>X-Content-Type-Options: nosniff</code> の効果と、設定すべき場面を理解した</span></div>
+  <div class="check-item" id="chk-6f-3"><input type="checkbox" data-key="wdc-lab06-18" onchange="saveCheck(this)"> <span>DevToolsで複数エンドポイントの <code>content-type</code> ヘッダーを確認した</span></div>
+</div>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 学習ノート                                                    -->
+<!-- ============================================================ -->
+<h2 id="sec-notes">📝 学習ノート</h2>
+
+<div class="lab-box">
+  <p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:0.5rem;">気づいたこと、疑問点、実験結果などを自由にメモしてください（ブラウザに自動保存されます）</p>
+  <textarea class="note-textarea" id="lab-notes" placeholder="例: 6-Aの実験でAES-GCMの暗号文バイト数が平文より16バイト多かった（認証タグの分）&#10;6-BのOPTIONSレスポンスでAccess-Control-Allow-Origin: * を確認した&#10;6-Cで/gzipエンドポイントのサイズ差を確認：転送323B → 展開後503B&#10;..." oninput="saveNotes(this.value)"></textarea>
+</div>
+
+<hr>
+
+<!-- 総まとめ -->
+<div class="lab-box" style="border-color:var(--accent2);">
+  <h3 style="color:var(--accent2);margin-top:0;">Lab 06 まとめ：通信の自動処理</h3>
+  <table class="compare-table">
+    <tr>
+      <th>実験</th>
+      <th>仕組み</th>
+      <th>開発者が気をつけること</th>
+    </tr>
+    <tr>
+      <td>6-A TLS</td>
+      <td>ヘッダー・Bodyを暗号化。IPとSNIは平文露出</td>
+      <td>HTTPSを使うだけでは「誰に繋いだか」は隠れない</td>
+    </tr>
+    <tr>
+      <td>6-B CORS</td>
+      <td>cross-origin + 非シンプルリクエストでOPTIONS先行</td>
+      <td>application/jsonのPOSTはOPTIONSが必要→サーバー側で許可設定</td>
+    </tr>
+    <tr>
+      <td>6-C Content-Encoding</td>
+      <td>gzip/brを自動展開。JSには展開済みデータが届く</td>
+      <td>圧縮は自動。Accept-Encodingを手動で削除しないこと</td>
+    </tr>
+    <tr>
+      <td>6-D HSTS</td>
+      <td>HTTPSをブラウザに記憶。次回からHTTPを使わない</td>
+      <td>Mixed Contentに注意。全リソースをHTTPSに統一</td>
+    </tr>
+    <tr>
+      <td>6-E Sec-Fetch-*</td>
+      <td>リクエスト文脈をブラウザが自動記述</td>
+      <td>JSから変更不可。CSRF対策でSec-Fetch-Siteを活用</td>
+    </tr>
+    <tr>
+      <td>6-F nosniff</td>
+      <td>Content-TypeをブラウザがXSSリスクで推測することを防ぐ</td>
+      <td>全レスポンスにnosniffを付与。Content-Typeを正確に設定</td>
+    </tr>
+  </table>
+</div>
+
+<!-- 前後Labリンク -->
+<div class="nav-links">
+  <a href="web-data-conversion-lab-05.html">← Lab 05: Cookie・Content-Type</a>
+  <a href="web-data-conversion-index.html">マスター索引</a>
+  <a href="web-data-conversion-lab-07.html">Lab 07: 次のLab →</a>
+</div>
+
+<!-- ============================================================ -->
+<!-- JavaScript                                                    -->
+<!-- ============================================================ -->
+<script>
+var STORAGE_PREFIX = 'wdclab_';
+
+// ---- チェックボックスの保存・復元 ----
+function saveCheck(el) {
+  localStorage.setItem(STORAGE_PREFIX + el.dataset.key, el.checked ? '1' : '0');
+  var item = el.closest('.check-item');
+  if (item) item.classList.toggle('checked', el.checked);
+}
+
+function loadChecks() {
+  document.querySelectorAll('input[data-key]').forEach(function(el) {
+    var val = localStorage.getItem(STORAGE_PREFIX + el.dataset.key);
+    if (val === '1') {
+      el.checked = true;
+      var item = el.closest('.check-item');
+      if (item) item.classList.add('checked');
+    }
+  });
+}
+
+// ---- 学習ノートの保存・復元 ----
+function saveNotes(val) {
+  localStorage.setItem(STORAGE_PREFIX + 'lab06-notes', val);
+}
+
+function loadNotes() {
+  var saved = localStorage.getItem(STORAGE_PREFIX + 'lab06-notes');
+  if (saved) {
+    var ta = document.getElementById('lab-notes');
+    if (ta) ta.value = saved;
+  }
+}
+
+// ---- 6-A: プロトコル確認 ----
+function checkProtocol() {
+  var result = document.getElementById('protocol-check-result');
+  var isHttps = location.protocol === 'https:';
+  var isFile = location.protocol === 'file:';
+  var lines = [
+    'location.protocol = "' + location.protocol + '"',
+    'location.hostname  = "' + location.hostname + '"',
+    'location.port      = "' + (location.port || '(デフォルト)') + '"',
+    '',
+    'TLS (HTTPS) 有効: ' + (isHttps ? 'YES ✓' : (isFile ? 'file:// (ローカルファイル)' : 'NO ✗')),
+    '',
+    isHttps
+      ? 'このページの通信内容（ヘッダー・Body・パス・クエリ）は暗号化されています。'
+      : isFile
+        ? 'ローカルファイルとして開いています。HTTPSは適用されません。'
+        : 'HTTPで接続中です。通信内容は暗号化されていません。',
+    '',
+    '暗号化されないもの（TLS使用時も）:',
+    '  - 宛先IPアドレス: ' + location.hostname + ' のIPアドレス',
+    '  - SNI（TLSハンドシェイク内のドメイン名）',
+    '  - DNS問い合わせ（DoHなしの場合）'
+  ];
+  result.textContent = lines.join('\n');
+  result.className = 'result-box ' + (isHttps ? 'result-ok' : 'result-warn');
+}
+
+// ---- 6-A: TLS暗号化シミュレーション ----
+async function simulateTLS() {
+  var result = document.getElementById('tls-result');
+  var plaintext = document.getElementById('tls-plaintext').value || 'Hello, TLS World!';
+  result.textContent = '暗号化処理中...';
+
+  try {
+    // AES-GCMキー生成
+    var key = await crypto.subtle.generateKey(
+      { name: 'AES-GCM', length: 256 },
+      true,
+      ['encrypt', 'decrypt']
+    );
+
+    // 平文をエンコード
+    var encoded = new TextEncoder().encode(plaintext);
+
+    // IVを生成
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+
+    // 暗号化
+    var cipherBuffer = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv: iv },
+      key,
+      encoded
+    );
+
+    var cipherBytes = new Uint8Array(cipherBuffer);
+    var cipherHex = Array.from(cipherBytes.slice(0, 24))
+      .map(function(b) { return b.toString(16).padStart(2, '0'); })
+      .join(' ') + (cipherBytes.length > 24 ? ' ...' : '');
+
+    // 復号
+    var decryptedBuffer = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: iv },
+      key,
+      cipherBuffer
+    );
+    var decrypted = new TextDecoder().decode(decryptedBuffer);
+
+    var lines = [
+      '=== AES-GCM 暗号化シミュレーション ===',
+      '',
+      '平文 (' + encoded.byteLength + ' bytes):',
+      '  "' + plaintext + '"',
+      '',
+      '暗号化後 (' + cipherBytes.byteLength + ' bytes = 平文 + 16バイト認証タグ):',
+      '  ' + cipherHex,
+      '',
+      '復号後 (' + new TextEncoder().encode(decrypted).byteLength + ' bytes):',
+      '  "' + decrypted + '"',
+      '',
+      decrypted === plaintext
+        ? '✓ 復号成功: 元の平文と完全に一致'
+        : '✗ 復号失敗',
+      '',
+      '補足: AES-GCMは認証付き暗号化。16バイトの認証タグで',
+      '      データの改ざん検出も同時に行います（TLSで使用）。'
+    ];
+
+    result.textContent = lines.join('\n');
+    result.className = 'result-box result-ok';
+  } catch (e) {
+    result.textContent = 'エラー: ' + e.message + '\n(crypto.subtle は HTTPS または localhost でのみ利用可能)';
+    result.className = 'result-box result-danger';
+  }
+}
+
+// ---- 6-B: JSON POST（プリフライトあり） ----
+function sendJsonPost() {
+  var result = document.getElementById('cors-json-result');
+  result.textContent = 'application/json POST を送信中... (DevTools Network を確認)';
+  result.className = 'result-box';
+
+  fetch('https://httpbin.org/post', {
+    method: 'POST',
+    mode: 'cors',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ lab: 'Lab06', type: 'preflight-test', timestamp: Date.now() })
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var lines = [
+        '=== application/json POST 完了 ===',
+        '',
+        '▶ DevTools Network で確認できること:',
+        '  1. OPTIONS リクエスト（プリフライト）',
+        '     Method: OPTIONS',
+        '     Access-Control-Request-Method: POST',
+        '     Access-Control-Request-Headers: content-type',
+        '',
+        '  2. POST リクエスト（本来のリクエスト）',
+        '     Content-Type: application/json',
+        '',
+        '受信したリクエストヘッダー（サーバーが見たもの）:',
+        '  Content-Type: ' + (data.headers['Content-Type'] || '—'),
+        '  Origin: ' + (data.headers['Origin'] || '—'),
+        '',
+        '送信したBodyのJSON:',
+        '  ' + data.data
+      ];
+      result.textContent = lines.join('\n');
+      result.className = 'result-box result-ok';
+    })
+    .catch(function(e) {
+      result.textContent = 'エラー: ' + e.message + '\nhttpbin.org に接続できない可能性があります。DevToolsでOPTIONSの送信を確認してください。';
+      result.className = 'result-box result-warn';
+    });
+}
+
+// ---- 6-B: text/plain POST（プリフライトなし） ----
+function sendTextPost() {
+  var result = document.getElementById('cors-text-result');
+  result.textContent = 'text/plain POST を送信中... (DevTools Network を確認)';
+  result.className = 'result-box';
+
+  fetch('https://httpbin.org/post', {
+    method: 'POST',
+    mode: 'cors',
+    headers: {
+      'Content-Type': 'text/plain'
+    },
+    body: 'Lab06 simple-request test ' + Date.now()
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var lines = [
+        '=== text/plain POST 完了 ===',
+        '',
+        '▶ DevTools Network で確認できること:',
+        '  OPTIONS リクエストは発生していない（シンプルリクエスト）',
+        '',
+        '受信したリクエストヘッダー（サーバーが見たもの）:',
+        '  Content-Type: ' + (data.headers['Content-Type'] || '—'),
+        '  Origin: ' + (data.headers['Origin'] || '—'),
+        '',
+        '送信したBodyのテキスト:',
+        '  ' + data.data,
+        '',
+        '理由: text/plain は「シンプルリクエスト」の条件を満たすため',
+        '      プリフライト（OPTIONS）なしで直接送信されます。'
+      ];
+      result.textContent = lines.join('\n');
+      result.className = 'result-box result-ok';
+    })
+    .catch(function(e) {
+      result.textContent = 'エラー: ' + e.message;
+      result.className = 'result-box result-warn';
+    });
+}
+
+// ---- 6-C: gzip レスポンス取得 ----
+function fetchGzip() {
+  var result = document.getElementById('gzip-result');
+  result.textContent = '/gzip エンドポイントに接続中...';
+
+  var start = Date.now();
+  fetch('https://httpbin.org/gzip')
+    .then(function(r) {
+      var contentEncoding = r.headers.get('content-encoding') || '（なし）';
+      var contentType = r.headers.get('content-type') || '（なし）';
+      return r.json().then(function(data) {
+        var elapsed = Date.now() - start;
+        var bodyStr = JSON.stringify(data);
+        var lines = [
+          '=== /gzip レスポンス ===',
+          '',
+          'レスポンスヘッダー:',
+          '  content-encoding: ' + contentEncoding,
+          '  content-type    : ' + contentType,
+          '',
+          'DevTools Network で確認:',
+          '  Size 列 上段 = 転送サイズ（gzip圧縮後）',
+          '  Size 列 下段 = 実際のサイズ（展開後）',
+          '',
+          'JSが受け取ったデータ（展開済み）:',
+          '  gzip: ' + data.gzip,
+          '  origin: ' + data.origin,
+          '',
+          '展開済みJSONの文字数: ' + bodyStr.length + ' chars',
+          '取得時間: ' + elapsed + 'ms',
+          '',
+          '※ content-encoding: gzip が表示されても、',
+          '   JSには自動展開済みのJSONが届いています。'
+        ];
+        result.textContent = lines.join('\n');
+        result.className = 'result-box result-ok';
+      });
+    })
+    .catch(function(e) {
+      result.textContent = 'エラー: ' + e.message;
+      result.className = 'result-box result-danger';
+    });
+}
+
+function fetchNormal() {
+  var result = document.getElementById('gzip-result');
+  result.textContent = '/get エンドポイントに接続中...';
+
+  var start = Date.now();
+  fetch('https://httpbin.org/get')
+    .then(function(r) {
+      var contentEncoding = r.headers.get('content-encoding') || '（なし）';
+      var contentType = r.headers.get('content-type') || '（なし）';
+      return r.json().then(function(data) {
+        var elapsed = Date.now() - start;
+        var bodyStr = JSON.stringify(data);
+        var lines = [
+          '=== /get レスポンス（圧縮なし）===',
+          '',
+          'レスポンスヘッダー:',
+          '  content-encoding: ' + contentEncoding,
+          '  content-type    : ' + contentType,
+          '',
+          'JSが受け取ったデータ:',
+          '  url: ' + data.url,
+          '  origin: ' + data.origin,
+          '',
+          'JSONの文字数: ' + bodyStr.length + ' chars',
+          '取得時間: ' + elapsed + 'ms',
+          '',
+          'content-encodingヘッダーなし = 圧縮されていない'
+        ];
+        result.textContent = lines.join('\n');
+        result.className = 'result-box';
+      });
+    })
+    .catch(function(e) {
+      result.textContent = 'エラー: ' + e.message;
+      result.className = 'result-box result-danger';
+    });
+}
+
+// ---- 6-D: HSTS ステータス確認 ----
+function checkHSTSStatus() {
+  var el = document.getElementById('hsts-protocol-info');
+  var isHttps = location.protocol === 'https:';
+  var isFile  = location.protocol === 'file:';
+
+  var lines = [
+    '現在のページ情報:',
+    '  protocol : ' + location.protocol,
+    '  hostname : ' + (location.hostname || '（ローカルファイル）'),
+    '',
+    'HSTS 適用状況:',
+    '  ' + (
+      isHttps
+        ? 'HTTPS接続中 ✓  — サーバーが Strict-Transport-Security ヘッダーを返していれば HSTS が記録される'
+        : isFile
+          ? 'file:// 接続 — HSTSは適用されません'
+          : 'HTTP接続中 ✗  — このままでは HSTS は記録されません'
+    ),
+    '',
+    'Mixed Content 確認コマンド（DevTools Console）:',
+    '  // HTTPページからHTTPSリソースを読む → 通常の安全な通信',
+    '  // HTTPSページからHTTPリソースを読む → Mixed Content エラー',
+    '  fetch("http://example.com/img.png")',
+    '    // HTTPSページからは → Mixed Content ブロック',
+    '',
+    'upgrade-insecure-requests 設定:',
+    '  <meta http-equiv="Content-Security-Policy"',
+    '        content="upgrade-insecure-requests">',
+    '  → ページ内のhttpリソースをhttpsに自動アップグレード'
+  ];
+  el.textContent = lines.join('\n');
+  el.className = 'result-box ' + (isHttps ? 'result-ok' : 'result-warn');
+}
+
+// ---- 6-E: Sec-Fetch-* ヘッダー確認 ----
+function fetchSecHeaders(mode) {
+  var result = document.getElementById('sec-fetch-result');
+  result.textContent = 'mode: ' + mode + ' でヘッダーを取得中...';
+
+  fetch('https://httpbin.org/headers', { mode: mode || 'cors' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var headers = data.headers || {};
+      var secHeaders = Object.keys(headers)
+        .filter(function(k) { return k.toLowerCase().startsWith('sec-'); })
+        .sort();
+
+      var lines = [
+        '=== Sec-Fetch-* ヘッダー（mode: ' + mode + '）===',
+        ''
+      ];
+
+      if (secHeaders.length === 0) {
+        lines.push('Sec-Fetch-* ヘッダーが見当たりません。');
+        lines.push('（fetchのmode: no-cors では opaque responseになるためこちらでは確認不可）');
+        lines.push('DevTools Network → リクエストヘッダーで直接確認してください。');
+      } else {
+        secHeaders.forEach(function(k) {
+          lines.push('  ' + k + ': ' + headers[k]);
+        });
+        lines.push('');
+        lines.push('その他の自動付与ヘッダー:');
+        var others = ['User-Agent', 'Accept', 'Accept-Encoding', 'Accept-Language', 'Origin'];
+        others.forEach(function(k) {
+          if (headers[k]) lines.push('  ' + k + ': ' + headers[k]);
+        });
+      }
+
+      lines.push('');
+      lines.push('▶ DevTools Network でリクエストヘッダーを直接確認してみましょう');
+
+      result.textContent = lines.join('\n');
+      result.className = 'result-box result-ok';
+    })
+    .catch(function(e) {
+      result.textContent = 'エラー: ' + e.message + '\nhttpbin.org に接続できません。DevTools Network でリクエストヘッダーを直接確認してください。';
+      result.className = 'result-box result-warn';
+    });
+}
+
+function fetchSecHeadersNoCors() {
+  var result = document.getElementById('sec-fetch-result');
+  result.textContent = 'mode: no-cors でリクエスト送信中...';
+
+  fetch('https://httpbin.org/headers', { mode: 'no-cors' })
+    .then(function(r) {
+      var lines = [
+        '=== mode: no-cors のレスポンス ===',
+        '',
+        'response.type: ' + r.type,
+        '（opaque = レスポンス内容が読めない）',
+        '',
+        'no-cors モードの特徴:',
+        '  - レスポンスの内容にJSからアクセスできない',
+        '  - Content-Type: application/json は使えない（text/plainのみ）',
+        '  - プリフライトOPTIONSは送信されない',
+        '  - 用途: &lt;img&gt;や&lt;link&gt;のような表示目的リソースの事前取得',
+        '',
+        'DevTools Network → リクエストヘッダーで',
+        'Sec-Fetch-Mode: no-cors を確認してください。'
+      ];
+      result.textContent = lines.join('\n');
+      result.className = 'result-box result-warn';
+    })
+    .catch(function(e) {
+      result.textContent = 'エラー: ' + e.message;
+      result.className = 'result-box result-danger';
+    });
+}
+
+// ---- 6-F: nosniff 確認 ----
+function checkNosniff() {
+  var result = document.getElementById('nosniff-result');
+  result.textContent = 'httpbin.org のレスポンスヘッダーを確認中...';
+
+  fetch('https://httpbin.org/get')
+    .then(function(r) {
+      var nosniff = r.headers.get('x-content-type-options');
+      var ctype = r.headers.get('content-type');
+      var xcsp = r.headers.get('content-security-policy');
+
+      var lines = [
+        '=== httpbin.org /get レスポンスヘッダー ===',
+        '',
+        'セキュリティ関連ヘッダー:',
+        '  x-content-type-options : ' + (nosniff || '（未設定）'),
+        '  content-type           : ' + (ctype || '（未設定）'),
+        '  content-security-policy: ' + (xcsp || '（未設定）'),
+        '',
+        nosniff === 'nosniff'
+          ? '✓ nosniff が設定されています → MIMEスニッフィングを禁止'
+          : '△ nosniff が設定されていません → MIMEスニッフィングの可能性あり',
+        '',
+        '▶ セキュリティヘッダーが充実しているサイトの例:',
+        '  - github.com',
+        '  - google.com',
+        '  - cloudflare.com',
+        '',
+        'DevTools Network → 任意のリクエスト → Response Headers で確認できます。'
+      ];
+      result.textContent = lines.join('\n');
+      result.className = 'result-box ' + (nosniff ? 'result-ok' : 'result-warn');
+    })
+    .catch(function(e) {
+      result.textContent = 'エラー: ' + e.message;
+      result.className = 'result-box result-danger';
+    });
+}
+
+// ---- 6-F: MIME Content-Type 確認 ----
+function checkMimeType() {
+  var result = document.getElementById('mime-result');
+  result.textContent = '複数エンドポイントのContent-Typeを確認中...';
+
+  var endpoints = [
+    'https://httpbin.org/get',
+    'https://httpbin.org/html',
+    'https://httpbin.org/xml',
+    'https://httpbin.org/image/png'
+  ];
+
+  Promise.all(
+    endpoints.map(function(url) {
+      return fetch(url, { method: 'HEAD' })
+        .then(function(r) {
+          return {
+            url: url.replace('https://httpbin.org', ''),
+            contentType: r.headers.get('content-type') || '（なし）',
+            nosniff: r.headers.get('x-content-type-options') || '（なし）',
+            ok: r.ok
+          };
+        })
+        .catch(function(e) {
+          return { url: url.replace('https://httpbin.org', ''), contentType: 'エラー: ' + e.message, nosniff: '—', ok: false };
+        });
+    })
+  ).then(function(results) {
+    var lines = ['=== 各エンドポイントの Content-Type ===', ''];
+    results.forEach(function(r) {
+      lines.push('エンドポイント: ' + r.url);
+      lines.push('  content-type          : ' + r.contentType);
+      lines.push('  x-content-type-options: ' + r.nosniff);
+      lines.push('');
+    });
+    lines.push('▶ スニッフィングリスクが高いのは:');
+    lines.push('  text/plain や application/octet-stream でHTML/JSが返る場合');
+    result.textContent = lines.join('\n');
+    result.className = 'result-box result-ok';
+  });
+}
+
+// ---- 初期化 ----
+window.addEventListener('DOMContentLoaded', function() {
+  loadChecks();
+  loadNotes();
+  checkHSTSStatus();
+});
+</script>
+
+</body>
+</html>

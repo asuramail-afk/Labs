@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Permissions-Policy" content="camera=(), microphone=()">
+<title>HTTP Header Lab 09 — セキュリティヘッダー（HSTS, X-Content-Type-Options, Referrer-Policy, Permissions-Policy）</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;700&display=swap');
+
+  :root {
+    --bg: #ffffff;
+    --surface: #f5f7fa;
+    --surface2: #ebeef2;
+    --border: #c8cdd3;
+    --text: #1a1a2e;
+    --text-dim: #5c6370;
+    --accent: #005cc5;
+    --accent2: #22863a;
+    --accent3: #6f42c1;
+    --warn: #b08800;
+    --danger: #cb2431;
+    --code-bg: #f0f4f8;
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    padding: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  h1 { font-size: 1.6rem; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 0.8rem; margin-bottom: 1.5rem; font-family: 'IBM Plex Mono', monospace; }
+  h2 { font-size: 1.25rem; color: var(--accent2); margin: 2rem 0 1rem; font-family: 'IBM Plex Mono', monospace; }
+  h3 { font-size: 1.05rem; color: var(--accent3); margin: 1.5rem 0 0.8rem; }
+  p, li { font-size: 0.92rem; margin-bottom: 0.5rem; }
+
+  .status-bar { display: flex; gap: 1rem; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.6rem 1rem; margin-bottom: 1.5rem; font-size: 0.82rem; font-family: 'IBM Plex Mono', monospace; flex-wrap: wrap; }
+  .status-item { display: flex; align-items: center; gap: 0.4rem; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-dim); animation: pulse 1.5s infinite; }
+  .status-dot.ok { background: var(--accent); animation: none; }
+  .status-dot.err { background: var(--danger); animation: none; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .alert-critical { background: #fef2f2; border: 2px solid var(--danger); border-radius: var(--radius); padding: 1rem 1.2rem; margin-bottom: 1.5rem; font-size: 0.88rem; }
+  .alert-critical strong { color: var(--danger); }
+  .alert-critical code { background: rgba(203,36,49,0.1); color: var(--danger); }
+
+  .lab-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin: 1.5rem 0; }
+  .step { background: var(--surface2); border-left: 3px solid var(--accent2); border-radius: 0 var(--radius) var(--radius) 0; padding: 1rem 1.2rem; margin: 1rem 0; }
+  .step-num { font-family: 'IBM Plex Mono', monospace; color: var(--accent2); font-weight: 600; font-size: 0.8rem; margin-bottom: 0.3rem; }
+
+  code, pre { font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; }
+  code { background: var(--code-bg); padding: 0.15rem 0.4rem; border-radius: 4px; color: var(--accent); }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; overflow-x: auto; margin: 0.8rem 0; line-height: 1.6; color: #24292e; }
+  pre .comment { color: #6a737d; }
+  pre .header-name { color: var(--accent2); }
+  pre .header-val { color: var(--accent); }
+  pre .highlight { color: var(--warn); font-weight: 600; }
+
+  .placeholder { color: var(--text-dim); font-style: italic; font-size: 0.8rem; }
+
+  .note { background: #e8f4fd; border: 1px solid #b6d4e8; border-radius: var(--radius); padding: 0.8rem 1rem; margin: 1rem 0; font-size: 0.85rem; color: var(--accent2); }
+  .note::before { content: "💡 "; }
+  .warn-box { background: #fff8e1; border: 1px solid #e6d590; border-radius: var(--radius); padding: 0.8rem 1rem; margin: 1rem 0; font-size: 0.85rem; color: var(--warn); }
+  .warn-box::before { content: "⚠️ "; }
+
+  .check-item { background: var(--surface2); border-radius: var(--radius); padding: 0.6rem 1rem; margin: 0.4rem 0; display: flex; align-items: center; gap: 0.6rem; font-size: 0.88rem; transition: opacity 0.3s; }
+  .check-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
+  .check-item.checked { opacity: 0.55; }
+
+  .diagram { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; line-height: 1.5; overflow-x: auto; white-space: pre; color: var(--text-dim); margin: 1rem 0; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.8rem; margin: 1rem 0; }
+  @media (max-width: 900px) { .three-col { grid-template-columns: 1fr; } }
+  @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+  .col-card { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.8rem; font-size: 0.8rem; }
+  .col-card h4 { font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; margin-bottom: 0.5rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); }
+  .col-card pre { border: none; padding: 0.4rem 0; margin: 0; font-size: 0.75rem; background: transparent; }
+
+  a { color: var(--accent2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  html { scroll-behavior: smooth; }
+
+  .btn { border: none; padding: 0.5rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; font-family: 'Noto Sans JP', sans-serif; margin: 0.3rem; transition: opacity 0.2s; }
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.97); }
+  .btn-accent { background: var(--accent); color: var(--bg); }
+  .btn-accent2 { background: var(--accent2); color: var(--bg); }
+  .btn-accent3 { background: var(--accent3); color: var(--bg); }
+  .btn-warn { background: var(--warn); color: var(--bg); }
+  .btn-dim { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+
+  .toc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.2rem; margin: 1rem 0 2rem; }
+  .toc a { display: inline-block; padding: 0.25rem 0.6rem; margin: 0.15rem; border-radius: 6px; font-size: 0.82rem; background: var(--surface2); transition: background 0.2s; }
+  .toc a:hover { background: var(--border); text-decoration: none; }
+
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.82rem; }
+  th { background: var(--surface2); color: var(--accent2); font-family: 'IBM Plex Mono', monospace; padding: 0.5rem 0.8rem; text-align: left; border: 1px solid var(--border); }
+  td { padding: 0.45rem 0.8rem; border: 1px solid var(--border); vertical-align: top; }
+  tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+
+  .tag-good { background: #e8f5e9; color: var(--accent); padding: 0.1rem 0.4rem; border-radius: 4px; font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; }
+  .tag-warn { background: #fff8e1; color: var(--warn); padding: 0.1rem 0.4rem; border-radius: 4px; font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; }
+  .tag-bad  { background: #fef2f2; color: var(--danger); padding: 0.1rem 0.4rem; border-radius: 4px; font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; }
+
+  .grade-row { display: flex; gap: 0.6rem; flex-wrap: wrap; margin: 0.8rem 0; }
+  .grade-badge { padding: 0.3rem 0.8rem; border-radius: 6px; font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 0.85rem; }
+  .grade-aplus { background: #e8f5e9; color: var(--accent); }
+  .grade-a { background: #e8f5e9; color: #4ade80; }
+  .grade-b { background: #fff8e1; color: var(--warn); }
+  .grade-c { background: #2a1f0a; color: #fb923c; }
+  .grade-d { background: #fef2f2; color: var(--danger); }
+  .grade-f { background: #3d0f0f; color: #ef4444; }
+</style>
+</head>
+<body>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <div class="status-item">
+    <div class="status-dot" id="dot-protocol"></div>
+    <span id="status-protocol">プロトコル確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-httpbin"></div>
+    <span id="status-httpbin">httpbin.org 確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-devtools"></div>
+    <span>DevTools: <kbd style="background:var(--surface2);padding:0.1rem 0.4rem;border-radius:4px;">F12</kbd></span>
+  </div>
+</div>
+<p style="margin-bottom:0.5rem;font-size:0.82rem;"><a href="http-header-lab-index.html" style="color:var(--accent);text-decoration:none;">← マスター索引に戻る</a></p>
+
+<script>
+(function() {
+  const dot = document.getElementById('dot-protocol');
+  const label = document.getElementById('status-protocol');
+  if (location.protocol === 'file:') {
+    dot.classList.add('err');
+    label.innerHTML = '<strong style="color:var(--danger)">file:// 検出（要修正）</strong>';
+    document.getElementById('file-protocol-alert').style.display = 'block';
+  } else { dot.classList.add('ok'); label.textContent = location.protocol + '// ✅'; }
+  // devtools dot is always informational
+  document.getElementById('dot-devtools').classList.add('ok');
+})();
+(async function() {
+  const dot = document.getElementById('dot-httpbin');
+  const label = document.getElementById('status-httpbin');
+  try {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 5000);
+    const r = await fetch('https://httpbin.org/get', { signal: c.signal });
+    clearTimeout(t);
+    if (r.ok) { dot.classList.add('ok'); label.textContent = 'httpbin.org ✅'; }
+    else { dot.classList.add('err'); label.innerHTML = '<strong style="color:var(--danger)">httpbin.org 応答エラー</strong>'; }
+  } catch(e) { dot.classList.add('err'); label.innerHTML = '<strong style="color:var(--danger)">httpbin.org ❌</strong>'; }
+})();
+</script>
+
+<div class="alert-critical" id="file-protocol-alert" style="display:none;">
+  <strong>🔴 HTTP サーバー経由で開いてください</strong><br><br>
+  現在 <code>file://</code> で開いています。この状態では <code>fetch()</code> が
+  <strong>CORSエラー</strong>になり、ほとんどの実験が動作しません。<br><br>
+  <strong>Lab 01 で起動したサーバーがまだ動いていれば</strong>、ブラウザで
+  <code>http://127.0.0.1:7890/http-header-lab-09.html</code> を開くだけでOKです。<br><br>
+  サーバーが停止している場合は、コマンドプロンプトで以下を実行してください：
+  <pre style="margin:0.8rem 0; font-size:0.78rem;"><span class="highlight">node -e "const http=require('http'),fs=require('fs'),path=require('path');http.createServer((req,res)=>{const f=path.join('C:/Users/user/ClaudeCode/HTTPHeader',req.url==='/'?'/index.html':req.url);fs.readFile(f,(e,d)=>{if(e){res.writeHead(404);res.end('Not found');}else{const ext=path.extname(f);const mime={'html':'text/html','js':'application/javascript','css':'text/css','png':'image/png','ico':'image/x-icon'};res.writeHead(200,{'Content-Type':(mime[ext.slice(1)]||'text/plain')+';charset=utf-8'});res.end(d);}});}).listen(7890,()=>console.log('Server: http://127.0.0.1:7890'));"</span>
+
+<span class="comment"># → http://127.0.0.1:7890/http-header-lab-09.html でアクセス</span></pre>
+</div>
+
+<h1>🧪 Lab 09: セキュリティヘッダー</h1>
+<p style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.3rem;font-family:'IBM Plex Mono',monospace;">最終更新: 2026年3月</p>
+<p style="color:var(--text-dim); font-size:0.88rem; margin-bottom:1rem;">
+  ～ 必須セキュリティヘッダーの役割と設定を体感する ～
+</p>
+<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">⏱ 所要時間：25分</span>
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">難易度：★★☆</span>
+</div>
+<p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:1rem;">📋 前提知識：<a href="http-header-lab-08.html">Lab 08</a> 完了推奨（CSP の基本を理解していると、セキュリティヘッダーの全体像が見える）</p>
+
+<div class="lab-box" style="border-color:var(--accent); margin-bottom:1rem;">
+  <h3 style="color:var(--accent); margin-top:0;">🎯 このLabの学習目標</h3>
+  <p style="margin-bottom:0.3rem;">完了すると、以下ができるようになります：</p>
+  <div class="check-item" style="opacity:1;"><span>1. <code>Strict-Transport-Security</code>（HSTS）によるHTTPS強制の仕組みと <code>preload</code> の注意点を理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>2. <code>X-Content-Type-Options: nosniff</code> でMIMEスニッフィングを防ぐ理由を理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>3. <code>Referrer-Policy</code> の各値（strict-origin-when-cross-origin, no-referrer 等）の違いを説明できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>4. <code>Permissions-Policy</code> でカメラ・マイク等のブラウザAPI利用を制限できることを理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>5. securityheaders.com での評価基準を知り、OutSystems での設定方法を理解する</span></div>
+</div>
+<div class="warn-box" style="border-color:var(--accent3);background:#fce4ec;">
+  <strong style="color:var(--accent3);">💥 実務での失敗例</strong>：HSTS未設定のサイトでHTTPリクエストが中間者攻撃により傍受され、セッションCookieが盗まれた
+</div>
+
+<div class="toc">
+  <strong style="color:var(--text-dim);font-size:0.82rem;">目次:</strong><br>
+  <a href="#concept">概念整理</a>
+  <a href="#exp-9a">9-A: HSTS</a>
+  <a href="#exp-9b">9-B: X-Content-Type-Options</a>
+  <a href="#exp-9c">9-C: Referrer-Policy</a>
+  <a href="#exp-9d">9-D: Permissions-Policy</a>
+  <a href="#exp-9e">9-E: OutSystems実践</a>
+  <a href="#score">スコア評価</a>
+  <a href="#checklist">✅ チェックリスト</a>
+  <a href="#framework">🔧 設定例</a>
+</div>
+
+<!-- ── 概念整理 ── -->
+<div class="lab-box" id="concept">
+  <h3>セキュリティヘッダーの役割分担</h3>
+
+  <div class="diagram">セキュリティヘッダーの役割分担:
+┌─────────────────────────────────────────────┐
+│ HSTS — 通信経路を HTTPS のみに強制           │ ← 通信レイヤー
+│  ┌─────────────────────────────────────────┐ │
+│  │ X-Content-Type-Options: nosniff          │ │ ← コンテンツ解釈
+│  │ Referrer-Policy — 参照元情報の漏洩防止   │ │ ← プライバシー
+│  │ Permissions-Policy — API 利用制限        │ │ ← 機能制限
+│  └─────────────────────────────────────────┘ │
+└─────────────────────────────────────────────┘
+（CSP + COOP/COEP は Lab 08, 10 で扱います）</div>
+
+  <p>下表は今回扱うセキュリティヘッダーの一覧と推奨値です。</p>
+
+  <table>
+    <thead>
+      <tr><th>ヘッダー</th><th>推奨値</th><th>役割</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>Strict-Transport-Security</code></td>
+        <td><code>max-age=63072000; includeSubDomains</code></td>
+        <td>HTTPS強制</td>
+      </tr>
+      <tr>
+        <td><code>X-Content-Type-Options</code></td>
+        <td><code>nosniff</code></td>
+        <td>MIMEスニッフィング防止</td>
+      </tr>
+      <tr>
+        <td><code>Referrer-Policy</code></td>
+        <td><code>strict-origin-when-cross-origin</code></td>
+        <td>Referer漏洩抑制</td>
+      </tr>
+      <tr>
+        <td><code>Permissions-Policy</code></td>
+        <td><code>camera=(), microphone=(), geolocation=(self)</code></td>
+        <td>API制限</td>
+      </tr>
+      <tr>
+        <td><code>X-Frame-Options</code></td>
+        <td><span class="tag-warn">非推奨 → CSP frame-ancestors で代替</span></td>
+        <td>レガシー</td>
+      </tr>
+      <tr>
+        <td><code>X-XSS-Protection</code></td>
+        <td><code>0</code>（削除推奨）</td>
+        <td>レガシー、0で無効化</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <strong>このページ自体の設定</strong>:
+    このLabページは <code>&lt;meta http-equiv="Permissions-Policy" content="camera=(), microphone=()"&gt;</code>
+    を HEAD に設定しています。実験 9-D でその効果を直接確認できます。
+  </div>
+</div>
+
+<!-- ── 実験 9-A: HSTS ── -->
+<div class="lab-box" id="exp-9a">
+  <h3>実験 9-A: HSTS（Strict-Transport-Security）の確認</h3>
+
+  <p>
+    HSTS は <strong>HTTPS レスポンスでのみ機能</strong>します。
+    HTTP レスポンスに含まれていてもブラウザは無視します。
+    このLabページは <code>file://</code> または <code>http://</code> で動作しているため、
+    実際には HSTS は働きませんが、ヘッダーの形式と動作フローを確認しましょう。
+  </p>
+
+  <div class="diagram">HSTS の動作フロー:
+
+1回目: https://example.com → レスポンスに HSTS ヘッダー
+     Strict-Transport-Security: max-age=63072000; includeSubDomains
+
+2回目以降: ブラウザが http:// でアクセスしようとしても
+         自動的に https:// に変換（307 Internal Redirect）
+         ネットワークに HTTP パケットが流れない！
+
+⚠ preload の注意:
+  → hstspreload.org への登録は取り消しが困難
+  → 全サブドメインがHTTPS対応済みであることを先に確認すること
+  → 一度登録するとブラウザのハードコードリストに追加される</div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — HSTS ヘッダーの形式を確認する</div>
+    <pre><span class="comment">// 基本形</span>
+<span class="header-name">Strict-Transport-Security</span>: <span class="header-val">max-age=63072000</span>
+
+<span class="comment">// 推奨形（サブドメインも含める）</span>
+<span class="header-name">Strict-Transport-Security</span>: <span class="header-val">max-age=63072000; includeSubDomains</span>
+
+<span class="comment">// preload 申請用（本番環境のみ、慎重に）</span>
+<span class="header-name">Strict-Transport-Security</span>: <span class="header-val">max-age=63072000; includeSubDomains; preload</span>
+
+<span class="comment">// max-age の意味:</span>
+max-age=63072000  → 63,072,000 秒 = 730 日 = 約2年
+                    この期間、ブラウザは強制的に HTTPS を使用する</pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — httpbin.org の HSTS ヘッダーを確認する</div>
+    <p>httpbin.org にリクエストを送り、レスポンスに HSTS ヘッダーが含まれるか確認します。</p>
+    <button class="btn btn-accent" id="btn-hsts">httpbin.orgのHSTSヘッダーを確認</button>
+    <pre id="hsts-result"><span class="placeholder">← ボタンを押してください</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-hsts').addEventListener('click', async () => {
+      const el = document.getElementById('hsts-result');
+      el.textContent = '送信中...';
+      try {
+        const res = await fetch(
+          'https://httpbin.org/response-headers?' +
+          'Strict-Transport-Security=' + encodeURIComponent('max-age=63072000; includeSubDomains')
+        );
+        const hsts = res.headers.get('Strict-Transport-Security') || '(ヘッダーなし)';
+        const status = res.status;
+        el.textContent =
+          'HTTP ステータス: ' + status + '\n\n' +
+          'レスポンスヘッダー:\n' +
+          '  Strict-Transport-Security: ' + hsts + '\n\n' +
+          '注意:\n' +
+          '  httpbin.org は HTTPS で配信されているため、このヘッダーは有効です。\n' +
+          '  localhost (http://) で設定しても、ブラウザは HSTS を無視します。\n\n' +
+          'DevTools で確認:\n' +
+          '  Network タブ → リクエスト選択 → Response Headers を参照';
+      } catch(e) { el.textContent = 'エラー: ' + e.message; }
+    });
+  </script>
+
+  <div class="two-col">
+    <div class="col-card">
+      <h4 style="color:var(--accent);">includeSubDomains の意味</h4>
+      <pre>設定なし:
+  example.com のみHTTPS強制
+  sub.example.com は HTTP でアクセス可能
+
+includeSubDomains あり:
+  example.com も
+  sub.example.com も
+  api.example.com も すべてHTTPS強制
+
+⚠ 注意: すべてのサブドメインで
+  HTTPS が使えることを確認してから設定</pre>
+    </div>
+    <div class="col-card">
+      <h4 style="color:var(--warn);">preload の注意点</h4>
+      <pre>preload を付けると:
+  → hstspreload.org に登録申請できる
+  → Chrome/Firefox等のブラウザに
+    ハードコードされたリストに追加
+
+削除が非常に困難:
+  → 解除申請しても反映まで数ヶ月
+  → 古いブラウザは永久に残る
+
+推奨手順:
+  1. まず includeSubDomains だけ設定
+  2. 全サブドメインのHTTPS対応を確認
+  3. 問題なければ preload を追加
+  4. hstspreload.org で申請</pre>
+    </div>
+  </div>
+
+  <div class="warn-box">
+    <strong>HSTS の落とし穴</strong>:
+    一度ブラウザに記録された HSTS は、max-age が切れるまで消えません。
+    開発環境でテスト中に誤って設定すると、その後 HTTP でアクセスできなくなります。
+    開発環境では <code>max-age=0</code> を一時的に設定するか、
+    ブラウザの HSTS キャッシュを手動で削除（Chrome: <code>chrome://net-internals/#hsts</code>）してください。
+  </div>
+</div>
+
+<!-- ── 実験 9-B: X-Content-Type-Options ── -->
+<div class="lab-box" id="exp-9b">
+  <h3>実験 9-B: X-Content-Type-Options: nosniff</h3>
+
+  <p>
+    ブラウザは <code>Content-Type</code> が宣言されていても、ファイルの内容から
+    MIMEタイプを「推測（スニッフィング）」しようとすることがあります。
+    <code>nosniff</code> はこれを防ぎ、宣言された <code>Content-Type</code> をそのまま信頼するよう指示します。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — MIMEスニッフィング攻撃の仕組みを理解する</div>
+    <div class="diagram">攻撃例（MIMEスニッフィング）:
+1. 攻撃者がサーバーにtext/plainのファイルをアップロード（中身はJS）
+2. Content-Type: text/plain で配信されるが、ブラウザがJSと判断して実行
+3. XSSが成立
+
+対策: X-Content-Type-Options: nosniff
+→ Content-Typeをそのまま信頼、スニッフィングしない
+
+具体的な保護:
+  script タグ: MIME が JavaScript 系でなければ実行しない
+  style タグ:  MIME が CSS 系でなければ適用しない</div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — レスポンスヘッダーを確認する</div>
+    <p>httpbin.org に <code>X-Content-Type-Options: nosniff</code> を含むレスポンスを返させて確認します。</p>
+    <button class="btn btn-accent2" id="btn-nosniff">httpbin.orgのX-Content-Type-Optionsを確認</button>
+    <pre id="nosniff-result"><span class="placeholder">← ボタンを押してください</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-nosniff').addEventListener('click', async () => {
+      const el = document.getElementById('nosniff-result');
+      el.textContent = '送信中...';
+      try {
+        const res = await fetch(
+          'https://httpbin.org/response-headers?' +
+          'X-Content-Type-Options=nosniff&Content-Type=' + encodeURIComponent('text/plain')
+        );
+        const xcto = res.headers.get('X-Content-Type-Options') || '(ヘッダーなし)';
+        const ct   = res.headers.get('Content-Type') || '(なし)';
+        el.textContent =
+          'レスポンスヘッダー:\n' +
+          '  X-Content-Type-Options: ' + xcto + '\n' +
+          '  Content-Type: ' + ct + '\n\n' +
+          'このヘッダーがある場合のブラウザ動作:\n' +
+          '  <script> タグのsrc → Content-Type が JS系でなければ実行拒否\n' +
+          '  <link> タグのhref → Content-Type が CSS系でなければ適用拒否\n\n' +
+          'DevTools で確認:\n' +
+          '  Network タブ → Response Headers → X-Content-Type-Options を参照';
+      } catch(e) { el.textContent = 'エラー: ' + e.message; }
+    });
+  </script>
+
+  <div class="two-col">
+    <div class="col-card">
+      <h4 style="color:var(--danger);">nosniff なし（危険）</h4>
+      <pre>サーバー設定:
+  Content-Type: text/plain
+
+ファイル内容:
+  &lt;script&gt;alert('XSS')&lt;/script&gt;
+
+ブラウザの動作（古い挙動）:
+  「中身を見るとHTMLだ」→ HTMLとして解釈
+  → スクリプトが実行される可能性
+  → XSS攻撃が成立</pre>
+    </div>
+    <div class="col-card">
+      <h4 style="color:var(--accent);">nosniff あり（安全）</h4>
+      <pre>サーバー設定:
+  Content-Type: text/plain
+  X-Content-Type-Options: nosniff
+
+ブラウザの動作:
+  「Content-Type: text/plain を信頼」
+  → スニッフィングを行わない
+  → テキストとしてそのまま表示
+  → スクリプトは実行されない</pre>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>設定はシンプル</strong>:
+    値は <code>nosniff</code> の一択です。他の値は仕様にありません。
+    すべてのHTMLレスポンスに設定しておくことを推奨します。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/Headers/X-Content-Type-Options" target="_blank">MDN — X-Content-Type-Options</a></span>
+  </div>
+</div>
+
+<!-- ── 実験 9-C: Referrer-Policy ── -->
+<div class="lab-box" id="exp-9c">
+  <h3>実験 9-C: Referrer-Policy</h3>
+
+  <p>
+    ブラウザはリンクをクリックしたり fetch を送ったりする際、
+    <code>Referer</code>（[sic] 仕様上のスペルミス）ヘッダーでどのページから来たかを送信します。
+    <code>Referrer-Policy</code> はこの挙動を制御し、プライバシーリスクを低減します。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — ポリシー値の比較表</div>
+    <table>
+      <thead>
+        <tr>
+          <th>ポリシー値</th>
+          <th>同一オリジン</th>
+          <th>クロスオリジン HTTPS→HTTPS</th>
+          <th>HTTPS→HTTP</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>no-referrer</code></td>
+          <td>送信しない</td>
+          <td>送信しない</td>
+          <td>送信しない</td>
+        </tr>
+        <tr>
+          <td><code>origin</code></td>
+          <td>オリジンのみ</td>
+          <td>オリジンのみ</td>
+          <td>オリジンのみ</td>
+        </tr>
+        <tr>
+          <td><code>strict-origin</code></td>
+          <td>オリジンのみ</td>
+          <td>オリジンのみ</td>
+          <td>送信しない</td>
+        </tr>
+        <tr>
+          <td><code style="color:var(--accent);">strict-origin-when-cross-origin</code> <span class="tag-good">推奨</span></td>
+          <td>フルURL</td>
+          <td>オリジンのみ</td>
+          <td>送信しない</td>
+        </tr>
+        <tr>
+          <td><code>same-origin</code></td>
+          <td>フルURL</td>
+          <td>送信しない</td>
+          <td>送信しない</td>
+        </tr>
+        <tr>
+          <td><code>origin-when-cross-origin</code></td>
+          <td>フルURL</td>
+          <td>オリジンのみ</td>
+          <td>オリジンのみ（危険）</td>
+        </tr>
+        <tr>
+          <td><code style="color:var(--danger);">unsafe-url</code> <span class="tag-bad">危険</span></td>
+          <td>フルURL</td>
+          <td>フルURL</td>
+          <td>フルURL（危険）</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="note">
+      <strong>なぜ strict-origin-when-cross-origin が推奨か</strong>:
+      同一オリジン内ではフルURLを送るのでアナリティクスが機能しつつ、
+      外部サイトにはオリジンのみを送るのでパス情報（例: <code>/user/12345/profile</code>）が漏れません。
+      さらに HTTPS→HTTP のダウングレード時は一切送らないため、安全です。
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 現在のページの Referrer を確認する</div>
+    <button class="btn btn-dim" id="btn-referrer">現在のReferrerを確認</button>
+    <pre id="referrer-result"><span class="placeholder">← ボタンを押してください</span></pre>
+    <script>
+      document.getElementById('btn-referrer').addEventListener('click', () => {
+        const el = document.getElementById('referrer-result');
+        const ref = document.referrer;
+        el.textContent =
+          'document.referrer = ' + (ref || '(空文字列 — 直接アクセスまたは同一ページ)') + '\n\n' +
+          '直接URLを入力してこのページを開いた場合: 空文字列\n' +
+          '別ページのリンクからアクセスした場合: 前のページのURL（またはオリジン）';
+      });
+    </script>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — httpbin.org へのfetchでRefererの送られ方を確認する</div>
+    <p>fetch で外部サイト（httpbin.org）にリクエストを送り、<code>Referer</code> ヘッダーがどのように送られるか確認します。</p>
+    <button class="btn btn-accent2" id="btn-fetch-referer">httpbin.orgにfetchしてRefererがどう送られるか確認</button>
+    <pre id="fetch-referer-result"><span class="placeholder">← ボタンを押してください</span></pre>
+    <script>
+      document.getElementById('btn-fetch-referer').addEventListener('click', async () => {
+        const el = document.getElementById('fetch-referer-result');
+        el.textContent = '送信中...';
+        try {
+          const res = await fetch('https://httpbin.org/headers');
+          const data = await res.json();
+          const headers = data.headers || {};
+          const referer = headers['Referer'] || headers['referer'] || '(送信されなかった)';
+          el.textContent =
+            'httpbin.org が受け取ったリクエストヘッダー:\n\n' +
+            '  Referer: ' + referer + '\n\n' +
+            '結果の解説:\n' +
+            '  ブラウザのデフォルトポリシー（strict-origin-when-cross-origin）では\n' +
+            '  クロスオリジンへの fetch はオリジンのみを送信します。\n\n' +
+            '  このページのオリジン: ' + location.origin + '\n' +
+            '  httpbin.org のオリジン: https://httpbin.org\n\n' +
+            'すべて受信したヘッダー（抜粋）:\n' +
+            Object.entries(headers).slice(0, 8).map(([k,v]) => '  ' + k + ': ' + v).join('\n');
+        } catch(e) { el.textContent = 'エラー: ' + e.message; }
+      });
+    </script>
+  </div>
+
+  <div class="warn-box">
+    <strong>Referer ヘッダーで漏洩するリスク</strong>:
+    URL にパスワードリセットトークン、セッションID、個人情報が含まれている場合（例: <code>/reset?token=SECRET</code>）、
+    ユーザーが外部リンクをクリックすると <code>Referer</code> でその情報が漏洩します。
+    <code>Referrer-Policy: strict-origin-when-cross-origin</code> を設定することでこれを防げます。
+  </div>
+</div>
+
+<!-- ── 実験 9-D: Permissions-Policy ── -->
+<div class="lab-box" id="exp-9d">
+  <h3>実験 9-D: Permissions-Policy</h3>
+
+  <p>
+    <code>Permissions-Policy</code> は、サーバーからブラウザへ「このページでは
+    <code>camera</code> や <code>geolocation</code> などのAPI を使わせない」と指示するヘッダーです。
+    悪意あるiframeやサードパーティスクリプトによるAPI悪用を防ぎます。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — 構文を理解する</div>
+    <pre><span class="comment">// 基本構文</span>
+<span class="header-name">Permissions-Policy</span>: <span class="header-val">feature=(allowlist)</span>
+
+<span class="comment">// allowlist の意味:</span>
+()          → 誰も使えない（完全に無効化）
+(self)      → 同一オリジンのみ使える
+(self "https://trusted.example.com")
+            → 自分と特定の外部オリジンのみ使える
+*           → すべてのオリジンが使える（非推奨）
+
+<span class="comment">// 実践例（推奨設定）</span>
+<span class="header-name">Permissions-Policy</span>: <span class="header-val">camera=(),
+                   microphone=(),
+                   geolocation=(self),
+                   interest-cohort=(),
+                   payment=(self),
+                   fullscreen=(self)</span>
+
+<span class="comment">// meta タグでも設定可能（サーバー設定不要）</span>
+&lt;meta http-equiv="Permissions-Policy" content="camera=(), microphone=()"&gt;</pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — このページの Permissions-Policy 設定を確認する</div>
+    <p>
+      このLabページの <code>&lt;head&gt;</code> には以下の meta タグが設定されています：
+    </p>
+    <pre><span class="highlight">&lt;meta http-equiv="Permissions-Policy" content="camera=(), microphone=()"&gt;</span></pre>
+    <p>これにより、このページでカメラとマイクへのアクセスは <strong>完全に無効化</strong> されています。</p>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — カメラアクセスを要求してみる（Permissions-Policy の効果を確認）</div>
+    <p>
+      <code>navigator.mediaDevices.getUserMedia()</code> でカメラアクセスを要求します。
+      Permissions-Policy により即座に拒否されるはずです。
+    </p>
+    <button class="btn btn-warn" id="btn-camera">カメラアクセスを要求してみる（Permissions-Policyの効果を確認）</button>
+    <pre id="camera-result"><span class="placeholder">← ボタンを押してください</span></pre>
+    <script>
+      document.getElementById('btn-camera').addEventListener('click', async () => {
+        const el = document.getElementById('camera-result');
+        el.textContent = 'カメラアクセスを要求中...';
+        try {
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            el.textContent =
+              '結果: navigator.mediaDevices.getUserMedia が利用できません\n\n' +
+              '原因: Permissions-Policy: camera=() により API 自体が無効化されているか、\n' +
+              '      HTTP 環境のため mediaDevices が undefined です。\n\n' +
+              '→ これが Permissions-Policy の効果です！\n' +
+              '  camera=() を設定すると、JS から API にアクセスすること自体ができなくなります。';
+            return;
+          }
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          // ストリームが取得できた場合はすぐに停止
+          stream.getTracks().forEach(t => t.stop());
+          el.textContent =
+            '結果: カメラアクセスが許可されました（予期しない結果）\n\n' +
+            'Permissions-Policy が有効に機能していない可能性があります。\n' +
+            'meta タグによる設定は HTTP サーバー経由の場合のみ有効です。';
+        } catch(e) {
+          el.textContent =
+            '結果: アクセス拒否 ✅\n\n' +
+            'エラー名: ' + e.name + '\n' +
+            'エラー内容: ' + e.message + '\n\n' +
+            '解説:\n' +
+            '  Permissions-Policy: camera=() により、カメラへのアクセスが\n' +
+            '  JS レベルで完全にブロックされました。\n' +
+            '  ユーザーが「許可」を押せるダイアログすら表示されません。\n\n' +
+            '  NotAllowedError → Permissions-Policy による即時拒否\n' +
+            '  SecurityError   → HTTP 環境や iframe 制限による拒否';
+        }
+      });
+    </script>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 4 — よく使われる Permissions-Policy 機能一覧（上位10件）</div>
+    <table>
+      <thead>
+        <tr><th>機能名</th><th>説明</th><th>推奨設定</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>camera</code></td><td>カメラデバイスへのアクセス</td><td><code>camera=()</code></td></tr>
+        <tr><td><code>microphone</code></td><td>マイクデバイスへのアクセス</td><td><code>microphone=()</code></td></tr>
+        <tr><td><code>geolocation</code></td><td>位置情報取得</td><td><code>geolocation=(self)</code></td></tr>
+        <tr><td><code>fullscreen</code></td><td>全画面表示</td><td><code>fullscreen=(self)</code></td></tr>
+        <tr><td><code>payment</code></td><td>Payment Request API</td><td><code>payment=(self)</code></td></tr>
+        <tr><td><code>usb</code></td><td>WebUSB API</td><td><code>usb=()</code></td></tr>
+        <tr><td><code>bluetooth</code></td><td>Web Bluetooth API</td><td><code>bluetooth=()</code></td></tr>
+        <tr><td><code>accelerometer</code></td><td>加速度センサー</td><td><code>accelerometer=()</code></td></tr>
+        <tr><td><code>autoplay</code></td><td>メディア自動再生</td><td><code>autoplay=(self)</code></td></tr>
+        <tr><td><code>interest-cohort</code></td><td>FLoC（廃止済み、設定推奨）</td><td><code>interest-cohort=()</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <strong>iframe との組み合わせ</strong>:
+    Permissions-Policy は iframe に埋め込まれた外部コンテンツの API 利用制限にも使えます。
+    <code>&lt;iframe allow="camera=(self)"&gt;</code> のように iframe 側でも設定可能ですが、
+    ページレベルの制限が優先されます。
+  </div>
+</div>
+
+<!-- ── 実験 9-E: OutSystems 実践 ── -->
+<div class="lab-box" id="exp-9e">
+  <h3>実験 9-E: OutSystems でセキュリティヘッダーを設定する</h3>
+
+  <p>
+    OutSystems でセキュリティヘッダーを設定するには、<code>SetResponseHeader</code> アクションを
+    REST API の OnBeforeResponse ハンドラまたは各エンドポイントのフロー内で使用します。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — SetResponseHeader を使ったセキュリティヘッダー設定</div>
+    <pre><span class="comment">// OnBeforeResponse Server Action 内（REST API 全体に適用）:</span>
+
+<span class="comment">// 1. X-Content-Type-Options</span>
+SetResponseHeader(
+  Name  = <span class="header-val">"X-Content-Type-Options"</span>,
+  Value = <span class="header-val">"nosniff"</span>
+)
+
+<span class="comment">// 2. Referrer-Policy</span>
+SetResponseHeader(
+  Name  = <span class="header-val">"Referrer-Policy"</span>,
+  Value = <span class="header-val">"strict-origin-when-cross-origin"</span>
+)
+
+<span class="comment">// 3. Permissions-Policy</span>
+SetResponseHeader(
+  Name  = <span class="header-val">"Permissions-Policy"</span>,
+  Value = <span class="header-val">"camera=(), microphone=(), geolocation=(self), interest-cohort=()"</span>
+)
+
+<span class="comment">// 4. X-Frame-Options（レガシー対応として残す場合）</span>
+SetResponseHeader(
+  Name  = <span class="header-val">"X-Frame-Options"</span>,
+  Value = <span class="header-val">"DENY"</span>
+)
+
+<span class="comment">// 5. X-XSS-Protection（明示的に無効化）</span>
+SetResponseHeader(
+  Name  = <span class="header-val">"X-XSS-Protection"</span>,
+  Value = <span class="header-val">"0"</span>
+)</pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — HSTS の設定に関する注意</div>
+    <pre><span class="comment">// HSTS はアプリケーションレベルではなく、サーバー / CDN レベルで設定推奨</span>
+
+<span class="highlight">⚠ OutSystems PaaS (OutSystems Cloud) の場合:</span>
+  → セキュリティヘッダーの一部は OutSystems インフラ側で自動設定される
+  → SetResponseHeader で HSTS を設定しても、インフラ側の設定と競合する可能性あり
+  → LifeTime / インフラ設定 / サポートに確認することを推奨
+
+<span class="comment">// 自社管理サーバー（IIS）の場合:</span>
+IIS Manager → サイト選択 → HTTP 応答ヘッダー
+  → カスタムヘッダーの追加:
+    名前: Strict-Transport-Security
+    値:   max-age=63072000; includeSubDomains
+
+<span class="comment">// NGINX の場合:</span>
+add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+
+<span class="comment">// Apache の場合:</span>
+Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains"</pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — OutSystems Forge / Extension での確認</div>
+    <pre><span class="comment">// SetResponseHeader は OutSystems 標準アクション（HTTPRequestHandler 拡張）</span>
+場所: System Module → HTTP Request Handler → SetResponseHeader
+
+引数:
+  HeaderName  (Text) — ヘッダー名
+  HeaderValue (Text) — ヘッダー値
+
+呼び出しタイミング:
+  REST API: OnBeforeResponse（推奨、全エンドポイントに一括適用）
+  Screen:   OnRequest アクション内（Traditional Web のみ）
+
+<span class="comment">// Reactive Web / Mobile アプリの場合:</span>
+  → クライアント側 JS でヘッダーは制御できない
+  → サーバー側 API のレスポンスヘッダーとして設定する</pre>
+  </div>
+
+  <div class="note">
+    <strong>確認ツール</strong>:
+    OutSystems 環境に設定後は以下のツールで採点できます。<br>
+    <a href="https://securityheaders.com/" target="_blank">🔗 securityheaders.com</a> —
+    URLを入力するだけでセキュリティヘッダーを自動チェック（A+ ～ F の評価）<br>
+    <a href="https://observatory.mozilla.org/" target="_blank">🔗 Mozilla Observatory</a> —
+    より広範なセキュリティチェック（TLS設定、Cookie等も含む）
+  </div>
+</div>
+
+<!-- ── スコア評価 ── -->
+<div class="lab-box" id="score">
+  <h3>セキュリティヘッダースコアの評価基準（securityheaders.com）</h3>
+
+  <p>
+    <a href="https://securityheaders.com/" target="_blank">securityheaders.com</a> は
+    URLを入力するとセキュリティヘッダーの充実度をスコアリングします。
+    評価はレスポンスヘッダーの有無に基づいており、A+（最高）から F（最低）まであります。
+  </p>
+
+  <div class="step">
+    <div class="step-num">グレード基準（2024年現在）</div>
+    <div class="grade-row">
+      <span class="grade-badge grade-aplus">A+</span>
+      <span class="grade-badge grade-a">A</span>
+      <span class="grade-badge grade-b">B</span>
+      <span class="grade-badge grade-c">C</span>
+      <span class="grade-badge grade-d">D</span>
+      <span class="grade-badge grade-f">F</span>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>グレード</th><th>条件</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="grade-badge grade-aplus">A+</span></td><td>全必須ヘッダー設定済み + Content-Security-Policy が厳格（unsafe-inline 等を含まない）</td></tr>
+        <tr><td><span class="grade-badge grade-a">A</span></td><td>全必須ヘッダー設定済み（CSP の内容が A+ 基準に届かない場合）</td></tr>
+        <tr><td><span class="grade-badge grade-b">B</span></td><td>ほとんどのヘッダーが設定済み、軽微な不足あり</td></tr>
+        <tr><td><span class="grade-badge grade-c">C</span></td><td>重要なヘッダーが一部不足</td></tr>
+        <tr><td><span class="grade-badge grade-d">D</span></td><td>多くの重要ヘッダーが不足</td></tr>
+        <tr><td><span class="grade-badge grade-f">F</span></td><td>ほとんどのヘッダーが未設定</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="step">
+    <div class="step-num">スコアに影響する主なヘッダー（減点対象）</div>
+    <table>
+      <thead>
+        <tr><th>ヘッダー</th><th>未設定時の影響</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>Content-Security-Policy</code></td><td>大きく減点（A→C相当の影響）</td></tr>
+        <tr><td><code>Strict-Transport-Security</code></td><td>中程度の減点</td></tr>
+        <tr><td><code>X-Content-Type-Options</code></td><td>中程度の減点</td></tr>
+        <tr><td><code>Referrer-Policy</code></td><td>中程度の減点</td></tr>
+        <tr><td><code>Permissions-Policy</code></td><td>軽微な減点</td></tr>
+        <tr><td><code>X-Frame-Options</code></td><td>軽微な減点（CSP frame-ancestors で代替可）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="two-col">
+    <div class="col-card">
+      <h4 style="color:var(--accent);">推奨ツール</h4>
+      <pre>1. securityheaders.com
+   → ヘッダーの有無をシンプルに確認
+   → A+ ～ F のスコア
+
+2. observatory.mozilla.org
+   → より広範な診断
+   → TLS, Cookie, CSP の詳細も
+
+3. hstspreload.org
+   → HSTS Preload リストへの
+     登録状況確認・申請
+
+4. csp-evaluator.withgoogle.com
+   → CSP の安全性を個別に評価</pre>
+    </div>
+    <div class="col-card">
+      <h4 style="color:var(--warn);">A+ を取るための最小セット</h4>
+      <pre>必須:
+  Content-Security-Policy (厳格)
+  Strict-Transport-Security
+  X-Content-Type-Options: nosniff
+  Referrer-Policy
+  Permissions-Policy
+
+削除推奨:
+  X-Powered-By (削除)
+  Server (バージョン非公開)
+  X-XSS-Protection: 0 (無効化)
+
+代替推奨:
+  X-Frame-Options → CSP frame-ancestors
+  X-XSS-Protection → CSP で代替</pre>
+    </div>
+  </div>
+</div>
+
+<hr>
+<h2 id="framework">🔧 フレームワーク別設定例</h2>
+<p style="font-size:0.85rem;color:var(--text-dim);">このLabで学んだヘッダーを各環境で設定する方法です。</p>
+
+<div style="overflow-x:auto;">
+<table style="width:100%;border-collapse:collapse;font-size:0.78rem;font-family:'IBM Plex Mono',monospace;margin:1rem 0;">
+  <thead>
+    <tr style="background:var(--surface2);color:var(--accent2);">
+      <th style="padding:0.6rem;border:1px solid var(--border);text-align:left;min-width:120px;">環境</th>
+      <th style="padding:0.6rem;border:1px solid var(--border);text-align:left;">設定方法</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="padding:0.6rem;border:1px solid var(--border);color:var(--accent);white-space:nowrap;">Express</td>
+      <td style="padding:0.6rem;border:1px solid var(--border);"><code>const helmet = require('helmet'); app.use(helmet())  // HSTS, nosniff, referrerPolicy 等を一括設定</code></td>
+    </tr>
+    <tr>
+      <td style="padding:0.6rem;border:1px solid var(--border);color:var(--accent);white-space:nowrap;">Next.js</td>
+      <td style="padding:0.6rem;border:1px solid var(--border);"><code>// next.config.js headers() で Strict-Transport-Security, X-Content-Type-Options 等を返す</code></td>
+    </tr>
+    <tr>
+      <td style="padding:0.6rem;border:1px solid var(--border);color:var(--accent);white-space:nowrap;">Nginx</td>
+      <td style="padding:0.6rem;border:1px solid var(--border);"><code>add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always; add_header X-Content-Type-Options "nosniff" always;</code></td>
+    </tr>
+    <tr>
+      <td style="padding:0.6rem;border:1px solid var(--border);color:var(--accent);white-space:nowrap;">OutSystems</td>
+      <td style="padding:0.6rem;border:1px solid var(--border);"><code>OnBeforeResponse で SetResponseHeader を複数呼び出し</code></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="note" style="border-color:var(--accent3);background:#f3e8fd;">
+  🔗 <strong style="color:var(--accent3);">多層防御クロスリファレンス</strong>：このLabのヘッダー群は <a href="http-header-lab-08.html">Lab 08 の CSP</a> と組み合わせて初めて完全な防御になります。<code>securityheaders.com</code> でA+を取るには全てが必要です。
+</div>
+
+<hr>
+<h2 id="checklist">✅ Lab 09 チェックリスト</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">チェック状態はブラウザに自動保存されます。</p>
+
+<div class="check-item"><input type="checkbox" data-key="lab09-1"> <label>HSTS の max-age / includeSubDomains / preload の意味を理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab09-2"> <label>X-Content-Type-Options: nosniff がMIMEスニッフィング攻撃を防ぐ仕組みを理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab09-3"> <label>Referrer-Policy の推奨値（strict-origin-when-cross-origin）とその動作を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab09-4"> <label>httpbin.org へのfetchでRefererがどう送信されるか確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab09-5"> <label>Permissions-Policy の構文（camera=(), geolocation=(self)）を理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab09-6"> <label>このページのPermissions-Policy設定（camera=()）の効果を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab09-7"> <label>securityheaders.com でのヘッダースコア評価基準を理解した</label></div>
+
+<div style="margin-top:1rem; text-align:center;">
+  <span id="progress-text" style="font-family:'IBM Plex Mono',monospace; color:var(--accent); font-size:0.9rem;"></span>
+</div>
+
+<script>
+  const STORAGE_PREFIX = 'httplab_';
+  function updateProgress() {
+    const all = document.querySelectorAll('input[type="checkbox"][data-key]');
+    const checked = [...all].filter(cb => cb.checked).length;
+    const el = document.getElementById('progress-text');
+    if (el) el.textContent = checked + ' / ' + all.length + ' 完了';
+  }
+  document.querySelectorAll('input[type="checkbox"][data-key]').forEach(cb => {
+    const saved = localStorage.getItem(STORAGE_PREFIX + cb.dataset.key);
+    if (saved === 'true') { cb.checked = true; cb.closest('.check-item')?.classList.add('checked'); }
+    cb.addEventListener('change', () => {
+      localStorage.setItem(STORAGE_PREFIX + cb.dataset.key, cb.checked);
+      cb.closest('.check-item')?.classList.toggle('checked', cb.checked);
+      updateProgress();
+    });
+  });
+  updateProgress();
+</script>
+
+<hr>
+
+<div class="lab-box" style="border-color:var(--warn);">
+  <h3 style="color:var(--warn);margin-top:0;">🚀 本番環境で確認すべきこと</h3>
+  <p style="font-size:0.82rem;color:var(--text-dim);">このLabの内容をデプロイ前に確認するチェックリストです。</p>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ <code>Strict-Transport-Security: max-age=63072000; includeSubDomains</code> が設定されている</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ <code>X-Content-Type-Options: nosniff</code> が全レスポンスに付与されている</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ <code>Referrer-Policy: strict-origin-when-cross-origin</code> が設定されている</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ <code>Permissions-Policy</code> で不要なブラウザAPI（camera, microphone等）を無効化している</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ <code>X-Powered-By</code> ヘッダーを削除している（サーバー情報の漏洩防止）</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ <a href="https://securityheaders.com" style="color:var(--accent2);">securityheaders.com</a> でA以上のスコアを取得している</div>
+</div>
+
+<div class="note">
+  📖 <strong>参照資料</strong>：このLabの内容は <code>http-headers-guide-v2.md</code> の 第2部①「オリジンWebサーバー」の セキュリティヘッダー部分 + 第3部 3-2 に対応しています。より詳しい解説・ヘッダー一覧はガイドを参照してください。
+</div>
+
+<h2>📝 Lab 09 学習ノート</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">メモはブラウザに自動保存されます。</p>
+<textarea id="notes" rows="6" placeholder="気づいたこと、疑問点をメモ..."
+  style="width:100%;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:0.8rem;font-family:'Noto Sans JP',sans-serif;font-size:0.9rem;resize:vertical;margin-top:0.5rem;"></textarea>
+
+<script>
+  const notesEl = document.getElementById('notes');
+  const savedNotes = localStorage.getItem(STORAGE_PREFIX + 'lab09_notes');
+  if (savedNotes) notesEl.value = savedNotes;
+  notesEl.addEventListener('input', () => { localStorage.setItem(STORAGE_PREFIX + 'lab09_notes', notesEl.value); });
+</script>
+
+<div style="margin-top:2rem; display:flex; justify-content:space-between; font-size:0.82rem; color:var(--text-dim);">
+  <span>← 前回: <a href="http-header-lab-08.html"><strong>Lab 08 — CSP（Content-Security-Policy）</strong></a></span>
+  <span>次回: <a href="http-header-lab-10.html"><strong>Lab 10 — COOP / COEP / CORP（Cross-Origin Isolation）</strong></a> →<br><span style="color:var(--text-dim);font-size:0.78rem;">個別のセキュリティヘッダーを理解したら、COOP/COEP/CORP による Cross-Origin Isolation へ</span></span>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Web Data Conversion Lab 02: テキスト・構造の変換</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;700&display=swap');
+
+  :root {
+    --bg: #ffffff;
+    --surface: #f5f7fa;
+    --surface2: #ebeef2;
+    --border: #c8cdd3;
+    --text: #1a1a2e;
+    --text-dim: #5c6370;
+    --accent: #005cc5;
+    --accent2: #22863a;
+    --accent3: #6f42c1;
+    --warn: #b08800;
+    --danger: #cb2431;
+    --code-bg: #f0f4f8;
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    padding: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  h1 { font-size: 1.6rem; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 0.8rem; margin-bottom: 1.5rem; font-family: 'IBM Plex Mono', monospace; }
+  h2 { font-size: 1.25rem; color: var(--accent2); margin: 2rem 0 1rem; font-family: 'IBM Plex Mono', monospace; }
+  h3 { font-size: 1.05rem; color: var(--accent3); margin: 1.5rem 0 0.8rem; }
+  p, li { font-size: 0.92rem; margin-bottom: 0.5rem; }
+
+  /* Status Bar */
+  .status-bar { display: flex; gap: 1rem; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.6rem 1rem; margin-bottom: 1.5rem; font-size: 0.82rem; font-family: 'IBM Plex Mono', monospace; flex-wrap: wrap; }
+  .status-item { display: flex; align-items: center; gap: 0.4rem; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-dim); animation: pulse 1.5s infinite; }
+  .status-dot.ok { background: var(--accent); animation: none; }
+  .status-dot.err { background: var(--danger); animation: none; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* Lab Section */
+  .lab-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin: 1.5rem 0; }
+
+  .step { background: var(--surface2); border-left: 3px solid var(--accent2); border-radius: 0 var(--radius) var(--radius) 0; padding: 1rem 1.2rem; margin: 1rem 0; }
+  .step-num { font-family: 'IBM Plex Mono', monospace; color: var(--accent2); font-weight: 600; font-size: 0.8rem; margin-bottom: 0.3rem; }
+
+  code, pre { font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; }
+  code { background: var(--code-bg); padding: 0.15rem 0.4rem; border-radius: 4px; color: var(--accent); }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; overflow-x: auto; margin: 0.8rem 0; line-height: 1.6; color: #24292e; }
+  pre .comment { color: #6a737d; }
+  pre .header-name { color: var(--accent2); }
+  pre .header-val { color: var(--accent); }
+  pre .highlight { color: var(--warn); font-weight: 600; }
+
+  .placeholder { color: var(--text-dim); font-style: italic; font-size: 0.8rem; }
+
+  .note { background: #e8f4fd; border: 1px solid #b6d4e8; border-radius: var(--radius); padding: 0.8rem 1rem; margin: 1rem 0; font-size: 0.85rem; color: var(--accent2); }
+  .note::before { content: "💡 "; }
+
+  .warn-box { background: #fff8e1; border: 1px solid #e6d590; border-radius: var(--radius); padding: 0.8rem 1rem; margin: 1rem 0; font-size: 0.85rem; color: var(--warn); }
+  .warn-box::before { content: "⚠️ "; }
+
+  .check-item { background: var(--surface2); border-radius: var(--radius); padding: 0.6rem 1rem; margin: 0.4rem 0; display: flex; align-items: center; gap: 0.6rem; font-size: 0.88rem; transition: opacity 0.3s; }
+  .check-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
+  .check-item.checked { opacity: 0.55; }
+
+  .diagram { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; line-height: 1.5; overflow-x: auto; white-space: pre; color: var(--text-dim); margin: 1rem 0; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.8rem; margin: 1rem 0; }
+  @media (max-width: 900px) { .three-col { grid-template-columns: 1fr; } }
+  @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+  .col-card { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.8rem; font-size: 0.8rem; }
+  .col-card h4 { font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; margin-bottom: 0.5rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); }
+  .col-card pre { border: none; padding: 0.4rem 0; margin: 0; font-size: 0.75rem; background: transparent; }
+  .col-card.card-encode { border-color: var(--accent); }
+  .col-card.card-encode h4 { color: var(--accent); }
+  .col-card.card-puny { border-color: var(--accent2); }
+  .col-card.card-puny h4 { color: var(--accent2); }
+  .col-card.card-path { border-color: var(--accent3); }
+  .col-card.card-path h4 { color: var(--accent3); }
+
+  .toc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.2rem; margin: 1rem 0 2rem; }
+  .toc a { display: inline-block; padding: 0.25rem 0.6rem; margin: 0.15rem; border-radius: 6px; font-size: 0.82rem; background: var(--surface2); transition: background 0.2s; }
+  .toc a:hover { background: var(--border); text-decoration: none; }
+
+  a { color: var(--accent2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  html { scroll-behavior: smooth; }
+
+  .btn { border: none; padding: 0.5rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; font-family: 'Noto Sans JP', sans-serif; margin: 0.3rem; transition: opacity 0.2s; }
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.97); }
+  .btn-accent  { background: var(--accent);  color: var(--bg); }
+  .btn-accent2 { background: var(--accent2); color: var(--bg); }
+  .btn-accent3 { background: var(--accent3); color: var(--bg); }
+  .btn-warn    { background: var(--warn);    color: var(--bg); }
+  .btn-dim     { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+
+  .input-area { width: 100%; background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 0.8rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; }
+
+  /* Conversion arrow */
+  .conv-arrow { text-align: center; font-size: 1.5rem; color: var(--accent2); margin: 0.5rem 0; }
+
+  /* Lab 02 追加スタイル */
+  .beginner-box { background: #f0fdf4; border: 1px solid #86efac; border-radius: var(--radius); padding: 1rem 1.2rem; margin: 1rem 0; font-size: 0.85rem; }
+  .beginner-box .beg-title { font-weight: 700; color: var(--accent2); margin-bottom: 0.5rem; font-size: 0.9rem; }
+  .beginner-box ul { padding-left: 1.2rem; }
+  .beginner-box li { margin-bottom: 0.3rem; }
+
+  .result-box { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin: 0.8rem 0; min-height: 3rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; white-space: pre-wrap; word-break: break-all; }
+  .result-box.result-ok { border-color: var(--accent2); background: #f0fdf4; }
+  .result-box.result-warn { border-color: var(--warn); background: #fff8e1; }
+  .result-box.result-danger { border-color: var(--danger); background: #fff0f0; }
+
+  .label-badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.72rem; font-family: 'IBM Plex Mono', monospace; font-weight: 600; margin-right: 0.3rem; }
+  .badge-before { background: #fee2e2; color: #991b1b; }
+  .badge-after  { background: #dcfce7; color: #166534; }
+  .badge-info   { background: #e0e7ff; color: #3730a3; }
+
+  details { margin: 1rem 0; }
+  details summary { cursor: pointer; font-weight: 600; font-size: 0.88rem; color: var(--accent3); padding: 0.5rem 0; }
+  details summary:hover { opacity: 0.8; }
+  details[open] summary { margin-bottom: 0.5rem; }
+
+  .note-textarea { width: 100%; min-height: 100px; background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 0.7rem 1rem; font-family: 'Noto Sans JP', sans-serif; font-size: 0.85rem; resize: vertical; }
+
+  .nav-links { display: flex; justify-content: space-between; align-items: center; margin-top: 3rem; padding-top: 1.5rem; border-top: 2px solid var(--border); font-size: 0.88rem; }
+  .nav-links a { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1rem; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); transition: background 0.2s; }
+  .nav-links a:hover { background: var(--border); text-decoration: none; }
+
+  .char-count-row { display: flex; gap: 1rem; flex-wrap: wrap; margin: 0.5rem 0; font-size: 0.8rem; font-family: 'IBM Plex Mono', monospace; color: var(--text-dim); }
+  .char-count-row span { background: var(--surface2); padding: 0.2rem 0.6rem; border-radius: 4px; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });</script>
+</head>
+<body>
+
+<!-- Status Bar -->
+<div class="status-bar">
+  <div class="status-item">
+    <div class="status-dot" id="dot-protocol"></div>
+    <span id="status-protocol">プロトコル確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-url-api"></div>
+    <span id="status-url-api">URL API: checking...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-devtools"></div>
+    <span>Console: <kbd style="background:var(--surface2);padding:0.1rem 0.4rem;border-radius:4px;">F12</kbd></span>
+  </div>
+</div>
+<p style="margin-bottom:0.5rem;font-size:0.82rem;"><a href="web-data-conversion-index.html" style="color:var(--accent);text-decoration:none;">← マスター索引に戻る</a></p>
+
+<script>
+const STORAGE_PREFIX = 'wdclab_';
+
+// Protocol check
+(function() {
+  const dot = document.getElementById('dot-protocol');
+  const label = document.getElementById('status-protocol');
+  if (location.protocol === 'file:') {
+    dot.classList.add('ok');
+    label.textContent = 'file:// (このLabはローカルでも動作します)';
+  } else {
+    dot.classList.add('ok');
+    label.textContent = location.protocol + '// ✓';
+  }
+})();
+
+// URL API check
+(function() {
+  const dot = document.getElementById('dot-url-api');
+  const label = document.getElementById('status-url-api');
+  try {
+    new URL('http://example.com');
+    dot.classList.add('ok');
+    label.textContent = 'URL API: available ✓';
+  } catch(e) {
+    dot.classList.add('err');
+    label.textContent = 'URL API: unavailable';
+  }
+})();
+</script>
+
+<h1>🧪 Lab 02: テキスト・構造の変換</h1>
+<p style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.3rem;font-family:'IBM Plex Mono',monospace;">Web Data Conversion Lab シリーズ</p>
+
+<p>
+  データはネットワークを通じて送受信される前に、さまざまな<strong>変換・正規化</strong>が行われます。
+  このLabでは JSON シリアライズ、Unicode 正規化、XSS 対策のエスケープ、Cookie エンコードを
+  ブラウザ上で手を動かしながら体験します。
+</p>
+
+<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">⏱ 所要時間：20分</span>
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">難易度：★☆☆</span>
+</div>
+<p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:1rem;">📋 前提知識：なし</p>
+
+<div class="lab-box" style="border-color:var(--accent); margin-bottom:1rem;">
+  <h3 style="color:var(--accent); margin-top:0;">🎯 このLabの学習目標</h3>
+  <p style="margin-bottom:0.3rem;">完了すると、以下ができるようになります：</p>
+  <div class="check-item" style="opacity:1;"><span>1. <code>JSON.stringify</code> / <code>JSON.parse</code> でオブジェクトのシリアライズ・デシリアライズができる</span></div>
+  <div class="check-item" style="opacity:1;"><span>2. Unicode 正規化（NFC/NFD）が検索バグの原因になることを説明できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>3. HTMLエスケープで XSS 攻撃を防ぐ仕組みを理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>4. Cookie 値に <code>encodeURIComponent</code> が必要な理由を説明できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>5. 複数の変換を組み合わせたデータ処理フローを設計できる</span></div>
+</div>
+
+<div class="warn-box" style="border-color:var(--accent3);background:#fce4ec;">
+  <strong style="color:var(--accent3);">💥 実務での失敗例</strong>：掲示板のコメントをそのまま <code>innerHTML</code> に代入 →
+  <code>&lt;script&gt;alert('XSS')&lt;/script&gt;</code> が実行されてしまう。HTMLエスケープは必須です。
+</div>
+
+<!-- TOC -->
+<div class="toc">
+  <strong style="font-size:0.85rem;">目次</strong><br>
+  <a href="#sec-2a">2-A: JSON シリアライズ</a>
+  <a href="#sec-2b">2-B: Unicode 正規化</a>
+  <a href="#sec-2c">2-C: HTML エスケープ</a>
+  <a href="#sec-2d">2-D: Cookie エンコード</a>
+  <a href="#sec-2e">2-E: 総合実験</a>
+  <a href="#sec-checklist">チェックリスト</a>
+  <a href="#sec-notes">学習ノート</a>
+</div>
+
+<!-- ============================================================
+     2-A: JSON.stringify / JSON.parse
+     ============================================================ -->
+<h2 id="sec-2a">2-A: JSON.stringify / JSON.parse — オブジェクトのシリアライズ</h2>
+
+<div class="lab-box">
+
+  <div class="beginner-box">
+    <div class="beg-title">🔰 初心者向け解説 — ECサイトのカート情報送信</div>
+    <ul>
+      <li><strong>利用シーン</strong>: オンラインショップでカートに商品を追加 → サーバーに送信するとき</li>
+      <li><strong>なぜ必要？</strong>: ネットワークは<em>文字列</em>しか送れない。オブジェクトをそのまま送ると <code>[object Object]</code> になってしまう</li>
+      <li><strong>身近な例え</strong>: 引越し荷物を段ボール箱（JSON文字列）に詰めて運び、現地で箱を開ける（parse）イメージ</li>
+      <li><strong>注意点</strong>: <code>Date</code> オブジェクトは JSON 化すると<strong>文字列</strong>になる。取り出す際に <code>new Date()</code> で戻す必要あり</li>
+    </ul>
+  </div>
+
+  <div class="diagram">JS オブジェクト                   JSON 文字列                   サーバー
+  { name:"商品A",           JSON.stringify()        '{"name":"商品A",'
+    price:1980,         ─────────────────────►   "price":1980,'         ──► HTTP送信
+    date: Date()  }                               "date":"2026-04-02T..."}'
+                                                         │
+                          JSON.parse()                   │ レスポンス受信
+  { name:"商品A",     ◄─────────────────────   '{"name":"商品A",...}'
+    price:1980,                                          │
+    date: "2026-..."  }   ← ⚠ Date は文字列のまま！     ▼
+                          new Date(obj.date) で変換要  注意</div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — オブジェクトを JSON 文字列に変換する</div>
+    <p>下のオブジェクトリテラルを編集して「JSON 変換」を押してください：</p>
+    <textarea id="json-input" class="input-area" rows="6" spellcheck="false">{ "name": "商品A", "price": 1980, "tags": ["sale", "新商品"], "created": "2026-04-02T09:00:00.000Z" }</textarea>
+    <div style="margin-top:0.5rem;">
+      <button class="btn btn-accent" onclick="doJsonStringify()">JSON 変換（stringify）</button>
+      <button class="btn btn-accent2" onclick="doJsonParse()">元に戻す（parse）</button>
+      <button class="btn btn-dim" onclick="doJsonPretty()">整形表示（indent=2）</button>
+      <button class="btn btn-dim" onclick="resetJsonInput()">リセット</button>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 変換結果を確認する</div>
+    <span class="label-badge badge-before">stringify 結果</span>
+    <div id="json-stringify-result" class="result-box"><span class="placeholder">← STEP1のボタンを押すと結果が表示されます</span></div>
+
+    <span class="label-badge badge-after">parse 結果（typeof / 値確認）</span>
+    <div id="json-parse-result" class="result-box"><span class="placeholder">「元に戻す」を押すと確認できます</span></div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — Date 型が文字列になることを確認する</div>
+    <button class="btn btn-warn" onclick="doDateDemo()">Date 型変換デモ</button>
+    <div id="json-date-result" class="result-box result-warn"><span class="placeholder">ボタンを押すと Date 型変換の様子が表示されます</span></div>
+  </div>
+
+  <div class="note">
+    <code>JSON.stringify(obj, null, 2)</code> の第3引数はインデント幅です。ログやデバッグ出力を読みやすくするときに使います。
+    第2引数（replacer）を使うと、変換する<strong>キーを絞る</strong>こともできます（例: パスワードを除外）。
+  </div>
+
+  <details>
+    <summary>📊 Mermaid フローチャート — JSON シリアライズの流れ</summary>
+    <div class="mermaid">
+flowchart LR
+    A[JS オブジェクト] -->|JSON.stringify| B[JSON 文字列]
+    B -->|HTTP 送信| C[サーバー]
+    C -->|HTTP レスポンス| D[JSON 文字列]
+    D -->|JSON.parse| E[JS オブジェクト]
+    E -->|注意| F[Date は string のまま]
+    F -->|new Date 変換| G[Date オブジェクト復元]
+    </div>
+  </details>
+
+  <div class="warn-box" style="border-color:var(--accent3);background:#f3e5f5;">
+    <strong style="color:var(--accent3);">📋 初心者まとめ</strong><br>
+    覚える関数: <code>JSON.stringify()</code> / <code>JSON.parse()</code><br>
+    よくある落とし穴: Date型がJSON化で文字列になり、parse後もDateオブジェクトに戻らない<br>
+    正しい使い方: 復元時に <code>new Date(obj.dateField)</code> で再変換する
+  </div>
+</div>
+
+<!-- ============================================================
+     2-B: Unicode 正規化
+     ============================================================ -->
+<h2 id="sec-2b">2-B: Unicode 正規化 (normalize) — 結合文字の統一</h2>
+
+<div class="lab-box">
+
+  <div class="beginner-box">
+    <div class="beg-title">🔰 初心者向け解説 — 検索で「が」が見つからないバグ</div>
+    <ul>
+      <li><strong>利用シーン</strong>: ユーザーが「が」と入力してデータベース検索 → ヒットしない、というバグの原因</li>
+      <li><strong>なぜ必要？</strong>: 「が」には2つの表現がある。見た目は同じでもコンピューターには<em>別の文字列</em>に見える</li>
+      <li><strong>身近な例え</strong>: 同じ「A」でも筆記体と活字体は別物扱い。normalize は「統一規格に揃える」作業</li>
+      <li><strong>NFC</strong>: 合成形（1文字） / <strong>NFD</strong>: 分解形（基底文字 + 結合文字）</li>
+    </ul>
+  </div>
+
+  <div class="diagram">「が」の2つの表現
+
+  NFC（合成形）   : が  = U+304C           (1コードポイント)
+  NFD（分解形）   : か  + ゛ = U+304B + U+3099 (2コードポイント)
+
+  見た目：ほぼ同じ
+  比較結果：'が' === 'か゛'  → false  ← バグの原因！
+  正規化後：どちらも normalize('NFC') → U+304C → true ✓
+
+  影響を受ける文字：が ぎ ぐ げ ご ざ じ ず ぜ ぞ ば び ぶ べ ぼ ぱ ぴ ぷ ぺ ぽ（濁点・半濁点付き）
+                   カ゛→ガ  ハ゛→バ  ハ゜→パ  など</div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — テキストを入力して正規化を確認する</div>
+    <p>日本語（特に濁音・半濁音を含む文字）を入力してください：</p>
+    <input id="unicode-input" class="input-area" type="text" value="がぎぐげご　ざじずぜぞ　ばびぶべぼ" oninput="doUnicodeNorm()" style="font-size:1rem;padding:0.6rem 0.8rem;">
+    <div class="char-count-row" id="unicode-raw-info">
+      <span>入力文字数: -</span>
+      <span>バイト数(UTF-8): -</span>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — NFC / NFD 正規化の結果</div>
+    <div class="two-col">
+      <div>
+        <span class="label-badge badge-info">NFC（合成形）</span>
+        <div id="unicode-nfc" class="result-box result-ok"><span class="placeholder">入力すると表示</span></div>
+        <div class="char-count-row" id="nfc-info"><span>文字数: -</span><span>バイト数(UTF-8): -</span></div>
+      </div>
+      <div>
+        <span class="label-badge badge-before">NFD（分解形）</span>
+        <div id="unicode-nfd" class="result-box result-warn"><span class="placeholder">入力すると表示</span></div>
+        <div class="char-count-row" id="nfd-info"><span>文字数: -</span><span>バイト数(UTF-8): -</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — 「が」の2パターン比較デモ</div>
+    <button class="btn btn-accent3" onclick="doGaDemo()">「が」比較デモ実行</button>
+    <div id="unicode-ga-demo" class="result-box"><span class="placeholder">ボタンを押すと「が」の2表現の比較結果が表示されます</span></div>
+  </div>
+
+  <div class="note">
+    <strong>実務での対策</strong>: 検索処理の前に必ず <code>str.normalize('NFC')</code> を適用する。
+    データベース保存時にも NFC で統一しておくと、検索・比較時のバグを防げます。
+  </div>
+
+  <details>
+    <summary>📊 Unicode 正規化の適用タイミング</summary>
+    <div class="mermaid">
+flowchart TD
+    U[ユーザー入力] --> Q{NFD を含む可能性}
+    Q -->|macOS IME など| Y[NFD が混入]
+    Q -->|Windows IME など| N[NFC が多い]
+    Y --> NFC1[normalize NFC を適用]
+    N --> NFC2[normalize NFC を適用]
+    NFC1 --> DB[(DB 保存 NFC 統一)]
+    NFC2 --> DB
+    DB --> SRCH[検索クエリも NFC 正規化]
+    SRCH --> MATCH[正確にマッチ]
+    </div>
+  </details>
+
+  <div class="warn-box" style="border-color:var(--accent3);background:#f3e5f5;">
+    <strong style="color:var(--accent3);">📋 初心者まとめ</strong><br>
+    覚える関数: <code>.normalize("NFC")</code><br>
+    よくある落とし穴: macOSで入力した「が」(NFD)がWindowsのDBに保存した「が」(NFC)と一致しない<br>
+    正しい使い方: 保存・検索どちらも <code>str.normalize("NFC")</code> を通してから比較する
+  </div>
+</div>
+
+<!-- ============================================================
+     2-C: HTML エスケープ
+     ============================================================ -->
+<h2 id="sec-2c">2-C: HTMLエスケープ — XSS攻撃を防ぐ</h2>
+
+<div class="lab-box">
+
+  <div class="beginner-box">
+    <div class="beg-title">🔰 初心者向け解説 — 掲示板に悪意のあるスクリプトを投稿された場合</div>
+    <ul>
+      <li><strong>利用シーン</strong>: 掲示板・コメント欄でユーザーが入力したテキストをページに表示するとき</li>
+      <li><strong>なぜ必要？</strong>: <code>innerHTML</code> はHTML として解釈される。エスケープなしだとスクリプトが実行される</li>
+      <li><strong>身近な例え</strong>: ユーザーの発言をそのまま「<strong>HTML の設計図</strong>」として渡してしまうと、悪意ある命令が紛れ込む</li>
+      <li><strong>対策</strong>: <code>&lt;</code>→<code>&amp;lt;</code> などに変換（エスケープ）してから <code>innerHTML</code> に渡す、または <code>textContent</code> を使う</li>
+    </ul>
+  </div>
+
+  <div class="diagram">エスケープ変換表
+
+  元の文字  →  エスケープ後         意味
+  ────────────────────────────────────────────
+  &         →  &amp;               アンパサンド
+  <         →  &lt;                タグ開始を無効化
+  >         →  &gt;                タグ終了を無効化
+  "         →  &quot;             属性値内のクォート
+  '         →  &#39;              シングルクォート
+
+  例： &lt;script&gt;alert(1)&lt;/script&gt;
+  →    &lt;script&gt;alert(1)&lt;/script&gt;
+  表示: テキストとして表示されるだけで実行されない ✓</div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — 悪意あるコードを入力して確認する</div>
+    <p>以下の例をコピーして貼り付けてみてください（実際には実行されません）：</p>
+    <div style="margin-bottom:0.5rem;font-size:0.8rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
+      <button class="btn btn-dim" style="font-size:0.75rem;padding:0.3rem 0.8rem;" onclick="setXssExample(1)">例1: script タグ</button>
+      <button class="btn btn-dim" style="font-size:0.75rem;padding:0.3rem 0.8rem;" onclick="setXssExample(2)">例2: img onerror</button>
+      <button class="btn btn-dim" style="font-size:0.75rem;padding:0.3rem 0.8rem;" onclick="setXssExample(3)">例3: 通常テキスト</button>
+    </div>
+    <input id="xss-input" class="input-area" type="text" value='&lt;script&gt;alert("XSS攻撃！")&lt;/script&gt;' oninput="doHtmlEscape()" style="font-size:0.9rem;padding:0.6rem 0.8rem;">
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — エスケープ前後の比較</div>
+    <div class="two-col">
+      <div>
+        <span class="label-badge badge-before">エスケープ前（危険）</span>
+        <div id="xss-raw" class="result-box result-danger"><span class="placeholder">入力すると表示</span></div>
+      </div>
+      <div>
+        <span class="label-badge badge-after">エスケープ後（安全）</span>
+        <div id="xss-escaped" class="result-box result-ok"><span class="placeholder">入力すると表示</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — innerHTML vs textContent の違いを体験する</div>
+    <button class="btn btn-accent" onclick="doInnerHtml()">innerHTML で描画（危険側）</button>
+    <button class="btn btn-accent2" onclick="doTextContent()">textContent で描画（安全側）</button>
+    <button class="btn btn-dim" onclick="clearRenderDemo()">クリア</button>
+    <p style="font-size:0.8rem;margin-top:0.4rem;color:var(--text-dim);">
+      ※ innerHTML は <code>securityLevel: 'loose'</code> 設定のため Mermaid が動作するが、本来 XSS 対策として script タグは多くのブラウザがブロックする。それでもエスケープは必須。
+    </p>
+    <div style="margin-top:0.5rem;">
+      <span class="label-badge badge-before">innerHTML で表示した結果</span>
+      <div id="render-inner" class="result-box" style="border-color:var(--danger);min-height:3rem;"></div>
+      <span class="label-badge badge-after">textContent で表示した結果</span>
+      <div id="render-text" class="result-box" style="border-color:var(--accent2);min-height:3rem;"></div>
+    </div>
+  </div>
+
+  <div class="warn-box">
+    <strong>innerHTML に直接ユーザー入力を渡すことは絶対に避けてください。</strong>
+    React / Vue / Angular などのモダンフレームワークは自動的にエスケープしますが、
+    <code>dangerouslySetInnerHTML</code> や <code>v-html</code> を使う場合は手動エスケープが必要です。
+  </div>
+
+  <details>
+    <summary>📊 XSS 攻撃と対策のフロー</summary>
+    <div class="mermaid">
+flowchart TD
+    U[ユーザー入力] --> CHK{エスケープする？}
+    CHK -->|No| IH[innerHTML に直接代入]
+    CHK -->|Yes| ESC[htmlEscape 関数を通す]
+    IH --> XSS[XSS 攻撃が成立]
+    ESC --> SAFE[テキストとして安全に表示]
+    XSS --> ATK[Cookie 窃取 / フィッシング / ページ改ざん]
+    SAFE --> OK[ユーザー安全]
+    </div>
+  </details>
+
+  <div class="warn-box" style="border-color:var(--accent3);background:#f3e5f5;">
+    <strong style="color:var(--accent3);">📋 初心者まとめ</strong><br>
+    覚える関数: <code>textContent</code> を使う（innerHTML を避ける）<br>
+    よくある落とし穴: <code>innerHTML</code> にユーザー入力をそのまま入れてXSS攻撃が成立<br>
+    正しい使い方: <code>el.textContent = userInput</code>（HTMLとして解釈されず安全）
+  </div>
+</div>
+
+<!-- ============================================================
+     2-D: Cookie エンコード
+     ============================================================ -->
+<h2 id="sec-2d">2-D: Cookie値のエンコード</h2>
+
+<div class="lab-box">
+
+  <div class="beginner-box">
+    <div class="beg-title">🔰 初心者向け解説 — ログイン状態の保存</div>
+    <ul>
+      <li><strong>利用シーン</strong>: 「ログイン状態を保持する」機能。ユーザーIDやセッション情報を Cookie に保存する</li>
+      <li><strong>なぜ必要？</strong>: Cookie の値に <code>;</code>（セミコロン）や <code>=</code>（イコール）が含まれると Cookie が壊れる。エンコードで回避する</li>
+      <li><strong>身近な例え</strong>: 荷物の伝票（Cookie文字列）に「=」や「;」が含まれると、伝票の解析が壊れてしまう。エンコードは<em>特殊文字を安全な文字に変換</em>する作業</li>
+      <li><strong>対策</strong>: 値を <code>encodeURIComponent()</code> でエンコードしてから <code>document.cookie</code> に設定する</li>
+    </ul>
+  </div>
+
+  <div class="diagram">Cookie 文字列の構造
+
+  document.cookie = "key=value; path=/; max-age=3600"
+                     ───┬─── ───┬───  ──┬──  ────┬───
+                        │       │       │         └─ 有効期間（秒）
+                        │       │       └─ 適用パス
+                        │       └─ 値（; や = を含むと壊れる！）
+                        └─ キー名
+
+  問題のある例：
+  key = "user=alice;role=admin"  ← ; や = が含まれる！
+  document.cookie = "key=user=alice;role=admin; path=/"
+                          ↑         ↑
+                         壊れる    次の属性として誤解析
+
+  正しい例：
+  encodeURIComponent("user=alice;role=admin")
+  → "user%3Dalice%3Brole%3Dadmin"  ← 安全
+  document.cookie = "key=user%3Dalice%3Brole%3Dadmin; path=/"</div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — Cookie に保存したい値を入力する</div>
+    <p>セミコロン <code>;</code> やイコール <code>=</code> を含む値を試してください：</p>
+    <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem;flex-wrap:wrap;">
+      <button class="btn btn-dim" style="font-size:0.75rem;padding:0.3rem 0.8rem;" onclick="setCookieExample(1)">例1: user=alice;role=admin</button>
+      <button class="btn btn-dim" style="font-size:0.75rem;padding:0.3rem 0.8rem;" onclick="setCookieExample(2)">例2: 日本語ユーザー名</button>
+      <button class="btn btn-dim" style="font-size:0.75rem;padding:0.3rem 0.8rem;" onclick="setCookieExample(3)">例3: JSON 文字列</button>
+    </div>
+    <input id="cookie-key-input" class="input-area" type="text" value="wdclab02_demo" placeholder="Cookie キー名" style="margin-bottom:0.4rem;">
+    <input id="cookie-val-input" class="input-area" type="text" value='user=alice;role=admin' oninput="doCookieEncode()" style="font-size:0.9rem;padding:0.6rem 0.8rem;">
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — エンコード結果を確認する</div>
+    <div class="two-col">
+      <div>
+        <span class="label-badge badge-before">エンコード前（危険）</span>
+        <div id="cookie-raw" class="result-box result-danger"><span class="placeholder">入力すると表示</span></div>
+      </div>
+      <div>
+        <span class="label-badge badge-after">encodeURIComponent 後（安全）</span>
+        <div id="cookie-encoded" class="result-box result-ok"><span class="placeholder">入力すると表示</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — 実際に Cookie を設定・取得する</div>
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+      <button class="btn btn-accent" onclick="doSetCookie()">Cookie を設定（encodeURIComponent）</button>
+      <button class="btn btn-accent2" onclick="doGetCookie()">Cookie を取得（decodeURIComponent）</button>
+      <button class="btn btn-warn" onclick="doSetCookieRaw()">⚠ エンコードなしで設定（比較用）</button>
+      <button class="btn btn-dim" onclick="clearCookieResult()">クリア</button>
+    </div>
+    <div id="cookie-result" class="result-box"><span class="placeholder">ボタンを押すと Cookie 操作の結果が表示されます</span></div>
+  </div>
+
+  <div class="note">
+    <strong>Secure / HttpOnly / SameSite</strong> 属性を追加するとさらに安全になります。
+    <code>SameSite=Strict</code> は CSRF 攻撃を防ぎ、<code>HttpOnly</code> は JavaScript からの Cookie アクセスを禁止します（重要情報の保護に必須）。
+  </div>
+
+</div>
+
+<!-- ============================================================
+     2-E: 総合実験
+     ============================================================ -->
+<h2 id="sec-2e">2-E: 総合実験 — 全変換を一括実行</h2>
+
+<div class="lab-box">
+
+  <div class="step">
+    <div class="step-num">STEP 1 — 任意のテキストを入力する</div>
+    <p>日本語・特殊文字・HTMLタグなど何でも入力してください：</p>
+    <input id="all-input" class="input-area" type="text" value='山田 <b>太郎</b> &amp; 佐藤; role=admin' style="font-size:0.9rem;padding:0.6rem 0.8rem;">
+    <div style="margin-top:0.5rem;">
+      <button class="btn btn-accent" onclick="doAllConversions()">全変換を一括実行</button>
+      <button class="btn btn-dim" onclick="resetAllInput()">リセット</button>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 3列比較（JSON化 / Unicode正規化 / HTMLエスケープ）</div>
+    <div class="three-col">
+      <div class="col-card card-encode">
+        <h4>📦 JSON 化</h4>
+        <pre id="all-json">—</pre>
+      </div>
+      <div class="col-card card-puny">
+        <h4>🔤 Unicode NFC 正規化</h4>
+        <pre id="all-unicode">—</pre>
+      </div>
+      <div class="col-card card-path">
+        <h4>🛡 HTMLエスケープ</h4>
+        <pre id="all-html">—</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — コンソール用コード（コピーして実行可能）</div>
+    <pre id="all-console-code">// ← 「全変換を一括実行」を押すと生成されます</pre>
+    <button class="btn btn-dim" onclick="copyConsoleCode()">コードをコピー</button>
+    <span id="copy-feedback" style="font-size:0.8rem;color:var(--accent2);margin-left:0.5rem;"></span>
+  </div>
+
+</div>
+
+<hr>
+
+<!-- ============================================================
+     チェックリスト
+     ============================================================ -->
+<h2 id="sec-checklist">✅ 実験チェックリスト</h2>
+<p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:0.8rem;">完了した実験にチェックを入れてください（ブラウザに保存されます）</p>
+
+<div id="checklist-container">
+  <label class="check-item" id="chk-wdc-lab02-1">
+    <input type="checkbox" data-key="wdc-lab02-1" onchange="saveCheck(this)">
+    <span>2-A: JSON.stringify でオブジェクトを文字列に変換した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab02-2">
+    <input type="checkbox" data-key="wdc-lab02-2" onchange="saveCheck(this)">
+    <span>2-A: JSON.parse で元のオブジェクトに戻した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab02-3">
+    <input type="checkbox" data-key="wdc-lab02-3" onchange="saveCheck(this)">
+    <span>2-A: Date 型が JSON 化で文字列に変わることを確認した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab02-4">
+    <input type="checkbox" data-key="wdc-lab02-4" onchange="saveCheck(this)">
+    <span>2-B: 「が」の NFC と NFD が別のコードポイントであることを確認した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab02-5">
+    <input type="checkbox" data-key="wdc-lab02-5" onchange="saveCheck(this)">
+    <span>2-B: normalize('NFC') で文字数・バイト数が変化することを確認した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab02-6">
+    <input type="checkbox" data-key="wdc-lab02-6" onchange="saveCheck(this)">
+    <span>2-C: script タグを入力してエスケープが無効化することを確認した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab02-7">
+    <input type="checkbox" data-key="wdc-lab02-7" onchange="saveCheck(this)">
+    <span>2-C: innerHTML と textContent の違いを体験した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab02-8">
+    <input type="checkbox" data-key="wdc-lab02-8" onchange="saveCheck(this)">
+    <span>2-D: セミコロン・イコールを含む値を encodeURIComponent でエスケープした</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab02-9">
+    <input type="checkbox" data-key="wdc-lab02-9" onchange="saveCheck(this)">
+    <span>2-D: Cookie の設定・取得を実行した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab02-10">
+    <input type="checkbox" data-key="wdc-lab02-10" onchange="saveCheck(this)">
+    <span>2-E: 総合実験で3変換を一括実行してコードをコピーした</span>
+  </label>
+</div>
+
+<hr>
+
+<!-- ============================================================
+     学習ノート
+     ============================================================ -->
+<h2 id="sec-notes">📝 学習ノート</h2>
+<p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:0.5rem;">気づきや疑問点をメモしてください（ブラウザに保存されます）</p>
+<textarea id="study-notes" class="note-textarea" placeholder="例: JSON.stringify の replacer 引数が気になった。normalize が必要な環境をもっと調べたい..." oninput="saveNotes()"></textarea>
+
+<!-- Nav Links -->
+<div class="nav-links">
+  <a href="web-data-conversion-lab-01.html">← Lab 01: URL・ドメイン関連の変換</a>
+  <a href="web-data-conversion-index.html">📋 マスター索引</a>
+  <a href="web-data-conversion-lab-03.html">Lab 03: バイナリ・数値変換 →</a>
+</div>
+
+<!-- ============================================================
+     JavaScript
+     ============================================================ -->
+<script>
+// ─── ユーティリティ ───────────────────────────────────────────────
+
+function htmlEscape(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function utf8ByteLength(str) {
+  return new TextEncoder().encode(str).length;
+}
+
+function codePoints(str) {
+  return [...str].map(c => 'U+' + c.codePointAt(0).toString(16).toUpperCase().padStart(4,'0')).join(' ');
+}
+
+// ─── 2-A: JSON stringify/parse ───────────────────────────────────
+
+const JSON_DEFAULT = '{ "name": "商品A", "price": 1980, "tags": ["sale", "新商品"], "created": "2026-04-02T09:00:00.000Z" }';
+
+function resetJsonInput() {
+  document.getElementById('json-input').value = JSON_DEFAULT;
+  document.getElementById('json-stringify-result').innerHTML = '<span class="placeholder">リセットしました</span>';
+  document.getElementById('json-parse-result').innerHTML = '<span class="placeholder">「元に戻す」を押してください</span>';
+}
+
+function doJsonStringify() {
+  const raw = document.getElementById('json-input').value.trim();
+  const resultEl = document.getElementById('json-stringify-result');
+  try {
+    const obj = eval('(' + raw + ')');
+    const jsonStr = JSON.stringify(obj);
+    resultEl.textContent = jsonStr;
+    resultEl.className = 'result-box result-ok';
+    document.getElementById('json-input').value = jsonStr;
+  } catch(e) {
+    resultEl.textContent = 'エラー: ' + e.message;
+    resultEl.className = 'result-box result-danger';
+  }
+}
+
+function doJsonParse() {
+  const raw = document.getElementById('json-input').value.trim();
+  const resultEl = document.getElementById('json-parse-result');
+  try {
+    const obj = JSON.parse(raw);
+    let info = '';
+    for (const [k, v] of Object.entries(obj)) {
+      info += k + ': ' + JSON.stringify(v) + '  (typeof=' + typeof v + ')\n';
+    }
+    resultEl.textContent = info || JSON.stringify(obj, null, 2);
+    resultEl.className = 'result-box result-ok';
+  } catch(e) {
+    resultEl.textContent = 'JSON パースエラー: ' + e.message + '\n\nまず「JSON 変換」ボタンで stringify してから実行してください。';
+    resultEl.className = 'result-box result-warn';
+  }
+}
+
+function doJsonPretty() {
+  const raw = document.getElementById('json-input').value.trim();
+  const resultEl = document.getElementById('json-stringify-result');
+  try {
+    const obj = eval('(' + raw + ')');
+    const pretty = JSON.stringify(obj, null, 2);
+    resultEl.textContent = pretty;
+    resultEl.className = 'result-box result-ok';
+  } catch(e) {
+    resultEl.textContent = 'エラー: ' + e.message;
+    resultEl.className = 'result-box result-danger';
+  }
+}
+
+function doDateDemo() {
+  const now = new Date();
+  const obj = { name: '商品A', createdAt: now, num: 42 };
+  const jsonStr = JSON.stringify(obj);
+  const parsed = JSON.parse(jsonStr);
+
+  const lines = [
+    '// 元のオブジェクト:',
+    'obj.createdAt instanceof Date  → ' + (obj.createdAt instanceof Date),
+    'typeof obj.createdAt           → ' + typeof obj.createdAt,
+    '',
+    '// JSON.stringify 後:',
+    jsonStr,
+    '',
+    '// JSON.parse 後:',
+    'parsed.createdAt instanceof Date → ' + (parsed.createdAt instanceof Date) + '  ← ⚠ false！',
+    'typeof parsed.createdAt          → ' + typeof parsed.createdAt + '  ← string になっている',
+    '',
+    '// 元に戻すには:',
+    'new Date(parsed.createdAt) instanceof Date → ' + (new Date(parsed.createdAt) instanceof Date) + ' ✓'
+  ];
+  const el = document.getElementById('json-date-result');
+  el.textContent = lines.join('\n');
+  el.className = 'result-box result-warn';
+}
+
+// ─── 2-B: Unicode 正規化 ────────────────────────────────────────
+
+function doUnicodeNorm() {
+  const raw = document.getElementById('unicode-input').value;
+  const nfc = raw.normalize('NFC');
+  const nfd = raw.normalize('NFD');
+
+  const rawBytes = utf8ByteLength(raw);
+  const nfcBytes = utf8ByteLength(nfc);
+  const nfdBytes = utf8ByteLength(nfd);
+
+  document.getElementById('unicode-raw-info').innerHTML =
+    '<span>入力文字数: ' + [...raw].length + '</span><span>バイト数(UTF-8): ' + rawBytes + '</span>';
+
+  const nfcEl = document.getElementById('unicode-nfc');
+  nfcEl.textContent = nfc || '（空）';
+  nfcEl.className = 'result-box result-ok';
+
+  const nfdEl = document.getElementById('unicode-nfd');
+  nfdEl.textContent = nfd || '（空）';
+  nfdEl.className = 'result-box result-warn';
+
+  document.getElementById('nfc-info').innerHTML =
+    '<span>文字数: ' + [...nfc].length + '</span><span>バイト数(UTF-8): ' + nfcBytes + '</span>';
+  document.getElementById('nfd-info').innerHTML =
+    '<span>文字数: ' + [...nfd].length + '</span><span>バイト数(UTF-8): ' + nfdBytes + '</span>';
+}
+
+// 初期表示
+window.addEventListener('DOMContentLoaded', function() {
+  doUnicodeNorm();
+  doCookieEncode();
+  doHtmlEscape();
+  loadChecks();
+  loadNotes();
+});
+
+function doGaDemo() {
+  // NFC の「が」(U+304C)
+  const gaNFC = '\u304C';
+  // NFD の「か」+ 結合濁点 (U+304B + U+3099)
+  const gaNFD = '\u304B\u3099';
+
+  const el = document.getElementById('unicode-ga-demo');
+  const lines = [
+    '// NFC の「が」: ' + gaNFC,
+    'コードポイント: ' + codePoints(gaNFC) + '  (1文字)',
+    '',
+    '// NFD の「が」(か + 結合濁点): ' + gaNFD,
+    'コードポイント: ' + codePoints(gaNFD) + '  (2文字)',
+    '',
+    '// 比較',
+    'gaNFC === gaNFD                  → ' + (gaNFC === gaNFD) + '  ← ⚠ false！検索バグの原因',
+    'gaNFC.length === gaNFD.length    → ' + (gaNFC.length === gaNFD.length),
+    '',
+    '// normalize で統一後',
+    'gaNFC.normalize("NFC") === gaNFD.normalize("NFC")  → ' + (gaNFC.normalize('NFC') === gaNFD.normalize('NFC')) + ' ✓',
+    'gaNFC.normalize("NFD") === gaNFD.normalize("NFD")  → ' + (gaNFC.normalize('NFD') === gaNFD.normalize('NFD')) + ' ✓',
+  ];
+  el.textContent = lines.join('\n');
+  el.className = 'result-box result-ok';
+}
+
+// ─── 2-C: HTML エスケープ ────────────────────────────────────────
+
+const XSS_EXAMPLES = [
+  '\x3cscript\x3ealert("XSS攻撃！")\x3c/script\x3e',
+  '<img src="x" onerror="alert(\'Cookie: \' + document.cookie)">',
+  'こんにちは！ 通常のテキストです。'
+];
+
+function setXssExample(n) {
+  document.getElementById('xss-input').value = XSS_EXAMPLES[n - 1];
+  doHtmlEscape();
+}
+
+function doHtmlEscape() {
+  const raw = document.getElementById('xss-input').value;
+  const escaped = htmlEscape(raw);
+
+  const rawEl = document.getElementById('xss-raw');
+  rawEl.textContent = raw;
+  rawEl.className = 'result-box ' + (raw.match(/[<>"'&]/) ? 'result-danger' : 'result-box');
+
+  const escEl = document.getElementById('xss-escaped');
+  escEl.textContent = escaped;
+  escEl.className = 'result-box result-ok';
+}
+
+function doInnerHtml() {
+  const raw = document.getElementById('xss-input').value;
+  document.getElementById('render-inner').innerHTML = raw;
+}
+
+function doTextContent() {
+  const raw = document.getElementById('xss-input').value;
+  document.getElementById('render-text').textContent = raw;
+}
+
+function clearRenderDemo() {
+  document.getElementById('render-inner').innerHTML = '';
+  document.getElementById('render-text').textContent = '';
+}
+
+// ─── 2-D: Cookie エンコード ──────────────────────────────────────
+
+const COOKIE_EXAMPLES = [
+  'user=alice;role=admin',
+  '山田 太郎 ユーザー',
+  '{"id":42,"name":"Alice","token":"abc&xyz=1"}'
+];
+
+function setCookieExample(n) {
+  document.getElementById('cookie-val-input').value = COOKIE_EXAMPLES[n - 1];
+  doCookieEncode();
+}
+
+function doCookieEncode() {
+  const val = document.getElementById('cookie-val-input').value;
+  const encoded = encodeURIComponent(val);
+
+  const rawEl = document.getElementById('cookie-raw');
+  rawEl.textContent = 'document.cookie = "key=' + val + '; path=/"';
+  rawEl.className = 'result-box ' + (val.match(/[;=]/) ? 'result-danger' : 'result-box');
+
+  const encEl = document.getElementById('cookie-encoded');
+  encEl.textContent = 'document.cookie = "key=' + encoded + '; path=/"';
+  encEl.className = 'result-box result-ok';
+}
+
+function doSetCookie() {
+  const key = document.getElementById('cookie-key-input').value.trim() || 'wdclab02_demo';
+  const val = document.getElementById('cookie-val-input').value;
+  const encoded = encodeURIComponent(val);
+  document.cookie = key + '=' + encoded + '; path=/; max-age=3600; SameSite=Strict';
+  const el = document.getElementById('cookie-result');
+  el.textContent = '✓ Cookie を設定しました\n\nキー: ' + key + '\n元の値: ' + val + '\nエンコード後: ' + encoded + '\n\n設定したCookie文字列:\n' + key + '=' + encoded + '; path=/; max-age=3600; SameSite=Strict';
+  el.className = 'result-box result-ok';
+}
+
+function doGetCookie() {
+  const key = document.getElementById('cookie-key-input').value.trim() || 'wdclab02_demo';
+  const cookies = document.cookie.split(';');
+  let found = null;
+  for (const c of cookies) {
+    const [k, v] = c.trim().split('=');
+    if (k === key && v !== undefined) {
+      found = v;
+      break;
+    }
+  }
+  const el = document.getElementById('cookie-result');
+  if (found !== null) {
+    const decoded = decodeURIComponent(found);
+    el.textContent = '✓ Cookie を取得しました\n\nキー: ' + key + '\n生の値（エンコード済）: ' + found + '\ndecodeURIComponent 後: ' + decoded;
+    el.className = 'result-box result-ok';
+  } else {
+    el.textContent = '⚠ キー「' + key + '」の Cookie が見つかりません。\nまず「Cookie を設定」を押してください。\n\n現在のすべての Cookie:\n' + (document.cookie || '（なし）');
+    el.className = 'result-box result-warn';
+  }
+}
+
+function doSetCookieRaw() {
+  const key = document.getElementById('cookie-key-input').value.trim() || 'wdclab02_raw';
+  const val = document.getElementById('cookie-val-input').value;
+  const el = document.getElementById('cookie-result');
+  try {
+    document.cookie = key + '_raw=' + val + '; path=/; max-age=3600';
+    const allCookies = document.cookie;
+    el.textContent = '⚠ エンコードなしで設定を試みました（セミコロン等で切り捨てが起きる可能性）\n\n設定しようとした値: ' + val + '\n\n現在のdocument.cookie:\n' + allCookies + '\n\n→ 値が意図通りに保存されているか確認してください。';
+    el.className = 'result-box result-warn';
+  } catch(e) {
+    el.textContent = 'エラー: ' + e.message;
+    el.className = 'result-box result-danger';
+  }
+}
+
+function clearCookieResult() {
+  document.getElementById('cookie-result').innerHTML = '<span class="placeholder">クリアしました</span>';
+  document.getElementById('cookie-result').className = 'result-box';
+}
+
+// ─── 2-E: 総合実験 ───────────────────────────────────────────────
+
+const ALL_DEFAULT = '山田 <b>太郎</b> &amp; 佐藤; role=admin';
+
+function resetAllInput() {
+  document.getElementById('all-input').value = ALL_DEFAULT;
+  document.getElementById('all-json').textContent = '—';
+  document.getElementById('all-unicode').textContent = '—';
+  document.getElementById('all-html').textContent = '—';
+  document.getElementById('all-console-code').textContent = '// ← 「全変換を一括実行」を押すと生成されます';
+}
+
+function doAllConversions() {
+  const raw = document.getElementById('all-input').value;
+
+  // JSON 化
+  const jsonResult = JSON.stringify(raw);
+  document.getElementById('all-json').textContent =
+    'input:\n' + raw + '\n\nJSON.stringify:\n' + jsonResult;
+
+  // Unicode NFC 正規化
+  const nfc = raw.normalize('NFC');
+  const nfd = raw.normalize('NFD');
+  document.getElementById('all-unicode').textContent =
+    'input 文字数: ' + [...raw].length + '\nNFC 文字数: ' + [...nfc].length + '\nNFD 文字数: ' + [...nfd].length + '\n\nNFC:\n' + nfc;
+
+  // HTML エスケープ
+  const escaped = htmlEscape(raw);
+  document.getElementById('all-html').textContent =
+    'input:\n' + raw + '\n\nescaped:\n' + escaped;
+
+  // コンソール用コード
+  const code =
+    '// === Lab 02 総合変換コード ===\n' +
+    'const input = ' + JSON.stringify(raw) + ';\n\n' +
+    '// 1. JSON シリアライズ\n' +
+    'const jsonStr = JSON.stringify(input);\n' +
+    'const parsed  = JSON.parse(jsonStr);\n' +
+    'console.log("JSON:", jsonStr);\n\n' +
+    '// 2. Unicode NFC 正規化\n' +
+    'const nfc = input.normalize("NFC");\n' +
+    'const nfd = input.normalize("NFD");\n' +
+    'console.log("NFC 文字数:", [...nfc].length, "NFD 文字数:", [...nfd].length);\n\n' +
+    '// 3. HTML エスケープ\n' +
+    'function htmlEscape(s) {\n' +
+    '  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;")\n' +
+    '          .replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/\'/g,"&#39;");\n' +
+    '}\n' +
+    'console.log("Escaped:", htmlEscape(input));\n\n' +
+    '// 4. Cookie エンコード\n' +
+    'console.log("Cookie safe:", encodeURIComponent(input));';
+
+  document.getElementById('all-console-code').textContent = code;
+}
+
+function copyConsoleCode() {
+  const code = document.getElementById('all-console-code').textContent;
+  navigator.clipboard.writeText(code).then(function() {
+    const fb = document.getElementById('copy-feedback');
+    fb.textContent = 'コピーしました ✓';
+    setTimeout(function() { fb.textContent = ''; }, 2000);
+  }).catch(function() {
+    const fb = document.getElementById('copy-feedback');
+    fb.textContent = '手動でコピーしてください';
+  });
+}
+
+// ─── チェックリスト ──────────────────────────────────────────────
+
+function saveCheck(el) {
+  const key = STORAGE_PREFIX + el.dataset.key;
+  localStorage.setItem(key, el.checked ? '1' : '0');
+  const label = el.closest('.check-item');
+  if (label) label.classList.toggle('checked', el.checked);
+}
+
+function loadChecks() {
+  document.querySelectorAll('[data-key]').forEach(function(el) {
+    const key = STORAGE_PREFIX + el.dataset.key;
+    const val = localStorage.getItem(key);
+    if (val === '1') {
+      el.checked = true;
+      const label = el.closest('.check-item');
+      if (label) label.classList.add('checked');
+    }
+  });
+}
+
+// ─── 学習ノート ──────────────────────────────────────────────────
+
+function saveNotes() {
+  localStorage.setItem(STORAGE_PREFIX + 'lab02_notes', document.getElementById('study-notes').value);
+}
+
+function loadNotes() {
+  const saved = localStorage.getItem(STORAGE_PREFIX + 'lab02_notes');
+  if (saved) document.getElementById('study-notes').value = saved;
+}
+</script>
+
+</body>
+</html>

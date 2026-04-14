@@ -1,0 +1,1365 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Web Data Conversion Lab 03: バイナリ・通信効率の変換</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;700&display=swap');
+
+  :root {
+    --bg: #ffffff;
+    --surface: #f5f7fa;
+    --surface2: #ebeef2;
+    --border: #c8cdd3;
+    --text: #1a1a2e;
+    --text-dim: #5c6370;
+    --accent: #005cc5;
+    --accent2: #22863a;
+    --accent3: #6f42c1;
+    --warn: #b08800;
+    --danger: #cb2431;
+    --code-bg: #f0f4f8;
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    padding: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  h1 { font-size: 1.6rem; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 0.8rem; margin-bottom: 1.5rem; font-family: 'IBM Plex Mono', monospace; }
+  h2 { font-size: 1.25rem; color: var(--accent2); margin: 2rem 0 1rem; font-family: 'IBM Plex Mono', monospace; }
+  h3 { font-size: 1.05rem; color: var(--accent3); margin: 1.5rem 0 0.8rem; }
+  p, li { font-size: 0.92rem; margin-bottom: 0.5rem; }
+
+  /* Status Bar */
+  .status-bar { display: flex; gap: 1rem; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.6rem 1rem; margin-bottom: 1.5rem; font-size: 0.82rem; font-family: 'IBM Plex Mono', monospace; flex-wrap: wrap; }
+  .status-item { display: flex; align-items: center; gap: 0.4rem; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-dim); animation: pulse 1.5s infinite; }
+  .status-dot.ok { background: var(--accent); animation: none; }
+  .status-dot.err { background: var(--danger); animation: none; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* Lab Section */
+  .lab-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin: 1.5rem 0; }
+
+  .step { background: var(--surface2); border-left: 3px solid var(--accent2); border-radius: 0 var(--radius) var(--radius) 0; padding: 1rem 1.2rem; margin: 1rem 0; }
+  .step-num { font-family: 'IBM Plex Mono', monospace; color: var(--accent2); font-weight: 600; font-size: 0.8rem; margin-bottom: 0.3rem; }
+
+  code, pre { font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; }
+  code { background: var(--code-bg); padding: 0.15rem 0.4rem; border-radius: 4px; color: var(--accent); }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; overflow-x: auto; margin: 0.8rem 0; line-height: 1.6; color: #24292e; }
+  pre .comment { color: #6a737d; }
+  pre .header-name { color: var(--accent2); }
+  pre .header-val { color: var(--accent); }
+  pre .highlight { color: var(--warn); font-weight: 600; }
+
+  .placeholder { color: var(--text-dim); font-style: italic; font-size: 0.8rem; }
+
+  .note { background: #e8f4fd; border: 1px solid #b6d4e8; border-radius: var(--radius); padding: 0.8rem 1rem; margin: 1rem 0; font-size: 0.85rem; color: var(--accent2); }
+  .note::before { content: "💡 "; }
+
+  .warn-box { background: #fff8e1; border: 1px solid #e6d590; border-radius: var(--radius); padding: 0.8rem 1rem; margin: 1rem 0; font-size: 0.85rem; color: var(--warn); }
+  .warn-box::before { content: "⚠️ "; }
+
+  .check-item { background: var(--surface2); border-radius: var(--radius); padding: 0.6rem 1rem; margin: 0.4rem 0; display: flex; align-items: center; gap: 0.6rem; font-size: 0.88rem; transition: opacity 0.3s; }
+  .check-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
+  .check-item.checked { opacity: 0.55; }
+
+  .diagram { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; line-height: 1.5; overflow-x: auto; white-space: pre; color: var(--text-dim); margin: 1rem 0; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.8rem; margin: 1rem 0; }
+  @media (max-width: 900px) { .three-col { grid-template-columns: 1fr; } }
+  @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+  .col-card { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.8rem; font-size: 0.8rem; }
+  .col-card h4 { font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; margin-bottom: 0.5rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); }
+  .col-card pre { border: none; padding: 0.4rem 0; margin: 0; font-size: 0.75rem; background: transparent; }
+  .col-card.card-encode { border-color: var(--accent); }
+  .col-card.card-encode h4 { color: var(--accent); }
+  .col-card.card-puny { border-color: var(--accent2); }
+  .col-card.card-puny h4 { color: var(--accent2); }
+  .col-card.card-path { border-color: var(--accent3); }
+  .col-card.card-path h4 { color: var(--accent3); }
+
+  .toc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.2rem; margin: 1rem 0 2rem; }
+  .toc a { display: inline-block; padding: 0.25rem 0.6rem; margin: 0.15rem; border-radius: 6px; font-size: 0.82rem; background: var(--surface2); transition: background 0.2s; }
+  .toc a:hover { background: var(--border); text-decoration: none; }
+
+  a { color: var(--accent2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  html { scroll-behavior: smooth; }
+
+  .btn { border: none; padding: 0.5rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; font-family: 'Noto Sans JP', sans-serif; margin: 0.3rem; transition: opacity 0.2s; }
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.97); }
+  .btn-accent  { background: var(--accent);  color: var(--bg); }
+  .btn-accent2 { background: var(--accent2); color: var(--bg); }
+  .btn-accent3 { background: var(--accent3); color: var(--bg); }
+  .btn-warn    { background: var(--warn);    color: var(--bg); }
+  .btn-dim     { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+
+  .input-area { width: 100%; background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 0.8rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; }
+
+  /* Conversion arrow */
+  .conv-arrow { text-align: center; font-size: 1.5rem; color: var(--accent2); margin: 0.5rem 0; }
+
+  /* Lab 03 追加スタイル */
+  .beginner-box { background: #f0fdf4; border: 1px solid #86efac; border-radius: var(--radius); padding: 1rem 1.2rem; margin: 1rem 0; font-size: 0.85rem; }
+  .beginner-box .beg-title { font-weight: 700; color: var(--accent2); margin-bottom: 0.5rem; font-size: 0.9rem; }
+  .beginner-box ul { padding-left: 1.2rem; }
+  .beginner-box li { margin-bottom: 0.3rem; }
+
+  .result-box { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin: 0.8rem 0; min-height: 3rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; white-space: pre-wrap; word-break: break-all; }
+  .result-box.result-ok { border-color: var(--accent2); background: #f0fdf4; }
+  .result-box.result-warn { border-color: var(--warn); background: #fff8e1; }
+  .result-box.result-danger { border-color: var(--danger); background: #fff0f0; }
+
+  .label-badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.72rem; font-family: 'IBM Plex Mono', monospace; font-weight: 600; margin-right: 0.3rem; }
+  .badge-before { background: #fee2e2; color: #991b1b; }
+  .badge-after  { background: #dcfce7; color: #166534; }
+  .badge-info   { background: #e0e7ff; color: #3730a3; }
+
+  details { margin: 1rem 0; }
+  details summary { cursor: pointer; font-weight: 600; font-size: 0.88rem; color: var(--accent3); padding: 0.5rem 0; }
+  details summary:hover { opacity: 0.8; }
+  details[open] summary { margin-bottom: 0.5rem; }
+
+  .note-textarea { width: 100%; min-height: 100px; background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 0.7rem 1rem; font-family: 'Noto Sans JP', sans-serif; font-size: 0.85rem; resize: vertical; }
+
+  .nav-links { display: flex; justify-content: space-between; align-items: center; margin-top: 3rem; padding-top: 1.5rem; border-top: 2px solid var(--border); font-size: 0.88rem; }
+  .nav-links a { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1rem; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); transition: background 0.2s; }
+  .nav-links a:hover { background: var(--border); text-decoration: none; }
+
+  /* Progress bar */
+  .progress-wrap { background: var(--surface2); border-radius: 20px; height: 20px; overflow: hidden; margin: 0.5rem 0; }
+  .progress-bar { height: 100%; border-radius: 20px; background: linear-gradient(90deg, var(--accent2), var(--accent)); transition: width 0.5s ease; display: flex; align-items: center; justify-content: flex-end; padding-right: 0.5rem; font-size: 0.7rem; color: white; font-family: 'IBM Plex Mono', monospace; font-weight: 600; min-width: 2.5rem; }
+
+  /* Byte display */
+  .byte-grid { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0.8rem 0; }
+  .byte-cell { background: var(--accent); color: white; border-radius: 4px; padding: 0.2rem 0.4rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; }
+  .byte-cell.byte-ascii { background: var(--accent2); }
+  .byte-cell.byte-multi { background: var(--accent3); }
+
+  /* Pipeline step display */
+  .pipeline-step { display: flex; align-items: flex-start; gap: 0.8rem; margin: 0.5rem 0; padding: 0.7rem 1rem; background: var(--surface2); border-radius: var(--radius); }
+  .pipeline-num { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: white; display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; font-weight: 600; flex-shrink: 0; }
+  .pipeline-content { flex: 1; }
+  .pipeline-label { font-size: 0.78rem; font-family: 'IBM Plex Mono', monospace; color: var(--text-dim); margin-bottom: 0.2rem; }
+  .pipeline-value { font-size: 0.82rem; font-family: 'IBM Plex Mono', monospace; color: var(--text); word-break: break-all; }
+  .pipeline-size { font-size: 0.72rem; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 0.1rem 0.4rem; margin-left: 0.4rem; color: var(--text-dim); }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });</script>
+</head>
+<body>
+
+<!-- Status Bar -->
+<div class="status-bar">
+  <div class="status-item">
+    <div class="status-dot" id="dot-protocol"></div>
+    <span id="status-protocol">プロトコル確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-compression"></div>
+    <span id="status-compression">CompressionStream: checking...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-devtools"></div>
+    <span>Console: <kbd style="background:var(--surface2);padding:0.1rem 0.4rem;border-radius:4px;">F12</kbd></span>
+  </div>
+</div>
+<p style="margin-bottom:0.5rem;font-size:0.82rem;"><a href="web-data-conversion-index.html" style="color:var(--accent);text-decoration:none;">← マスター索引に戻る</a></p>
+
+<script>
+(function() {
+  const dot = document.getElementById('dot-protocol');
+  const label = document.getElementById('status-protocol');
+  dot.classList.add('ok');
+  label.textContent = location.protocol === 'file:'
+    ? 'file:// (このLabはローカルでも動作します)'
+    : location.protocol + '// ✓';
+})();
+
+(function() {
+  const dot = document.getElementById('dot-compression');
+  const label = document.getElementById('status-compression');
+  if (typeof CompressionStream !== 'undefined') {
+    dot.classList.add('ok');
+    label.textContent = 'CompressionStream: available ✓';
+  } else {
+    dot.classList.add('err');
+    label.textContent = 'CompressionStream: unavailable (Chrome 80+ / Firefox 113+)';
+  }
+})();
+</script>
+
+<h1>🧪 Lab 03: バイナリ・通信効率の変換</h1>
+<p style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.3rem;font-family:'IBM Plex Mono',monospace;">Web Data Conversion Lab シリーズ</p>
+
+<p>
+  ブラウザはテキストだけでなく、画像・音声などの<strong>バイナリデータ</strong>も扱います。また、通信量を減らすために<strong>圧縮</strong>が使われます。
+  このLabではBase64・TextEncoder・CompressionStreamなど、現代のWebが使うバイナリ変換を体験します。
+</p>
+
+<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">⏱ 所要時間：25分</span>
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">難易度：★★☆</span>
+</div>
+<p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:1rem;">📋 前提知識：Lab 01（URL・ドメイン関連の変換）</p>
+
+<div class="lab-box" style="border-color:var(--accent); margin-bottom:1rem;">
+  <h3 style="color:var(--accent); margin-top:0;">🎯 このLabの学習目標</h3>
+  <p style="margin-bottom:0.3rem;">完了すると、以下ができるようになります：</p>
+  <div class="check-item" style="opacity:1;"><span>1. <code>btoa</code> / <code>atob</code> でBase64エンコード・デコードができる</span></div>
+  <div class="check-item" style="opacity:1;"><span>2. <code>TextEncoder</code> で文字列をUTF-8バイト列に変換し、文字ごとのバイト数の差を理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>3. <code>createObjectURL</code> と <code>toDataURL</code> の違いを説明できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>4. <code>CompressionStream</code> でGzip圧縮を実行し、圧縮率を確認する</span></div>
+  <div class="check-item" style="opacity:1;"><span>5. 日本語を含む文字列をBase64に安全に変換する正しい手順を実践できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>6. Object→JSON→TextEncoder→CompressionStreamの4段パイプラインを理解する</span></div>
+</div>
+
+<!-- 概要ダイアグラム -->
+<div class="diagram">テキスト / バイナリデータ変換の全体像
+
+  【文字列】                   【バイナリ】               【圧縮済み】
+
+  "Hello"    TextEncoder    [48 65 6c 6c 6f]               ┌──────┐
+  ──────────────────────▶  5 bytes (ASCII)                 │ Gzip │
+                                                           │圧縮  │
+  "あ"       TextEncoder    [e3 81 82]                      └──────┘
+  ──────────────────────▶  3 bytes (UTF-8)     CompressionStream
+                                               ──────────────────▶
+  "𠮷"       TextEncoder    [f0 a0 ae b7]        高反復テキスト
+  ──────────────────────▶  4 bytes (UTF-8)        → 60〜90% 削減
+
+  Uint8Array   btoa()     "SGVsbG8="
+  ────────────────────▶  Base64 (4/3倍サイズ)
+
+  Data URL: "data:image/png;base64,iVBOR..."
+  Object URL: "blob:https://example.com/uuid..."          </div>
+
+<details style="margin:0.5rem 0;">
+  <summary style="cursor:pointer;color:var(--accent);font-size:0.82rem;font-family:'IBM Plex Mono',monospace;">📊 Mermaid版を表示</summary>
+  <div class="mermaid">
+sequenceDiagram
+    participant T as テキスト
+    participant B as バイナリ(Uint8Array)
+    participant S as Base64文字列
+    participant C as 圧縮データ
+    T->>B: TextEncoder encode
+    B->>S: btoa でBase64変換
+    S-->>B: atob でデコード
+    B-->>T: TextDecoder decode
+    T->>C: CompressionStream gzip
+    C-->>T: DecompressionStream 展開
+  </div>
+</details>
+
+<!-- TOC -->
+<div class="toc">
+  <strong style="color:var(--text-dim);font-size:0.82rem;">目次:</strong><br>
+  <a href="#exp-3a">3-A: Base64エンコード/デコード</a>
+  <a href="#exp-3b">3-B: TextEncoder / TextDecoder</a>
+  <a href="#exp-3c">3-C: Object URL と Data URL</a>
+  <a href="#exp-3d">3-D: CompressionStream</a>
+  <a href="#exp-3e">3-E: マルチバイト文字のBase64</a>
+  <a href="#exp-3f">3-F: 総合実験パイプライン</a>
+  <a href="#sec-checklist">✅ チェックリスト</a>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 3-A: Base64エンコード/デコード -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-3a">
+  <h3>実験 3-A: Base64エンコード / デコード</h3>
+  <p>
+    <strong>Base64</strong>は、バイナリデータを64種類のASCII文字（A-Z / a-z / 0-9 / + / /）で表現するエンコード方式です。
+    <code>btoa()</code>（Binary to ASCII）でエンコード、<code>atob()</code>（ASCII to Binary）でデコードします。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — テキストをBase64にエンコードする（リアルタイム）</div>
+    <p>ASCII文字のみ入力してください。日本語は 3-E で扱います。</p>
+    <input type="text" class="input-area" id="b64-input" value="Hello, World!" placeholder="ASCII文字を入力...">
+    <div class="conv-arrow">↓ btoa() ↓</div>
+    <div class="result-box" id="b64-encode-out"><span class="placeholder">上に文字列を入力してください</span></div>
+    <div class="conv-arrow">↓ atob() でデコード ↓</div>
+    <div class="result-box" id="b64-decode-out"><span class="placeholder">エンコード後に自動でデコードします</span></div>
+  </div>
+
+  <script>
+    const b64Input = document.getElementById('b64-input');
+
+    function updateBase64() {
+      const raw = b64Input.value;
+      const encOut = document.getElementById('b64-encode-out');
+      const decOut = document.getElementById('b64-decode-out');
+      if (!raw) {
+        encOut.innerHTML = '<span class="placeholder">入力してください</span>';
+        decOut.innerHTML = '<span class="placeholder">—</span>';
+        return;
+      }
+      try {
+        const encoded = btoa(raw);
+        const decoded = atob(encoded);
+        encOut.className = 'result-box result-ok';
+        encOut.textContent = 'Base64: ' + encoded + '\n\n'
+          + '元のバイト数:    ' + raw.length + '\n'
+          + 'Base64後の長さ: ' + encoded.length + '\n'
+          + '増加率:         ' + (encoded.length / raw.length * 100).toFixed(1) + '% (理論値: 133.3%)';
+        decOut.className = 'result-box result-ok';
+        decOut.textContent = 'デコード結果: "' + decoded + '"\n'
+          + '往復確認: ' + (raw === decoded ? '✓ 完全一致' : '✗ 不一致');
+      } catch(e) {
+        encOut.className = 'result-box result-danger';
+        encOut.textContent = 'エラー: ' + e.message + '\n\nbtoa() はLatin-1文字のみ対応です。\n日本語などは 3-E の手順を使ってください。';
+        decOut.innerHTML = '<span class="placeholder">—</span>';
+      }
+    }
+
+    b64Input.addEventListener('input', updateBase64);
+    updateBase64();
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — バイナリデータ（Uint8Array）のBase64化</div>
+    <p>画像ファイルの先頭バイトや、任意のバイト列をBase64に変換する例です。</p>
+    <button class="btn btn-accent" onclick="doBinaryBase64('png')">PNGヘッダ (8バイト)</button>
+    <button class="btn btn-accent2" onclick="doBinaryBase64('pdf')">PDFヘッダ (5バイト)</button>
+    <button class="btn btn-accent3" onclick="doBinaryBase64('random')">ランダムバイト (16バイト)</button>
+    <div class="result-box" id="binary-b64-out"><span class="placeholder">ボタンを押すとバイナリデータをBase64化します</span></div>
+    <script>
+      function doBinaryBase64(type) {
+        let bytes;
+        let label;
+        if (type === 'png') {
+          bytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+          label = 'PNG シグネチャ';
+        } else if (type === 'pdf') {
+          bytes = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2D]);
+          label = 'PDF シグネチャ (%PDF-)';
+        } else {
+          bytes = crypto.getRandomValues(new Uint8Array(16));
+          label = 'ランダム 16バイト';
+        }
+        const latin1 = Array.from(bytes, b => String.fromCharCode(b)).join('');
+        const encoded = btoa(latin1);
+        const hexStr = Array.from(bytes, b => b.toString(16).padStart(2,'0')).join(' ');
+        const out = document.getElementById('binary-b64-out');
+        out.className = 'result-box result-ok';
+        out.textContent = label + '\n\n'
+          + '16進数:  ' + hexStr + '\n'
+          + '10進数:  ' + Array.from(bytes).join(', ') + '\n\n'
+          + 'Base64:  ' + encoded + '\n\n'
+          + 'バイト数: ' + bytes.length + '  →  Base64長: ' + encoded.length;
+      }
+    </script>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — Base64Url 形式への変換</div>
+    <p>JWTなどで使われる <strong>Base64Url</strong> は、URLセーフな変形です。<code>+</code>→<code>-</code>、<code>/</code>→<code>_</code>、末尾の<code>=</code>を除去します。</p>
+    <button class="btn btn-accent" onclick="doBase64Url()">Base64Url 変換を実行</button>
+    <div class="result-box" id="b64url-out"><span class="placeholder">ボタンを押してください</span></div>
+    <script>
+      function toBase64Url(base64) {
+        return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      }
+      function fromBase64Url(b64url) {
+        let base64 = b64url.replace(/-/g, '+').replace(/_/g, '/');
+        while (base64.length % 4 !== 0) base64 += '=';
+        return base64;
+      }
+      function doBase64Url() {
+        const samples = [
+          { label: 'JWT header', data: '{"alg":"HS256","typ":"JWT"}' },
+          { label: 'バイナリ (+/ が含まれる例)', data: '\xfb\xff\xfe' }
+        ];
+        let result = '';
+        for (const s of samples) {
+          const b64 = btoa(s.data);
+          const b64url = toBase64Url(b64);
+          const restored = fromBase64Url(b64url);
+          result += '--- ' + s.label + ' ---\n';
+          result += 'Base64:    ' + b64 + '\n';
+          result += 'Base64Url: ' + b64url + '\n';
+          result += '復元確認:  ' + (b64 === restored ? '✓ パディング復元OK' : '✗ 不一致') + '\n\n';
+        }
+        const out = document.getElementById('b64url-out');
+        out.className = 'result-box result-ok';
+        out.textContent = result.trim();
+      }
+    </script>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 4 — btoa("日本語") はエラーになる（デモ）</div>
+    <p>日本語文字はLatin-1（0–255）の範囲を超えるため、<code>btoa()</code> に直接渡すとエラーになります。</p>
+    <button class="btn btn-warn" onclick="doBtoaError()">btoa("日本語") を実行してみる</button>
+    <div class="result-box" id="btoa-error-out"><span class="placeholder">ボタンを押してエラーを体験してください</span></div>
+    <script>
+      function doBtoaError() {
+        const out = document.getElementById('btoa-error-out');
+        try {
+          const result = btoa('日本語');
+          out.className = 'result-box result-ok';
+          out.textContent = '結果: ' + result + '\n（このブラウザでは変換できてしまいました）';
+        } catch(e) {
+          out.className = 'result-box result-danger';
+          out.textContent = 'エラー発生!\n' + e.name + ': ' + e.message + '\n\n'
+            + '理由: "日" のコードポイントは U+65E5 = 26085\n'
+            + 'btoa() はコードポイントが 0〜255 のLatin-1文字のみ受け付けます。\n\n'
+            + '→ 解決方法は 実験 3-E で学びます';
+        }
+      }
+    </script>
+  </div>
+
+  <div class="beginner-box">
+    <div class="beg-title">🔰 画像をメールに添付するときのBase64</div>
+    <ul>
+      <li>メールの本文は文字（テキスト）しか送れない形式が基本です</li>
+      <li>画像（バイナリ）をそのまま埋め込むと文字化けします</li>
+      <li>そこでBase64変換で「文字列」に変換してから送ります（MIME仕様）</li>
+      <li>受信側は<code>atob()</code>相当の処理でバイナリに戻して画像を表示します</li>
+      <li>Base64は元のサイズより約33%大きくなるというトレードオフがあります</li>
+    </ul>
+  </div>
+
+  <div class="note">
+    <strong>📌 2026年の新標準: Uint8Array.prototype.toBase64()</strong><br>
+    <code>btoa/atob</code> の Latin1 制約を解消する新しい ECMAScript 標準メソッドが登場しつつあります。<br>
+    <code>new Uint8Array([72,101,108]).toBase64()</code> → <code>"SGVs"</code><br>
+    ブラウザ対応状況を確認の上、使用を検討してください（2026年4月時点では一部ブラウザのみ対応）。
+  </div>
+
+  <div class="warn-box" style="border-color:var(--accent3);background:#f3e5f5;">
+    <strong style="color:var(--accent3);">📋 初心者まとめ</strong><br>
+    覚える関数: <code>btoa()</code> / <code>atob()</code><br>
+    よくある落とし穴: <code>btoa("日本語")</code> を直接呼ぶとInvalidCharacterErrorが発生<br>
+    正しい使い方: TextEncoderでUTF-8バイト列に変換してからBase64化する
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 3-B: TextEncoder / TextDecoder -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-3b">
+  <h3>実験 3-B: TextEncoder / TextDecoder</h3>
+  <p>
+    <code>TextEncoder</code> は文字列をUTF-8のバイト列（<code>Uint8Array</code>）に変換します。
+    文字によってバイト数が異なります：ASCII=1バイト、日本語=3バイト、一部の絵文字・漢字=4バイト。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — 文字列をUTF-8バイト列に変換する</div>
+    <input type="text" class="input-area" id="enc-input" value="A あ 𠮷" placeholder="変換したい文字列を入力...">
+    <div class="conv-arrow">↓ TextEncoder().encode() ↓</div>
+    <div class="result-box" id="enc-output"><span class="placeholder">入力すると各文字のバイト数が表示されます</span></div>
+    <div id="byte-visual" class="byte-grid"></div>
+    <script>
+      const encInput = document.getElementById('enc-input');
+
+      function updateEncoder() {
+        const str = encInput.value;
+        const out = document.getElementById('enc-output');
+        const visual = document.getElementById('byte-visual');
+        if (!str) {
+          out.innerHTML = '<span class="placeholder">入力してください</span>';
+          visual.innerHTML = '';
+          return;
+        }
+        const encoder = new TextEncoder();
+        const bytes = encoder.encode(str);
+        let charInfo = '';
+        let pos = 0;
+        const chars = [...str];
+        visual.innerHTML = '';
+        for (const ch of chars) {
+          const chBytes = encoder.encode(ch);
+          const hex = Array.from(chBytes, b => b.toString(16).padStart(2,'0')).join(' ');
+          const cp = ch.codePointAt(0);
+          let category = '';
+          let cssClass = 'byte-cell';
+          if (cp < 128) { category = 'ASCII (1バイト)'; cssClass += ' byte-ascii'; }
+          else if (cp < 0x10000) { category = 'BMP (2〜3バイト)'; cssClass += ' byte-multi'; }
+          else { category = 'サロゲートペア (4バイト)'; cssClass += ' byte-multi'; }
+          charInfo += '"' + ch + '"  U+' + cp.toString(16).toUpperCase().padStart(4,'0')
+            + '  ' + chBytes.length + 'バイト  ' + category + '\n'
+            + '  hex: ' + hex + '\n';
+          for (const b of chBytes) {
+            const cell = document.createElement('span');
+            cell.className = cssClass;
+            cell.textContent = b.toString(16).padStart(2,'0');
+            cell.title = '"' + ch + '" のバイト';
+            visual.appendChild(cell);
+          }
+        }
+        out.className = 'result-box result-ok';
+        out.textContent = '合計バイト数: ' + bytes.length + ' bytes\n'
+          + '文字数 (length): ' + str.length + '\n'
+          + 'コードポイント数: ' + chars.length + '\n\n'
+          + charInfo.trim();
+      }
+
+      encInput.addEventListener('input', updateEncoder);
+      updateEncoder();
+    </script>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 1バイト・3バイト・4バイト文字を比較する</div>
+    <button class="btn btn-accent" onclick="encInput.value='A';updateEncoder();">「A」= 1バイト</button>
+    <button class="btn btn-accent2" onclick="encInput.value='あ';updateEncoder();">「あ」= 3バイト</button>
+    <button class="btn btn-accent3" onclick="encInput.value='𠮷';updateEncoder();">「𠮷」= 4バイト</button>
+    <button class="btn btn-warn" onclick="encInput.value='Hello World!';updateEncoder();">英語</button>
+    <button class="btn btn-dim" onclick="encInput.value='日本語テスト ABC';updateEncoder();">日英混在</button>
+    <div class="note">青色セル = ASCII (1バイト)、紫色セル = マルチバイト文字の各バイト</div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — TextDecoder でバイト列を文字列に戻す</div>
+    <p>16進数のバイト列を入力してデコードします（スペース区切り）。</p>
+    <input type="text" class="input-area" id="dec-hex-input" value="e3 81 82 e3 81 84 e3 81 86" placeholder="hex bytes (スペース区切り): e3 81 82 ...">
+    <div style="margin:0.3rem 0;">
+      <button class="btn btn-accent" onclick="document.getElementById('dec-hex-input').value='41 42 43';doDecodeHex();">ABC (ASCII)</button>
+      <button class="btn btn-accent2" onclick="document.getElementById('dec-hex-input').value='e3 81 82';doDecodeHex();">「あ」(UTF-8)</button>
+      <button class="btn btn-accent3" onclick="document.getElementById('dec-hex-input').value='f0 a0 ae b7';doDecodeHex();">「𠮷」(4バイト)</button>
+    </div>
+    <button class="btn btn-accent2" onclick="doDecodeHex()">デコード実行</button>
+    <div class="result-box" id="dec-hex-out"><span class="placeholder">16進数を入力してデコードボタンを押してください</span></div>
+    <script>
+      function doDecodeHex() {
+        const hexStr = document.getElementById('dec-hex-input').value.trim();
+        const out = document.getElementById('dec-hex-out');
+        try {
+          const bytes = new Uint8Array(hexStr.split(/\s+/).filter(s => s).map(h => parseInt(h, 16)));
+          const decoded = new TextDecoder('utf-8').decode(bytes);
+          out.className = 'result-box result-ok';
+          out.textContent = 'バイト列: [' + Array.from(bytes).join(', ') + ']\n'
+            + 'バイト数: ' + bytes.length + '\n'
+            + 'デコード結果: "' + decoded + '"\n'
+            + '文字数: ' + decoded.length;
+        } catch(e) {
+          out.className = 'result-box result-danger';
+          out.textContent = 'エラー: ' + e.message;
+        }
+      }
+    </script>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 4 — TextDecoder のエンコーディング指定（レガシー対応）</div>
+    <p>古いシステムとの連携では Shift_JIS や EUC-JP のデータを扱う場合があります。</p>
+    <button class="btn btn-accent" onclick="doLegacyDecode()">レガシーエンコーディングデモ</button>
+    <div class="result-box" id="legacy-dec-out"><span class="placeholder">ボタンを押してください</span></div>
+    <script>
+      function doLegacyDecode() {
+        const out = document.getElementById('legacy-dec-out');
+        const lines = [];
+
+        // UTF-8 "日本語" バイト列
+        const utf8Bytes = new TextEncoder().encode('日本語');
+        lines.push('--- TextDecoder("utf-8") で "日本語" をデコード ---');
+        lines.push('UTF-8 バイト列: ' + Array.from(utf8Bytes, b => b.toString(16).padStart(2,'0')).join(' '));
+        lines.push('デコード結果: "' + new TextDecoder('utf-8').decode(utf8Bytes) + '"');
+        lines.push('');
+
+        // Shift_JIS のサポート確認
+        try {
+          const sjisDecoder = new TextDecoder('shift_jis');
+          lines.push('TextDecoder("shift_jis") 対応: ✓ available');
+          lines.push('用途: 古いファイルやAPIとのShift_JIS互換');
+        } catch(e) {
+          lines.push('TextDecoder("shift_jis"): 非対応 (' + e.message + ')');
+        }
+        lines.push('');
+
+        // UTF-16
+        try {
+          const utf16 = new TextDecoder('utf-16le');
+          const buf = new Uint8Array([0x65, 0x65, 0x2c, 0x8a, 0x9e, 0x30]);
+          lines.push('--- TextDecoder("utf-16le") ---');
+          lines.push('バイト列: ' + Array.from(buf, b => b.toString(16).padStart(2,'0')).join(' '));
+          lines.push('デコード: "' + utf16.decode(buf) + '"');
+        } catch(e) {
+          lines.push('UTF-16LE: ' + e.message);
+        }
+
+        out.className = 'result-box result-ok';
+        out.textContent = lines.join('\n');
+      }
+    </script>
+  </div>
+
+  <div class="beginner-box">
+    <div class="beg-title">🔰 日本語が文字化けする原因</div>
+    <ul>
+      <li>「文字化け」は、実際のバイト列と、解釈するエンコーディングがずれたときに起きます</li>
+      <li>例：Shift_JISで書いたファイルをUTF-8として読むと文字化けします</li>
+      <li><code>TextDecoder</code> の第1引数でエンコーディングを明示することで防げます</li>
+      <li>現代のWebでは <strong>UTF-8を統一して使う</strong> のがベストプラクティスです</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 3-C: Object URL と Data URL -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-3c">
+  <h3>実験 3-C: Object URL と Data URL</h3>
+  <p>
+    ブラウザでローカルファイルや生成したデータを <code>&lt;img&gt;</code> に表示する方法は2種類あります。
+    <strong>Object URL</strong>（<code>createObjectURL</code>）は一時的なURL参照、
+    <strong>Data URL</strong>（<code>toDataURL</code>）はデータそのものをURLに埋め込みます。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — Blob からの Object URL 生成・解放</div>
+    <button class="btn btn-accent" onclick="doObjectUrl()">Object URL を生成して img 表示</button>
+    <button class="btn btn-warn" id="revoke-btn" onclick="doRevokeUrl()" style="display:none;">revokeObjectURL で解放</button>
+    <div class="result-box" id="objurl-out"><span class="placeholder">ボタンを押してください</span></div>
+    <div id="objurl-img-wrap" style="margin-top:0.5rem;"></div>
+    <script>
+      let currentObjectUrl = null;
+      function doObjectUrl() {
+        const svgContent = '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="60">'
+          + '<rect width="160" height="60" rx="8" fill="#005cc5"/>'
+          + '<text x="80" y="36" text-anchor="middle" fill="white" font-size="14" font-family="sans-serif">Object URL Demo</text>'
+          + '</svg>';
+        const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+        if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
+        currentObjectUrl = URL.createObjectURL(blob);
+        const out = document.getElementById('objurl-out');
+        out.className = 'result-box result-ok';
+        out.textContent = 'Blob サイズ: ' + blob.size + ' bytes\n'
+          + 'Object URL: ' + currentObjectUrl + '\n\n'
+          + '特徴:\n'
+          + '- メモリ上のデータへの一時的な参照\n'
+          + '- 同じウィンドウ内でのみ有効\n'
+          + '- revokeObjectURL() で明示的に解放が必要\n'
+          + '- URL自体はデータを含まない（短い）';
+        const wrap = document.getElementById('objurl-img-wrap');
+        wrap.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = currentObjectUrl;
+        img.style.border = '1px solid var(--border)';
+        img.style.borderRadius = '6px';
+        wrap.appendChild(img);
+        document.getElementById('revoke-btn').style.display = 'inline';
+      }
+
+      function doRevokeUrl() {
+        if (currentObjectUrl) {
+          URL.revokeObjectURL(currentObjectUrl);
+          const out = document.getElementById('objurl-out');
+          out.className = 'result-box result-warn';
+          out.textContent = 'revokeObjectURL() を呼び出しました。\n\n'
+            + '解放済み URL: ' + currentObjectUrl + '\n\n'
+            + '画像は表示されなくなります（メモリ解放済み）\n'
+            + '→ 画像要素は残りますが、再読み込みすると表示されません';
+          const imgs = document.querySelectorAll('#objurl-img-wrap img');
+          imgs.forEach(img => img.style.opacity = '0.3');
+          currentObjectUrl = null;
+          document.getElementById('revoke-btn').style.display = 'none';
+        }
+      }
+    </script>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — canvas.toDataURL で Data URL 生成</div>
+    <button class="btn btn-accent2" onclick="doDataUrl()">canvas → Data URL 生成</button>
+    <div class="result-box" id="dataurl-out"><span class="placeholder">ボタンを押してください</span></div>
+    <canvas id="demo-canvas" width="160" height="60" style="display:none;"></canvas>
+    <div id="dataurl-img-wrap" style="margin-top:0.5rem;"></div>
+    <script>
+      function doDataUrl() {
+        const canvas = document.getElementById('demo-canvas');
+        const ctx = canvas.getContext('2d');
+        const grad = ctx.createLinearGradient(0,0,160,0);
+        grad.addColorStop(0, '#22863a');
+        grad.addColorStop(1, '#005cc5');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.roundRect(0, 0, 160, 60, 8);
+        ctx.fill();
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Data URL Demo', 80, 36);
+        const dataUrl = canvas.toDataURL('image/png');
+        const out = document.getElementById('dataurl-out');
+        out.className = 'result-box result-ok';
+        out.textContent = 'Data URL 長さ: ' + dataUrl.length + ' 文字\n'
+          + '先頭50文字: ' + dataUrl.substring(0, 50) + '...\n\n'
+          + '特徴:\n'
+          + '- データそのものがURLに含まれる\n'
+          + '- どこでも（オフラインでも）使える\n'
+          + '- revokeObjectURL 不要\n'
+          + '- サイズはBase64分（約33%）増加';
+        const wrap = document.getElementById('dataurl-img-wrap');
+        wrap.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = dataUrl;
+        img.style.border = '1px solid var(--border)';
+        img.style.borderRadius = '6px';
+        wrap.appendChild(img);
+      }
+    </script>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — Object URL vs Data URL の比較</div>
+    <div class="two-col">
+      <div class="col-card card-encode">
+        <h4>📎 Object URL (createObjectURL)</h4>
+        <pre>形式: blob:origin/uuid
+例: blob:http://localhost/abc-123
+
+✓ 短いURL（データ非含有）
+✓ 大きなファイルに最適
+✓ 同一オリジンのみ参照可
+✗ revokeObjectURL() が必要
+✗ ページ閉じると無効</pre>
+      </div>
+      <div class="col-card card-puny">
+        <h4>🔗 Data URL (toDataURL)</h4>
+        <pre>形式: data:mime;base64,データ
+例: data:image/png;base64,iVBOR...
+
+✓ URLのみで完結（外部参照なし）
+✓ CSSやHTMLに埋め込み可能
+✓ オフラインでも動作
+✗ データが長い（+33%）
+✗ キャッシュ効きにくい</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="beginner-box">
+    <div class="beg-title">🔰 プロフィール画像のプレビュー表示</div>
+    <ul>
+      <li>ユーザーが画像ファイルを選択したとき、サーバーに送る前にプレビューを表示したいことがあります</li>
+      <li>そのときに <code>createObjectURL(file)</code> が使えます — サーバー通信なしで即座に表示できます</li>
+      <li>画像アップロード完了後は <code>revokeObjectURL()</code> でメモリを解放します</li>
+      <li>小さなアイコンや生成したグラフは Data URL でHTMLに埋め込む方法もよく使われます</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 3-D: CompressionStream / DecompressionStream -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-3d">
+  <h3>実験 3-D: CompressionStream / DecompressionStream</h3>
+  <p>
+    <code>CompressionStream</code> はブラウザネイティブのストリーム圧縮APIです。
+    Gzip形式でテキストを圧縮でき、サーバーへ送るデータ量を削減できます。
+  </p>
+
+  <div id="comp-unavail" class="warn-box" style="display:none;">
+    CompressionStream はこのブラウザでは利用できません。Chrome 80+ / Firefox 113+ / Edge 80+ で動作します。
+  </div>
+
+  <script>
+    if (typeof CompressionStream === 'undefined') {
+      document.getElementById('comp-unavail').style.display = 'block';
+    }
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — テキストを Gzip 圧縮して圧縮率を確認する</div>
+    <textarea class="input-area" id="comp-input" rows="4" placeholder="圧縮するテキストを入力...">aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa</textarea>
+    <div style="margin:0.3rem 0;">
+      <button class="btn btn-dim" onclick="document.getElementById('comp-input').value='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';doCompress();">同じ文字の繰り返し</button>
+      <button class="btn btn-dim" onclick="document.getElementById('comp-input').value='Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet.';doCompress();">英語テキスト</button>
+      <button class="btn btn-dim" onclick="document.getElementById('comp-input').value='日本語のテキストを圧縮テスト。データ通信の効率化のためにGzip圧縮が使われます。同じ単語が繰り返される文章は高い圧縮率を実現します。日本語テスト。';doCompress();">日本語テキスト</button>
+    </div>
+    <button class="btn btn-accent" onclick="doCompress()">Gzip 圧縮を実行</button>
+    <div class="result-box" id="comp-out"><span class="placeholder">テキストを入力して圧縮ボタンを押してください</span></div>
+    <div id="comp-progress-wrap" style="display:none; margin-top:0.5rem;">
+      <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:0.2rem;font-family:'IBM Plex Mono',monospace;">圧縮後サイズ（元サイズ比）</div>
+      <div class="progress-wrap">
+        <div class="progress-bar" id="comp-progress-bar" style="width:100%;">100%</div>
+      </div>
+    </div>
+    <script>
+      async function compress(text, format) {
+        const encoder = new TextEncoder();
+        const bytes = encoder.encode(text);
+        const cs = new CompressionStream(format);
+        const writer = cs.writable.getWriter();
+        writer.write(bytes);
+        writer.close();
+        const chunks = [];
+        const reader = cs.readable.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+        }
+        let totalLen = 0;
+        for (const c of chunks) totalLen += c.length;
+        const result = new Uint8Array(totalLen);
+        let offset = 0;
+        for (const c of chunks) { result.set(c, offset); offset += c.length; }
+        return result;
+      }
+
+      async function decompress(bytes, format) {
+        const ds = new DecompressionStream(format);
+        const writer = ds.writable.getWriter();
+        writer.write(bytes);
+        writer.close();
+        const chunks = [];
+        const reader = ds.readable.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+        }
+        let totalLen = 0;
+        for (const c of chunks) totalLen += c.length;
+        const result = new Uint8Array(totalLen);
+        let offset = 0;
+        for (const c of chunks) { result.set(c, offset); offset += c.length; }
+        return new TextDecoder().decode(result);
+      }
+
+      async function doCompress() {
+        if (typeof CompressionStream === 'undefined') {
+          document.getElementById('comp-out').className = 'result-box result-danger';
+          document.getElementById('comp-out').textContent = 'CompressionStream はこのブラウザで利用できません。';
+          return;
+        }
+        const text = document.getElementById('comp-input').value;
+        const out = document.getElementById('comp-out');
+        out.textContent = '圧縮中...';
+        out.className = 'result-box';
+        try {
+          const originalBytes = new TextEncoder().encode(text).length;
+          const compressed = await compress(text, 'gzip');
+          const ratio = (compressed.length / originalBytes * 100).toFixed(1);
+          const savedPct = (100 - parseFloat(ratio)).toFixed(1);
+          out.className = 'result-box result-ok';
+          out.textContent = '元のサイズ: ' + originalBytes + ' bytes\n'
+            + '圧縮後サイズ: ' + compressed.length + ' bytes\n'
+            + '圧縮率: ' + ratio + '% （元サイズ比）\n'
+            + '削減量: ' + savedPct + '% 削減\n\n'
+            + '// 往復確認（圧縮→展開）\n'
+            + '展開後: 元と一致するか確認中...';
+
+          const decompressed = await decompress(compressed, 'gzip');
+          out.textContent += '\n展開後の一致: ' + (text === decompressed ? '✓ 完全一致' : '✗ 不一致');
+
+          // プログレスバー
+          const wrap = document.getElementById('comp-progress-wrap');
+          wrap.style.display = 'block';
+          const bar = document.getElementById('comp-progress-bar');
+          const pct = Math.max(2, Math.round(parseFloat(ratio)));
+          bar.style.width = pct + '%';
+          bar.textContent = pct + '%';
+        } catch(e) {
+          out.className = 'result-box result-danger';
+          out.textContent = 'エラー: ' + e.message;
+        }
+      }
+    </script>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — Brotli 対応確認（対応ブラウザのみ）</div>
+    <button class="btn btn-accent3" onclick="doBrotli()">Brotli 圧縮を試す</button>
+    <div class="result-box" id="brotli-out"><span class="placeholder">ボタンを押してください（非対応の場合はメッセージが表示されます）</span></div>
+    <script>
+      async function doBrotli() {
+        const out = document.getElementById('brotli-out');
+        const text = 'Brotli compression test. This is a test of the Brotli compression stream. Brotli is generally better than gzip.';
+        try {
+          const compressed = await compress(text, 'deflate-raw');
+          out.className = 'result-box result-ok';
+          out.textContent = 'deflate-raw 対応: ✓\n元: ' + new TextEncoder().encode(text).length + ' bytes → 圧縮後: ' + compressed.length + ' bytes';
+        } catch(e) {
+          // Try br
+        }
+        try {
+          const compressed = await compress(text, 'br');
+          out.className = 'result-box result-ok';
+          out.textContent = 'Brotli (br) 対応: ✓\n元: ' + new TextEncoder().encode(text).length + ' bytes → 圧縮後: ' + compressed.length + ' bytes\n\n'
+            + 'BrotliはGzipより5〜20%高い圧縮率が期待できます。';
+        } catch(e) {
+          const current = document.getElementById('brotli-out').textContent;
+          if (!current || current.includes('ボタン')) {
+            out.className = 'result-box result-warn';
+          }
+          out.textContent = (out.textContent.includes('✓') ? out.textContent + '\n\n' : '')
+            + 'Brotli (br): このブラウザでは未対応\n(' + e.message + ')\n\n'
+            + 'BrotliはHTTPレスポンスの圧縮では広くサポートされていますが、\n'
+            + 'CompressionStream APIとしてはブラウザによって対応状況が異なります。';
+        }
+      }
+    </script>
+  </div>
+
+  <div class="beginner-box">
+    <div class="beg-title">🔰 Webページの読み込みが速い理由</div>
+    <ul>
+      <li>HTMLやCSS、JavaScriptなどのテキストファイルは、サーバーからの転送時に自動でGzip/Brotli圧縮されます</li>
+      <li>ブラウザはリクエストヘッダに <code>Accept-Encoding: gzip, br</code> を付けて「圧縮して送って」と伝えます</li>
+      <li>サーバーは圧縮して送り、ブラウザが自動展開します（開発者が意識しなくてよい）</li>
+      <li>大量の繰り返しパターン（スペース、HTMLタグなど）は特に高圧縮率になります</li>
+      <li>バイナリ（画像・動画）は既に圧縮済みのため、二重圧縮してもほぼ効果がありません</li>
+    </ul>
+  </div>
+
+  <div class="warn-box" style="border-color:var(--accent3);background:#f3e5f5;">
+    <strong style="color:var(--accent3);">📋 初心者まとめ</strong><br>
+    覚える関数: <code>CompressionStream('gzip')</code><br>
+    よくある落とし穴: 短いデータを圧縮するとヘッダオーバーヘッドでかえってサイズが増加<br>
+    正しい使い方: 一定サイズ（目安1KB）以上のデータにのみ圧縮を適用する
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 3-E: マルチバイト文字のBase64変換 -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-3e">
+  <h3>実験 3-E: マルチバイト文字の Base64 変換</h3>
+  <p>
+    日本語などのマルチバイト文字を安全にBase64変換するには、
+    <code>TextEncoder</code>でUTF-8バイト列に変換してから<code>btoa()</code>に渡す必要があります。
+  </p>
+
+  <div class="diagram">  btoa("日本語") でエラーになる理由と正しい手順
+
+  ❌ 誤った方法（エラー）:
+     "日本語" ─── btoa() ──▶ Error! (Latin-1範囲外)
+
+  ✓ 正しい方法:
+     "日本語"
+        │
+        ▼ TextEncoder().encode()
+     Uint8Array [e6,97,a5,e6,9c,ac,e8,aa,9e]  (9 bytes)
+        │
+        ▼ Array.from(bytes, b => String.fromCharCode(b))
+     Latin-1 バイナリ文字列
+        │
+        ▼ btoa()
+     "5pel5pys6Kqe"  ← Base64文字列
+        │
+        ▼ atob() → Uint8Array → TextDecoder().decode()
+     "日本語"  ← 元の文字列に復元 ✓                          </div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — btoa("日本語") のエラーを体験</div>
+    <input type="text" class="input-area" id="mb-input" value="日本語のテスト">
+    <div class="two-col">
+      <div>
+        <button class="btn btn-warn" onclick="doMbError()">❌ btoa() を直接使う（エラー確認）</button>
+        <div class="result-box" id="mb-error-out"><span class="placeholder">ボタンを押してください</span></div>
+      </div>
+      <div>
+        <button class="btn btn-accent2" onclick="doMbSafe()">✓ 正しい手順で変換</button>
+        <div class="result-box" id="mb-safe-out"><span class="placeholder">ボタンを押してください</span></div>
+      </div>
+    </div>
+    <script>
+      function doMbError() {
+        const text = document.getElementById('mb-input').value;
+        const out = document.getElementById('mb-error-out');
+        try {
+          const result = btoa(text);
+          out.className = 'result-box result-warn';
+          out.textContent = '結果: ' + result + '\n（このブラウザでは変換されましたが、仕様外の動作の可能性があります）';
+        } catch(e) {
+          out.className = 'result-box result-danger';
+          out.textContent = '❌ エラー!\n' + e.name + ': ' + e.message + '\n\n'
+            + '理由: 日本語文字のコードポイントが 255 を超えるため\n'
+            + 'btoa() はLatin-1 (0–255) のみ受け付けます';
+        }
+      }
+
+      function utf8ToBase64(str) {
+        const bytes = new TextEncoder().encode(str);
+        const latin1 = Array.from(bytes, b => String.fromCharCode(b)).join('');
+        return btoa(latin1);
+      }
+
+      function base64ToUtf8(b64) {
+        const latin1 = atob(b64);
+        const bytes = new Uint8Array(Array.from(latin1, c => c.charCodeAt(0)));
+        return new TextDecoder('utf-8').decode(bytes);
+      }
+
+      function doMbSafe() {
+        const text = document.getElementById('mb-input').value;
+        const out = document.getElementById('mb-safe-out');
+        try {
+          const bytes = new TextEncoder().encode(text);
+          const b64 = utf8ToBase64(text);
+          const restored = base64ToUtf8(b64);
+          out.className = 'result-box result-ok';
+          out.textContent = '手順:\n'
+            + '1. TextEncoder: ' + bytes.length + ' bytes\n'
+            + '   [' + Array.from(bytes, b => b.toString(16).padStart(2,'0')).slice(0,8).join(' ')
+            + (bytes.length > 8 ? ' ...' : '') + ']\n'
+            + '2. btoa():\n'
+            + '   ' + b64 + '\n\n'
+            + '往復確認:\n'
+            + '   atob → Uint8Array → TextDecoder\n'
+            + '   → "' + restored + '"\n'
+            + '   一致: ' + (text === restored ? '✓ 完全一致' : '✗ 不一致');
+        } catch(e) {
+          out.className = 'result-box result-danger';
+          out.textContent = 'エラー: ' + e.message;
+        }
+      }
+    </script>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 往復確認（元の文字列に完全に戻ることを検証）</div>
+    <button class="btn btn-accent" onclick="doRoundTrip()">往復テスト（複数パターン）</button>
+    <div class="result-box" id="roundtrip-out"><span class="placeholder">ボタンを押してください</span></div>
+    <script>
+      function doRoundTrip() {
+        const samples = [
+          '日本語',
+          'Hello, 世界!',
+          '絵文字テスト 🎉',
+          '{"name":"山田太郎","age":30}',
+          'APIに送るJSON例'
+        ];
+        const out = document.getElementById('roundtrip-out');
+        let result = '';
+        for (const s of samples) {
+          try {
+            const b64 = utf8ToBase64(s);
+            const restored = base64ToUtf8(b64);
+            const match = s === restored;
+            result += (match ? '✓' : '✗') + ' "' + s + '"\n';
+            result += '  Base64: ' + b64 + '\n';
+            result += '  復元: "' + restored + '"' + (match ? '' : ' ← 不一致!') + '\n\n';
+          } catch(e) {
+            result += '✗ "' + s + '" → エラー: ' + e.message + '\n\n';
+          }
+        }
+        out.className = 'result-box result-ok';
+        out.textContent = result.trim();
+      }
+    </script>
+  </div>
+
+  <div class="beginner-box">
+    <div class="beg-title">🔰 APIにJSON（日本語含む）をBase64で送る場面</div>
+    <ul>
+      <li>一部のAPIではJSONデータをBase64エンコードしてから送ることが要求されます</li>
+      <li>日本語を含む場合、上記の手順（TextEncoder → btoa）が必要です</li>
+      <li>受け取り側は atob → Uint8Array → TextDecoder → JSON.parse の逆手順でデータを取り出します</li>
+      <li>JWTのペイロードも同じBase64Url方式でエンコードされています</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 3-F: 総合実験 — パイプラインデモ -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-3f">
+  <h3>実験 3-F: 総合実験 — パイプラインデモ</h3>
+  <p>
+    Object → <code>JSON.stringify</code> → <code>TextEncoder</code> → <code>CompressionStream</code> の4段変換を実行し、
+    各ステップのデータ型・サイズの変化を視覚的に確認します。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — 入力データを設定して変換を実行</div>
+    <div style="margin-bottom:0.5rem;">
+      <button class="btn btn-dim" onclick="setPipelineInput('simple')">シンプルなオブジェクト</button>
+      <button class="btn btn-dim" onclick="setPipelineInput('product')">商品データ（繰り返し多め）</button>
+      <button class="btn btn-dim" onclick="setPipelineInput('list')">配列データ（大）</button>
+    </div>
+    <textarea class="input-area" id="pipeline-input" rows="5" style="font-size:0.8rem;"></textarea>
+    <button class="btn btn-accent" onclick="doPipeline()" style="margin-top:0.5rem;">4段変換パイプラインを実行</button>
+  </div>
+
+  <div id="pipeline-steps" style="display:none;">
+    <div class="pipeline-step">
+      <div class="pipeline-num">1</div>
+      <div class="pipeline-content">
+        <div class="pipeline-label">入力 Object (JavaScript オブジェクト)</div>
+        <div class="pipeline-value" id="pipe-step1">—</div>
+      </div>
+    </div>
+    <div class="conv-arrow">↓ JSON.stringify()</div>
+    <div class="pipeline-step">
+      <div class="pipeline-num">2</div>
+      <div class="pipeline-content">
+        <div class="pipeline-label">JSON 文字列 (string)<span class="pipeline-size" id="pipe-size2">—</span></div>
+        <div class="pipeline-value" id="pipe-step2">—</div>
+      </div>
+    </div>
+    <div class="conv-arrow">↓ TextEncoder().encode()</div>
+    <div class="pipeline-step">
+      <div class="pipeline-num">3</div>
+      <div class="pipeline-content">
+        <div class="pipeline-label">UTF-8 バイト列 (Uint8Array)<span class="pipeline-size" id="pipe-size3">—</span></div>
+        <div class="pipeline-value" id="pipe-step3">—</div>
+      </div>
+    </div>
+    <div class="conv-arrow">↓ CompressionStream('gzip')</div>
+    <div class="pipeline-step">
+      <div class="pipeline-num">4</div>
+      <div class="pipeline-content">
+        <div class="pipeline-label">Gzip 圧縮済みバイト列 (Uint8Array)<span class="pipeline-size" id="pipe-size4">—</span></div>
+        <div class="pipeline-value" id="pipe-step4">—</div>
+      </div>
+    </div>
+
+    <div style="margin-top:1rem;">
+      <div style="font-size:0.85rem;font-weight:700;margin-bottom:0.5rem;">圧縮率の視覚的表示</div>
+      <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:0.2rem;font-family:'IBM Plex Mono',monospace;">JSON文字列に対するGzip後のサイズ比率</div>
+      <div class="progress-wrap">
+        <div class="progress-bar" id="pipeline-progress" style="width:100%;">—</div>
+      </div>
+      <div class="result-box" id="pipeline-summary" style="margin-top:0.5rem;"></div>
+    </div>
+  </div>
+
+  <script>
+    const PIPELINE_PRESETS = {
+      simple: { name: '山田太郎', age: 30, city: '東京', active: true },
+      product: {
+        products: [
+          { id: 1, name: '商品A', price: 1000, category: 'カテゴリ1', stock: 100 },
+          { id: 2, name: '商品B', price: 2000, category: 'カテゴリ1', stock: 200 },
+          { id: 3, name: '商品C', price: 3000, category: 'カテゴリ2', stock: 300 },
+          { id: 4, name: '商品D', price: 1500, category: 'カテゴリ2', stock: 150 },
+          { id: 5, name: '商品E', price: 2500, category: 'カテゴリ3', stock: 250 }
+        ],
+        total: 5,
+        currency: 'JPY'
+      },
+      list: (function() {
+        const arr = [];
+        for (let i = 1; i <= 20; i++) {
+          arr.push({ id: i, value: 'item_' + i, label: 'ラベル' + i, active: i % 2 === 0 });
+        }
+        return { items: arr, count: 20, page: 1 };
+      })()
+    };
+
+    function setPipelineInput(key) {
+      document.getElementById('pipeline-input').value = JSON.stringify(PIPELINE_PRESETS[key], null, 2);
+    }
+
+    setPipelineInput('product');
+
+    async function doPipeline() {
+      const inputStr = document.getElementById('pipeline-input').value.trim();
+      document.getElementById('pipeline-steps').style.display = 'block';
+
+      try {
+        // Step 1: parse
+        const obj = JSON.parse(inputStr);
+        document.getElementById('pipe-step1').textContent = 'typeof: object, keys: ' + Object.keys(obj).join(', ');
+
+        // Step 2: JSON.stringify
+        const jsonStr = JSON.stringify(obj);
+        document.getElementById('pipe-step2').textContent = jsonStr.length > 120 ? jsonStr.substring(0, 120) + '...' : jsonStr;
+        document.getElementById('pipe-size2').textContent = jsonStr.length + ' chars';
+
+        // Step 3: TextEncoder
+        const bytes = new TextEncoder().encode(jsonStr);
+        document.getElementById('pipe-step3').textContent = bytes.length + ' bytes  [' + Array.from(bytes.slice(0,12), b => b.toString(16).padStart(2,'0')).join(' ') + ' ...]';
+        document.getElementById('pipe-size3').textContent = bytes.length + ' bytes';
+
+        // Step 4: Compress
+        if (typeof CompressionStream !== 'undefined') {
+          const compressed = await compress(jsonStr, 'gzip');
+          document.getElementById('pipe-step4').textContent = compressed.length + ' bytes  [' + Array.from(compressed.slice(0,12), b => b.toString(16).padStart(2,'0')).join(' ') + ' ...]';
+          document.getElementById('pipe-size4').textContent = compressed.length + ' bytes';
+
+          const ratio = (compressed.length / bytes.length * 100).toFixed(1);
+          const saved = (100 - parseFloat(ratio)).toFixed(1);
+
+          const bar = document.getElementById('pipeline-progress');
+          const pct = Math.max(2, Math.round(parseFloat(ratio)));
+          bar.style.width = pct + '%';
+          bar.textContent = pct + '%';
+
+          document.getElementById('pipeline-summary').className = 'result-box result-ok';
+          document.getElementById('pipeline-summary').textContent =
+            '変換サマリー\n'
+            + '─────────────────────────────────\n'
+            + 'Step 1 (Object):    typeof object\n'
+            + 'Step 2 (JSON文字列): ' + jsonStr.length + ' 文字 (' + bytes.length + ' bytes)\n'
+            + 'Step 3 (UTF-8):      ' + bytes.length + ' bytes\n'
+            + 'Step 4 (Gzip):       ' + compressed.length + ' bytes\n'
+            + '─────────────────────────────────\n'
+            + '圧縮率: ' + ratio + '%（元サイズ比）\n'
+            + '削減量: ' + saved + '% (' + (bytes.length - compressed.length) + ' bytes 削減)';
+        } else {
+          document.getElementById('pipe-step4').textContent = 'CompressionStream 非対応のため実行できません';
+          document.getElementById('pipe-size4').textContent = '—';
+          document.getElementById('pipeline-progress').style.width = '100%';
+          document.getElementById('pipeline-progress').textContent = '—';
+          document.getElementById('pipeline-summary').className = 'result-box result-warn';
+          document.getElementById('pipeline-summary').textContent = 'CompressionStream はこのブラウザでは利用できません。\nStep 1〜3 の結果は上に表示されています。';
+        }
+      } catch(e) {
+        document.getElementById('pipeline-summary').className = 'result-box result-danger';
+        document.getElementById('pipeline-summary').textContent = 'エラー: ' + e.message;
+        document.getElementById('pipeline-steps').style.display = 'block';
+      }
+    }
+  </script>
+
+  <div class="beginner-box">
+    <div class="beg-title">🔰 このパイプラインが使われる場面</div>
+    <ul>
+      <li><strong>Service Worker のキャッシュ最適化</strong>: APIレスポンスを圧縮してIndexedDBに保存することで、ストレージ効率を上げます</li>
+      <li><strong>WebSocketの送信データ削減</strong>: リアルタイム通信でJSONを圧縮して帯域を節約します</li>
+      <li><strong>大量データのlocalStorage保存</strong>: ブラウザの5MB制限内に収めるため圧縮が有効です</li>
+      <li><strong>URLにデータを埋め込む</strong>: Object→JSON→gzip→Base64でURLに状態を持たせるアプリがあります（Mermaid Live Editorなど）</li>
+    </ul>
+  </div>
+</div>
+
+<hr>
+
+<!-- ============================================================
+     チェックリスト
+     ============================================================ -->
+<h2 id="sec-checklist">✅ 実験チェックリスト</h2>
+<p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:0.8rem;">完了した実験にチェックを入れてください（ブラウザに保存されます）</p>
+
+<div id="checklist-container">
+  <label class="check-item" id="chk-wdc-lab03-1">
+    <input type="checkbox" data-key="wdc-lab03-1" onchange="saveCheck(this)">
+    <span>3-A: btoa() でテキストをBase64エンコードし、atob() で元に戻した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab03-2">
+    <input type="checkbox" data-key="wdc-lab03-2" onchange="saveCheck(this)">
+    <span>3-A: Uint8Array（バイナリデータ）をBase64に変換した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab03-3">
+    <input type="checkbox" data-key="wdc-lab03-3" onchange="saveCheck(this)">
+    <span>3-A: Base64Url（+→-、/→_、=除去）への変換を確認した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab03-4">
+    <input type="checkbox" data-key="wdc-lab03-4" onchange="saveCheck(this)">
+    <span>3-B: 「A」=1バイト、「あ」=3バイト、「𠮷」=4バイトの違いを確認した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab03-5">
+    <input type="checkbox" data-key="wdc-lab03-5" onchange="saveCheck(this)">
+    <span>3-B: TextDecoder でバイト列を文字列にデコードした</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab03-6">
+    <input type="checkbox" data-key="wdc-lab03-6" onchange="saveCheck(this)">
+    <span>3-C: createObjectURL でBlobをimg要素に表示し、revokeObjectURL で解放した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab03-7">
+    <input type="checkbox" data-key="wdc-lab03-7" onchange="saveCheck(this)">
+    <span>3-C: canvas.toDataURL でData URLを生成してimg要素に表示した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab03-8">
+    <input type="checkbox" data-key="wdc-lab03-8" onchange="saveCheck(this)">
+    <span>3-D: CompressionStream でテキストをGzip圧縮し、圧縮率を確認した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab03-9">
+    <input type="checkbox" data-key="wdc-lab03-9" onchange="saveCheck(this)">
+    <span>3-D: 圧縮→展開の往復確認（元のテキストに戻ること）を検証した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab03-10">
+    <input type="checkbox" data-key="wdc-lab03-10" onchange="saveCheck(this)">
+    <span>3-E: btoa("日本語") がエラーになることを確認した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab03-11">
+    <input type="checkbox" data-key="wdc-lab03-11" onchange="saveCheck(this)">
+    <span>3-E: TextEncoder → btoa の正しい手順で日本語のBase64変換に成功した</span>
+  </label>
+  <label class="check-item" id="chk-wdc-lab03-12">
+    <input type="checkbox" data-key="wdc-lab03-12" onchange="saveCheck(this)">
+    <span>3-F: 4段パイプライン（Object→JSON→UTF-8→Gzip）を実行してサイズ変化を確認した</span>
+  </label>
+</div>
+
+<hr>
+
+<!-- ============================================================
+     学習ノート
+     ============================================================ -->
+<h2 id="sec-notes">📝 学習ノート</h2>
+<p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:0.5rem;">気づきや疑問点をメモしてください（ブラウザに保存されます）</p>
+<textarea id="study-notes" class="note-textarea" placeholder="例: CompressionStreamの圧縮率がデータによって大きく違う。日本語のBase64手順を実務で使う機会がありそう..." oninput="saveNotes()"></textarea>
+
+<!-- Nav Links -->
+<div class="nav-links">
+  <a href="web-data-conversion-lab-02.html">← Lab 02: テキスト・構造の変換</a>
+  <a href="web-data-conversion-index.html">📋 マスター索引</a>
+  <a href="web-data-conversion-lab-04.html">Lab 04 →</a>
+</div>
+
+<!-- ============================================================
+     JavaScript
+     ============================================================ -->
+<script>
+// ─── 定数 ────────────────────────────────────────────────────
+const STORAGE_PREFIX = 'wdclab_';
+
+// ─── チェックリスト ──────────────────────────────────────────
+
+function saveCheck(checkbox) {
+  const key = STORAGE_PREFIX + checkbox.dataset.key;
+  localStorage.setItem(key, checkbox.checked ? '1' : '0');
+  const label = checkbox.closest('label');
+  if (label) {
+    label.classList.toggle('checked', checkbox.checked);
+  }
+}
+
+function loadChecks() {
+  document.querySelectorAll('#checklist-container input[type="checkbox"]').forEach(function(cb) {
+    const key = STORAGE_PREFIX + cb.dataset.key;
+    const saved = localStorage.getItem(key);
+    if (saved === '1') {
+      cb.checked = true;
+      const label = cb.closest('label');
+      if (label) label.classList.add('checked');
+    }
+  });
+}
+
+// ─── 学習ノート ──────────────────────────────────────────────
+
+function saveNotes() {
+  localStorage.setItem(STORAGE_PREFIX + 'lab03-notes', document.getElementById('study-notes').value);
+}
+
+function loadNotes() {
+  const saved = localStorage.getItem(STORAGE_PREFIX + 'lab03-notes');
+  if (saved) document.getElementById('study-notes').value = saved;
+}
+
+// ─── 初期化 ──────────────────────────────────────────────────
+
+window.addEventListener('DOMContentLoaded', function() {
+  loadChecks();
+  loadNotes();
+});
+</script>
+
+</body>
+</html>

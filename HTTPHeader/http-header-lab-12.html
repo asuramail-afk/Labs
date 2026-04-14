@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HTTP Header Lab 12 — Client Hints（Sec-CH-UA-*）と User-Agent</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;700&display=swap');
+
+  :root {
+    --bg: #ffffff;
+    --surface: #f5f7fa;
+    --surface2: #ebeef2;
+    --border: #c8cdd3;
+    --text: #1a1a2e;
+    --text-dim: #5c6370;
+    --accent: #005cc5;
+    --accent2: #22863a;
+    --accent3: #6f42c1;
+    --warn: #b08800;
+    --danger: #cb2431;
+    --code-bg: #f0f4f8;
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    padding: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  h1 { font-size: 1.6rem; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 0.8rem; margin-bottom: 1.5rem; font-family: 'IBM Plex Mono', monospace; }
+  h2 { font-size: 1.25rem; color: var(--accent2); margin: 2rem 0 1rem; font-family: 'IBM Plex Mono', monospace; }
+  h3 { font-size: 1.05rem; color: var(--accent3); margin: 1.5rem 0 0.8rem; }
+  p, li { font-size: 0.92rem; margin-bottom: 0.5rem; }
+
+  .status-bar { display: flex; gap: 1rem; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.6rem 1rem; margin-bottom: 1.5rem; font-size: 0.82rem; font-family: 'IBM Plex Mono', monospace; flex-wrap: wrap; }
+  .status-item { display: flex; align-items: center; gap: 0.4rem; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-dim); animation: pulse 1.5s infinite; }
+  .status-dot.ok { background: var(--accent); animation: none; }
+  .status-dot.err { background: var(--danger); animation: none; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .alert-critical { background: #fef2f2; border: 2px solid var(--danger); border-radius: var(--radius); padding: 1rem 1.2rem; margin-bottom: 1.5rem; font-size: 0.88rem; }
+  .alert-critical strong { color: var(--danger); }
+  .alert-critical code { background: rgba(203,36,49,0.1); color: var(--danger); }
+
+  .lab-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin: 1.5rem 0; }
+  .step { background: var(--surface2); border-left: 3px solid var(--accent2); border-radius: 0 var(--radius) var(--radius) 0; padding: 1rem 1.2rem; margin: 1rem 0; }
+  .step-num { font-family: 'IBM Plex Mono', monospace; color: var(--accent2); font-weight: 600; font-size: 0.8rem; margin-bottom: 0.3rem; }
+
+  code, pre { font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; }
+  code { background: var(--code-bg); padding: 0.15rem 0.4rem; border-radius: 4px; color: var(--accent); }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; overflow-x: auto; margin: 0.8rem 0; line-height: 1.6; color: #24292e; }
+  pre .comment { color: #6a737d; }
+  pre .header-name { color: var(--accent2); }
+  pre .header-val { color: var(--accent); }
+  pre .highlight { color: var(--warn); font-weight: 600; }
+
+  .placeholder { color: var(--text-dim); font-style: italic; font-size: 0.8rem; }
+
+  .note { background: #e8f4fd; border: 1px solid #b6d4e8; border-radius: var(--radius); padding: 0.8rem 1rem; margin: 1rem 0; font-size: 0.85rem; color: var(--accent2); }
+  .note::before { content: "💡 "; }
+  .warn-box { background: #fff8e1; border: 1px solid #e6d590; border-radius: var(--radius); padding: 0.8rem 1rem; margin: 1rem 0; font-size: 0.85rem; color: var(--warn); }
+  .warn-box::before { content: "⚠️ "; }
+
+  .check-item { background: var(--surface2); border-radius: var(--radius); padding: 0.6rem 1rem; margin: 0.4rem 0; display: flex; align-items: center; gap: 0.6rem; font-size: 0.88rem; transition: opacity 0.3s; }
+  .check-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
+  .check-item.checked { opacity: 0.55; }
+
+  .diagram { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; line-height: 1.5; overflow-x: auto; white-space: pre; color: var(--text-dim); margin: 1rem 0; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.8rem; margin: 1rem 0; }
+  @media (max-width: 900px) { .three-col { grid-template-columns: 1fr; } }
+  @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+  .col-card { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.8rem; font-size: 0.8rem; }
+  .col-card h4 { font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; margin-bottom: 0.5rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); }
+  .col-card pre { border: none; padding: 0.4rem 0; margin: 0; font-size: 0.75rem; background: transparent; }
+
+  a { color: var(--accent2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  html { scroll-behavior: smooth; }
+
+  .btn { border: none; padding: 0.5rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; font-family: 'Noto Sans JP', sans-serif; margin: 0.3rem; transition: opacity 0.2s; }
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.97); }
+  .btn-accent { background: var(--accent); color: var(--bg); }
+  .btn-accent2 { background: var(--accent2); color: var(--bg); }
+  .btn-accent3 { background: var(--accent3); color: var(--bg); }
+  .btn-warn { background: var(--warn); color: var(--bg); }
+  .btn-dim { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+
+  .toc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.2rem; margin: 1rem 0 2rem; }
+  .toc a { display: inline-block; padding: 0.25rem 0.6rem; margin: 0.15rem; border-radius: 6px; font-size: 0.82rem; background: var(--surface2); transition: background 0.2s; }
+  .toc a:hover { background: var(--border); text-decoration: none; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin: 0.8rem 0; }
+  th { background: var(--surface2); color: var(--accent2); padding: 0.5rem 0.8rem; text-align: left; font-family: 'IBM Plex Mono', monospace; border: 1px solid var(--border); }
+  td { padding: 0.5rem 0.8rem; border: 1px solid var(--border); vertical-align: top; }
+  tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+</style>
+</head>
+<body>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <div class="status-item">
+    <div class="status-dot" id="dot-protocol"></div>
+    <span id="status-protocol">プロトコル確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-httpbin"></div>
+    <span id="status-httpbin">httpbin.org 確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-devtools"></div>
+    <span>DevTools: <kbd style="background:var(--surface2);padding:0.1rem 0.4rem;border-radius:4px;">F12</kbd></span>
+  </div>
+</div>
+<p style="margin-bottom:0.5rem;font-size:0.82rem;"><a href="http-header-lab-index.html" style="color:var(--accent);text-decoration:none;">← マスター索引に戻る</a></p>
+
+<script>
+(function() {
+  const dot = document.getElementById('dot-protocol');
+  const label = document.getElementById('status-protocol');
+  if (location.protocol === 'file:') {
+    dot.classList.add('err');
+    label.innerHTML = '<strong style="color:var(--danger)">file:// 検出（要修正）</strong>';
+    document.getElementById('file-protocol-alert').style.display = 'block';
+  } else { dot.classList.add('ok'); label.textContent = location.protocol + '// ✅'; }
+})();
+(async function() {
+  const dot = document.getElementById('dot-httpbin');
+  const label = document.getElementById('status-httpbin');
+  try {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 5000);
+    const r = await fetch('https://httpbin.org/get', { signal: c.signal });
+    clearTimeout(t);
+    if (r.ok) { dot.classList.add('ok'); label.textContent = 'httpbin.org ✅'; }
+    else { dot.classList.add('err'); label.innerHTML = '<strong style="color:var(--danger)">httpbin.org 応答エラー</strong>'; }
+  } catch(e) { dot.classList.add('err'); label.innerHTML = '<strong style="color:var(--danger)">httpbin.org ❌</strong>'; }
+})();
+</script>
+
+<div class="alert-critical" id="file-protocol-alert" style="display:none;">
+  <strong>🔴 HTTP サーバー経由で開いてください</strong><br><br>
+  現在 <code>file://</code> で開いています。この状態では <code>fetch()</code> が
+  <strong>CORSエラー</strong>になり、ほとんどの実験が動作しません。<br><br>
+  <strong>Lab 01 で起動したサーバーがまだ動いていれば</strong>、ブラウザで
+  <code>http://127.0.0.1:7890/http-header-lab-12.html</code> を開くだけでOKです。<br><br>
+  サーバーが停止している場合は、コマンドプロンプトで以下を実行してください：
+  <pre style="margin:0.8rem 0; font-size:0.78rem;"><span class="highlight">node -e "const http=require('http'),fs=require('fs'),path=require('path');http.createServer((req,res)=>{const f=path.join('C:/Users/user/ClaudeCode/HTTPHeader',req.url==='/'?'/index.html':req.url);fs.readFile(f,(e,d)=>{if(e){res.writeHead(404);res.end('Not found');}else{const ext=path.extname(f);const mime={'html':'text/html','js':'application/javascript','css':'text/css','png':'image/png','ico':'image/x-icon'};res.writeHead(200,{'Content-Type':(mime[ext.slice(1)]||'text/plain')+';charset=utf-8'});res.end(d);}});}).listen(7890,()=>console.log('Server: http://127.0.0.1:7890'));"</span>
+
+<span class="comment"># → http://127.0.0.1:7890/http-header-lab-12.html でアクセス</span></pre>
+</div>
+
+<h1>🧪 Lab 12: HTTP Header Lab 12 — Client Hints（Sec-CH-UA-*）と User-Agent</h1>
+<p style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.3rem;font-family:'IBM Plex Mono',monospace;">最終更新: 2026年3月</p>
+<p style="color:var(--text-dim); font-size:0.88rem; margin-bottom:1rem;">
+  ～ User-Agent の後継、低エントロピー / 高エントロピーヒント、Navigator API を体感する ～
+</p>
+<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">⏱ 所要時間：20分</span>
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">難易度：★☆☆</span>
+</div>
+<p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:1rem;">📋 前提知識：<a href="http-header-lab-01.html">Lab 01</a> 完了推奨（Accept ヘッダーと同様、ブラウザが自動送信するヘッダーを学ぶ）</p>
+
+<div class="lab-box" style="border-color:var(--accent); margin-bottom:1rem;">
+  <h3 style="color:var(--accent); margin-top:0;">🎯 このLabの学習目標</h3>
+  <p style="margin-bottom:0.3rem;">完了すると、以下ができるようになります：</p>
+  <div class="check-item" style="opacity:1;"><span>1. 従来の <code>User-Agent</code> 文字列の問題点（過剰情報、パース困難）を理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>2. Client Hints の「低エントロピー」と「高エントロピー」の区別を説明できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>3. <code>Sec-CH-UA</code>, <code>Sec-CH-UA-Mobile</code>, <code>Sec-CH-UA-Platform</code> が自動送信されることを確認する</span></div>
+  <div class="check-item" style="opacity:1;"><span>4. <code>Accept-CH</code> レスポンスヘッダーで高エントロピーヒントをオプトインする仕組みを理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>5. JavaScript の <code>navigator.userAgentData</code> API で Client Hints データを取得できる</span></div>
+</div>
+
+<div class="warn-box" style="border-color:var(--accent3);background:#fce4ec;">
+  <strong style="color:var(--accent3);">💥 実務での失敗例</strong>：User-Agent文字列のパースロジックが Chrome のバージョン形式変更で壊れ、モバイル判定が全ユーザーで誤動作。Client Hints なら構造化データで安定
+</div>
+
+<div class="toc">
+  <strong style="color:var(--text-dim);font-size:0.82rem;">目次:</strong><br>
+  <a href="#concept">概念整理</a>
+  <a href="#exp-12a">12-A: User-Agent文字列の確認</a>
+  <a href="#exp-12b">12-B: 低エントロピーClient Hints</a>
+  <a href="#exp-12c">12-C: navigator.userAgentData API</a>
+  <a href="#exp-12d">12-D: 高エントロピーヒントの取得</a>
+  <a href="#exp-12e">12-E: DevToolsで確認</a>
+  <a href="#checklist">✅ チェックリスト</a>
+</div>
+
+<!-- ── 概念整理 ── -->
+<div class="lab-box" id="concept">
+  <h3>User-Agent → Client Hints への移行</h3>
+
+  <div class="diagram">User-Agent → Client Hints への移行:
+
+従来（User-Agent）:
+  Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+  (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36
+  → 1行に全情報、パース困難、フィンガープリントに悪用されやすい
+
+新方式（Client Hints）:
+  低エントロピー（デフォルト送信、フィンガープリントリスク低）:
+    Sec-CH-UA: "Chromium";v="124", "Google Chrome";v="124"
+    Sec-CH-UA-Mobile: ?0
+    Sec-CH-UA-Platform: "Windows"
+
+  高エントロピー（サーバーがオプトインして初めて送信）:
+    サーバー: Accept-CH: Sec-CH-UA-Platform-Version, Sec-CH-UA-Model
+    ↓ 次のリクエストから追加送信
+    Sec-CH-UA-Platform-Version: "15.0.0"
+    Sec-CH-UA-Full-Version-List: "Chromium";v="124.0.6367.60", ...</div>
+
+  <div class="two-col">
+    <div class="col-card">
+      <h4 style="color:var(--accent);">低エントロピー（自動送信）</h4>
+      <pre><span class="header-name">Sec-CH-UA</span>
+  ブラウザブランドとメジャーバージョン
+  例: "Chromium";v="124", "Google Chrome";v="124"
+
+<span class="header-name">Sec-CH-UA-Mobile</span>
+  モバイルデバイスか否か
+  例: ?0（非モバイル）/ ?1（モバイル）
+
+<span class="header-name">Sec-CH-UA-Platform</span>
+  OS名（大まかな情報のみ）
+  例: "Windows" / "macOS" / "Android"</pre>
+    </div>
+    <div class="col-card">
+      <h4 style="color:var(--warn);">高エントロピー（Accept-CHで要求）</h4>
+      <pre><span class="header-name">Sec-CH-UA-Platform-Version</span>
+  OSの詳細バージョン
+  例: "15.0.0"
+
+<span class="header-name">Sec-CH-UA-Model</span>
+  デバイスモデル（モバイル向け）
+  例: "Pixel 7"
+
+<span class="header-name">Sec-CH-UA-Full-Version-List</span>
+  全ブランドの完全バージョン
+
+<span class="header-name">Sec-CH-UA-Arch</span>
+  CPUアーキテクチャ: "x86" / "arm"
+
+<span class="header-name">Sec-CH-UA-Bitness</span>
+  64ビット / 32ビット</pre>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>なぜ User-Agent を廃止するのか？</strong><br>
+    User-Agent 文字列は1行に OS・ブラウザ・エンジン・バージョンが詰め込まれており、
+    パースが困難なうえ、ブラウザごとに形式が異なります。また、すべての情報がデフォルトで送信されるため、
+    フィンガープリント（ユーザー追跡）に悪用されやすい問題があります。
+    Chrome は段階的に User-Agent を「凍結（freeze）」し、Client Hints への移行を進めています。
+  </div>
+</div>
+
+<!-- ── 実験 12-A ── -->
+<div class="lab-box" id="exp-12a">
+  <h3>実験 12-A: User-Agent 文字列の確認</h3>
+  <p>
+    従来の <code>User-Agent</code> 文字列を実際に取得し、情報過多・パース困難な点を確認します。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — navigator.userAgent をローカルで読む</div>
+    <button class="btn btn-accent" id="btn-ua-local">User-Agent を取得</button>
+    <pre id="ua-local-result"><span class="placeholder">← ボタンを押してください</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-ua-local').addEventListener('click', () => {
+      const el = document.getElementById('ua-local-result');
+      const ua = navigator.userAgent;
+      el.textContent =
+        'navigator.userAgent:\n' +
+        '  ' + ua + '\n\n' +
+        '文字数: ' + ua.length + ' 文字\n\n' +
+        '問題点:\n' +
+        '  - OS, ブラウザエンジン, バージョンが1行に混在\n' +
+        '  - 互換性のため "Mozilla/5.0" が全ブラウザに含まれる（意味なし）\n' +
+        '  - "KHTML, like Gecko" など歴史的な偽装文字列が含まれる\n' +
+        '  - Chrome が凍結を進めており、近い将来 "Chrome/XX.0.0.0" に固定される予定';
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — httpbin.org に送られる User-Agent を確認</div>
+    <p>実際にサーバーに届く User-Agent ヘッダー値を確認します。</p>
+    <button class="btn btn-accent2" id="btn-ua-httpbin">httpbin.org に送られる User-Agent を確認</button>
+    <pre id="ua-httpbin-result"><span class="placeholder">← ボタンを押してください</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-ua-httpbin').addEventListener('click', async () => {
+      const el = document.getElementById('ua-httpbin-result');
+      el.textContent = '取得中...';
+      try {
+        const res = await fetch('https://httpbin.org/headers');
+        const data = await res.json();
+        const headers = data.headers || {};
+        const ua = headers['User-Agent'] || headers['user-agent'] || '（取得できませんでした）';
+        el.textContent =
+          'サーバーに届いた User-Agent ヘッダー:\n\n' +
+          '  ' + ua + '\n\n' +
+          '文字数: ' + ua.length + ' 文字\n\n' +
+          '注意: Chromeは User-Agent の "凍結" を段階的に実施中\n' +
+          '  → マイナーバージョンが .0.0.0 に固定される\n' +
+          '  → 最終的には Sec-CH-UA 系ヘッダーへ完全移行予定';
+      } catch(e) {
+        el.textContent = 'エラー: ' + e.message + '\n\nhttpbin.org への接続を確認してください。';
+      }
+    });
+  </script>
+
+  <div class="warn-box">
+    <strong>User-Agent の「凍結」とは？</strong><br>
+    Google Chrome は段階的に User-Agent 文字列の情報を削減（凍結）しています。
+    将来的には <code>Chrome/XX.0.0.0</code> のようにマイナーバージョンが固定され、
+    OS 情報も一部が削除されます。詳細なブラウザ情報は <code>Sec-CH-UA-*</code> ヘッダー経由でのみ取得可能になります。
+  </div>
+</div>
+
+<!-- ── 実験 12-B ── -->
+<div class="lab-box" id="exp-12b">
+  <h3>実験 12-B: 低エントロピー Client Hints</h3>
+  <p>
+    <code>Sec-CH-UA</code>, <code>Sec-CH-UA-Mobile</code>, <code>Sec-CH-UA-Platform</code> は
+    ブラウザが<strong>デフォルトで自動送信</strong>する低エントロピーヒントです。
+    httpbin.org に届いているか確認します。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — httpbin.org で低エントロピーヘッダーを確認</div>
+    <p>
+      下のボタンを押すと httpbin.org の <code>/headers</code> エンドポイントに GET リクエストを送り、
+      サーバーが受け取った全リクエストヘッダーを表示します。<br>
+      <strong>Chrome / Edge の場合、<code>sec-ch-ua</code> 系ヘッダーが含まれているはずです。</strong>
+    </p>
+    <button class="btn btn-accent" id="btn-low-entropy">httpbin.org に送られる低エントロピーヘッダーを確認</button>
+    <pre id="low-entropy-result"><span class="placeholder">← ボタンを押してください</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-low-entropy').addEventListener('click', async () => {
+      const el = document.getElementById('low-entropy-result');
+      el.textContent = '取得中...';
+      try {
+        const res = await fetch('https://httpbin.org/headers');
+        const data = await res.json();
+        const headers = data.headers || {};
+
+        // Extract sec-ch-ua related headers (case-insensitive key matching)
+        const chHeaders = {};
+        const allKeys = Object.keys(headers);
+        allKeys.forEach(k => {
+          if (k.toLowerCase().startsWith('sec-ch-ua')) {
+            chHeaders[k] = headers[k];
+          }
+        });
+
+        let out = '=== サーバーに届いたリクエストヘッダー ===\n\n';
+
+        if (Object.keys(chHeaders).length > 0) {
+          out += '【低エントロピー Client Hints】\n';
+          for (const [k, v] of Object.entries(chHeaders)) {
+            out += '  ' + k + ': ' + v + '\n';
+          }
+          out += '\n✅ Sec-CH-UA 系ヘッダーが確認できました\n';
+        } else {
+          out += '【低エントロピー Client Hints】\n';
+          out += '  （Sec-CH-UA 系ヘッダーは見当たりませんでした）\n';
+          out += '\n  → Firefox では Sec-CH-UA は送信されません\n';
+          out += '  → Chrome / Edge を使って確認してください\n';
+        }
+
+        out += '\n【すべてのリクエストヘッダー（参考）】\n';
+        for (const [k, v] of Object.entries(headers)) {
+          out += '  ' + k + ': ' + v + '\n';
+        }
+
+        el.textContent = out;
+      } catch(e) {
+        el.textContent = 'エラー: ' + e.message;
+      }
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — Sec-CH-UA 値をパース</div>
+    <p>
+      <code>navigator.userAgentData.brands</code> を使って、ブラウザが送信する
+      Client Hints の brands 配列を確認します。
+    </p>
+    <button class="btn btn-accent2" id="btn-parse-sec-ch-ua">Sec-CH-UA 値をパース</button>
+    <pre id="parse-result"><span class="placeholder">← ボタンを押してください</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-parse-sec-ch-ua').addEventListener('click', () => {
+      const el = document.getElementById('parse-result');
+      if (!navigator.userAgentData) {
+        el.textContent =
+          'navigator.userAgentData は未対応です（Firefox など）\n\n' +
+          '代替: navigator.userAgent でブラウザを判別する必要があります\n' +
+          '  ' + navigator.userAgent;
+        return;
+      }
+      const brands = navigator.userAgentData.brands || [];
+      let out = 'navigator.userAgentData.brands:\n\n';
+      brands.forEach((b, i) => {
+        out += '  [' + i + '] brand: "' + b.brand + '"  version: "' + b.version + '"\n';
+      });
+      out += '\nSec-CH-UA ヘッダーの形式で表現すると:\n  ';
+      out += brands.map(b => '"' + b.brand + '";v="' + b.version + '"').join(', ');
+      out += '\n\n注意: Not A Brand のエントリは、UA スニッフィングを防ぐためのダミーです';
+      el.textContent = out;
+    });
+  </script>
+
+  <div class="note">
+    <strong>「Not A Brand」エントリについて</strong><br>
+    <code>Sec-CH-UA</code> には <code>Not A Brand</code> や <code>Not;A Brand</code> のような
+    ダミーエントリが含まれています。これは、ブラウザが特定のブランド名でのみ動作するサービス（UA スニッフィング）
+    を作れなくするための意図的な設計です。
+  </div>
+</div>
+
+<!-- ── 実験 12-C ── -->
+<div class="lab-box" id="exp-12c">
+  <h3>実験 12-C: navigator.userAgentData API</h3>
+  <p>
+    <code>navigator.userAgentData</code> は、Client Hints をJavaScriptから読む新しいAPIです。
+    Chrome / Edge では利用できますが、Firefox は未対応です（<code>undefined</code> になります）。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — navigator.userAgentData を確認</div>
+    <button class="btn btn-accent" id="btn-uad-basic">navigator.userAgentData を確認</button>
+    <pre id="uad-basic-result"><span class="placeholder">← ボタンを押してください</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-uad-basic').addEventListener('click', () => {
+      const el = document.getElementById('uad-basic-result');
+      if (!navigator.userAgentData) {
+        el.textContent =
+          '❌ navigator.userAgentData は未対応です\n\n' +
+          'このブラウザ（Firefox など）では userAgentData が undefined です。\n' +
+          'Client Hints API を試すには Chrome または Edge を使用してください。\n\n' +
+          '参考: navigator.userAgent（従来の方法）:\n  ' + navigator.userAgent;
+        return;
+      }
+      const uad = navigator.userAgentData;
+      let out = '✅ navigator.userAgentData が利用可能です\n\n';
+      out += 'brands（ブラウザブランド一覧）:\n';
+      (uad.brands || []).forEach((b, i) => {
+        out += '  [' + i + '] ' + b.brand + ' (v' + b.version + ')\n';
+      });
+      out += '\nmobile（モバイルか）:\n';
+      out += '  ' + uad.mobile + '\n';
+      out += '\nplatform（OS名）:\n';
+      out += '  "' + uad.platform + '"\n';
+      el.textContent = out;
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — userAgentData.toJSON() で一覧取得</div>
+    <button class="btn btn-accent2" id="btn-uad-tojson">userAgentData.toJSON() で一覧取得</button>
+    <pre id="uad-tojson-result"><span class="placeholder">← ボタンを押してください</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-uad-tojson').addEventListener('click', () => {
+      const el = document.getElementById('uad-tojson-result');
+      if (!navigator.userAgentData) {
+        el.textContent = '❌ navigator.userAgentData 未対応（Firefox など）\n\nuserAgentData が undefined のため toJSON() は使用できません。';
+        return;
+      }
+      const json = navigator.userAgentData.toJSON ? navigator.userAgentData.toJSON() : null;
+      if (json) {
+        el.textContent = 'userAgentData.toJSON() の結果:\n\n' + JSON.stringify(json, null, 2);
+      } else {
+        el.textContent = 'toJSON() メソッドがサポートされていません。\n\nbrands: ' +
+          JSON.stringify(navigator.userAgentData.brands) + '\nmobile: ' +
+          navigator.userAgentData.mobile + '\nplatform: "' +
+          navigator.userAgentData.platform + '"';
+      }
+    });
+  </script>
+
+  <h3 style="margin-top:1.5rem;">旧API vs 新API の比較</h3>
+  <table>
+    <tr>
+      <th>項目</th>
+      <th>旧方法（navigator.userAgent）</th>
+      <th>新方法（navigator.userAgentData）</th>
+    </tr>
+    <tr>
+      <td>ブラウザ名取得</td>
+      <td><code>userAgent.match(/Chrome\/(\d+)/)</code><br>正規表現でパース</td>
+      <td><code>userAgentData.brands[0].brand</code><br>構造化データ</td>
+    </tr>
+    <tr>
+      <td>バージョン取得</td>
+      <td>正規表現が複雑・ブラウザごとに異なる</td>
+      <td><code>userAgentData.brands[0].version</code></td>
+    </tr>
+    <tr>
+      <td>モバイル判定</td>
+      <td><code>userAgent.includes('Mobile')</code><br>不確実</td>
+      <td><code>userAgentData.mobile</code><br>boolean で確実</td>
+    </tr>
+    <tr>
+      <td>OS名取得</td>
+      <td>正規表現でパース（不安定）</td>
+      <td><code>userAgentData.platform</code></td>
+    </tr>
+    <tr>
+      <td>フィンガープリントリスク</td>
+      <td>高い（全情報がデフォルト送信）</td>
+      <td>低い（低エントロピー情報のみデフォルト）</td>
+    </tr>
+    <tr>
+      <td>Firefox対応</td>
+      <td>✅ 全ブラウザ対応</td>
+      <td>❌ 未対応（undefined）</td>
+    </tr>
+  </table>
+
+  <div class="warn-box">
+    <strong>Firefox では userAgentData が undefined</strong><br>
+    Firefox は現時点で <code>navigator.userAgentData</code> を実装していません。
+    クロスブラウザ対応が必要な場合は、<code>navigator.userAgentData?.brands</code> のように
+    オプショナルチェイニングを使って安全にアクセスし、undefined 時はフォールバック処理を書いてください。
+  </div>
+</div>
+
+<!-- ── 実験 12-D ── -->
+<div class="lab-box" id="exp-12d">
+  <h3>実験 12-D: 高エントロピーヒントの取得</h3>
+  <p>
+    <code>navigator.userAgentData.getHighEntropyValues()</code> を使うと、
+    JavaScriptから高エントロピーヒントを取得できます。これはサーバー側の <code>Accept-CH</code> とは独立した、
+    クライアントサイドのAPIです。
+  </p>
+
+  <div class="diagram">サーバーサイド（Accept-CH） vs クライアントサイド（getHighEntropyValues）:
+
+サーバーサイド（Accept-CH）:
+  サーバー側レスポンスヘッダー:
+    Accept-CH: Sec-CH-UA-Platform-Version, Sec-CH-UA-Model
+  ↓ 次のリクエストから自動送信
+    Sec-CH-UA-Platform-Version: "15.0.0"
+
+クライアントサイド（JS API）:
+  navigator.userAgentData.getHighEntropyValues(['platformVersion'])
+  → Promise を返す → .then(values => values.platformVersion)
+  → ネットワークリクエストなし、JS内で直接取得</div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — getHighEntropyValues() で高エントロピー値を取得</div>
+    <p>
+      以下のボタンを押すと、プラットフォームバージョン・アーキテクチャ・ビット数・
+      フルバージョンリストなどの高エントロピー情報を取得します。
+    </p>
+    <button class="btn btn-warn" id="btn-high-entropy">高エントロピー値を取得（getHighEntropyValues）</button>
+    <pre id="high-entropy-result"><span class="placeholder">← ボタンを押してください</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-high-entropy').addEventListener('click', () => {
+      const el = document.getElementById('high-entropy-result');
+
+      if (!navigator.userAgentData) {
+        el.textContent =
+          '❌ navigator.userAgentData 未対応\n\n' +
+          'Firefox など、userAgentData が未実装のブラウザでは\n' +
+          'getHighEntropyValues() も使用できません。\n\n' +
+          'Chrome または Edge でお試しください。';
+        return;
+      }
+
+      if (typeof navigator.userAgentData.getHighEntropyValues !== 'function') {
+        el.textContent = '❌ getHighEntropyValues() メソッドが未対応です。';
+        return;
+      }
+
+      el.textContent = '取得中...';
+
+      navigator.userAgentData.getHighEntropyValues([
+        'platform',
+        'platformVersion',
+        'architecture',
+        'model',
+        'uaFullVersion',
+        'fullVersionList',
+        'bitness'
+      ]).then(values => {
+        let out = '✅ 高エントロピーヒント取得結果:\n\n';
+        out += 'platform:            "' + (values.platform || '（空）') + '"\n';
+        out += 'platformVersion:     "' + (values.platformVersion || '（空）') + '"\n';
+        out += 'architecture:        "' + (values.architecture || '（空）') + '"\n';
+        out += 'model:               "' + (values.model || '（モバイル以外は空）') + '"\n';
+        out += 'uaFullVersion:       "' + (values.uaFullVersion || '（空）') + '"\n';
+        out += 'bitness:             "' + (values.bitness || '（空）') + '"\n';
+        if (values.fullVersionList && values.fullVersionList.length > 0) {
+          out += 'fullVersionList:\n';
+          values.fullVersionList.forEach((b, i) => {
+            out += '  [' + i + '] ' + b.brand + ' v' + b.version + '\n';
+          });
+        } else {
+          out += 'fullVersionList:     （空）\n';
+        }
+        out += '\n【Sec-CH-UA ヘッダー形式で表現した場合】\n';
+        out += 'Sec-CH-UA-Platform-Version: "' + (values.platformVersion || '') + '"\n';
+        out += 'Sec-CH-UA-Arch: "' + (values.architecture || '') + '"\n';
+        out += 'Sec-CH-UA-Bitness: "' + (values.bitness || '') + '"\n';
+        el.textContent = out;
+      }).catch(err => {
+        el.textContent = 'エラー: ' + err.message + '\n\n権限が拒否された可能性があります。';
+      });
+    });
+  </script>
+
+  <div class="two-col">
+    <div class="col-card">
+      <h4 style="color:var(--warn);">サーバーが Accept-CH で取得する情報</h4>
+      <pre>レスポンスヘッダー（サーバー→ブラウザ）:
+  Accept-CH: Sec-CH-UA-Platform-Version,
+             Sec-CH-UA-Model,
+             Sec-CH-UA-Full-Version-List,
+             Sec-CH-UA-Arch,
+             Sec-CH-UA-Bitness
+
+次のリクエストからブラウザが自動送信:
+  Sec-CH-UA-Platform-Version: "15.0.0"
+  Sec-CH-UA-Model: ""
+  Sec-CH-UA-Arch: "x86"
+  ...
+
+→ サーバーログ・バックエンドで利用</pre>
+    </div>
+    <div class="col-card">
+      <h4 style="color:var(--accent2);">JS が getHighEntropyValues で取得</h4>
+      <pre>navigator.userAgentData
+  .getHighEntropyValues([
+    'platformVersion',
+    'architecture',
+    'fullVersionList',
+    'bitness'
+  ])
+  .then(values => {
+    // values.platformVersion
+    // values.architecture
+    // values.fullVersionList
+    // values.bitness
+  });
+
+→ フロントエンド JS で直接利用
+→ ネットワーク通信なし</pre>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Accept-CH はどこで設定する？</strong><br>
+    サーバー側の高エントロピーオプトインは、HTTP レスポンスヘッダーに
+    <code>Accept-CH: Sec-CH-UA-Platform-Version, Sec-CH-UA-Model</code> を付与することで行います。
+    OutSystems の場合、REST API の <code>OnAfterResponse</code> で <code>SetResponseHeader</code> を使って設定できます。
+    ブラウザは次のリクエストから該当のヒントを自動送信するようになります。
+  </div>
+</div>
+
+<!-- ── 実験 12-E ── -->
+<div class="lab-box" id="exp-12e">
+  <h3>実験 12-E: DevTools で確認</h3>
+  <p>
+    ブラウザの DevTools を使って、実際に送信されている Client Hints ヘッダーをリクエストヘッダーで確認します。
+  </p>
+
+  <div class="step">
+    <div class="step-num">DevTools での確認手順</div>
+    <pre><span class="comment">// DevTools で Sec-CH-UA 系ヘッダーを確認する手順:</span>
+
+1. <span class="highlight">F12</span> を押して DevTools を開く
+
+2. <span class="header-name">Network</span> タブをクリック
+
+3. このページ自体（lab-12.html）のリクエストをリストから探す
+   → ページをリロード（Ctrl+R）すると見つけやすい
+
+4. リクエスト行をクリック → <span class="header-name">Headers</span> タブを選択
+
+5. <span class="header-name">Request Headers</span> セクションを展開:
+   <span class="header-val">sec-ch-ua</span>: "Chromium";v="124", ...
+   <span class="header-val">sec-ch-ua-mobile</span>: ?0
+   <span class="header-val">sec-ch-ua-platform</span>: "Windows"
+
+<span class="comment">// ※ Firefox では sec-ch-ua 系は表示されません</span>
+<span class="comment">// ※ Chrome / Edge では3つが自動送信されているのを確認できます</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP — 現在のすべての Navigator 情報を表示</div>
+    <p>現在のブラウザが持つ navigator 関連情報をまとめて確認します。</p>
+    <button class="btn btn-accent3" id="btn-all-navigator">現在のすべての Navigator 情報を表示</button>
+    <pre id="all-navigator-result"><span class="placeholder">← ボタンを押してください</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-all-navigator').addEventListener('click', () => {
+      const el = document.getElementById('all-navigator-result');
+      const uad = navigator.userAgentData;
+
+      let out = '=== Navigator 情報まとめ ===\n\n';
+
+      out += '【従来の API】\n';
+      out += 'navigator.userAgent:\n  ' + navigator.userAgent + '\n';
+      out += 'navigator.language:   "' + navigator.language + '"\n';
+      out += 'navigator.languages:  [' + (navigator.languages || []).join(', ') + ']\n';
+      out += 'navigator.platform (deprecated): "' + navigator.platform + '"\n';
+
+      out += '\n【Client Hints API（navigator.userAgentData）】\n';
+      if (uad) {
+        out += 'brands:\n';
+        (uad.brands || []).forEach((b, i) => {
+          out += '  [' + i + '] brand: "' + b.brand + '"  version: "' + b.version + '"\n';
+        });
+        out += 'mobile:   ' + uad.mobile + '\n';
+        out += 'platform: "' + uad.platform + '"\n';
+      } else {
+        out += '  navigator.userAgentData: undefined（Firefox など未対応ブラウザ）\n';
+      }
+
+      out += '\n【画面情報】\n';
+      out += 'screen.width × screen.height: ' + screen.width + ' × ' + screen.height + '\n';
+      out += 'window.innerWidth × window.innerHeight: ' + window.innerWidth + ' × ' + window.innerHeight + '\n';
+      out += 'devicePixelRatio: ' + window.devicePixelRatio + '\n';
+
+      out += '\n【その他】\n';
+      out += 'navigator.onLine:       ' + navigator.onLine + '\n';
+      out += 'navigator.cookieEnabled: ' + navigator.cookieEnabled + '\n';
+      out += 'navigator.hardwareConcurrency: ' + (navigator.hardwareConcurrency || '不明') + ' (論理CPUコア数)\n';
+
+      el.textContent = out;
+    });
+  </script>
+
+  <div class="note">
+    <strong>navigator.platform は非推奨</strong><br>
+    <code>navigator.platform</code> は非推奨（deprecated）です。OS情報の取得には
+    <code>navigator.userAgentData.platform</code>（Chrome / Edge）または
+    <code>navigator.userAgent</code> のパース（Firefox フォールバック）を使用してください。
+  </div>
+
+  <h3 style="margin-top:1.5rem;">Client Hints 対応状況まとめ</h3>
+  <table>
+    <tr>
+      <th>ブラウザ</th>
+      <th>Sec-CH-UA（低エントロピー）</th>
+      <th>userAgentData API</th>
+      <th>getHighEntropyValues</th>
+    </tr>
+    <tr>
+      <td>Chrome 89+</td>
+      <td>✅ 自動送信</td>
+      <td>✅ 対応</td>
+      <td>✅ 対応</td>
+    </tr>
+    <tr>
+      <td>Edge 89+</td>
+      <td>✅ 自動送信</td>
+      <td>✅ 対応</td>
+      <td>✅ 対応</td>
+    </tr>
+    <tr>
+      <td>Firefox</td>
+      <td>❌ 送信しない</td>
+      <td>❌ undefined</td>
+      <td>❌ 使用不可</td>
+    </tr>
+    <tr>
+      <td>Safari</td>
+      <td>❌ 送信しない</td>
+      <td>❌ undefined</td>
+      <td>❌ 使用不可</td>
+    </tr>
+  </table>
+</div>
+
+<hr>
+<h2 id="checklist">✅ Lab 12 チェックリスト</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">チェック状態はブラウザに自動保存されます。</p>
+
+<div class="check-item"><input type="checkbox" data-key="lab12-1"> <label>現在の User-Agent 文字列を取得し、情報過多な点を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab12-2"> <label>httpbin.org のレスポンスで Sec-CH-UA 系の低エントロピーヘッダーを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab12-3"> <label><code>navigator.userAgentData.brands</code> でブラウザブランド一覧を取得した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab12-4"> <label><code>navigator.userAgentData.mobile</code> と <code>platform</code> の値を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab12-5"> <label><code>getHighEntropyValues()</code> で platformVersion 等を取得した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab12-6"> <label>低エントロピー vs 高エントロピーの違い（デフォルト送信 vs オプトイン）を説明できる</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab12-7"> <label>DevTools Network タブで Sec-CH-UA 系ヘッダーをリクエストヘッダーで確認した</label></div>
+
+<div style="margin-top:1rem; text-align:center;">
+  <span id="progress-text" style="font-family:'IBM Plex Mono',monospace; color:var(--accent); font-size:0.9rem;"></span>
+</div>
+
+<script>
+  const STORAGE_PREFIX = 'httplab_';
+  function updateProgress() {
+    const all = document.querySelectorAll('input[type="checkbox"][data-key]');
+    const checked = [...all].filter(cb => cb.checked).length;
+    const el = document.getElementById('progress-text');
+    if (el) el.textContent = checked + ' / ' + all.length + ' 完了';
+  }
+  document.querySelectorAll('input[type="checkbox"][data-key]').forEach(cb => {
+    const saved = localStorage.getItem(STORAGE_PREFIX + cb.dataset.key);
+    if (saved === 'true') { cb.checked = true; cb.closest('.check-item')?.classList.add('checked'); }
+    cb.addEventListener('change', () => {
+      localStorage.setItem(STORAGE_PREFIX + cb.dataset.key, cb.checked);
+      cb.closest('.check-item')?.classList.toggle('checked', cb.checked);
+      updateProgress();
+    });
+  });
+  updateProgress();
+</script>
+
+<hr>
+
+<div class="note">
+  📖 <strong>参照資料</strong>：このLabの内容は <code>http-headers-guide-v2.md</code> の 第1部 1-1「Client Hints」 に対応しています。より詳しい解説・ヘッダー一覧はガイドを参照してください。
+</div>
+
+<h2>📝 Lab 12 学習ノート</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">メモはブラウザに自動保存されます。</p>
+<textarea id="notes" rows="6" placeholder="気づいたこと、疑問点をメモ..."
+  style="width:100%;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:0.8rem;font-family:'Noto Sans JP',sans-serif;font-size:0.9rem;resize:vertical;margin-top:0.5rem;"></textarea>
+
+<script>
+  const notesEl = document.getElementById('notes');
+  const savedNotes = localStorage.getItem(STORAGE_PREFIX + 'lab12_notes');
+  if (savedNotes) notesEl.value = savedNotes;
+  notesEl.addEventListener('input', () => { localStorage.setItem(STORAGE_PREFIX + 'lab12_notes', notesEl.value); });
+</script>
+
+<div style="margin-top:2rem; display:flex; justify-content:space-between; font-size:0.82rem; color:var(--text-dim);">
+  <span>← 前回: <a href="http-header-lab-11.html"><strong>Lab 11 — Fetch Metadata</strong></a></span>
+  <span>次回: <a href="http-header-lab-13.html"><strong>Lab 13 — リダイレクト（301/302/307/308, Location）</strong></a> →
+  <br><span style="color:var(--text-dim);font-size:0.78rem;">Client Hints でクライアント情報を整理したら、次はリダイレクト時のヘッダー動作を理解します</span></span>
+</div>
+
+</body>
+</html>

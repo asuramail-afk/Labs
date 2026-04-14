@@ -1,0 +1,1415 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HTTP Header Lab 15 — プロキシ・転送元ヘッダー</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;700&display=swap');
+
+  :root {
+    --bg: #ffffff;
+    --surface: #f5f7fa;
+    --surface2: #ebeef2;
+    --border: #c8cdd3;
+    --text: #1a1a2e;
+    --text-dim: #5c6370;
+    --accent: #005cc5;
+    --accent2: #22863a;
+    --accent3: #6f42c1;
+    --warn: #b08800;
+    --danger: #cb2431;
+    --code-bg: #f0f4f8;
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    padding: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+    color: var(--accent);
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 0.8rem;
+    margin-bottom: 1.5rem;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+    color: var(--accent2);
+    margin: 2rem 0 1rem;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  h3 {
+    font-size: 1.05rem;
+    color: var(--accent3);
+    margin: 1.5rem 0 0.8rem;
+  }
+
+  p, li { font-size: 0.92rem; margin-bottom: 0.5rem; }
+
+  /* ── Status Bar ── */
+  .status-bar {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.6rem 1rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.82rem;
+    font-family: 'IBM Plex Mono', monospace;
+    flex-wrap: wrap;
+  }
+  .status-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    animation: pulse 1.5s infinite;
+  }
+  .status-dot.ok { background: var(--accent); animation: none; }
+  .status-dot.err { background: var(--danger); animation: none; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* ── Critical Alert ── */
+  .alert-critical {
+    background: #fef2f2;
+    border: 2px solid var(--danger);
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.88rem;
+  }
+  .alert-critical strong { color: var(--danger); }
+  .alert-critical code {
+    background: rgba(203,36,49,0.1);
+    color: var(--danger);
+  }
+
+  /* ── Lab Section ── */
+  .lab-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+  }
+
+  .step {
+    background: var(--surface2);
+    border-left: 3px solid var(--accent2);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 1rem 1.2rem;
+    margin: 1rem 0;
+  }
+  .step-num {
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--accent2);
+    font-weight: 600;
+    font-size: 0.8rem;
+    margin-bottom: 0.3rem;
+  }
+
+  code, pre {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+  }
+  code {
+    background: var(--code-bg);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    color: var(--accent);
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    overflow-x: auto;
+    margin: 0.8rem 0;
+    line-height: 1.6;
+    color: #24292e;
+  }
+  pre .comment { color: #6a737d; }
+  pre .header-name { color: var(--accent2); }
+  pre .header-val  { color: var(--accent); }
+  pre .highlight    { color: var(--warn); font-weight: 600; }
+
+  .placeholder {
+    color: var(--text-dim);
+    font-style: italic;
+    font-size: 0.8rem;
+  }
+
+  .note {
+    background: #e8f4fd;
+    border: 1px solid #b6d4e8;
+    border-radius: var(--radius);
+    padding: 0.8rem 1rem;
+    margin: 1rem 0;
+    font-size: 0.85rem;
+    color: var(--accent2);
+  }
+  .note::before { content: "💡 "; }
+
+  .warn-box {
+    background: #fff8e1;
+    border: 1px solid #e6d590;
+    border-radius: var(--radius);
+    padding: 0.8rem 1rem;
+    margin: 1rem 0;
+    font-size: 0.85rem;
+    color: var(--warn);
+  }
+  .warn-box::before { content: "⚠️ "; }
+
+  .check-item {
+    background: var(--surface2);
+    border-radius: var(--radius);
+    padding: 0.6rem 1rem;
+    margin: 0.4rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.88rem;
+    transition: opacity 0.3s;
+  }
+  .check-item input[type="checkbox"] {
+    width: 18px; height: 18px;
+    accent-color: var(--accent);
+    flex-shrink: 0;
+  }
+  .check-item.checked { opacity: 0.55; }
+
+  .diagram {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.2rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    overflow-x: auto;
+    white-space: pre;
+    color: var(--text-dim);
+    margin: 1rem 0;
+  }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+  .three-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.8rem;
+    margin: 1rem 0;
+  }
+  @media (max-width: 900px) { .three-col { grid-template-columns: 1fr; } }
+  @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+  .col-card {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.8rem;
+    font-size: 0.8rem;
+  }
+  .col-card h4 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .col-card pre {
+    border: none;
+    padding: 0.4rem 0;
+    margin: 0;
+    font-size: 0.75rem;
+    background: transparent;
+  }
+  .col-card.card-forwarded { border-color: var(--accent); }
+  .col-card.card-forwarded h4 { color: var(--accent); }
+  .col-card.card-xff { border-color: var(--accent2); }
+  .col-card.card-xff h4 { color: var(--accent2); }
+  .col-card.card-via { border-color: var(--accent3); }
+  .col-card.card-via h4 { color: var(--accent3); }
+
+  a { color: var(--accent2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+    margin: 1rem 0 2rem;
+  }
+  .toc a {
+    display: inline-block;
+    padding: 0.25rem 0.6rem;
+    margin: 0.15rem;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    background: var(--surface2);
+    transition: background 0.2s;
+  }
+  .toc a:hover { background: var(--border); text-decoration: none; }
+
+  html { scroll-behavior: smooth; }
+
+  .btn {
+    border: none;
+    padding: 0.5rem 1.2rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    font-family: 'Noto Sans JP', sans-serif;
+    margin: 0.3rem;
+    transition: opacity 0.2s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.97); }
+  .btn-accent  { background: var(--accent);  color: var(--bg); }
+  .btn-accent2 { background: var(--accent2); color: var(--bg); }
+  .btn-accent3 { background: var(--accent3); color: var(--bg); }
+  .btn-warn    { background: var(--warn);    color: var(--bg); }
+  .btn-dim     { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+
+  /* ── Proxy Chain Visualization ── */
+  .proxy-chain {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+    padding: 1rem;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin: 1rem 0;
+    overflow-x: auto;
+  }
+  .proxy-node {
+    background: var(--surface2);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    padding: 0.5rem 0.8rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    text-align: center;
+    min-width: 90px;
+    transition: border-color 0.3s, background 0.3s;
+  }
+  .proxy-node.active {
+    border-color: var(--accent);
+    background: #e8f5e9;
+  }
+  .proxy-node.highlight-node {
+    border-color: var(--warn);
+    background: #fff8e1;
+  }
+  .proxy-node .node-label {
+    font-size: 0.68rem;
+    color: var(--text-dim);
+    display: block;
+  }
+  .proxy-node .node-ip {
+    color: var(--accent);
+    font-weight: 600;
+    display: block;
+    margin-top: 0.2rem;
+  }
+  .proxy-arrow {
+    color: var(--text-dim);
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+
+  /* ── Header Build Animation ── */
+  .header-build {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    margin: 1rem 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    min-height: 80px;
+  }
+  .header-build-line {
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: opacity 0.4s, transform 0.4s;
+    margin: 0.2rem 0;
+  }
+  .header-build-line.visible {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  /* ── Comparison Table ── */
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.82rem;
+  }
+  .compare-table th {
+    background: var(--surface2);
+    color: var(--accent2);
+    padding: 0.5rem 0.7rem;
+    text-align: left;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    border-bottom: 2px solid var(--accent2);
+  }
+  .compare-table td {
+    padding: 0.5rem 0.7rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .compare-table tr:hover { background: var(--surface); }
+  .compare-table .recommended { color: var(--accent); font-weight: 600; }
+  .compare-table .legacy { color: var(--warn); }
+</style>
+</head>
+<body>
+
+<!-- ============================================ -->
+<!-- STATUS BAR                                    -->
+<!-- ============================================ -->
+<div class="status-bar">
+  <div class="status-item">
+    <div class="status-dot" id="dot-protocol"></div>
+    <span id="status-protocol">プロトコル確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-httpbin"></div>
+    <span id="status-httpbin">httpbin.org 確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-devtools"></div>
+    <span>DevTools: <kbd style="background:var(--surface2);padding:0.1rem 0.4rem;border-radius:4px;">F12</kbd></span>
+  </div>
+</div>
+<p style="margin-bottom:0.5rem;font-size:0.82rem;"><a href="http-header-lab-index.html" style="color:var(--accent);text-decoration:none;">← マスター索引に戻る</a></p>
+
+<script>
+// ── Protocol check ──
+(function checkProtocol() {
+  const dot = document.getElementById('dot-protocol');
+  const label = document.getElementById('status-protocol');
+  if (location.protocol === 'file:') {
+    dot.classList.add('err');
+    label.innerHTML = '<strong style="color:var(--danger)">file:// 検出（要修正）</strong>';
+    document.getElementById('file-protocol-alert').style.display = 'block';
+  } else {
+    dot.classList.add('ok');
+    label.textContent = location.protocol + '// ✅';
+  }
+})();
+
+// ── httpbin.org health check ──
+(async function checkHttpbin() {
+  const dot = document.getElementById('dot-httpbin');
+  const label = document.getElementById('status-httpbin');
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch('https://httpbin.org/get', { signal: controller.signal });
+    clearTimeout(timeout);
+    if (res.ok) {
+      dot.classList.add('ok');
+      label.textContent = 'httpbin.org ✅';
+    } else {
+      dot.classList.add('err');
+      label.innerHTML = '<strong style="color:var(--danger)">httpbin.org 応答エラー</strong>';
+    }
+  } catch(e) {
+    dot.classList.add('err');
+    label.innerHTML = '<strong style="color:var(--danger)">httpbin.org ❌ 接続不可</strong>';
+  }
+})();
+</script>
+
+<h1>🧪 Lab 15: プロキシ・転送元ヘッダー</h1>
+<p style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.3rem;font-family:'IBM Plex Mono',monospace;">最終更新: 2026年3月</p>
+<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">⏱ 所要時間：30分</span>
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">難易度：★★☆</span>
+</div>
+<p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:1rem;">📋 前提知識：<a href="http-header-lab-06.html">Lab 06</a> 完了推奨（プロキシ経由の CORS ヘッダー書き換え問題を理解するため）</p>
+
+<div class="lab-box" style="border-color:var(--accent); margin-bottom:1rem;">
+  <h3 style="color:var(--accent); margin-top:0;">🎯 このLabの学習目標</h3>
+  <p style="margin-bottom:0.3rem;">完了すると、以下ができるようになります：</p>
+  <div class="check-item" style="opacity:1;"><span>1. <code>X-Forwarded-For</code> / <code>X-Forwarded-Proto</code> / <code>X-Forwarded-Host</code> の役割と偽装リスクを理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>2. RFC 7239 標準の <code>Forwarded</code> ヘッダーが推奨される理由を説明できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>3. <code>Via</code> ヘッダーで経由プロキシを追跡する仕組みを理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>4. ホップバイホップヘッダーとエンドツーエンドヘッダーの違いを理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>5. CDN固有ヘッダー（<code>CF-Connecting-IP</code>, <code>True-Client-IP</code> 等）の用途と注意点を理解する</span></div>
+</div>
+
+<div class="warn-box" style="border-color:var(--accent3);background:#fce4ec;">
+  <strong style="color:var(--accent3);">💥 実務での失敗例</strong>：<code>X-Forwarded-For</code> を無条件に信頼してクライアントIPを取得 → 攻撃者がヘッダーを偽装してIP制限を迂回
+</div>
+
+<p>
+  ブラウザとオリジンサーバーの間には、CDNエッジ・ロードバランサー・リバースプロキシ・WAF などの
+  <strong>中間層</strong>が存在することがほとんどです。<br>
+  このLabでは、中間層がリクエストに付与・変換する<strong>転送元ヘッダー</strong>と、
+  レスポンスに追加される<strong>中継情報ヘッダー</strong>を実際に観察します。
+</p>
+
+<!-- ── file:// alert (hidden by default) ── -->
+<div class="alert-critical" id="file-protocol-alert" style="display:none;">
+  <strong>🔴 このページは HTTP サーバー経由で開いてください</strong><br><br>
+  現在 <code>file://</code> で開いています。この状態では <code>fetch()</code> が
+  <strong>CORSエラー</strong>になり、ほとんどの実験が動作しません。<br>
+  Lab 01 の「ローカル Web サーバーのセットアップ」を参照してサーバーを起動してください。
+</div>
+
+<!-- ── DevTools warning ── -->
+<div class="warn-box">
+  <strong style="font-size:1rem; color:var(--danger);">最重要：DevTools を「先に」開いてからリロード</strong><br>
+  <code>F12</code>（Mac: <code>Cmd+Opt+I</code>）→ <strong>Network</strong> タブを選択 →
+  <strong>その後で</strong> <code>Ctrl+Shift+R</code> でリロード。<br>
+  順序が逆だとネットワークログが残りません。全実験でこの手順が前提です。
+</div>
+
+<!-- ── TOC ── -->
+<div class="toc">
+  <strong style="color:var(--text-dim);font-size:0.82rem;">目次:</strong><br>
+  <a href="#overview">📐 全体像</a>
+  <a href="#exp-15a">15-A: X-Forwarded-For</a>
+  <a href="#exp-15b">15-B: Forwarded（RFC 7239）</a>
+  <a href="#exp-15c">15-C: Via ヘッダー</a>
+  <a href="#exp-15d">15-D: プロキシチェーンの可視化</a>
+  <a href="#exp-15e">15-E: 偽装リスクと信頼境界</a>
+  <a href="#exp-15f">15-F: OutSystems確認</a>
+  <a href="#checklist">✅ チェックリスト</a>
+</div>
+
+<!-- ============================================ -->
+<h2 id="overview">📐 プロキシ・転送元ヘッダーの全体像</h2>
+
+<div class="diagram">Browser                  Proxy/CDN/LB              Origin Server
+  │                        │                          │
+  │  GET /page             │                          │
+  │  (元IP: 203.0.113.50) │                          │
+  │ ─────────────────────▶ │                          │
+  │                        │  GET /page               │
+  │                        │  X-Forwarded-For: 203.0.113.50
+  │                        │  X-Forwarded-Proto: https│
+  │                        │  X-Forwarded-Host: www.example.com
+  │                        │  Forwarded: for=203.0.113.50;proto=https
+  │                        │  Via: 1.1 proxy01        │
+  │                        │ ────────────────────────▶ │
+  │                        │                          │
+  │                        │  200 OK                  │
+  │                        │  Via: 1.1 proxy01        │
+  │                        │  Age: 120                │
+  │                        │ ◀──────────────────────── │
+  │  200 OK                │                          │
+  │ ◀───────────────────── │                          │
+  │                        │                          │</div>
+
+<div class="two-col">
+  <div class="col-card card-forwarded">
+    <h4>リクエストで追加されるヘッダー</h4>
+    <pre>X-Forwarded-For    元クライアントIP
+X-Forwarded-Proto  元のプロトコル
+X-Forwarded-Host   元のHostヘッダー
+Forwarded          上記3つの標準統合版(RFC 7239)
+Via                経由したプロキシ情報</pre>
+  </div>
+  <div class="col-card card-via">
+    <h4>レスポンスで追加されるヘッダー</h4>
+    <pre>Via                経由情報（レスポンスにも付与）
+Age                キャッシュからの経過秒数
+Server-Timing      CDNキャッシュHIT/MISS
+CF-Cache-Status    Cloudflare固有ステータス
+X-Cache            CDN固有キャッシュ状態</pre>
+  </div>
+</div>
+
+<hr>
+
+<!-- ============================================ -->
+<!-- 実験 15-A: X-Forwarded-For -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-15a">
+  <h3>実験 15-A: X-Forwarded-For を観察する</h3>
+  <p>
+    <code>X-Forwarded-For</code> はプロキシが元のクライアントIPを伝えるための
+    <strong>デファクトスタンダード</strong>ヘッダーです。
+    複数のプロキシを経由すると、IPがカンマ区切りで追記されていきます。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — httpbin.org 経由で自分のIPを確認</div>
+    <p>httpbin.org はリバースプロキシ経由でリクエストを受けています。<br>
+    サーバーに届いたヘッダーを確認してみましょう。</p>
+    <button class="btn btn-accent" id="btn-xff">X-Forwarded-For を取得</button>
+    <pre id="xff-result"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-xff').addEventListener('click', async () => {
+      const el = document.getElementById('xff-result');
+      el.textContent = '送信中...';
+      try {
+        const res = await fetch('https://httpbin.org/headers');
+        if (!res.ok) throw new Error('HTTPエラー: ' + res.status);
+        const data = await res.json();
+        const headers = data.headers;
+        const xff = headers['X-Forwarded-For'] || '(なし)';
+        const xfp = headers['X-Forwarded-Proto'] || '(なし)';
+        const xfh = headers['X-Forwarded-Host'] || '(なし)';
+        const host = headers['Host'] || '(なし)';
+
+        el.textContent = 'サーバーが受け取ったヘッダー:\n\n'
+          + '  X-Forwarded-For:   ' + xff + '\n'
+          + '  X-Forwarded-Proto: ' + xfp + '\n'
+          + '  X-Forwarded-Host:  ' + xfh + '\n'
+          + '  Host:              ' + host + '\n\n'
+          + '解説:\n'
+          + '  X-Forwarded-For の値があなたのグローバルIP（またはプロキシIP）です。\n'
+          + '  httpbin.org の前段にCDN/ロードバランサーがあるため、\n'
+          + '  元のクライアントIPがこのヘッダーで伝達されています。';
+        console.log('【15-A XFF】', headers);
+      } catch(e) {
+        el.textContent = '通信失敗: ' + e.message;
+        console.error('【15-A エラー】', e);
+      }
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — /ip エンドポイントと比較</div>
+    <p>httpbin.org の <code>/ip</code> はサーバーから見えるIPアドレスを返します。</p>
+    <button class="btn btn-accent2" id="btn-ip">サーバーから見えるIPを取得</button>
+    <pre id="ip-result"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-ip').addEventListener('click', async () => {
+      const el = document.getElementById('ip-result');
+      el.textContent = '送信中...';
+      try {
+        const res = await fetch('https://httpbin.org/ip');
+        if (!res.ok) throw new Error('HTTPエラー: ' + res.status);
+        const data = await res.json();
+
+        el.textContent = 'サーバーから見えるIP:\n'
+          + '  origin: ' + data.origin + '\n\n'
+          + '解説:\n'
+          + '  この値はサーバーのTCPソケットから取得したIPです。\n'
+          + '  プロキシ経由の場合、プロキシのIPが表示されることがあります。\n'
+          + '  ↑ の X-Forwarded-For と比較してみてください。\n\n'
+          + '  同じIP → プロキシなし（直接接続）\n'
+          + '  異なるIP → プロキシ経由（XFFで元IPが伝達されている）';
+        console.log('【15-A /ip】', data);
+      } catch(e) {
+        el.textContent = '通信失敗: ' + e.message;
+      }
+    });
+  </script>
+
+  <div class="note">
+    <strong>X-Forwarded-For の構造</strong>:
+    複数プロキシを経由すると、各プロキシがクライアントIPを末尾に追記します。<br>
+    <code>X-Forwarded-For: client, proxy1, proxy2</code><br>
+    左端が元のクライアント、右に行くほどオリジンに近いプロキシです。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/Headers/X-Forwarded-For" target="_blank">MDN — X-Forwarded-For</a></span>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 15-B: Forwarded (RFC 7239) -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-15b">
+  <h3>実験 15-B: Forwarded ヘッダー（RFC 7239 — 標準版）</h3>
+  <p>
+    <code>Forwarded</code> は <code>X-Forwarded-*</code> 系を1つに統合した
+    <strong>RFC 7239 標準ヘッダー</strong>です。
+    構造化された形式で、転送元IP・プロトコル・ホストを一括で表現します。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — 3つのヘッダーの対応関係を確認</div>
+  </div>
+
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th>情報</th>
+        <th class="legacy">レガシー（X-Forwarded-*）</th>
+        <th class="recommended">標準（Forwarded）</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>クライアントIP</td>
+        <td class="legacy"><code>X-Forwarded-For: 203.0.113.50</code></td>
+        <td class="recommended"><code>Forwarded: for=203.0.113.50</code></td>
+      </tr>
+      <tr>
+        <td>元のプロトコル</td>
+        <td class="legacy"><code>X-Forwarded-Proto: https</code></td>
+        <td class="recommended"><code>Forwarded: proto=https</code></td>
+      </tr>
+      <tr>
+        <td>元のホスト</td>
+        <td class="legacy"><code>X-Forwarded-Host: www.example.com</code></td>
+        <td class="recommended"><code>Forwarded: host=www.example.com</code></td>
+      </tr>
+      <tr>
+        <td>プロキシ自身</td>
+        <td class="legacy">（該当なし）</td>
+        <td class="recommended"><code>Forwarded: by=198.51.100.1</code></td>
+      </tr>
+      <tr>
+        <td><strong>統合形式</strong></td>
+        <td class="legacy">3つのヘッダーが必要</td>
+        <td class="recommended"><code>Forwarded: for=203.0.113.50;<br>proto=https;host=www.example.com</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 複数プロキシ時の表記比較</div>
+    <pre><span class="comment">// X-Forwarded-For: カンマ区切りで追記</span>
+<span class="header-name">X-Forwarded-For</span>: <span class="header-val">203.0.113.50, 198.51.100.1</span>
+
+<span class="comment">// Forwarded: 各プロキシが独立したエントリ</span>
+<span class="header-name">Forwarded</span>: <span class="header-val">for=203.0.113.50;by=198.51.100.1</span>,
+           <span class="header-val">for=198.51.100.1;by=10.0.0.1</span>
+
+<span class="comment">// → Forwarded の方が「誰が」「誰経由で」来たか明確</span>
+<span class="comment">// → X-Forwarded-For は「誰が」しか分からない</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — httpbin.org で Forwarded ヘッダーの扱いを確認</div>
+    <p>カスタムの <code>Forwarded</code> ヘッダーを付与してリクエストし、サーバーに届くか確認します。</p>
+    <button class="btn btn-accent" id="btn-forwarded">Forwarded 付きリクエスト</button>
+    <button class="btn btn-accent2" id="btn-xff-custom">X-Forwarded-For 付きリクエスト</button>
+    <pre id="forwarded-result"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-forwarded').addEventListener('click', async () => {
+      const el = document.getElementById('forwarded-result');
+      el.textContent = '送信中...';
+      try {
+        const res = await fetch('https://httpbin.org/headers', {
+          headers: {
+            'Forwarded': 'for=192.0.2.60;proto=https;host=lab.example.com;by=198.51.100.1'
+          }
+        });
+        if (!res.ok) throw new Error('HTTPエラー: ' + res.status);
+        const data = await res.json();
+        const fwd = data.headers['Forwarded'] || '(サーバーに届かず)';
+        el.textContent = 'サーバーが受信した Forwarded ヘッダー:\n'
+          + '  ' + fwd + '\n\n'
+          + '各パラメータの意味:\n'
+          + '  for=192.0.2.60       ← 元のクライアントIP\n'
+          + '  proto=https          ← 元のプロトコル\n'
+          + '  host=lab.example.com ← 元のHostヘッダー\n'
+          + '  by=198.51.100.1      ← プロキシ自身のIP\n\n'
+          + '※ ブラウザから直接 Forwarded を付けることは通常ありません。\n'
+          + '  これはプロキシ/LBが付与するヘッダーです。\n'
+          + '  ここではfetchで手動付与して動作を確認しています。';
+        console.log('【15-B Forwarded】', data.headers);
+      } catch(e) { el.textContent = '通信失敗: ' + e.message; }
+    });
+
+    document.getElementById('btn-xff-custom').addEventListener('click', async () => {
+      const el = document.getElementById('forwarded-result');
+      el.textContent = '送信中...';
+      try {
+        const res = await fetch('https://httpbin.org/headers', {
+          headers: {
+            'X-Forwarded-For': '192.0.2.60, 198.51.100.1',
+            'X-Forwarded-Proto': 'https',
+            'X-Forwarded-Host': 'lab.example.com'
+          }
+        });
+        if (!res.ok) throw new Error('HTTPエラー: ' + res.status);
+        const data = await res.json();
+        const xff = data.headers['X-Forwarded-For'] || '(なし)';
+        const xfp = data.headers['X-Forwarded-Proto'] || '(なし)';
+        const xfh = data.headers['X-Forwarded-Host'] || '(なし)';
+        el.textContent = 'サーバーが受信した X-Forwarded-* ヘッダー:\n\n'
+          + '  X-Forwarded-For:   ' + xff + '\n'
+          + '  X-Forwarded-Proto: ' + xfp + '\n'
+          + '  X-Forwarded-Host:  ' + xfh + '\n\n'
+          + '→ 同じ情報を3つのヘッダーに分散して送っている。\n'
+          + '  Forwarded (RFC 7239) なら1つで済む。';
+        console.log('【15-B XFF】', data.headers);
+      } catch(e) { el.textContent = '通信失敗: ' + e.message; }
+    });
+  </script>
+
+  <div class="warn-box">
+    <strong>現実の普及状況</strong>:
+    <code>Forwarded</code> はRFC標準ですが、2026年現在も <code>X-Forwarded-*</code> の方が圧倒的に普及しています。
+    Nginx, Apache, AWS ALB, Cloudflare 等、多くのインフラが <code>X-Forwarded-*</code> をデフォルト送信します。
+    新規構築では <code>Forwarded</code> を推奨しますが、両方を扱えるようにしておくのが実用的です。
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 15-C: Via -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-15c">
+  <h3>実験 15-C: Via ヘッダー</h3>
+  <p>
+    <code>Via</code> はリクエストとレスポンスの<strong>両方に付与</strong>されるヘッダーで、
+    経由したプロキシの情報を記録します。<code>X-Forwarded-For</code> とは異なり、
+    <strong>プロキシ自身</strong>が自分の情報を追加します。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — Via ヘッダーの構造</div>
+    <pre><span class="comment">// Via の構文:</span>
+<span class="header-name">Via</span>: <span class="header-val">&lt;protocol-version&gt; &lt;proxy-identifier&gt; [comment]</span>
+
+<span class="comment">// 例:</span>
+<span class="header-name">Via</span>: <span class="header-val">1.1 proxy01.cdn.example.com</span>
+<span class="header-name">Via</span>: <span class="header-val">1.1 proxy01, 1.1 proxy02</span>    <span class="comment">← 複数プロキシ経由</span>
+<span class="header-name">Via</span>: <span class="header-val">HTTP/2.0 edge-server</span>         <span class="comment">← H/2の場合</span>
+
+<span class="comment">// X-Forwarded-For との違い:</span>
+<span class="highlight">X-Forwarded-For</span>: クライアントIPを伝える（<span class="highlight">誰が</span>リクエストしたか）
+<span class="highlight">Via</span>:             プロキシ情報を伝える（<span class="highlight">何を経由</span>したか）</pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — レスポンスの Via を確認</div>
+    <p>httpbin.org のレスポンスヘッダーに <code>Via</code> が含まれているか確認します。</p>
+    <button class="btn btn-accent3" id="btn-via">Via ヘッダーを確認</button>
+    <pre id="via-result"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-via').addEventListener('click', async () => {
+      const el = document.getElementById('via-result');
+      el.textContent = '送信中...';
+      try {
+        const res = await fetch('https://httpbin.org/response-headers?Via=1.1+proxy-lab-demo');
+        if (!res.ok) throw new Error('HTTPエラー: ' + res.status);
+
+        // Check actual response headers
+        const via = res.headers.get('Via') || '(レスポンスに Via なし)';
+        const server = res.headers.get('Server') || '(なし)';
+
+        // Also get what httpbin echoed
+        const data = await res.json();
+
+        el.textContent = 'レスポンスヘッダーの確認:\n\n'
+          + '  Via:    ' + via + '\n'
+          + '  Server: ' + server + '\n\n'
+          + 'httpbin.org エコー内容:\n'
+          + '  ' + JSON.stringify(data, null, 2).split('\n').join('\n  ') + '\n\n'
+          + '解説:\n'
+          + '  Via はプロキシが「自分がここにいるよ」と宣言するヘッダー。\n'
+          + '  CDN経由のサイトではレスポンスに Via が含まれることが多い。\n'
+          + '  DevTools Network タブでも確認してみてください。';
+        console.log('【15-C Via】レスポンスヘッダー:', [...res.headers.entries()]);
+      } catch(e) { el.textContent = '通信失敗: ' + e.message; }
+    });
+  </script>
+
+  <div class="note">
+    <strong>ホップバイホップヘッダーとの関係</strong>:
+    <code>Via</code> はエンドツーエンドヘッダー（最終受信者まで転送される）です。
+    一方、<code>Connection</code>, <code>Keep-Alive</code>, <code>Proxy-Authorization</code> 等は
+    <strong>ホップバイホップヘッダー</strong>（次のプロキシまでで消える）です。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/Headers/Via" target="_blank">MDN — Via</a></span>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 15-D: プロキシチェーンの可視化 -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-15d">
+  <h3>実験 15-D: プロキシチェーンの可視化</h3>
+  <p>
+    複数のプロキシを経由する場合、各ヘッダーがどのように成長していくか
+    をインタラクティブに確認します。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — プロキシチェーンをシミュレーション</div>
+    <p>ボタンを押すと、リクエストがプロキシを1つずつ通過するアニメーションが表示されます。</p>
+    <button class="btn btn-accent" id="btn-chain-start">チェーンをシミュレート</button>
+    <button class="btn btn-dim" id="btn-chain-reset">リセット</button>
+  </div>
+
+  <!-- Proxy chain visualization -->
+  <div class="proxy-chain" id="proxy-chain-vis">
+    <div class="proxy-node" id="node-client">
+      <span class="node-label">Client</span>
+      <span class="node-ip">203.0.113.50</span>
+    </div>
+    <span class="proxy-arrow">→</span>
+    <div class="proxy-node" id="node-cdn">
+      <span class="node-label">CDN Edge</span>
+      <span class="node-ip">198.51.100.1</span>
+    </div>
+    <span class="proxy-arrow">→</span>
+    <div class="proxy-node" id="node-waf">
+      <span class="node-label">WAF</span>
+      <span class="node-ip">10.0.1.1</span>
+    </div>
+    <span class="proxy-arrow">→</span>
+    <div class="proxy-node" id="node-lb">
+      <span class="node-label">Load Balancer</span>
+      <span class="node-ip">10.0.2.1</span>
+    </div>
+    <span class="proxy-arrow">→</span>
+    <div class="proxy-node" id="node-origin">
+      <span class="node-label">Origin</span>
+      <span class="node-ip">10.0.3.5</span>
+    </div>
+  </div>
+
+  <!-- Header build animation -->
+  <div class="header-build" id="header-build-area">
+    <div class="header-build-line" id="hb-title" style="color:var(--text-dim); margin-bottom:0.5rem;">
+      ← シミュレートボタンを押してください
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    const steps = [
+      {
+        nodeId: 'node-client',
+        label: 'Client → CDN Edge へ送信',
+        headers: [
+          { name: 'GET /api/data HTTP/1.1', type: 'request' },
+          { name: 'Host: www.example.com', type: 'request' },
+        ]
+      },
+      {
+        nodeId: 'node-cdn',
+        label: 'CDN Edge が転送ヘッダーを追加',
+        headers: [
+          { name: 'X-Forwarded-For: 203.0.113.50', type: 'xff' },
+          { name: 'X-Forwarded-Proto: https', type: 'xff' },
+          { name: 'Via: 2.0 cdn-edge-tokyo-01', type: 'via' },
+        ]
+      },
+      {
+        nodeId: 'node-waf',
+        label: 'WAF が自身のIPを追記',
+        headers: [
+          { name: 'X-Forwarded-For: 203.0.113.50, 198.51.100.1', type: 'xff' },
+          { name: 'Via: 2.0 cdn-edge-tokyo-01, 1.1 waf-01', type: 'via' },
+        ]
+      },
+      {
+        nodeId: 'node-lb',
+        label: 'Load Balancer がさらに追記',
+        headers: [
+          { name: 'X-Forwarded-For: 203.0.113.50, 198.51.100.1, 10.0.1.1', type: 'xff' },
+          { name: 'Via: 2.0 cdn-edge-tokyo-01, 1.1 waf-01, 1.1 lb-01', type: 'via' },
+        ]
+      },
+      {
+        nodeId: 'node-origin',
+        label: 'Origin Server が受信した最終ヘッダー',
+        headers: [
+          { name: '━━━━━ Origin Server に届いた状態 ━━━━━', type: 'divider' },
+          { name: 'X-Forwarded-For: 203.0.113.50, 198.51.100.1, 10.0.1.1', type: 'xff-final' },
+          { name: 'X-Forwarded-Proto: https', type: 'xff-final' },
+          { name: 'Via: 2.0 cdn-edge-tokyo-01, 1.1 waf-01, 1.1 lb-01', type: 'via-final' },
+          { name: '', type: 'spacer' },
+          { name: '信頼できるIP = LBの直前（10.0.1.1）のみ', type: 'warn' },
+          { name: '左端の 203.0.113.50 は偽装されている可能性あり！', type: 'danger' },
+        ]
+      }
+    ];
+
+    const colorMap = {
+      'request': '#24292e',
+      'xff': 'var(--accent2)',
+      'via': 'var(--accent3)',
+      'xff-final': 'var(--accent)',
+      'via-final': 'var(--accent3)',
+      'divider': 'var(--text-dim)',
+      'spacer': 'transparent',
+      'warn': 'var(--warn)',
+      'danger': 'var(--danger)',
+    };
+
+    document.getElementById('btn-chain-start').addEventListener('click', async () => {
+      // Reset
+      document.querySelectorAll('.proxy-node').forEach(n => {
+        n.classList.remove('active', 'highlight-node');
+      });
+      const area = document.getElementById('header-build-area');
+      area.innerHTML = '';
+
+      for (let i = 0; i < steps.length; i++) {
+        const step = steps[i];
+
+        // Highlight current node
+        document.querySelectorAll('.proxy-node').forEach(n => n.classList.remove('highlight-node'));
+        const node = document.getElementById(step.nodeId);
+        node.classList.add('active', 'highlight-node');
+
+        // Add step label
+        const labelEl = document.createElement('div');
+        labelEl.className = 'header-build-line';
+        labelEl.style.color = 'var(--warn)';
+        labelEl.style.fontWeight = '600';
+        labelEl.style.marginTop = i > 0 ? '0.8rem' : '0';
+        labelEl.textContent = '▸ ' + step.label;
+        area.appendChild(labelEl);
+        await new Promise(r => setTimeout(r, 150));
+        labelEl.classList.add('visible');
+
+        // Add headers one by one
+        for (const h of step.headers) {
+          const lineEl = document.createElement('div');
+          lineEl.className = 'header-build-line';
+          lineEl.style.color = colorMap[h.type] || '#24292e';
+          lineEl.style.paddingLeft = '1rem';
+          if (h.type === 'spacer') {
+            lineEl.innerHTML = '&nbsp;';
+          } else {
+            lineEl.textContent = h.name;
+          }
+          area.appendChild(lineEl);
+          await new Promise(r => setTimeout(r, 250));
+          lineEl.classList.add('visible');
+        }
+
+        await new Promise(r => setTimeout(r, 600));
+      }
+    });
+
+    document.getElementById('btn-chain-reset').addEventListener('click', () => {
+      document.querySelectorAll('.proxy-node').forEach(n => {
+        n.classList.remove('active', 'highlight-node');
+      });
+      document.getElementById('header-build-area').innerHTML =
+        '<div class="header-build-line visible" style="color:var(--text-dim);">← シミュレートボタンを押してください</div>';
+    });
+  })();
+  </script>
+
+  <div class="note">
+    <strong>観察ポイント</strong>:
+    プロキシを通過するたびに <code>X-Forwarded-For</code> にIPが追記され、
+    <code>Via</code> にプロキシ名が追記されます。
+    オリジンサーバーは最終的に蓄積されたヘッダーから経路を把握します。
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 15-E: 偽装リスクと信頼境界 -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-15e">
+  <h3>実験 15-E: X-Forwarded-For の偽装リスクと信頼境界</h3>
+  <p>
+    <code>X-Forwarded-For</code> は<strong>クライアントが自由に設定できる</strong>ヘッダーです。
+    そのため、サーバー側で<strong>無条件に信頼してはいけません</strong>。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — 偽のIPを付けてリクエスト</div>
+    <p>実際に偽の <code>X-Forwarded-For</code> を付けてサーバーに送ってみます。</p>
+    <button class="btn btn-danger" id="btn-spoof" style="background:var(--danger);color:var(--bg);">偽装リクエストを送信</button>
+    <button class="btn btn-accent" id="btn-normal">通常リクエスト（比較用）</button>
+    <pre id="spoof-result"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-spoof').addEventListener('click', async () => {
+      const el = document.getElementById('spoof-result');
+      el.textContent = '偽装リクエスト送信中...';
+      try {
+        const res = await fetch('https://httpbin.org/headers', {
+          headers: {
+            'X-Forwarded-For': '1.2.3.4, 5.6.7.8'
+          }
+        });
+        if (!res.ok) throw new Error('HTTPエラー: ' + res.status);
+        const data = await res.json();
+        const xff = data.headers['X-Forwarded-For'] || '(なし)';
+
+        el.textContent = '🔴 偽装された X-Forwarded-For:\n'
+          + '  ' + xff + '\n\n'
+          + '解説:\n'
+          + '  クライアントが「X-Forwarded-For: 1.2.3.4, 5.6.7.8」を\n'
+          + '  手動で付けて送信しました。\n\n'
+          + '  サーバー側で見ると:\n'
+          + '    ' + xff + '\n'
+          + '    ↑ 左側は偽装された値！\n\n'
+          + '  プロキシが実際のクライアントIPを末尾に追記した場合:\n'
+          + '    1.2.3.4, 5.6.7.8, [実際のIP]\n'
+          + '    └── 偽装 ──┘     └ 信頼可 ┘\n\n'
+          + '→ 信頼できるのは「自分が管理するプロキシが追加した\n'
+          + '  直前の1つ」だけです！';
+        console.log('【15-E 偽装】', data.headers);
+      } catch(e) { el.textContent = '通信失敗: ' + e.message; }
+    });
+
+    document.getElementById('btn-normal').addEventListener('click', async () => {
+      const el = document.getElementById('spoof-result');
+      el.textContent = '通常リクエスト送信中...';
+      try {
+        const res = await fetch('https://httpbin.org/headers');
+        if (!res.ok) throw new Error('HTTPエラー: ' + res.status);
+        const data = await res.json();
+        const xff = data.headers['X-Forwarded-For'] || '(なし)';
+
+        el.textContent = '✅ 通常リクエスト:\n'
+          + '  X-Forwarded-For: ' + xff + '\n\n'
+          + '→ 偽装版と比較してください。\n'
+          + '  通常はプロキシが付与したIPのみが含まれます。';
+      } catch(e) { el.textContent = '通信失敗: ' + e.message; }
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 信頼境界の考え方</div>
+    <pre><span class="comment">// ❌ 危険な実装: XFF を無条件に信頼</span>
+<span class="highlight">client_ip = request.headers['X-Forwarded-For'].split(',')[0]</span>
+<span class="comment">// → 偽装された値を使ってしまう！</span>
+
+<span class="comment">// ✅ 安全な実装: 信頼できるプロキシの直前IPのみ使用</span>
+<span class="header-val">trusted_proxies = ['10.0.1.0/24', '10.0.2.0/24']</span>
+<span class="header-val">xff_list = request.headers['X-Forwarded-For'].split(',')</span>
+
+<span class="comment">// 右端（最後にプロキシが追加したIP）から遡り、</span>
+<span class="comment">// 信頼プロキシでなくなった最初のIPが「本当のクライアント」</span>
+<span class="header-val">for ip in reversed(xff_list):</span>
+<span class="header-val">    if ip.strip() not in trusted_proxies:</span>
+<span class="header-val">        client_ip = ip.strip()</span>
+<span class="header-val">        break</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — CDN固有ヘッダーの比較</div>
+    <pre><span class="comment">// 各CDNが提供する「信頼できるクライアントIP」ヘッダー</span>
+<span class="comment">// これらはCDN自身が設定するため、偽装が困難</span>
+
+<span class="header-name">Cloudflare</span>:    <span class="header-val">CF-Connecting-IP</span>  <span class="comment">← 1つのIPのみ</span>
+<span class="header-name">AWS (ALB/CF)</span>:  <span class="header-val">X-Forwarded-For</span>   <span class="comment">← 末尾をALBが追加</span>
+<span class="header-name">Akamai</span>:        <span class="header-val">True-Client-IP</span>    <span class="comment">← 1つのIPのみ</span>
+<span class="header-name">Google Cloud</span>:  <span class="header-val">X-Forwarded-For</span>   <span class="comment">← GLBが追加</span>
+<span class="header-name">Fastly</span>:        <span class="header-val">Fastly-Client-IP</span>  <span class="comment">← 1つのIPのみ</span>
+
+<span class="highlight">重要: CDN固有ヘッダーはCDN経由のリクエストのみ受け入れること！</span>
+<span class="comment">// CDNを迂回して直接オリジンにアクセスされた場合、</span>
+<span class="comment">// これらのヘッダーも偽装可能になる</span></pre>
+  </div>
+
+  <div class="warn-box">
+    <strong>セキュリティ上の鉄則</strong>:
+    <code>X-Forwarded-For</code> の左端（最初のIP）を「クライアントIP」として
+    無条件に信頼するのは<strong>最もよくある脆弱性の1つ</strong>です。
+    レート制限、アクセス制御、ログ記録で偽装IPを使うと、攻撃者が制限を回避したり、
+    ログを汚染したりできます。
+  </div>
+
+  <div class="warn-box" style="border-color:var(--danger);">
+    <strong style="color:var(--danger);">⚠ CDN固有ヘッダーの運用ルール（迂回アクセス対策）</strong><br><br>
+    <span style="font-size:0.85rem;">
+    <code>CF-Connecting-IP</code>（Cloudflare）や <code>True-Client-IP</code>（Akamai）は、<strong>CDN が付与するヘッダー</strong>です。<br>
+    しかし、攻撃者がCDNを迂回してオリジンサーバーに直接アクセスすると、<strong>これらのヘッダーを自由に偽装</strong>できます。<br><br>
+
+    <strong>必須の対策</strong>：<br>
+    ① <strong>オリジンサーバーへの直接アクセスをブロック</strong>（CDN経由のみ許可）<br>
+    &nbsp;&nbsp;&nbsp;→ ファイアウォールで CDN の IP レンジのみ許可<br>
+    ② <strong>CDN が付与する認証ヘッダーを検証</strong><br>
+    &nbsp;&nbsp;&nbsp;→ 例: Cloudflare の <code>CF-Connecting-IP</code> は CDN 経由時のみ信頼<br>
+    ③ <strong>RFC 7239 の <code>Forwarded</code> ヘッダーを優先</strong>し、信頼できるプロキシの直前 IP のみ使用<br><br>
+
+    <strong>ルール</strong>：「CDN 固有ヘッダーは、CDN 経由であることが保証された場合のみ信頼する」
+    </span>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 15-F: OutSystems -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-15f">
+  <h3>実験 15-F: OutSystems でプロキシヘッダーを確認する</h3>
+  <p>
+    OutSystems Personal Environment は<strong>ロードバランサー（AWS ALB等）経由</strong>で
+    リクエストを受け取ります。実際にどのような転送元ヘッダーが付与されているか確認しましょう。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — HeaderLab に新しいREST API Methodを追加</div>
+    <pre><span class="comment">// Service Studio 操作手順:</span>
+
+1. HeaderLab モジュールを開く（Lab 01 で作成済み）
+
+2. Logic → Integrations → REST → HeaderTest を右クリック
+   → <span class="highlight">Add REST API Method</span>
+   名前: <span class="header-val">GetProxyInfo</span>
+   HTTP Method: <span class="header-val">GET</span>
+
+3. Output Parameter を追加:
+   名前: <span class="header-val">XForwardedFor</span> (Text型)
+   名前: <span class="header-val">XForwardedProto</span> (Text型)
+   名前: <span class="header-val">XForwardedHost</span> (Text型)
+   名前: <span class="header-val">RemoteAddr</span> (Text型)
+
+4. フロー内で Assign:
+
+   <span class="comment">// HTTPリクエストヘッダーを取得するビルトイン関数を使用</span>
+   XForwardedFor   = <span class="header-val">GetRequestHeader("X-Forwarded-For")</span>
+   XForwardedProto = <span class="header-val">GetRequestHeader("X-Forwarded-Proto")</span>
+   XForwardedHost  = <span class="header-val">GetRequestHeader("X-Forwarded-Host")</span>
+   RemoteAddr      = <span class="header-val">GetRequestHeader("X-Real-IP")</span>
+
+   <span class="comment">// ※ GetRequestHeader は
+   //   HTTPRequestHandler 拡張の Server Action です
+   //   Manage Dependencies → HTTPRequestHandler → GetRequestHeader を追加</span>
+
+5. <span class="highlight">Publish</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — ブラウザでAPIを呼んでヘッダーを確認</div>
+    <pre>https://<span class="highlight">&lt;your-env&gt;</span>.outsystemscloud.com/HeaderLab/rest/HeaderTest/GetProxyInfo</pre>
+    <p>レスポンス例：</p>
+    <pre>{
+  <span class="header-name">"XForwardedFor"</span>: <span class="header-val">"203.0.113.50, 10.0.1.1"</span>,
+  <span class="header-name">"XForwardedProto"</span>: <span class="header-val">"https"</span>,
+  <span class="header-name">"XForwardedHost"</span>: <span class="header-val">"your-env.outsystemscloud.com"</span>,
+  <span class="header-name">"RemoteAddr"</span>: <span class="header-val">"10.0.1.1"</span>
+}</pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — このHTMLからOutSystems APIを呼んでみる</div>
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; margin:0.5rem 0;">
+      <input type="text" id="os-proxy-url"
+        placeholder="https://xxx.outsystemscloud.com/HeaderLab/rest/HeaderTest/GetProxyInfo"
+        style="flex:1; min-width:300px; background:var(--surface2); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:0.5rem 0.8rem; font-family:'IBM Plex Mono',monospace; font-size:0.82rem;">
+      <button class="btn btn-warn" id="btn-os-proxy">fetch実行</button>
+    </div>
+    <pre id="os-proxy-result"><span class="placeholder">← OutSystems APIのURLを入力して実行してください</span></pre>
+  </div>
+
+  <script>
+    // localStorage でURL保存
+    const osProxyUrlEl = document.getElementById('os-proxy-url');
+    const savedOsProxyUrl = localStorage.getItem('httplab_os_proxy_url');
+    if (savedOsProxyUrl) osProxyUrlEl.value = savedOsProxyUrl;
+    osProxyUrlEl.addEventListener('input', () => {
+      localStorage.setItem('httplab_os_proxy_url', osProxyUrlEl.value);
+    });
+
+    document.getElementById('btn-os-proxy').addEventListener('click', async () => {
+      const el = document.getElementById('os-proxy-result');
+      const url = osProxyUrlEl.value.trim();
+      if (!url) { el.textContent = 'URLを入力してください'; return; }
+      el.textContent = 'fetchを送信中...\n  URL: ' + url;
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('HTTPエラー: ' + res.status + ' ' + res.statusText);
+        const data = await res.json();
+        el.textContent = '✅ 成功！\n\n'
+          + 'レスポンス:\n  ' + JSON.stringify(data, null, 2).split('\n').join('\n  ')
+          + '\n\n'
+          + '解説:\n'
+          + '  OutSystems は AWS ALB 等のロードバランサー経由で\n'
+          + '  リクエストを受けるため、X-Forwarded-* が自動付与されます。\n'
+          + '  XForwardedFor に表示されたIPがあなたのグローバルIPです。';
+      } catch(e) {
+        const isCors = e.message.includes('Failed to fetch') || e.name === 'TypeError';
+        el.textContent = (isCors ? '🔴 CORSエラー発生！' : '❌ エラー: ' + e.message)
+          + '\n\n'
+          + (isCors
+            ? 'オリジンが異なるためCORSエラーになります。\n'
+              + 'OutSystems側でCORS設定を追加するか、\n'
+              + 'ブラウザで直接APIのURLにアクセスして確認してください。'
+            : 'URLが正しいか確認してください。');
+      }
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 4 — DevTools で OutSystems のレスポンスヘッダーを観察</div>
+    <p>ブラウザで直接APIのURLにアクセスし、DevTools Network タブで以下を確認します：</p>
+    <pre><span class="comment">// レスポンスヘッダーで確認すべき項目:</span>
+
+<span class="header-name">Server</span>: <span class="header-val">Microsoft-IIS/10.0</span>  <span class="comment">← OutSystemsのWebサーバー</span>
+<span class="header-name">X-Content-Type-Options</span>: <span class="header-val">nosniff</span>
+<span class="highlight">Via</span>: (ロードバランサーが付与している場合あり)
+
+<span class="comment">// OutSystems は IIS 上で動作し、</span>
+<span class="comment">// 前段に AWS ALB 等のロードバランサーが配置されています。</span>
+<span class="comment">// この構成自体が Lab 15 のテーマである</span>
+<span class="comment">// 「プロキシ経由のヘッダー伝達」の実例です。</span></pre>
+  </div>
+
+  <div class="note">
+    <strong>OutSystems のプロキシ構成</strong>:
+    OutSystems Cloud の典型的な構成は
+    <code>Client → CDN/WAF → ALB → IIS (OutSystems)</code> です。
+    <code>GetRequestHeader("X-Forwarded-For")</code> で取得できるIPリストから、
+    この多段プロキシ構成を読み取ることができます。
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- ホップバイホップヘッダー 補足 -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-15g">
+  <h3>補足: ホップバイホップ vs エンドツーエンドヘッダー</h3>
+  <p>
+    HTTPヘッダーには、最終受信者まで転送される<strong>エンドツーエンドヘッダー</strong>と、
+    次のプロキシまでで消費される<strong>ホップバイホップヘッダー</strong>があります。
+    プロキシはホップバイホップヘッダーを転送してはなりません（RFC 7230）。
+  </p>
+
+  <div class="two-col">
+    <div class="col-card card-forwarded">
+      <h4>エンドツーエンド（転送される）</h4>
+      <pre>Via
+X-Forwarded-For
+X-Forwarded-Proto
+X-Forwarded-Host
+Forwarded
+Cache-Control
+Content-Type
+Authorization
+...ほとんどのヘッダー</pre>
+    </div>
+    <div class="col-card" style="border-color:var(--danger);">
+      <h4 style="color:var(--danger);">ホップバイホップ（転送禁止）</h4>
+      <pre>Connection
+Keep-Alive
+TE
+Transfer-Encoding
+Upgrade
+Proxy-Authorization
+Proxy-Authenticate
+
+※ Connection ヘッダーで指定された
+  任意のヘッダーもホップバイホップ扱い</pre>
+    </div>
+  </div>
+
+  <div class="warn-box">
+    <strong>HTTP/2・HTTP/3 での変化</strong>:
+    HTTP/2以降では <code>Connection</code>, <code>Keep-Alive</code>,
+    <code>Transfer-Encoding</code> は不要（プロトコル自体が多重化を管理）。
+    ただし、HTTP/1.1 バックエンドとの中継時にプロキシが変換する場合があります。
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- チェックリスト -->
+<!-- ============================================ -->
+<hr>
+<h2 id="checklist">✅ Lab 15 チェックリスト</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">チェック状態はブラウザに自動保存されます。</p>
+
+<div class="check-item"><input type="checkbox" data-key="lab15-1"> <label>httpbin.org 経由で X-Forwarded-For に自分のIPが含まれていることを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab15-2"> <label>/ip エンドポイントのIPと X-Forwarded-For を比較した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab15-3"> <label>Forwarded (RFC 7239) と X-Forwarded-* の対応関係を理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab15-4"> <label>Forwarded ヘッダーを手動で付けてサーバーに届くことを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab15-5"> <label>Via ヘッダーの構造とレスポンスでの役割を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab15-6"> <label>プロキシチェーンのシミュレーションでヘッダーの成長過程を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab15-7"> <label>X-Forwarded-For に偽のIPを付けて送信できることを確認した（偽装リスク）</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab15-8"> <label>信頼境界の考え方（右端から遡る）を理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab15-9"> <label>CDN固有ヘッダー（CF-Connecting-IP等）の存在を把握した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab15-10"> <label>OutSystems で GetProxyInfo API を作成し、X-Forwarded-* を取得した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab15-11"> <label>ホップバイホップ vs エンドツーエンドヘッダーの違いを理解した</label></div>
+
+<div style="margin-top:1rem; text-align:center;">
+  <span id="progress-text" style="font-family:'IBM Plex Mono',monospace; color:var(--accent); font-size:0.9rem;"></span>
+</div>
+
+<!-- ── localStorage for checkboxes ── -->
+<script>
+  const STORAGE_PREFIX = 'httplab_';
+
+  function updateProgress() {
+    const all = document.querySelectorAll('input[type="checkbox"][data-key]');
+    const checked = [...all].filter(cb => cb.checked).length;
+    const el = document.getElementById('progress-text');
+    if (el) el.textContent = checked + ' / ' + all.length + ' 完了';
+  }
+
+  document.querySelectorAll('input[type="checkbox"][data-key]').forEach(cb => {
+    const saved = localStorage.getItem(STORAGE_PREFIX + cb.dataset.key);
+    if (saved === 'true') {
+      cb.checked = true;
+      cb.closest('.check-item')?.classList.add('checked');
+    }
+    cb.addEventListener('change', () => {
+      localStorage.setItem(STORAGE_PREFIX + cb.dataset.key, cb.checked);
+      cb.closest('.check-item')?.classList.toggle('checked', cb.checked);
+      updateProgress();
+    });
+  });
+
+  updateProgress();
+</script>
+
+<hr>
+
+<div class="note">
+  📖 <strong>参照資料</strong>：このLabの内容は <code>http-headers-guide-v2.md</code> の 第2部⑥「プロキシ / WAF / CDNエッジ」 に対応しています。より詳しい解説・ヘッダー一覧はガイドを参照してください。
+</div>
+
+<h2>📝 Lab 15 学習ノート</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">メモはブラウザに自動保存されます。</p>
+<textarea id="notes" rows="6" placeholder="気づいたこと、疑問点をメモ..."
+  style="width:100%;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:0.8rem;font-family:'Noto Sans JP',sans-serif;font-size:0.9rem;resize:vertical;margin-top:0.5rem;"></textarea>
+
+<script>
+  const notesEl = document.getElementById('notes');
+  const savedNotes = localStorage.getItem(STORAGE_PREFIX + 'lab15_notes');
+  if (savedNotes) notesEl.value = savedNotes;
+  notesEl.addEventListener('input', () => {
+    localStorage.setItem(STORAGE_PREFIX + 'lab15_notes', notesEl.value);
+  });
+</script>
+
+<p style="color:var(--text-dim); font-size:0.82rem; margin-top:2rem;">
+  ← 前回: <a href="http-header-lab-14.html"><strong>Lab 14 — 圧縮・転送</strong></a>（Content-Encoding, Transfer-Encoding, Range）<br>
+  次回: <a href="http-header-lab-16.html"><strong>Lab 16 — パフォーマンス</strong></a>（Server-Timing, Timing-Allow-Origin, Link, Alt-Svc）
+  <br><span style="color:var(--text-dim);font-size:0.78rem;">プロキシを理解したら、最後にパフォーマンス計測・最適化のヘッダーで仕上げます</span>
+</p>
+
+</body>
+</html>

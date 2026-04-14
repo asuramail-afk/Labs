@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Web Data Conversion Lab 01: URL・ドメイン関連の変換</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;700&display=swap');
+
+  :root {
+    --bg: #ffffff;
+    --surface: #f5f7fa;
+    --surface2: #ebeef2;
+    --border: #c8cdd3;
+    --text: #1a1a2e;
+    --text-dim: #5c6370;
+    --accent: #005cc5;
+    --accent2: #22863a;
+    --accent3: #6f42c1;
+    --warn: #b08800;
+    --danger: #cb2431;
+    --code-bg: #f0f4f8;
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    padding: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  h1 { font-size: 1.6rem; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 0.8rem; margin-bottom: 1.5rem; font-family: 'IBM Plex Mono', monospace; }
+  h2 { font-size: 1.25rem; color: var(--accent2); margin: 2rem 0 1rem; font-family: 'IBM Plex Mono', monospace; }
+  h3 { font-size: 1.05rem; color: var(--accent3); margin: 1.5rem 0 0.8rem; }
+  p, li { font-size: 0.92rem; margin-bottom: 0.5rem; }
+
+  /* Status Bar */
+  .status-bar { display: flex; gap: 1rem; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.6rem 1rem; margin-bottom: 1.5rem; font-size: 0.82rem; font-family: 'IBM Plex Mono', monospace; flex-wrap: wrap; }
+  .status-item { display: flex; align-items: center; gap: 0.4rem; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-dim); animation: pulse 1.5s infinite; }
+  .status-dot.ok { background: var(--accent); animation: none; }
+  .status-dot.err { background: var(--danger); animation: none; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* Lab Section */
+  .lab-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin: 1.5rem 0; }
+
+  .step { background: var(--surface2); border-left: 3px solid var(--accent2); border-radius: 0 var(--radius) var(--radius) 0; padding: 1rem 1.2rem; margin: 1rem 0; }
+  .step-num { font-family: 'IBM Plex Mono', monospace; color: var(--accent2); font-weight: 600; font-size: 0.8rem; margin-bottom: 0.3rem; }
+
+  code, pre { font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; }
+  code { background: var(--code-bg); padding: 0.15rem 0.4rem; border-radius: 4px; color: var(--accent); }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; overflow-x: auto; margin: 0.8rem 0; line-height: 1.6; color: #24292e; }
+  pre .comment { color: #6a737d; }
+  pre .header-name { color: var(--accent2); }
+  pre .header-val { color: var(--accent); }
+  pre .highlight { color: var(--warn); font-weight: 600; }
+
+  .placeholder { color: var(--text-dim); font-style: italic; font-size: 0.8rem; }
+
+  .note { background: #e8f4fd; border: 1px solid #b6d4e8; border-radius: var(--radius); padding: 0.8rem 1rem; margin: 1rem 0; font-size: 0.85rem; color: var(--accent2); }
+  .note::before { content: "💡 "; }
+
+  .warn-box { background: #fff8e1; border: 1px solid #e6d590; border-radius: var(--radius); padding: 0.8rem 1rem; margin: 1rem 0; font-size: 0.85rem; color: var(--warn); }
+  .warn-box::before { content: "⚠️ "; }
+
+  .check-item { background: var(--surface2); border-radius: var(--radius); padding: 0.6rem 1rem; margin: 0.4rem 0; display: flex; align-items: center; gap: 0.6rem; font-size: 0.88rem; transition: opacity 0.3s; }
+  .check-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
+  .check-item.checked { opacity: 0.55; }
+
+  .diagram { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; line-height: 1.5; overflow-x: auto; white-space: pre; color: var(--text-dim); margin: 1rem 0; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.8rem; margin: 1rem 0; }
+  @media (max-width: 900px) { .three-col { grid-template-columns: 1fr; } }
+  @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+  .col-card { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.8rem; font-size: 0.8rem; }
+  .col-card h4 { font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; margin-bottom: 0.5rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); }
+  .col-card pre { border: none; padding: 0.4rem 0; margin: 0; font-size: 0.75rem; background: transparent; }
+  .col-card.card-encode { border-color: var(--accent); }
+  .col-card.card-encode h4 { color: var(--accent); }
+  .col-card.card-puny { border-color: var(--accent2); }
+  .col-card.card-puny h4 { color: var(--accent2); }
+  .col-card.card-path { border-color: var(--accent3); }
+  .col-card.card-path h4 { color: var(--accent3); }
+
+  .toc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.2rem; margin: 1rem 0 2rem; }
+  .toc a { display: inline-block; padding: 0.25rem 0.6rem; margin: 0.15rem; border-radius: 6px; font-size: 0.82rem; background: var(--surface2); transition: background 0.2s; }
+  .toc a:hover { background: var(--border); text-decoration: none; }
+
+  a { color: var(--accent2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  html { scroll-behavior: smooth; }
+
+  .btn { border: none; padding: 0.5rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; font-family: 'Noto Sans JP', sans-serif; margin: 0.3rem; transition: opacity 0.2s; }
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.97); }
+  .btn-accent  { background: var(--accent);  color: var(--bg); }
+  .btn-accent2 { background: var(--accent2); color: var(--bg); }
+  .btn-accent3 { background: var(--accent3); color: var(--bg); }
+  .btn-warn    { background: var(--warn);    color: var(--bg); }
+  .btn-dim     { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+
+  .input-area { width: 100%; background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 0.8rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; }
+
+  /* Conversion arrow */
+  .conv-arrow { text-align: center; font-size: 1.5rem; color: var(--accent2); margin: 0.5rem 0; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });</script>
+</head>
+<body>
+
+<!-- Status Bar -->
+<div class="status-bar">
+  <div class="status-item">
+    <div class="status-dot" id="dot-protocol"></div>
+    <span id="status-protocol">プロトコル確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-url-api"></div>
+    <span id="status-url-api">URL API: checking...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-devtools"></div>
+    <span>Console: <kbd style="background:var(--surface2);padding:0.1rem 0.4rem;border-radius:4px;">F12</kbd></span>
+  </div>
+</div>
+<p style="margin-bottom:0.5rem;font-size:0.82rem;"><a href="web-data-conversion-index.html" style="color:var(--accent);text-decoration:none;">← マスター索引に戻る</a></p>
+
+<script>
+// Protocol check
+(function() {
+  const dot = document.getElementById('dot-protocol');
+  const label = document.getElementById('status-protocol');
+  if (location.protocol === 'file:') {
+    dot.classList.add('ok');
+    label.textContent = 'file:// (このLabはローカルでも動作します)';
+  } else {
+    dot.classList.add('ok');
+    label.textContent = location.protocol + '// ✓';
+  }
+})();
+
+// URL API check
+(function() {
+  const dot = document.getElementById('dot-url-api');
+  const label = document.getElementById('status-url-api');
+  try {
+    new URL('http://example.com');
+    dot.classList.add('ok');
+    label.textContent = 'URL API: available ✓';
+  } catch(e) {
+    dot.classList.add('err');
+    label.textContent = 'URL API: unavailable';
+  }
+})();
+</script>
+
+<h1>🧪 Lab 01: URL・ドメイン関連の変換</h1>
+<p style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.3rem;font-family:'IBM Plex Mono',monospace;">Web Data Conversion Lab シリーズ</p>
+
+<p>
+  ブラウザはURLを通じてサーバーと通信します。しかしURLには使用できない文字（日本語・記号）があり、
+  ブラウザは送信前にさまざまな<strong>変換</strong>を自動で行っています。このLabではその変換をJavaScriptで再現・確認します。
+</p>
+
+<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">⏱ 所要時間：20分</span>
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">難易度：★☆☆</span>
+</div>
+<p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:1rem;">📋 前提知識：なし（シリーズの出発点）</p>
+
+<div class="lab-box" style="border-color:var(--accent); margin-bottom:1rem;">
+  <h3 style="color:var(--accent); margin-top:0;">🎯 このLabの学習目標</h3>
+  <p style="margin-bottom:0.3rem;">完了すると、以下ができるようになります：</p>
+  <div class="check-item" style="opacity:1;"><span>1. <code>encodeURIComponent</code> で日本語・記号がパーセントエンコードされる仕組みを理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>2. <code>encodeURI</code> と <code>encodeURIComponent</code> の違いを説明できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>3. 日本語ドメインが <strong>Punycode</strong> で自動変換されることを確認する</span></div>
+  <div class="check-item" style="opacity:1;"><span>4. <code>../</code> や <code>./</code> を含むパスが <strong>正規化</strong>される仕組みを理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>5. URL全体の構造（scheme / host / path / query / fragment）を分解できる</span></div>
+</div>
+
+<div class="warn-box" style="border-color:var(--accent3);background:#fce4ec;">
+  <strong style="color:var(--accent3);">💥 実務での失敗例</strong>：検索クエリに <code>&</code> を含む値をそのまま埋め込み → パラメータが分割されて意図しない値がサーバーに届く<br>
+  <code>?q=A&B=test</code> → <code>q=A</code> と <code>B=test</code> に分離してしまう
+</div>
+
+<!-- 概要ダイアグラム -->
+<div class="diagram">Browser（あなた）                          Server
+  │                                          │
+  │  入力: "JS 基礎" を検索したい              │
+  │                                          │
+  │  ① URLエンコード     [開発者が明示]        │
+  │     "JS 基礎" → "JS%20%E5%9F%BA%E7%A4%8E" │
+  │                                          │
+  │  ② Punycode          [ブラウザ自動]        │
+  │     "総務省.jp" → "xn--lhr040g.jp"       │
+  │                                          │
+  │  ③ パス正規化         [ブラウザ自動]        │
+  │     "/a/b/../c" → "/a/c"                 │
+  │                                          │
+  │  GET /search?q=JS%20%E5%9F%BA%E7%A4%8E   │
+  │ ───────────── 送信 → ──────────────────▶ │
+  │                                          │
+  │  ◀─────────── ← 受信 ───────────────────  │
+  │  サーバーからの受信時、ブラウザは自動で:      │
+  │    decodeURIComponent() で URLデコード      │
+  │    Punycode → アドレスバーに日本語表示       │
+  │                                          │</div>
+<details style="margin:0.5rem 0;">
+  <summary style="cursor:pointer;color:var(--accent);font-size:0.82rem;font-family:'IBM Plex Mono',monospace;">📊 Mermaid版を表示</summary>
+  <div class="mermaid">
+sequenceDiagram
+    participant B as Browser
+    participant S as Server
+    B->>B: ① URLエンコード (JS基礎 → JS%20%E5%9F%BA%E7%A4%8E)
+    B->>B: ② Punycode (総務省.jp → xn--lhr040g.jp)
+    B->>B: ③ パス正規化 (/a/b/../c → /a/c)
+    B->>S: GET /search?q=JS%20%E5%9F%BA%E7%A4%8E
+    S-->>B: レスポンス (decodeURIComponent で復元)
+  </div>
+</details>
+
+<!-- TOC -->
+<div class="toc">
+  <strong style="color:var(--text-dim);font-size:0.82rem;">目次:</strong><br>
+  <a href="#exp-1a">1-A: URLエンコード</a>
+  <a href="#exp-1b">1-B: encodeURI vs encodeURIComponent</a>
+  <a href="#exp-1c">1-C: Punycode（ドメイン変換）</a>
+  <a href="#exp-1d">1-D: パス正規化</a>
+  <a href="#exp-1e">1-E: URL構造の分解</a>
+  <a href="#exp-1f">1-F: 総合実験</a>
+  <a href="#checklist">✅ チェックリスト</a>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 1-A: URLエンコード -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-1a">
+  <h3>実験 1-A: URLエンコード（encodeURIComponent）</h3>
+  <p>
+    URLにはASCII文字以外（日本語、スペース、一部記号）をそのまま含めることができません。<br>
+    <code>encodeURIComponent()</code> はこれらの文字を <strong>%XX</strong> 形式（パーセントエンコーディング）に変換します。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — 文字列をエンコードしてみる</div>
+    <p>下の入力欄にテキストを入力すると、リアルタイムでエンコード結果が表示されます。</p>
+    <input type="text" class="input-area" id="encode-input" value="JS 基礎" placeholder="エンコードしたい文字列を入力...">
+    <div class="conv-arrow">↓ encodeURIComponent() ↓</div>
+    <pre id="encode-output"><span class="placeholder">← 上に文字列を入力してください</span></pre>
+  </div>
+
+  <script>
+    const encodeInput = document.getElementById('encode-input');
+    const encodeOutput = document.getElementById('encode-output');
+
+    function updateEncode() {
+      const raw = encodeInput.value;
+      if (!raw) {
+        encodeOutput.innerHTML = '<span class="placeholder">← 上に文字列を入力してください</span>';
+        return;
+      }
+      const encoded = encodeURIComponent(raw);
+      const decoded = decodeURIComponent(encoded);
+      const byteLen = new TextEncoder().encode(raw).length;
+
+      encodeOutput.textContent = '入力:     "' + raw + '"\n'
+        + 'エンコード: "' + encoded + '"\n'
+        + 'デコード:   "' + decoded + '"\n'
+        + '一致確認:   ' + (raw === decoded ? '✓ 元の文字列に完全復元' : '✗ 不一致') + '\n\n'
+        + '文字数:     ' + raw.length + ' 文字\n'
+        + 'バイト数:   ' + byteLen + ' bytes (UTF-8)\n'
+        + 'エンコード後: ' + encoded.length + ' 文字\n\n'
+        + '// コンソールで実行:\n'
+        + 'encodeURIComponent("' + raw + '")\n'
+        + '// → "' + encoded + '"';
+    }
+
+    encodeInput.addEventListener('input', updateEncode);
+    updateEncode();
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — いろいろな文字で試す</div>
+    <p>ボタンを押すと、さまざまなパターンの文字列が入力されます。</p>
+    <button class="btn btn-accent" onclick="encodeInput.value='JS 基礎';updateEncode();">日本語+スペース</button>
+    <button class="btn btn-accent2" onclick="encodeInput.value='price=100&tax=10';updateEncode();">記号（& =）</button>
+    <button class="btn btn-accent3" onclick="encodeInput.value='path/to/file#section';updateEncode();">パス文字（/ #）</button>
+    <button class="btn btn-warn" onclick="encodeInput.value='Hello World!';updateEncode();">英語+記号</button>
+    <button class="btn btn-dim" onclick="encodeInput.value='ABCabc123';updateEncode();">英数字のみ</button>
+  </div>
+
+  <div class="note">
+    <strong>観察ポイント</strong>: 英数字（<code>A-Z a-z 0-9</code>）と <code>- _ . ~ ! * ' ( )</code> はエンコードされません。
+    日本語は1文字が <strong>3つの %XX</strong> に変換されます（UTF-8で3バイトだから）。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent" target="_blank">MDN — encodeURIComponent</a></span>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.6rem;margin:0.8rem 0;font-size:0.8rem;">
+    <div style="background:var(--surface2);padding:0.5rem 0.8rem;border-radius:6px;"><strong style="color:var(--accent);">実行者:</strong> 開発者が明示的に呼ぶ</div>
+    <div style="background:var(--surface2);padding:0.5rem 0.8rem;border-radius:6px;"><strong style="color:var(--accent2);">タイミング:</strong> リクエスト構築時</div>
+    <div style="background:var(--surface2);padding:0.5rem 0.8rem;border-radius:6px;"><strong style="color:var(--accent3);">逆変換:</strong> <code>decodeURIComponent()</code></div>
+  </div>
+
+  <div class="warn-box" style="border-color:var(--accent3);background:#f3e5f5;">
+    <strong style="color:var(--accent3);">📋 初心者まとめ</strong><br>
+    覚える関数: <code>encodeURIComponent()</code><br>
+    よくある落とし穴: 日本語をそのままURLに入れて404エラーになる<br>
+    正しい使い方: <code>"?q=" + encodeURIComponent(keyword)</code>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 1-B: encodeURI vs encodeURIComponent -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-1b">
+  <h3>実験 1-B: encodeURI と encodeURIComponent の違い</h3>
+  <p>
+    似た名前の2つの関数ですが、<strong>何をエンコードするか</strong>が異なります。
+    間違えるとURLが壊れたり、パラメータが分離したりします。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — 同じ入力で両方を比較</div>
+    <input type="text" class="input-area" id="compare-input" value="https://example.com/検索?q=JS 基礎&lang=ja" placeholder="URL文字列を入力...">
+    <button class="btn btn-accent" id="btn-compare" style="margin-top:0.5rem;">比較実行</button>
+  </div>
+
+  <div class="two-col">
+    <div class="col-card card-encode">
+      <h4>encodeURI（URL全体用）</h4>
+      <pre id="compare-uri"><span class="placeholder">← 比較実行を押してください</span></pre>
+    </div>
+    <div class="col-card card-puny">
+      <h4>encodeURIComponent（パーツ用）</h4>
+      <pre id="compare-component"><span class="placeholder">← 比較実行を押してください</span></pre>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('btn-compare').addEventListener('click', () => {
+      const raw = document.getElementById('compare-input').value;
+      const uri = encodeURI(raw);
+      const comp = encodeURIComponent(raw);
+
+      document.getElementById('compare-uri').textContent =
+        '結果:\n' + uri + '\n\n'
+        + '保持される文字:\n'
+        + '  : / ? # [ ] @ ! $ & \' ( ) * + , ; = -\n'
+        + '  → URL構造を壊さない\n\n'
+        + '用途: URL全体をエンコードする時';
+
+      document.getElementById('compare-component').textContent =
+        '結果:\n' + comp + '\n\n'
+        + '保持される文字:\n'
+        + '  - _ . ~ ! * \' ( )\n'
+        + '  → ほぼ全ての記号をエンコード\n\n'
+        + '用途: クエリパラメータの「値」に使う';
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 正しい使い分け</div>
+    <pre><span class="comment">// ❌ 間違い: パラメータ値に encodeURI</span>
+const query = encodeURI("price=100&tax=10");
+<span class="comment">// → "price=100&tax=10"  ← & がそのまま！パラメータが分離する</span>
+
+<span class="comment">// ✅ 正解: パラメータ値に encodeURIComponent</span>
+const query = encodeURIComponent("price=100&tax=10");
+<span class="comment">// → "price%3D100%26tax%3D10"  ← 安全に1つの値として扱われる</span>
+
+<span class="comment">// 実用例: 検索URLの組み立て</span>
+const keyword = <span class="header-val">"JS 基礎"</span>;
+const url = <span class="highlight">"https://example.com/search?q=" + encodeURIComponent(keyword)</span>;
+<span class="comment">// → "https://example.com/search?q=JS%20%E5%9F%BA%E7%A4%8E"</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — URLSearchParams との挙動差（実務で頻出）</div>
+    <p>
+      <code>URLSearchParams</code> もクエリ文字列をエンコードしますが、
+      <strong>スペースの扱いが異なります</strong>。この差を知らないとバグの原因になります。
+    </p>
+    <button class="btn btn-accent3" id="btn-usp">URLSearchParams と比較</button>
+    <pre id="usp-result"><span class="placeholder">← ボタンを押すと比較結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-usp').addEventListener('click', () => {
+      const el = document.getElementById('usp-result');
+      const input = "JS 基礎";
+
+      const enc = encodeURIComponent(input);
+      const usp = new URLSearchParams({ q: input }).toString();
+      const uspVal = new URLSearchParams({ q: input }).get('q');
+
+      el.textContent = '入力: "' + input + '"\n\n'
+        + '┌─ encodeURIComponent ─────────────────────\n'
+        + '│  encodeURIComponent("' + input + '")\n'
+        + '│  → "' + enc + '"\n'
+        + '│  スペース → %20\n'
+        + '│\n'
+        + '├─ URLSearchParams ─────────────────────────\n'
+        + '│  new URLSearchParams({q: "' + input + '"}).toString()\n'
+        + '│  → "' + usp + '"\n'
+        + '│  スペース → +  ← ここが違う！\n'
+        + '│\n'
+        + '├─ 復元確認 ─────────────────────────────────\n'
+        + '│  URLSearchParams は get() で自動デコード:\n'
+        + '│  .get("q") → "' + uspVal + '"  ✓\n'
+        + '│\n'
+        + '└─ 使い分け ─────────────────────────────────\n'
+        + '   URLSearchParams → クエリ文字列の組み立てに最適\n'
+        + '   encodeURIComponent → パス部分やCookie値に使う\n'
+        + '   ※ サーバーは両方デコードできるが、混在させない';
+    });
+  </script>
+
+  <div class="warn-box">
+    <strong>使い分けルール</strong>:
+    <code>encodeURI</code> = URL<strong>全体</strong>をエンコード（構造文字は保持）、
+    <code>encodeURIComponent</code> = URLの<strong>部品</strong>（パラメータの値など）をエンコード、
+    <code>URLSearchParams</code> = クエリ文字列の組み立てに最適（スペースは <code>+</code> になる）。<br>
+    迷ったら <code>URLSearchParams</code> でクエリを組み立て、それ以外は <code>encodeURIComponent</code>。
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 1-C: Punycode -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-1c">
+  <h3>実験 1-C: Punycode（日本語ドメインの変換）</h3>
+  <p>
+    ドメイン名（<code>example.com</code> の部分）は英数字とハイフンしか使えません。
+    日本語ドメインは <strong>Punycode</strong>（<code>xn--</code> で始まる形式）に自動変換されます。
+    通常はブラウザが自動で行いますが、<code>URL</code> オブジェクトで再現できます。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — 日本語ドメインをPunycodeに変換</div>
+    <input type="text" class="input-area" id="puny-input" value="総務省.jp" placeholder="日本語ドメインを入力...">
+    <button class="btn btn-accent2" id="btn-puny" style="margin-top:0.5rem;">Punycode変換</button>
+    <pre id="puny-output"><span class="placeholder">← 変換ボタンを押してください</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-puny').addEventListener('click', () => {
+      const domain = document.getElementById('puny-input').value.trim();
+      const el = document.getElementById('puny-output');
+      if (!domain) { el.textContent = 'ドメイン名を入力してください'; return; }
+
+      try {
+        const url = new URL('http://' + domain);
+        const converted = url.hostname;
+        const isConverted = converted !== domain;
+
+        el.textContent = '入力ドメイン:   ' + domain + '\n'
+          + 'Punycode変換後: ' + converted + '\n'
+          + '変換発生:       ' + (isConverted ? '✓ あり（日本語 → ASCII）' : '✗ なし（すでにASCII）') + '\n\n'
+          + '完全URL: ' + url.href + '\n\n'
+          + '// コンソールで確認:\n'
+          + 'new URL("http://' + domain + '").hostname\n'
+          + '// → "' + converted + '"';
+      } catch(e) {
+        el.textContent = 'エラー: 無効なドメイン名です\n' + e.message;
+      }
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — いろいろなドメインで試す</div>
+    <button class="btn btn-accent" onclick="document.getElementById('puny-input').value='総務省.jp';document.getElementById('btn-puny').click();">総務省.jp</button>
+    <button class="btn btn-accent2" onclick="document.getElementById('puny-input').value='日本語.jp';document.getElementById('btn-puny').click();">日本語.jp</button>
+    <button class="btn btn-accent3" onclick="document.getElementById('puny-input').value='example.com';document.getElementById('btn-puny').click();">example.com</button>
+    <button class="btn btn-warn" onclick="document.getElementById('puny-input').value='münchen.de';document.getElementById('btn-puny').click();">münchen.de</button>
+  </div>
+
+  <div class="note">
+    <strong>なぜPunycodeが必要？</strong>: DNS（ドメインネームシステム）はASCII文字しか扱えません。
+    ブラウザのアドレスバーでは日本語が見えていても、実際の通信では <code>xn--</code> 形式に変換されています。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Glossary/IDN" target="_blank">MDN — 国際化ドメイン名 (IDN)</a></span>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.6rem;margin:0.8rem 0;font-size:0.8rem;">
+    <div style="background:var(--surface2);padding:0.5rem 0.8rem;border-radius:6px;"><strong style="color:var(--accent);">実行者:</strong> ブラウザが自動で実行</div>
+    <div style="background:var(--surface2);padding:0.5rem 0.8rem;border-radius:6px;"><strong style="color:var(--accent2);">タイミング:</strong> DNS解決前</div>
+    <div style="background:var(--surface2);padding:0.5rem 0.8rem;border-radius:6px;"><strong style="color:var(--accent3);">逆変換:</strong> ブラウザがアドレスバーで自動復元</div>
+  </div>
+
+  <div class="warn-box" style="border-color:var(--accent3);background:#f3e5f5;">
+    <strong style="color:var(--accent3);">📋 初心者まとめ</strong><br>
+    覚える関数: <code>new URL("http://"+domain).hostname</code><br>
+    よくある落とし穴: 日本語ドメインをそのままDNS問い合わせして名前解決失敗<br>
+    正しい使い方: URLオブジェクト生成で自動的にPunycodeへ変換される
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 1-D: パス正規化 -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-1d">
+  <h3>実験 1-D: パス正規化（Path Normalization）</h3>
+  <p>
+    URLのパスに <code>../</code>（上のディレクトリ）や <code>./</code>（同じディレクトリ）が含まれると、
+    ブラウザはリクエスト送信前に<strong>正規化</strong>（階層計算して整理）します。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — パスを正規化してみる</div>
+    <input type="text" class="input-area" id="path-input" value="/a/b/../c/./d" placeholder="パスを入力（例: /a/b/../c/./d）">
+    <button class="btn btn-accent3" id="btn-path" style="margin-top:0.5rem;">正規化を実行</button>
+    <pre id="path-output"><span class="placeholder">← 正規化ボタンを押してください</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-path').addEventListener('click', () => {
+      const rawPath = document.getElementById('path-input').value.trim();
+      const el = document.getElementById('path-output');
+      if (!rawPath) { el.textContent = 'パスを入力してください'; return; }
+
+      try {
+        const url = new URL(rawPath, 'http://example.com');
+        const normalized = url.pathname;
+
+        // Build step-by-step explanation
+        const segments = rawPath.split('/').filter(Boolean);
+        let stack = [];
+        let steps = '解決過程:\n';
+        segments.forEach((seg, i) => {
+          if (seg === '..') {
+            const removed = stack.pop() || '(なし)';
+            steps += '  ' + (i+1) + '. "' + seg + '" → 1つ上へ（"' + removed + '" を除去）→ /' + stack.join('/') + '\n';
+          } else if (seg === '.') {
+            steps += '  ' + (i+1) + '. "' + seg + '" → 同じ階層（何もしない）→ /' + stack.join('/') + '\n';
+          } else {
+            stack.push(seg);
+            steps += '  ' + (i+1) + '. "' + seg + '" → 追加 → /' + stack.join('/') + '\n';
+          }
+        });
+
+        el.textContent = '入力パス:   ' + rawPath + '\n'
+          + '正規化後:   ' + normalized + '\n\n'
+          + steps + '\n'
+          + '// コンソールで確認:\n'
+          + 'new URL("' + rawPath + '", "http://example.com").pathname\n'
+          + '// → "' + normalized + '"';
+      } catch(e) {
+        el.textContent = 'エラー: ' + e.message;
+      }
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — いろいろなパスで試す</div>
+    <button class="btn btn-accent" onclick="document.getElementById('path-input').value='/a/b/../c/./d';document.getElementById('btn-path').click();">/a/b/../c/./d</button>
+    <button class="btn btn-accent2" onclick="document.getElementById('path-input').value='/images/../css/../js/app.js';document.getElementById('btn-path').click();">/images/../css/../js/app.js</button>
+    <button class="btn btn-accent3" onclick="document.getElementById('path-input').value='/a/b/c/../../d';document.getElementById('btn-path').click();">/a/b/c/../../d</button>
+    <button class="btn btn-warn" onclick="document.getElementById('path-input').value='/../../etc/passwd';document.getElementById('btn-path').click();">/../../etc/passwd</button>
+  </div>
+
+  <div class="warn-box">
+    <strong>セキュリティとの関連</strong>: 最後のボタン <code>/../../etc/passwd</code> はパストラバーサル攻撃の例です。
+    ブラウザの正規化はルート（<code>/</code>）を超えないため <code>/etc/passwd</code> に整理されます。
+    サーバー側でも必ずパスのバリデーションを行う必要があります。
+  </div>
+
+  <div class="note">
+    <strong>ポイント</strong>: パス正規化はブラウザが<strong>自動で</strong>行います。
+    <code>../</code> が解決された後のパスがサーバーに送られるため、サーバーは正規化済みのパスを受け取ります。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/API/URL" target="_blank">MDN — URL API</a></span>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.6rem;margin:0.8rem 0;font-size:0.8rem;">
+    <div style="background:var(--surface2);padding:0.5rem 0.8rem;border-radius:6px;"><strong style="color:var(--accent);">実行者:</strong> ブラウザが自動で実行</div>
+    <div style="background:var(--surface2);padding:0.5rem 0.8rem;border-radius:6px;"><strong style="color:var(--accent2);">タイミング:</strong> リクエスト送信前</div>
+    <div style="background:var(--surface2);padding:0.5rem 0.8rem;border-radius:6px;"><strong style="color:var(--accent3);">逆変換:</strong> なし（一方向の整理）</div>
+  </div>
+
+  <div class="warn-box" style="border-color:var(--accent3);background:#f3e5f5;">
+    <strong style="color:var(--accent3);">📋 初心者まとめ</strong><br>
+    覚える関数: <code>new URL(path, base).pathname</code><br>
+    よくある落とし穴: <code>../</code>を含むパスを文字列結合だけで処理してディレクトリトラバーサルが発生<br>
+    正しい使い方: URLオブジェクトで正規化 + サーバー側でも必ずパス検証を実施
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 1-E: URL構造の分解 -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-1e">
+  <h3>実験 1-E: URL構造の完全分解</h3>
+  <p>
+    <code>URL</code> オブジェクトを使うと、URLのあらゆる部品を個別に取り出せます。
+    手動でのパース（<code>split('/')</code> や正規表現）は不要です。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — URLを分解してみる</div>
+    <input type="text" class="input-area" id="url-input" value="https://user:pass@example.com:8080/path/to/page?q=JS基礎&lang=ja#section2" placeholder="任意のURLを入力...">
+    <button class="btn btn-accent" id="btn-url-parse" style="margin-top:0.5rem;">URL分解</button>
+    <pre id="url-output" style="font-size:0.78rem;"><span class="placeholder">← URL分解ボタンを押してください</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-url-parse').addEventListener('click', () => {
+      const raw = document.getElementById('url-input').value.trim();
+      const el = document.getElementById('url-output');
+      if (!raw) { el.textContent = 'URLを入力してください'; return; }
+
+      try {
+        const url = new URL(raw);
+
+        el.textContent = '┌─ URL分解結果 ──────────────────────────────\n'
+          + '│\n'
+          + '│  href:       ' + url.href + '\n'
+          + '│\n'
+          + '│  protocol:   ' + url.protocol + '         ← スキーム（http: / https:）\n'
+          + '│  username:   ' + (url.username || '(なし)') + '             ← ユーザー名\n'
+          + '│  password:   ' + (url.password || '(なし)') + '             ← パスワード\n'
+          + '│  hostname:   ' + url.hostname + '    ← ホスト名（ポートなし）\n'
+          + '│  port:       ' + (url.port || '(デフォルト)') + '           ← ポート番号\n'
+          + '│  host:       ' + url.host + '        ← ホスト名:ポート\n'
+          + '│  origin:     ' + url.origin + '\n'
+          + '│\n'
+          + '│  pathname:   ' + url.pathname + '        ← パス\n'
+          + '│  search:     ' + url.search + '      ← クエリ文字列\n'
+          + '│  hash:       ' + url.hash + '          ← フラグメント\n'
+          + '│\n'
+          + '├─ searchParams (クエリパラメータ) ─────────\n';
+
+        let paramStr = '';
+        url.searchParams.forEach((val, key) => {
+          paramStr += '│    ' + key + ' = ' + val + '\n';
+        });
+        el.textContent += (paramStr || '│    (パラメータなし)\n');
+
+        el.textContent += '│\n'
+          + '└──────────────────────────────────────────\n\n'
+          + '// コンソールで確認:\n'
+          + 'const url = new URL("' + raw.substring(0, 50) + (raw.length > 50 ? '...' : '') + '");\n'
+          + 'url.hostname  // → "' + url.hostname + '"\n'
+          + 'url.pathname  // → "' + url.pathname + '"\n'
+          + 'url.searchParams.get("q")  // → ' + (url.searchParams.get('q') ? '"' + url.searchParams.get('q') + '"' : 'null');
+      } catch(e) {
+        el.textContent = 'エラー: 無効なURL形式です\n' + e.message + '\n\nヒント: "https://" から始まるURLを入力してください';
+      }
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — いろいろなURLで試す</div>
+    <button class="btn btn-accent" onclick="document.getElementById('url-input').value='https://user:pass@example.com:8080/path/to/page?q=JS基礎&lang=ja#section2';document.getElementById('btn-url-parse').click();">フル構造</button>
+    <button class="btn btn-accent2" onclick="document.getElementById('url-input').value='https://www.google.com/search?q=JavaScript+基礎&hl=ja';document.getElementById('btn-url-parse').click();">Google検索URL</button>
+    <button class="btn btn-accent3" onclick="document.getElementById('url-input').value='ftp://files.example.com:21/pub/data.csv';document.getElementById('btn-url-parse').click();">FTP URL</button>
+  </div>
+
+  <div class="note">
+    <strong>URLSearchParams のメリット</strong>: <code>url.searchParams.get("q")</code> は
+    自動でデコード済みの値を返します。手動で <code>split("&")</code> → <code>split("=")</code> →
+    <code>decodeURIComponent()</code> する必要がありません。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/API/URLSearchParams" target="_blank">MDN — URLSearchParams</a></span>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 1-F: 総合実験 -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-1f">
+  <h3>実験 1-F: 総合実験 — 全変換を一括実行</h3>
+  <p>Lab 01 で学んだ3つの変換をまとめて実行し、結果を並べて確認します。</p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — 全変換を一括実行</div>
+    <button class="btn btn-accent" id="btn-all">全変換を実行</button>
+    <button class="btn btn-dim" id="btn-all-reset">クリア</button>
+  </div>
+
+  <div class="three-col">
+    <div class="col-card card-encode">
+      <h4>① URLエンコード</h4>
+      <pre id="all-encode"><span class="placeholder">← 全変換を実行</span></pre>
+    </div>
+    <div class="col-card card-puny">
+      <h4>② Punycode</h4>
+      <pre id="all-puny"><span class="placeholder">← 全変換を実行</span></pre>
+    </div>
+    <div class="col-card card-path">
+      <h4>③ パス正規化</h4>
+      <pre id="all-path"><span class="placeholder">← 全変換を実行</span></pre>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('btn-all').addEventListener('click', () => {
+      // ① URLエンコード
+      const rawText = "JS 基礎";
+      const urlEncoded = encodeURIComponent(rawText);
+      document.getElementById('all-encode').textContent =
+        '入力: "' + rawText + '"\n'
+        + '    ↓\n'
+        + '出力: "' + urlEncoded + '"\n\n'
+        + '各文字:\n'
+        + '  J → J (ASCII)\n'
+        + '  S → S (ASCII)\n'
+        + '  (空白) → %20\n'
+        + '  基 → %E5%9F%BA\n'
+        + '  礎 → %E7%A4%8E';
+
+      // ② Punycode
+      const domain = "総務省.jp";
+      const punyUrl = new URL('http://' + domain);
+      document.getElementById('all-puny').textContent =
+        '入力: "' + domain + '"\n'
+        + '    ↓\n'
+        + '出力: "' + punyUrl.hostname + '"\n\n'
+        + '仕組み:\n'
+        + '  xn-- = Punycode接頭辞\n'
+        + '  "総務省" をASCIIに\n'
+        + '  エンコード';
+
+      // ③ パス正規化
+      const rawPath = "/a/b/../c/./d";
+      const normalizedPath = new URL(rawPath, "http://e.com").pathname;
+      document.getElementById('all-path').textContent =
+        '入力: "' + rawPath + '"\n'
+        + '    ↓\n'
+        + '出力: "' + normalizedPath + '"\n\n'
+        + '過程:\n'
+        + '  /a → /a\n'
+        + '  /a/b → /a/b\n'
+        + '  /a/b/.. → /a\n'
+        + '  /a/c → /a/c\n'
+        + '  /a/c/. → /a/c\n'
+        + '  /a/c/d → /a/c/d';
+    });
+
+    document.getElementById('btn-all-reset').addEventListener('click', () => {
+      ['all-encode','all-puny','all-path'].forEach(id => {
+        document.getElementById(id).innerHTML = '<span class="placeholder">← 全変換を実行</span>';
+      });
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — コンソールで全変換コードを実行</div>
+    <p>以下のコードを DevTools Console にコピー＆ペーストして実行してみましょう。</p>
+    <pre><span class="comment">/* --- Lab 01: URL・ドメイン関連の全変換 --- */</span>
+
+<span class="comment">// ① URLエンコード</span>
+const rawText = <span class="header-val">"JS 基礎"</span>;
+const urlEncoded = encodeURIComponent(rawText);
+console.log(<span class="header-val">"URLエンコード:"</span>, rawText, <span class="header-val">"→"</span>, urlEncoded);
+
+<span class="comment">// ② Punycode (ドメインの変換)</span>
+const domain = <span class="header-val">"総務省.jp"</span>;
+const punyUrl = new URL(<span class="header-val">`http://${domain}`</span>);
+console.log(<span class="header-val">"Punycode:"</span>, domain, <span class="header-val">"→"</span>, punyUrl.hostname);
+
+<span class="comment">// ③ パス正規化</span>
+const rawPath = <span class="header-val">"/a/b/../c/./d"</span>;
+const normalizedPath = new URL(rawPath, <span class="header-val">"http://e.com"</span>).pathname;
+console.log(<span class="header-val">"パス正規化:"</span>, rawPath, <span class="header-val">"→"</span>, normalizedPath);
+
+<span class="comment">// ④ URLSearchParams（スペースの扱いに注目）</span>
+const uspResult = new URLSearchParams({q: rawText}).toString();
+console.log(<span class="header-val">"URLSearchParams:"</span>, rawText, <span class="header-val">"→"</span>, uspResult);
+
+<span class="comment">// ── 全変換サマリ（console.table で一覧表示）──</span>
+console.table([
+  { 変換: <span class="header-val">"URLエンコード"</span>,   入力: rawText, 出力: urlEncoded,     実行者: <span class="header-val">"開発者"</span> },
+  { 変換: <span class="header-val">"URLSearchParams"</span>, 入力: rawText, 出力: uspResult,      実行者: <span class="header-val">"開発者"</span> },
+  { 変換: <span class="header-val">"Punycode"</span>,        入力: domain,  出力: punyUrl.hostname, 実行者: <span class="header-val">"ブラウザ自動"</span> },
+  { 変換: <span class="header-val">"パス正規化"</span>,       入力: rawPath, 出力: normalizedPath,  実行者: <span class="header-val">"ブラウザ自動"</span> },
+]);</pre>
+  </div>
+
+  <div class="note">
+    <strong>まとめ</strong>: この3つの変換は、ブラウザが<strong>リクエスト送信前に自動で</strong>行っています。
+    普段意識しませんが、JavaScriptの <code>URL</code> オブジェクトと <code>encodeURIComponent</code> を使えば、
+    同じ処理を明示的に再現・確認できます。
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — 送信↔受信の対応を確認</div>
+    <p>Lab 01 で扱った変換の「逆方向」を一覧で確認します。</p>
+    <pre><span class="comment">// Lab 01 の送信↔受信 対応表</span>
+
+<span class="header-name">① URLエンコード</span>
+   送信: encodeURIComponent(<span class="header-val">"JS 基礎"</span>)     → <span class="highlight">"JS%20%E5%9F%BA%E7%A4%8E"</span>
+   受信: decodeURIComponent(<span class="header-val">"JS%20..."</span>)   → <span class="highlight">"JS 基礎"</span>
+
+<span class="header-name">② Punycode</span>
+   送信: new URL(<span class="header-val">"http://総務省.jp"</span>).hostname → <span class="highlight">"xn--lhr040g.jp"</span>
+   受信: ブラウザがアドレスバーで自動的に日本語表示に戻す
+
+<span class="header-name">③ パス正規化</span>
+   送信: <span class="header-val">"/a/b/../c"</span> → <span class="highlight">"/a/c"</span>
+   受信: 逆変換なし（正規化は一方向の整理処理）
+
+<span class="comment">// 実行者の区分:</span>
+<span class="comment">//   ① = 開発者が明示的に書く</span>
+<span class="comment">//   ②③ = ブラウザが自動で実行</span></pre>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- チェックリスト -->
+<!-- ============================================ -->
+<hr>
+<h2 id="checklist">✅ Lab 01 チェックリスト</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">チェック状態はブラウザに自動保存されます。</p>
+
+<div class="check-item"><input type="checkbox" data-key="wdc-lab01-1"> <label>encodeURIComponent で日本語がパーセントエンコードされることを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="wdc-lab01-2"> <label>英数字はエンコードされないことを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="wdc-lab01-3"> <label>encodeURI と encodeURIComponent の違いを理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="wdc-lab01-3b"> <label>URLSearchParams のスペース→+ 変換が encodeURIComponent と異なることを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="wdc-lab01-4"> <label>日本語ドメインがPunycodeに変換されることを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="wdc-lab01-5"> <label>../  や ./ を含むパスが正規化されることを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="wdc-lab01-6"> <label>パストラバーサル攻撃の例でルートを超えないことを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="wdc-lab01-7"> <label>URL オブジェクトで protocol / hostname / pathname / searchParams を取り出せた</label></div>
+<div class="check-item"><input type="checkbox" data-key="wdc-lab01-8"> <label>コンソールで全変換コードを実行した</label></div>
+
+<div style="margin-top:1rem; text-align:center;">
+  <span id="progress-text" style="font-family:'IBM Plex Mono',monospace; color:var(--accent); font-size:0.9rem;"></span>
+</div>
+
+<!-- localStorage for checkboxes -->
+<script>
+  const STORAGE_PREFIX = 'wdclab_';
+
+  function updateProgress() {
+    const all = document.querySelectorAll('input[type="checkbox"][data-key]');
+    const checked = [...all].filter(cb => cb.checked).length;
+    const el = document.getElementById('progress-text');
+    if (el) el.textContent = checked + ' / ' + all.length + ' 完了';
+  }
+
+  document.querySelectorAll('input[type="checkbox"][data-key]').forEach(cb => {
+    const saved = localStorage.getItem(STORAGE_PREFIX + cb.dataset.key);
+    if (saved === 'true') {
+      cb.checked = true;
+      cb.closest('.check-item')?.classList.add('checked');
+    }
+    cb.addEventListener('change', () => {
+      localStorage.setItem(STORAGE_PREFIX + cb.dataset.key, cb.checked);
+      cb.closest('.check-item')?.classList.toggle('checked', cb.checked);
+      updateProgress();
+    });
+  });
+
+  updateProgress();
+</script>
+
+<hr>
+
+<h2>📝 Lab 01 学習ノート</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">メモはブラウザに自動保存されます。</p>
+<textarea id="notes" rows="6" placeholder="気づいたこと、疑問点をメモ..."
+  style="width:100%;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:0.8rem;font-family:'Noto Sans JP',sans-serif;font-size:0.9rem;resize:vertical;margin-top:0.5rem;"></textarea>
+
+<script>
+  const notesEl = document.getElementById('notes');
+  const savedNotes = localStorage.getItem(STORAGE_PREFIX + 'lab01_notes');
+  if (savedNotes) notesEl.value = savedNotes;
+  notesEl.addEventListener('input', () => {
+    localStorage.setItem(STORAGE_PREFIX + 'lab01_notes', notesEl.value);
+  });
+</script>
+
+<p style="color:var(--text-dim); font-size:0.82rem; margin-top:2rem;">
+  次回: <a href="web-data-conversion-lab-02.html"><strong>Lab 02 — テキスト・構造の変換</strong></a>（JSON.stringify, normalize(), HTMLエスケープ）
+  <br><span style="color:var(--text-dim);font-size:0.78rem;">URLを通す変換を理解したら、次はデータの「意味」を共通化・安全化する変換を学びます</span>
+</p>
+
+</body>
+</html>

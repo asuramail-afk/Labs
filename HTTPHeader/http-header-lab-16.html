@@ -1,0 +1,1565 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HTTP Header Lab 16 — パフォーマンス（Server-Timing, Link, Alt-Svc）</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;700&display=swap');
+
+  :root {
+    --bg: #ffffff;
+    --surface: #f5f7fa;
+    --surface2: #ebeef2;
+    --border: #c8cdd3;
+    --text: #1a1a2e;
+    --text-dim: #5c6370;
+    --accent: #005cc5;
+    --accent2: #22863a;
+    --accent3: #6f42c1;
+    --warn: #b08800;
+    --danger: #cb2431;
+    --code-bg: #f0f4f8;
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    padding: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+    color: var(--accent);
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 0.8rem;
+    margin-bottom: 1.5rem;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+    color: var(--accent2);
+    margin: 2rem 0 1rem;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  h3 {
+    font-size: 1.05rem;
+    color: var(--accent3);
+    margin: 1.5rem 0 0.8rem;
+  }
+
+  p, li { font-size: 0.92rem; margin-bottom: 0.5rem; }
+
+  /* ── Status Bar ── */
+  .status-bar {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.6rem 1rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.82rem;
+    font-family: 'IBM Plex Mono', monospace;
+    flex-wrap: wrap;
+  }
+  .status-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    animation: pulse 1.5s infinite;
+  }
+  .status-dot.ok { background: var(--accent); animation: none; }
+  .status-dot.err { background: var(--danger); animation: none; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .alert-critical {
+    background: #fef2f2;
+    border: 2px solid var(--danger);
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.88rem;
+  }
+  .alert-critical strong { color: var(--danger); }
+  .alert-critical code {
+    background: rgba(203,36,49,0.1);
+    color: var(--danger);
+  }
+
+  /* ── Lab Section ── */
+  .lab-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+  }
+
+  .step {
+    background: var(--surface2);
+    border-left: 3px solid var(--accent2);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 1rem 1.2rem;
+    margin: 1rem 0;
+  }
+  .step-num {
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--accent2);
+    font-weight: 600;
+    font-size: 0.8rem;
+    margin-bottom: 0.3rem;
+  }
+
+  code, pre {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+  }
+  code {
+    background: var(--code-bg);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    color: var(--accent);
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    overflow-x: auto;
+    margin: 0.8rem 0;
+    line-height: 1.6;
+    color: #24292e;
+  }
+  pre .comment { color: #6a737d; }
+  pre .header-name { color: var(--accent2); }
+  pre .header-val  { color: var(--accent); }
+  pre .highlight    { color: var(--warn); font-weight: 600; }
+
+  .result-area pre { min-height: 2.5rem; }
+  .placeholder {
+    color: var(--text-dim);
+    font-style: italic;
+    font-size: 0.8rem;
+  }
+
+  .note {
+    background: #e8f4fd;
+    border: 1px solid #b6d4e8;
+    border-radius: var(--radius);
+    padding: 0.8rem 1rem;
+    margin: 1rem 0;
+    font-size: 0.85rem;
+    color: var(--accent2);
+  }
+  .note::before { content: "💡 "; }
+
+  .warn-box {
+    background: #fff8e1;
+    border: 1px solid #e6d590;
+    border-radius: var(--radius);
+    padding: 0.8rem 1rem;
+    margin: 1rem 0;
+    font-size: 0.85rem;
+    color: var(--warn);
+  }
+  .warn-box::before { content: "⚠️ "; }
+
+  .check-item {
+    background: var(--surface2);
+    border-radius: var(--radius);
+    padding: 0.6rem 1rem;
+    margin: 0.4rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.88rem;
+    transition: opacity 0.3s;
+  }
+  .check-item input[type="checkbox"] {
+    width: 18px; height: 18px;
+    accent-color: var(--accent);
+    flex-shrink: 0;
+  }
+  .check-item.checked { opacity: 0.55; }
+
+  .diagram {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.2rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    overflow-x: auto;
+    white-space: pre;
+    color: var(--text-dim);
+    margin: 1rem 0;
+  }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+  @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+  .col-card {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.8rem;
+    font-size: 0.8rem;
+  }
+  .col-card h4 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .col-card pre {
+    border: none;
+    padding: 0.4rem 0;
+    margin: 0;
+    font-size: 0.75rem;
+    background: transparent;
+  }
+
+  /* ── Perf Metric Bar ── */
+  .perf-bar-container {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0.3rem 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+  }
+  .perf-bar-label {
+    min-width: 100px;
+    white-space: nowrap;
+    color: var(--text-dim);
+  }
+  .perf-bar-track {
+    flex: 1;
+    background: var(--surface2);
+    border-radius: 4px;
+    height: 12px;
+    overflow: hidden;
+    position: relative;
+  }
+  .perf-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.8s ease;
+    width: 0;
+  }
+  .perf-bar-value {
+    min-width: 60px;
+    text-align: right;
+    color: var(--accent);
+  }
+
+  /* ── TOC Nav ── */
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+    margin: 1rem 0 2rem;
+  }
+  .toc a {
+    display: inline-block;
+    padding: 0.25rem 0.6rem;
+    margin: 0.15rem;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    background: var(--surface2);
+    transition: background 0.2s;
+  }
+  .toc a:hover { background: var(--border); text-decoration: none; }
+
+  html { scroll-behavior: smooth; }
+
+  a { color: var(--accent2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+
+  .btn {
+    border: none;
+    padding: 0.5rem 1.2rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    font-family: 'Noto Sans JP', sans-serif;
+    margin: 0.3rem;
+    transition: opacity 0.2s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.97); }
+  .btn-accent  { background: var(--accent);  color: var(--bg); }
+  .btn-accent2 { background: var(--accent2); color: var(--bg); }
+  .btn-accent3 { background: var(--accent3); color: var(--bg); }
+  .btn-warn    { background: var(--warn);    color: var(--bg); }
+  .btn-dim     { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+
+  .badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 99px;
+    font-weight: 600;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .badge-html { background: #e8f5e9; color: var(--accent); }
+  .badge-os   { background: #e3f2fd; color: var(--accent2); }
+  .badge-both { background: #2d1e35; color: var(--accent3); }
+
+  /* ── Waterfall Chart ── */
+  .waterfall {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    margin: 0.8rem 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+  }
+  .waterfall-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.25rem 0;
+    height: 22px;
+  }
+  .waterfall-label {
+    min-width: 120px;
+    white-space: nowrap;
+    color: var(--text-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .waterfall-track {
+    flex: 1;
+    position: relative;
+    height: 10px;
+  }
+  .waterfall-bar {
+    position: absolute;
+    height: 100%;
+    border-radius: 3px;
+    transition: left 0.5s ease, width 0.5s ease;
+  }
+  .waterfall-time {
+    min-width: 50px;
+    text-align: right;
+    color: var(--text-dim);
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================ -->
+<!-- STATUS BAR                                    -->
+<!-- ============================================ -->
+<div class="status-bar">
+  <div class="status-item">
+    <div class="status-dot" id="dot-protocol"></div>
+    <span id="status-protocol">プロトコル確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-httpbin"></div>
+    <span id="status-httpbin">httpbin.org 確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-perf"></div>
+    <span id="status-perf">Performance API 確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-devtools"></div>
+    <span>DevTools: <kbd style="background:var(--surface2);padding:0.1rem 0.4rem;border-radius:4px;">F12</kbd></span>
+  </div>
+</div>
+<p style="margin-bottom:0.5rem;font-size:0.82rem;"><a href="http-header-lab-index.html" style="color:var(--accent);text-decoration:none;">← マスター索引に戻る</a></p>
+
+<script>
+// ── Protocol check ──
+(function checkProtocol() {
+  const dot = document.getElementById('dot-protocol');
+  const label = document.getElementById('status-protocol');
+  if (location.protocol === 'file:') {
+    dot.classList.add('err');
+    label.innerHTML = '<strong style="color:var(--danger)">file:// 検出（要修正）</strong>';
+    document.getElementById('file-protocol-alert').style.display = 'block';
+  } else {
+    dot.classList.add('ok');
+    label.textContent = location.protocol + '// ✅';
+  }
+})();
+
+// ── httpbin.org health check ──
+(async function checkHttpbin() {
+  const dot = document.getElementById('dot-httpbin');
+  const label = document.getElementById('status-httpbin');
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch('https://httpbin.org/get', { signal: controller.signal });
+    clearTimeout(timeout);
+    if (res.ok) {
+      dot.classList.add('ok');
+      label.textContent = 'httpbin.org ✅';
+    } else {
+      dot.classList.add('err');
+      label.innerHTML = '<strong style="color:var(--danger)">httpbin.org 応答エラー</strong>';
+    }
+  } catch(e) {
+    dot.classList.add('err');
+    label.innerHTML = '<strong style="color:var(--danger)">httpbin.org ❌ 接続不可</strong>';
+  }
+})();
+
+// ── Performance API check ──
+(function checkPerf() {
+  const dot = document.getElementById('dot-perf');
+  const label = document.getElementById('status-perf');
+  if (typeof PerformanceObserver !== 'undefined' && typeof performance.getEntriesByType === 'function') {
+    dot.classList.add('ok');
+    label.textContent = 'Performance API ✅';
+  } else {
+    dot.classList.add('err');
+    label.innerHTML = '<strong style="color:var(--danger)">Performance API 非対応</strong>';
+  }
+})();
+</script>
+
+<div class="alert-critical" id="file-protocol-alert" style="display:none;">
+  <strong>🔴 HTTP サーバー経由で開いてください</strong><br><br>
+  現在 <code>file://</code> で開いています。この状態では <code>fetch()</code> が
+  <strong>CORSエラー</strong>になり、ほとんどの実験が動作しません。<br><br>
+  <strong>Lab 01 で起動したサーバーがまだ動いていれば</strong>、ブラウザで
+  <code>http://127.0.0.1:7890/http-header-lab-16.html</code> を開くだけでOKです。<br><br>
+  サーバーが停止している場合は、コマンドプロンプトで以下を実行してください：
+  <pre style="margin:0.8rem 0; font-size:0.78rem;"><span class="highlight">node -e "const http=require('http'),fs=require('fs'),path=require('path');http.createServer((req,res)=>{const f=path.join('C:/Users/user/ClaudeCode/HTTPHeader',req.url==='/'?'/index.html':req.url);fs.readFile(f,(e,d)=>{if(e){res.writeHead(404);res.end('Not found');}else{const ext=path.extname(f);const mime={'html':'text/html','js':'application/javascript','css':'text/css','png':'image/png','ico':'image/x-icon'};res.writeHead(200,{'Content-Type':(mime[ext.slice(1)]||'text/plain')+';charset=utf-8'});res.end(d);}});}).listen(7890,()=>console.log('Server: http://127.0.0.1:7890'));"</span>
+
+<span class="comment"># → http://127.0.0.1:7890/http-header-lab-16.html でアクセス</span></pre>
+</div>
+
+<h1>🧪 Lab 16: パフォーマンス（Server-Timing, Link, Alt-Svc）</h1>
+<p style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.3rem;font-family:'IBM Plex Mono',monospace;">最終更新: 2026年3月</p>
+<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">⏱ 所要時間：25分</span>
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">難易度：★★☆</span>
+</div>
+<p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:1rem;">📋 前提知識：<a href="http-header-lab-02.html">Lab 02</a> + <a href="http-header-lab-14.html">Lab 14</a> 完了推奨（キャッシュと圧縮の基本を押さえた上でパフォーマンス最適化）</p>
+
+<div class="lab-box" style="border-color:var(--accent); margin-bottom:1rem;">
+  <h3 style="color:var(--accent); margin-top:0;">🎯 このLabの学習目標</h3>
+  <p style="margin-bottom:0.3rem;">完了すると、以下ができるようになります：</p>
+  <div class="check-item" style="opacity:1;"><span>1. <code>Server-Timing</code> ヘッダーでサーバー側の処理時間をブラウザに公開する方法を理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>2. <code>Timing-Allow-Origin</code> で Resource Timing API のクロスオリジンアクセスを許可する仕組みを理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>3. <code>Link</code> ヘッダーの <code>rel=preload</code> でクリティカルなリソースを事前取得する手法を理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>4. <code>Alt-Svc</code> で HTTP/3 への昇格を通知する仕組みを確認する</span></div>
+  <div class="check-item" style="opacity:1;"><span>5. <code>103 Early Hints</code> による先行ヒント配信のコンセプトを理解する</span></div>
+</div>
+
+<div class="warn-box" style="border-color:var(--accent3);background:#fce4ec;">
+  <strong style="color:var(--accent3);">💥 実務での失敗例</strong>：<code>Server-Timing</code> 未設定のため、本番環境のAPIレイテンシのボトルネック（DB vs アプリ vs CDN）の切り分けに何時間もかかった
+</div>
+
+<p>
+  最終回のLabでは、HTTPヘッダーを活用した<strong>パフォーマンスの可視化と最適化</strong>を学びます。
+  サーバーのどこで時間がかかっているかを公開する <code>Server-Timing</code>、
+  リソースの先読みを指示する <code>Link</code> preload、
+  そしてHTTP/3への切り替えを告知する <code>Alt-Svc</code> を実験します。
+</p>
+
+<div class="diagram">Browser                              CDN / Origin Server
+  │                                    │
+  │  GET /page                         │
+  │ ──────────────────────────────▶    │
+  │                                    │
+  │  200 OK                            │
+  │  <span style="color:var(--accent)">Server-Timing</span>: db;dur=53,        │  ← サーバー処理時間の内訳
+  │                  app;dur=120       │
+  │  <span style="color:var(--accent2)">Link</span>: &lt;/style.css&gt;; rel=preload  │  ← リソースの先読み指示
+  │  <span style="color:var(--accent3)">Timing-Allow-Origin</span>: *            │  ← RUMデータ取得許可
+  │  <span style="color:var(--warn)">Alt-Svc</span>: h3=":443"; ma=86400     │  ← HTTP/3対応の通知
+  │ ◀──────────────────────────────   │
+  │                                    │</div>
+
+<!-- ── TOC ── -->
+<div class="toc">
+  <strong style="color:var(--text-dim);font-size:0.82rem;">目次:</strong><br>
+  <a href="#exp-16a">16-A: Server-Timing</a>
+  <a href="#exp-16b">16-B: Performance API で読み取る</a>
+  <a href="#exp-16c">16-C: Timing-Allow-Origin</a>
+  <a href="#exp-16d">16-D: Link preload</a>
+  <a href="#exp-16e">16-E: Alt-Svc と HTTP/3</a>
+  <a href="#exp-16f">16-F: OutSystems で確認</a>
+  <a href="#checklist">✅ チェックリスト</a>
+</div>
+
+<!-- ── DevTools warning ── -->
+<div class="warn-box">
+  <strong style="font-size:1rem; color:var(--danger);">最重要：DevTools を「先に」開いてからリロード</strong><br>
+  <code>F12</code>（Mac: <code>Cmd+Opt+I</code>）→ <strong>Network</strong> タブを選択 →
+  <strong>その後で</strong> <code>Ctrl+Shift+R</code> でリロード。<br>
+  順序が逆だとネットワークログが残りません。全実験でこの手順が前提です。
+</div>
+
+<hr>
+
+<!-- ============================================ -->
+<!-- 実験 16-A: Server-Timing                      -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-16a">
+  <h3>実験 16-A: Server-Timing ヘッダーを理解する</h3>
+  <p>
+    <code>Server-Timing</code> はサーバー側の処理時間の内訳をブラウザに伝えるヘッダーです。
+    DevToolsやJSの Performance API から読み取れるため、
+    <strong>RUM（Real User Monitoring）</strong>に活用できます。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — Server-Timing の構文</div>
+    <pre><span class="comment">// Server-Timing ヘッダーの構文:</span>
+<span class="header-name">Server-Timing</span>: <span class="header-val">&lt;name&gt;</span>;dur=<span class="header-val">&lt;ms&gt;</span>;desc=<span class="header-val">"&lt;説明&gt;"</span>
+
+<span class="comment">// 例: 複数のメトリクスをカンマ区切りで:</span>
+<span class="header-name">Server-Timing</span>: <span class="header-val">db;dur=53;desc="Database"</span>,
+               <span class="header-val">cache;dur=2;desc="Cache lookup"</span>,
+               <span class="header-val">app;dur=120;desc="Application logic"</span>,
+               <span class="header-val">total;dur=175</span>
+
+<span class="comment">// 各フィールド:</span>
+  <span class="highlight">name</span>  — メトリクス名（必須）
+  <span class="highlight">dur</span>   — 処理時間（ミリ秒、任意）
+  <span class="highlight">desc</span>  — 人間向けの説明（任意）
+
+<span class="comment">// dur なしの例（計測値を隠したいが存在は伝えたい場合）:</span>
+<span class="header-name">Server-Timing</span>: <span class="header-val">cdn-cache;desc="HIT"</span>
+               <span class="comment">↑ CDNキャッシュヒットの有無だけ伝える</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 実際のサイトで Server-Timing を観察する</div>
+    <p>多くのCDN/サイトが <code>Server-Timing</code> を返しています。以下のサイトをDevToolsで確認してみましょう。</p>
+    <pre><span class="comment">// DevToolsで確認する手順:</span>
+1. F12 → Network タブ
+2. 以下のURLにアクセス
+3. メインのHTMLドキュメントをクリック
+4. <span class="highlight">Response Headers → Server-Timing</span> を探す
+
+<span class="comment">// 確認できるサイトの例:</span>
+  <span class="header-val">https://www.cloudflare.com</span>
+    → cf-q-config, cf-cache-status 等
+  <span class="header-val">https://developer.mozilla.org</span>
+    → CDN関連のタイミング情報
+  <span class="header-val">https://www.shopify.com</span>
+    → 処理フェーズの内訳</pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — httpbin.org でレスポンスヘッダーを確認</div>
+    <p>httpbin.org 経由のリクエストで、レスポンスヘッダーを取得します。</p>
+    <button class="btn btn-accent" id="btn-st-headers">レスポンスヘッダーを取得</button>
+    <pre id="st-headers-result"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-st-headers').addEventListener('click', async () => {
+      const el = document.getElementById('st-headers-result');
+      el.textContent = '取得中...';
+      try {
+        const res = await fetch('https://httpbin.org/response-headers?' + new URLSearchParams({
+          'Server-Timing': 'db;dur=53;desc="Database", cache;dur=2;desc="Cache lookup", app;dur=120;desc="App logic", total;dur=175'
+        }));
+        if (!res.ok) throw new Error('HTTPエラー: ' + res.status);
+
+        let out = 'レスポンスヘッダー一覧:\n\n';
+        const stHeader = res.headers.get('Server-Timing');
+        for (const [name, value] of res.headers) {
+          const isTarget = name.toLowerCase() === 'server-timing';
+          if (isTarget) {
+            out += '  ★ ' + name + ': ' + value + '\n';
+          } else {
+            out += '    ' + name + ': ' + value + '\n';
+          }
+        }
+
+        if (stHeader) {
+          out += '\n── Server-Timing の解析 ──\n';
+          const metrics = stHeader.split(',').map(s => s.trim());
+          metrics.forEach(m => {
+            const nameMatch = m.match(/^([^;]+)/);
+            const durMatch = m.match(/dur=([0-9.]+)/);
+            const descMatch = m.match(/desc="([^"]+)"/);
+            out += '  名前: ' + (nameMatch ? nameMatch[1] : '?');
+            if (durMatch) out += '  |  処理時間: ' + durMatch[1] + 'ms';
+            if (descMatch) out += '  |  説明: ' + descMatch[1];
+            out += '\n';
+          });
+        } else {
+          out += '\n→ Server-Timing ヘッダーが見つかりませんでした。\n'
+            + '  httpbin.org が対応していない可能性があります。\n'
+            + '  上のクエリパラメータで設定を試みましたが、\n'
+            + '  CORSの制限で読み取れない場合があります。';
+        }
+
+        el.textContent = out;
+      } catch(e) { el.textContent = 'エラー: ' + e.message; }
+    });
+  </script>
+
+  <div class="warn-box">
+    <strong>本番環境での注意</strong>: <code>Server-Timing</code> の <code>dur</code> 値は
+    攻撃者にサーバー内部のパフォーマンス特性を漏洩する可能性があります。
+    外部公開時は <code>dur</code> を省略して <code>desc</code> だけにする（例: <code>cdn-cache;desc="HIT"</code>）か、
+    <code>Timing-Allow-Origin</code> で取得元を制限しましょう。
+  </div>
+
+  <div class="note">
+    <strong>DevTools で見る場所</strong>: Chromeの Network タブでリクエストを選択 → <strong>Timing</strong> タブ。
+    Server-Timing のメトリクスが「Server Timing」セクションに表示されます（対応ブラウザのみ）。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/Headers/Server-Timing" target="_blank">MDN — Server-Timing</a></span>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 16-B: Performance API で読み取る          -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-16b">
+  <h3>実験 16-B: Performance API で Server-Timing を読み取る</h3>
+  <p>
+    <code>Server-Timing</code> の値は JavaScript の
+    <code>PerformanceResourceTiming.serverTiming</code> プロパティで取得できます。
+    これが<strong>RUM（Real User Monitoring）</strong>の基盤です。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — Performance API の仕組み</div>
+    <pre><span class="comment">// Performance API でリソースのタイミング情報を取得:</span>
+const entries = performance.getEntriesByType('resource');
+
+entries.forEach(entry => {
+  console.log(entry.name);            <span class="comment">// リソースURL</span>
+  console.log(entry.duration);        <span class="comment">// 総ダウンロード時間</span>
+  console.log(entry.transferSize);    <span class="comment">// 転送バイト数</span>
+  console.log(entry.serverTiming);    <span class="comment">// ← Server-Timing!</span>
+});
+
+<span class="comment">// serverTiming は PerformanceServerTiming の配列:</span>
+entry.serverTiming.forEach(st => {
+  console.log(st.name);        <span class="comment">// "db"</span>
+  console.log(st.duration);    <span class="comment">// 53</span>
+  console.log(st.description); <span class="comment">// "Database"</span>
+});</pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — このページのリソースタイミングを取得</div>
+    <p>このHTML自体に読み込まれたリソースの Performance Timing を取得・表示します。</p>
+    <button class="btn btn-accent2" id="btn-perf-entries">リソースタイミングを取得</button>
+    <pre id="perf-entries-result" style="max-height:400px; overflow-y:auto;"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-perf-entries').addEventListener('click', () => {
+      const el = document.getElementById('perf-entries-result');
+      const entries = performance.getEntriesByType('resource');
+
+      if (entries.length === 0) {
+        el.textContent = 'リソースエントリが見つかりません。\nページをリロードしてから再試行してください。';
+        return;
+      }
+
+      let out = 'このページのリソースタイミング（' + entries.length + '件）:\n\n';
+      out += '─'.repeat(70) + '\n';
+
+      entries.forEach((entry, i) => {
+        const url = entry.name.length > 60 ? '...' + entry.name.slice(-57) : entry.name;
+        out += (i + 1) + '. ' + url + '\n';
+        out += '   duration: ' + entry.duration.toFixed(1) + 'ms';
+        out += '  |  transfer: ' + (entry.transferSize || '?') + ' bytes';
+        out += '  |  dns: ' + (entry.domainLookupEnd - entry.domainLookupStart).toFixed(1) + 'ms';
+        out += '  |  connect: ' + (entry.connectEnd - entry.connectStart).toFixed(1) + 'ms';
+        out += '\n';
+
+        if (entry.serverTiming && entry.serverTiming.length > 0) {
+          out += '   ★ Server-Timing:\n';
+          entry.serverTiming.forEach(st => {
+            out += '     → ' + st.name;
+            if (st.duration) out += ' (' + st.duration + 'ms)';
+            if (st.description) out += ' — ' + st.description;
+            out += '\n';
+          });
+        }
+
+        out += '\n';
+      });
+
+      out += '── ページナビゲーション ──\n';
+      const nav = performance.getEntriesByType('navigation')[0];
+      if (nav) {
+        out += '  DNS解決: ' + (nav.domainLookupEnd - nav.domainLookupStart).toFixed(1) + 'ms\n';
+        out += '  TCP接続: ' + (nav.connectEnd - nav.connectStart).toFixed(1) + 'ms\n';
+        out += '  TLSハンドシェイク: ' + (nav.secureConnectionStart > 0 ? (nav.connectEnd - nav.secureConnectionStart).toFixed(1) + 'ms' : 'N/A') + '\n';
+        out += '  リクエスト→レスポンス開始: ' + (nav.responseStart - nav.requestStart).toFixed(1) + 'ms\n';
+        out += '  レスポンス受信: ' + (nav.responseEnd - nav.responseStart).toFixed(1) + 'ms\n';
+        out += '  DOM解析完了: ' + (nav.domContentLoadedEventEnd - nav.responseEnd).toFixed(1) + 'ms\n';
+        out += '  総ロード時間: ' + nav.duration.toFixed(1) + 'ms\n';
+
+        if (nav.serverTiming && nav.serverTiming.length > 0) {
+          out += '  ★ ナビゲーションの Server-Timing:\n';
+          nav.serverTiming.forEach(st => {
+            out += '    → ' + st.name;
+            if (st.duration) out += ' (' + st.duration + 'ms)';
+            if (st.description) out += ' — ' + st.description;
+            out += '\n';
+          });
+        }
+      }
+
+      el.textContent = out;
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — ウォーターフォールチャートの可視化</div>
+    <p>上で取得したリソースタイミングをウォーターフォール形式で可視化します。</p>
+    <button class="btn btn-accent3" id="btn-waterfall">ウォーターフォール表示</button>
+    <div id="waterfall-container" class="waterfall" style="display:none;"></div>
+  </div>
+
+  <script>
+    document.getElementById('btn-waterfall').addEventListener('click', () => {
+      const container = document.getElementById('waterfall-container');
+      container.style.display = 'block';
+      container.innerHTML = '';
+
+      const entries = performance.getEntriesByType('resource');
+      if (entries.length === 0) {
+        container.textContent = 'リソースエントリが見つかりません。';
+        return;
+      }
+
+      const navEntry = performance.getEntriesByType('navigation')[0];
+      const maxTime = Math.max(...entries.map(e => e.responseEnd), navEntry ? navEntry.duration : 0);
+      const colors = [
+        'var(--accent)', 'var(--accent2)', 'var(--accent3)',
+        'var(--warn)', '#a78bfa', '#fb923c'
+      ];
+
+      const title = document.createElement('div');
+      title.style.cssText = 'margin-bottom:0.5rem; color:var(--text); font-weight:600;';
+      title.textContent = 'リソースウォーターフォール（' + entries.length + '件、最大 ' + maxTime.toFixed(0) + 'ms）';
+      container.appendChild(title);
+
+      entries.slice(0, 20).forEach((entry, i) => {
+        const row = document.createElement('div');
+        row.className = 'waterfall-row';
+
+        const urlParts = entry.name.split('/');
+        const shortName = urlParts[urlParts.length - 1].split('?')[0] || urlParts[urlParts.length - 2] || entry.name;
+        const label = document.createElement('div');
+        label.className = 'waterfall-label';
+        label.textContent = shortName.substring(0, 20);
+        label.title = entry.name;
+
+        const track = document.createElement('div');
+        track.className = 'waterfall-track';
+
+        const bar = document.createElement('div');
+        bar.className = 'waterfall-bar';
+        const left = (entry.startTime / maxTime * 100);
+        const width = Math.max(1, entry.duration / maxTime * 100);
+        bar.style.left = left + '%';
+        bar.style.width = width + '%';
+        bar.style.background = colors[i % colors.length];
+        bar.style.opacity = '0.8';
+        track.appendChild(bar);
+
+        const time = document.createElement('div');
+        time.className = 'waterfall-time';
+        time.textContent = entry.duration.toFixed(0) + 'ms';
+
+        row.appendChild(label);
+        row.appendChild(track);
+        row.appendChild(time);
+        container.appendChild(row);
+      });
+
+      if (entries.length > 20) {
+        const more = document.createElement('div');
+        more.style.cssText = 'color:var(--text-dim); margin-top:0.5rem;';
+        more.textContent = '...他 ' + (entries.length - 20) + '件のリソース';
+        container.appendChild(more);
+      }
+    });
+  </script>
+
+  <div class="note">
+    <strong>RUMへの活用</strong>: 実際の監視では <code>PerformanceObserver</code> を使い、
+    リアルタイムにリソースタイミングを収集して分析サーバーに送信します。
+    <code>Server-Timing</code> + <code>Timing-Allow-Origin</code> の組み合わせが、
+    サードパーティCDNのパフォーマンスも可視化する鍵です。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/API/PerformanceResourceTiming/serverTiming" target="_blank">MDN — PerformanceResourceTiming.serverTiming</a></span>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 16-C: Timing-Allow-Origin               -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-16c">
+  <h3>実験 16-C: Timing-Allow-Origin の効果</h3>
+  <p>
+    クロスオリジンのリソースでは、セキュリティのため<strong>タイミング情報がゼロにリセット</strong>されます。
+    <code>Timing-Allow-Origin</code> ヘッダーを設定することで、
+    指定したオリジンからのJSがタイミング情報を読み取れるようになります。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — Timing-Allow-Origin の仕組み</div>
+    <pre><span class="comment">// Timing-Allow-Origin の構文:</span>
+<span class="header-name">Timing-Allow-Origin</span>: <span class="header-val">*</span>                          <span class="comment">← 全オリジンに許可</span>
+<span class="header-name">Timing-Allow-Origin</span>: <span class="header-val">https://app.example.com</span>     <span class="comment">← 特定オリジンのみ</span>
+<span class="header-name">Timing-Allow-Origin</span>: <span class="header-val">https://a.com, https://b.com</span> <span class="comment">← 複数オリジン</span>
+
+<span class="comment">// Timing-Allow-Origin がない場合、クロスオリジンでは:</span>
+  entry.connectStart      → <span class="highlight">0</span>  <span class="comment">（ゼロにリセット）</span>
+  entry.connectEnd        → <span class="highlight">0</span>
+  entry.domainLookupStart → <span class="highlight">0</span>
+  entry.domainLookupEnd   → <span class="highlight">0</span>
+  entry.requestStart      → <span class="highlight">0</span>
+  entry.responseStart     → <span class="highlight">0</span>
+  entry.secureConnectionStart → <span class="highlight">0</span>
+  entry.transferSize      → <span class="highlight">0</span>
+  entry.serverTiming      → <span class="highlight">[]</span>  <span class="comment">（空配列）</span>
+  entry.duration          → <span class="header-val">値あり</span>  <span class="comment">（startTime〜responseEnd は取得可能）</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — クロスオリジンリソースのタイミング差を確認</div>
+    <p>Timing-Allow-Origin あり/なし で取得できる情報量の違いを比較します。</p>
+    <button class="btn btn-warn" id="btn-tao-compare">Timing比較を実行</button>
+    <pre id="tao-result"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-tao-compare').addEventListener('click', async () => {
+      const el = document.getElementById('tao-result');
+      el.textContent = 'クロスオリジンリソースのタイミングを確認中...\n';
+
+      // Clear the resource timing buffer for clean results
+      performance.clearResourceTimings();
+
+      // Fetch a cross-origin resource
+      try {
+        await fetch('https://httpbin.org/get?timing-test=' + Date.now());
+      } catch(e) { /* ignore */ }
+
+      // Wait a moment for performance entries to populate
+      await new Promise(r => setTimeout(r, 500));
+
+      const entries = performance.getEntriesByType('resource')
+        .filter(e => e.name.includes('httpbin.org'));
+
+      let out = '';
+      if (entries.length === 0) {
+        out = 'httpbin.org のリソースエントリが見つかりません。\n再試行してください。';
+      } else {
+        const entry = entries[entries.length - 1];
+        out += '対象: ' + entry.name.substring(0, 60) + '...\n\n';
+
+        const fields = [
+          ['startTime', entry.startTime],
+          ['duration', entry.duration],
+          ['domainLookupStart', entry.domainLookupStart],
+          ['domainLookupEnd', entry.domainLookupEnd],
+          ['connectStart', entry.connectStart],
+          ['connectEnd', entry.connectEnd],
+          ['secureConnectionStart', entry.secureConnectionStart],
+          ['requestStart', entry.requestStart],
+          ['responseStart', entry.responseStart],
+          ['responseEnd', entry.responseEnd],
+          ['transferSize', entry.transferSize],
+          ['encodedBodySize', entry.encodedBodySize],
+          ['decodedBodySize', entry.decodedBodySize],
+        ];
+
+        out += '── PerformanceResourceTiming フィールド ──\n\n';
+        fields.forEach(([name, val]) => {
+          const isZero = val === 0;
+          const padded = name.padEnd(25);
+          const valStr = typeof val === 'number' ? val.toFixed(1) : String(val);
+          if (isZero && name !== 'startTime') {
+            out += '  🔒 ' + padded + valStr + '  ← ゼロ（制限あり）\n';
+          } else {
+            out += '  ✅ ' + padded + valStr + '\n';
+          }
+        });
+
+        const stLen = entry.serverTiming ? entry.serverTiming.length : 0;
+        out += '  ' + (stLen > 0 ? '✅' : '🔒') + ' serverTiming            ' + stLen + '件'
+          + (stLen === 0 ? '  ← 空（Timing-Allow-Origin が必要）' : '') + '\n';
+
+        out += '\n── 解説 ──\n';
+        const zeroCount = fields.filter(([n, v]) => v === 0 && n !== 'startTime').length;
+        if (zeroCount > 3) {
+          out += 'クロスオリジンのため、多くのフィールドがゼロにリセットされています。\n'
+            + 'これはブラウザのセキュリティ機能です。\n'
+            + 'サーバーが Timing-Allow-Origin: * を返すと、\n'
+            + 'これらのフィールドに実値が入るようになります。\n';
+        } else {
+          out += 'タイミング情報が取得できています。\n'
+            + 'Timing-Allow-Origin が設定されているか、\n'
+            + '同一オリジンのリソースです。\n';
+        }
+      }
+      el.textContent = out;
+    });
+  </script>
+
+  <div class="note">
+    <strong>CDN設定のベストプラクティス</strong>:
+    CDNで静的ファイルを配信する場合、<code>Timing-Allow-Origin: *</code> を設定すると、
+    利用サイト側でパフォーマンス計測（RUM）が可能になります。
+    主要CDN（Cloudflare, AWS CloudFront, Fastly）は設定可能です。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/Headers/Timing-Allow-Origin" target="_blank">MDN — Timing-Allow-Origin</a></span>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 16-D: Link preload                       -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-16d">
+  <h3>実験 16-D: Link preload ヘッダーとリソースの先読み</h3>
+  <p>
+    <code>Link</code> ヘッダーの <code>rel=preload</code> は、
+    ブラウザにリソースの<strong>早期読み込み</strong>を指示します。
+    HTMLの <code>&lt;link rel="preload"&gt;</code> と同じ効果ですが、
+    <strong>HTTPレスポンスヘッダー</strong>で指定できるためCDN/プロキシ層で制御可能です。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — Link ヘッダーの種類</div>
+    <pre><span class="comment">// Link ヘッダーの主な rel 値:</span>
+
+<span class="header-name">1. preload</span> — 現在のページで確実に使うリソースを早期取得
+<span class="header-name">Link</span>: <span class="header-val">&lt;/style.css&gt;; rel=preload; as=style</span>
+<span class="header-name">Link</span>: <span class="header-val">&lt;/app.js&gt;; rel=preload; as=script; fetchpriority=high</span>
+<span class="header-name">Link</span>: <span class="header-val">&lt;/font.woff2&gt;; rel=preload; as=font; crossorigin</span>
+
+<span class="header-name">2. prefetch</span> — 次のナビゲーションで使いそうなリソースを低優先度で取得
+<span class="header-name">Link</span>: <span class="header-val">&lt;/next-page.html&gt;; rel=prefetch</span>
+
+<span class="header-name">3. preconnect</span> — 接続の事前確立（DNS + TCP + TLS）
+<span class="header-name">Link</span>: <span class="header-val">&lt;https://api.example.com&gt;; rel=preconnect</span>
+
+<span class="header-name">4. dns-prefetch</span> — DNS解決のみ事前実行
+<span class="header-name">Link</span>: <span class="header-val">&lt;https://cdn.example.com&gt;; rel=dns-prefetch</span>
+
+<span class="comment">// as 属性の値:</span>
+  <span class="highlight">style</span>     — CSS
+  <span class="highlight">script</span>    — JavaScript
+  <span class="highlight">font</span>      — フォント（crossorigin 必須）
+  <span class="highlight">image</span>     — 画像
+  <span class="highlight">fetch</span>     — fetch() で取得するデータ
+  <span class="highlight">document</span>  — iframe 用</pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — preload と通常読み込みの優先度比較</div>
+    <p>
+      <code>&lt;link rel="preload"&gt;</code> を使った場合のリソース読み込み順序を確認します。
+      DevToolsの Network タブで <strong>Priority</strong> カラムを有効にして比較してください。
+    </p>
+    <pre><span class="comment">// Priority カラムの有効化:</span>
+Network タブ → カラムヘッダーを右クリック → <span class="highlight">Priority</span> にチェック
+
+<span class="comment">// 各リソースの優先度（Chrome）:</span>
+  <span class="header-val">Highest</span>  — HTML, CSS, preloadされたフォント
+  <span class="header-val">High</span>     — JS（&lt;head&gt;内）, preloadされたリソース
+  <span class="header-val">Medium</span>   — CSS以外の render-blocking 外リソース
+  <span class="header-val">Low</span>      — 画像, prefetch
+  <span class="header-val">Lowest</span>   — prefetch (次ページ用)</pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — fetchpriority 属性を体験</div>
+    <p>
+      <code>fetchpriority</code>（Priority Hints）で読み込み優先度を明示的に指定できます。
+      ボタンを押して、異なる優先度で画像を読み込み、その結果を比較します。
+    </p>
+    <button class="btn btn-accent" id="btn-priority-test">優先度テスト実行</button>
+    <pre id="priority-result"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-priority-test').addEventListener('click', async () => {
+      const el = document.getElementById('priority-result');
+      el.textContent = 'リソースを読み込み中...\n';
+      performance.clearResourceTimings();
+
+      const ts = Date.now();
+
+      // Create link preload
+      const link = document.createElement('link');
+      link.rel = 'preload';
+      link.as = 'image';
+      link.href = 'https://httpbin.org/image/png?preload=' + ts;
+      document.head.appendChild(link);
+
+      // Normal image load
+      const img1 = new Image();
+      img1.src = 'https://httpbin.org/image/png?normal=' + ts;
+
+      // Wait for both to load
+      await new Promise(r => setTimeout(r, 2000));
+
+      const entries = performance.getEntriesByType('resource')
+        .filter(e => e.name.includes('httpbin.org/image'));
+
+      let out = '── 読み込みタイミング比較 ──\n\n';
+      entries.forEach(entry => {
+        const isPreload = entry.name.includes('preload');
+        const label = isPreload ? '🚀 preload' : '📦 通常';
+        out += label + ':\n';
+        out += '  URL: ...' + entry.name.split('?')[1] + '\n';
+        out += '  開始: ' + entry.startTime.toFixed(1) + 'ms\n';
+        out += '  完了: ' + entry.responseEnd.toFixed(1) + 'ms\n';
+        out += '  所要: ' + entry.duration.toFixed(1) + 'ms\n\n';
+      });
+
+      if (entries.length < 2) {
+        out += '※ 一部のリソースが取得できませんでした。\n'
+          + '  ネットワーク状況やブラウザの制限により\n'
+          + '  結果が異なる場合があります。\n\n';
+      }
+
+      out += '── 解説 ──\n'
+        + 'preload はブラウザに「このリソースは\n'
+        + 'すぐに必要になる」と伝えるヒントです。\n'
+        + 'ブラウザはHTMLのパース完了を待たずに\n'
+        + '取得を開始できます。\n\n'
+        + '重要: preload を使いすぎると逆効果です。\n'
+        + 'クリティカルなリソース（above-the-fold の\n'
+        + 'CSS、主要フォント、ヒーロー画像）に限定しましょう。';
+
+      el.textContent = out;
+
+      // Cleanup
+      document.head.removeChild(link);
+    });
+  </script>
+
+  <div class="warn-box">
+    <strong>preload の注意点</strong>:
+    preloadしたリソースが3秒以内に使われないと、
+    Chromeコンソールに警告が表示されます。
+    不必要な preload は帯域を無駄にし、他のリソースの読み込みを遅らせます。
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 4 — 103 Early Hints（次世代のリソースヒント）</div>
+    <pre><span class="comment">// 103 Early Hints はHTTP/2+の新機能:
+// サーバーが200応答を生成している間に、先にヒントを送信</span>
+
+<span class="comment">// ① まず103を返す（バックエンド処理開始と同時に）:</span>
+HTTP/2 <span class="highlight">103</span> Early Hints
+<span class="header-name">Link</span>: <span class="header-val">&lt;/style.css&gt;; rel=preload; as=style</span>
+<span class="header-name">Link</span>: <span class="header-val">&lt;https://fonts.googleapis.com&gt;; rel=preconnect</span>
+
+<span class="comment">// ② 後から本来の200応答:</span>
+HTTP/2 <span class="highlight">200</span> OK
+Content-Type: text/html; charset=utf-8
+...
+
+<span class="comment">// メリット:
+// - サーバーの処理時間（TTFB）を有効活用
+// - Link ヘッダーよりさらに早くリソース取得開始
+// - CDN（Cloudflare, Fastly等）で活用可能</span></pre>
+  </div>
+
+  <div class="note">
+    <strong>Link ヘッダー vs &lt;link&gt; 要素</strong>:
+    どちらも同じ効果ですが、HTTPヘッダーの方がCDN/プロキシ層で設定可能、かつHTML本文のパース前に適用されるメリットがあります。
+    103 Early Hints と組み合わせると、最も早いタイミングでリソース取得を開始できます。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/Headers/Link" target="_blank">MDN — Link</a></span>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 16-E: Alt-Svc と HTTP/3                  -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-16e">
+  <h3>実験 16-E: Alt-Svc と HTTP/3 への切り替え</h3>
+  <p>
+    <code>Alt-Svc</code>（Alternative Services）ヘッダーは、
+    サーバーが「<strong>別のプロトコル（HTTP/3など）でもアクセスできるよ</strong>」と
+    ブラウザに通知するためのヘッダーです。
+    HTTP/2 → HTTP/3 のアップグレードで最も重要な役割を果たします。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — Alt-Svc の構文と仕組み</div>
+    <pre><span class="comment">// Alt-Svc ヘッダーの構文:</span>
+<span class="header-name">Alt-Svc</span>: <span class="header-val">h3=":443"; ma=86400</span>
+
+<span class="comment">// 各パラメータ:</span>
+  <span class="highlight">h3</span>    — プロトコル識別子（HTTP/3 = h3）
+  <span class="highlight">":443"</span> — ポート番号
+  <span class="highlight">ma</span>    — 有効期間（秒）。86400 = 24時間
+
+<span class="comment">// 複数バージョンの通知:</span>
+<span class="header-name">Alt-Svc</span>: <span class="header-val">h3=":443"; ma=86400, h3-29=":443"; ma=86400</span>
+
+<span class="comment">// Alt-Svc をクリア（HTTP/3を無効化）:</span>
+<span class="header-name">Alt-Svc</span>: <span class="header-val">clear</span>
+
+<span class="comment">// HTTP/3 切り替えのフロー:</span>
+  1. ブラウザが <span class="highlight">HTTP/2</span> でサーバーに接続
+  2. レスポンスに <span class="header-name">Alt-Svc: h3=":443"</span> が含まれる
+  3. ブラウザは<span class="highlight">バックグラウンドで</span>QUIC接続を試行
+  4. 成功すると、次回以降のリクエストは <span class="highlight">HTTP/3</span> で通信
+  5. <span class="header-val">ma</span> の期間が過ぎると、再度Alt-Svcで確認</pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 現在のプロトコルを確認する</div>
+    <p>各サイトがどのHTTPプロトコルで通信しているか確認します。</p>
+    <button class="btn btn-accent2" id="btn-protocol-check">プロトコル確認</button>
+    <pre id="protocol-result"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-protocol-check').addEventListener('click', async () => {
+      const el = document.getElementById('protocol-result');
+      el.textContent = 'プロトコル情報を取得中...\n';
+
+      // Check navigation entry
+      const nav = performance.getEntriesByType('navigation')[0];
+      let out = '── このページのプロトコル ──\n';
+      if (nav && nav.nextHopProtocol) {
+        out += '  nextHopProtocol: ' + nav.nextHopProtocol + '\n';
+        const proto = nav.nextHopProtocol;
+        if (proto === 'h3') {
+          out += '  → HTTP/3（QUIC）で通信中 🚀\n';
+        } else if (proto === 'h2') {
+          out += '  → HTTP/2 で通信中\n';
+        } else if (proto === 'http/1.1') {
+          out += '  → HTTP/1.1 で通信中\n';
+        } else {
+          out += '  → プロトコル: ' + proto + '\n';
+        }
+      } else {
+        out += '  → プロトコル情報を取得できませんでした\n'
+          + '    （ローカルサーバーの場合は通常 http/1.1）\n';
+      }
+
+      out += '\n── リソースごとのプロトコル ──\n';
+      const entries = performance.getEntriesByType('resource');
+      const protoMap = {};
+      entries.forEach(entry => {
+        const proto = entry.nextHopProtocol || '(不明)';
+        if (!protoMap[proto]) protoMap[proto] = [];
+        const urlParts = entry.name.split('/');
+        const host = new URL(entry.name).hostname;
+        protoMap[proto].push(host);
+      });
+
+      for (const [proto, hosts] of Object.entries(protoMap)) {
+        const unique = [...new Set(hosts)];
+        out += '\n  ' + proto + ':\n';
+        unique.forEach(h => {
+          out += '    - ' + h + '\n';
+        });
+      }
+
+      out += '\n── DevTools で確認する方法 ──\n'
+        + '  Network タブ → カラムヘッダー右クリック\n'
+        + '  → "Protocol" にチェック\n'
+        + '  → 各リクエストの Protocol カラムで\n'
+        + '     h2, h3, http/1.1 が確認できます。\n\n'
+        + '── Alt-Svc の確認方法 ──\n'
+        + '  1. 任意のHTTPS サイトにアクセス\n'
+        + '  2. Network タブでメインHTMLを選択\n'
+        + '  3. Response Headers → Alt-Svc を探す\n'
+        + '  4. h3=":443" があれば HTTP/3 対応\n'
+        + '  5. ページを再読み込みすると Protocol が\n'
+        + '     h2 → h3 に変わることを確認';
+
+      el.textContent = out;
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — HTTP/2 vs HTTP/3 の違い</div>
+    <pre><span class="comment">// HTTP/2 と HTTP/3 の主な違い:</span>
+
+┌──────────────────┬──────────────────┬──────────────────┐
+│                  │ <span class="header-name">HTTP/2</span>           │ <span class="header-name">HTTP/3</span>           │
+├──────────────────┼──────────────────┼──────────────────┤
+│ トランスポート    │ TCP + TLS 1.2+   │ <span class="highlight">QUIC (UDP + TLS 1.3)</span> │
+│ 接続確立         │ 2-3 RTT          │ <span class="highlight">0-1 RTT</span>          │
+│ HoLブロッキング  │ TCP層で発生      │ <span class="highlight">ストリーム単位</span>    │
+│ ヘッダー圧縮     │ HPACK            │ <span class="highlight">QPACK</span>            │
+│ 接続マイグレーション │ 不可          │ <span class="highlight">可能</span>（WiFi→4G）  │
+│ Server Push      │ あり             │ <span class="highlight">廃止</span>→ 103 Early Hints │
+│ Alt-Svc 通知     │ 受信側           │ 自身のプロトコル  │
+│ ポート           │ 443 (TCP)        │ <span class="highlight">443 (UDP)</span>        │
+└──────────────────┴──────────────────┴──────────────────┘
+
+<span class="comment">// HoL (Head-of-Line) ブロッキングの違い:</span>
+  HTTP/2: TCPパケットロス → <span class="highlight">全ストリームが停止</span>
+  HTTP/3: QUICパケットロス → <span class="highlight">該当ストリームのみ停止</span></pre>
+  </div>
+
+  <div class="warn-box">
+    <strong>Alt-Svc の中間プロキシに関する注意</strong>:
+    中間プロキシ/ロードバランサーが <code>Alt-Svc</code> ヘッダーを透過させると、
+    クライアントが直接バックエンドにQUIC接続しようとする問題が起きます。
+    プロキシは自身の <code>Alt-Svc</code> に書き換えるか、除去すべきです。
+  </div>
+
+  <div class="note">
+    <strong>2026年現在のHTTP/3対応状況</strong>:
+    主要CDN（Cloudflare, AWS CloudFront, Fastly, Akamai）はHTTP/3対応済み。
+    主要ブラウザ（Chrome, Firefox, Safari, Edge）も対応済み。
+    <code>Alt-Svc</code> でHTTP/3を告知することは強く推奨されています。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/Headers/Alt-Svc" target="_blank">MDN — Alt-Svc</a></span>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 16-F: OutSystems で確認                   -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-16f">
+  <h3>実験 16-F: OutSystems でパフォーマンスヘッダーを確認する</h3>
+  <p>Lab全体を通して拡張してきた <code>HeaderLab</code> モジュールで、パフォーマンス関連ヘッダーを確認します。</p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — OutSystems画面のパフォーマンスヘッダーを確認</div>
+    <pre><span class="comment">// OutSystems の画面（Screen）にアクセスして DevTools で確認:</span>
+
+<span class="header-name">確認ポイント①: プロトコル</span>
+  Network タブ → Protocol カラム
+  OutSystems Cloud は通常 <span class="highlight">h2</span> で配信
+  CDN経由の場合は <span class="highlight">h3</span> の可能性あり
+
+<span class="header-name">確認ポイント②: Alt-Svc</span>
+  Response Headers → Alt-Svc
+  OutSystems Cloud（Cloudfront/Cloudflare経由）の場合、
+  <span class="header-val">h3=":443"; ma=86400</span> が返される可能性あり
+
+<span class="header-name">確認ポイント③: Server-Timing</span>
+  OutSystems自体は Server-Timing を返さないが、
+  CDN層が追加する場合がある（例: cf-cache-status）
+
+<span class="header-name">確認ポイント④: Link preload</span>
+  OutSystemsのHTML &lt;head&gt; 内の
+  &lt;link rel="preload"&gt; タグを確認</pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — REST API に Server-Timing を追加する</div>
+    <pre><span class="comment">// HeaderLab モジュールの REST API にカスタムヘッダーを追加:</span>
+
+1. Service Studio で <span class="header-val">HeaderLab</span> モジュールを開く
+
+2. REST API Method（GetInfo など）の
+   <span class="highlight">OnResponse</span> コールバックを設定
+
+3. OnResponse 内で以下を設定:
+   <span class="comment">// Server Extension や HTTPRequestHandler を使用</span>
+
+   <span class="header-name">SetHeader</span>("Server-Timing",
+     "db;dur=15;desc=""Database"", app;dur=30;desc=""Logic""")
+
+   <span class="header-name">SetHeader</span>("Timing-Allow-Origin", "*")
+
+4. <span class="highlight">Publish</span> して DevTools で確認</pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — このHTMLから OutSystems API を呼んで確認</div>
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; margin:0.5rem 0;">
+      <input type="text" id="os-perf-url" placeholder="https://xxx.outsystemscloud.com/HeaderLab/rest/HeaderTest/GetInfo"
+        style="flex:1; min-width:300px; background:var(--surface2); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:0.5rem 0.8rem; font-family:'IBM Plex Mono',monospace; font-size:0.82rem;">
+      <button class="btn btn-warn" id="btn-os-perf">パフォーマンス情報を取得</button>
+    </div>
+    <pre id="os-perf-result"><span class="placeholder">← OutSystems APIのURLを入力して実行してください</span></pre>
+  </div>
+
+  <script>
+    // localStorage でURL保存
+    const osPerfUrlEl = document.getElementById('os-perf-url');
+    const savedOsPerfUrl = localStorage.getItem('httplab_os_perf_url');
+    if (savedOsPerfUrl) osPerfUrlEl.value = savedOsPerfUrl;
+    osPerfUrlEl.addEventListener('input', () => {
+      localStorage.setItem('httplab_os_perf_url', osPerfUrlEl.value);
+    });
+
+    document.getElementById('btn-os-perf').addEventListener('click', async () => {
+      const el = document.getElementById('os-perf-result');
+      const url = osPerfUrlEl.value.trim();
+      if (!url) { el.textContent = 'URLを入力してください'; return; }
+
+      el.textContent = 'fetchを送信中...\n  URL: ' + url;
+      performance.clearResourceTimings();
+
+      try {
+        const t0 = performance.now();
+        const res = await fetch(url);
+        const elapsed = performance.now() - t0;
+
+        let out = '── レスポンス情報 ──\n';
+        out += '  ステータス: ' + res.status + ' ' + res.statusText + '\n';
+        out += '  fetch所要時間: ' + elapsed.toFixed(1) + 'ms\n\n';
+
+        out += '── パフォーマンス関連ヘッダー ──\n';
+        const perfHeaders = [
+          'server-timing', 'timing-allow-origin', 'alt-svc',
+          'link', 'x-cache', 'cf-cache-status', 'age',
+          'server', 'via', 'x-powered-by'
+        ];
+
+        let found = 0;
+        for (const [name, value] of res.headers) {
+          if (perfHeaders.includes(name.toLowerCase())) {
+            out += '  ✅ ' + name + ': ' + value + '\n';
+            found++;
+          }
+        }
+        if (found === 0) {
+          out += '  （パフォーマンス関連ヘッダーは見つかりませんでした）\n';
+        }
+
+        out += '\n── 全レスポンスヘッダー ──\n';
+        for (const [name, value] of res.headers) {
+          out += '  ' + name + ': ' + value + '\n';
+        }
+
+        // Check Performance API for this resource
+        await new Promise(r => setTimeout(r, 300));
+        const entries = performance.getEntriesByType('resource')
+          .filter(e => e.name.includes(new URL(url).hostname));
+
+        if (entries.length > 0) {
+          const entry = entries[entries.length - 1];
+          out += '\n── Performance API ──\n';
+          out += '  duration: ' + entry.duration.toFixed(1) + 'ms\n';
+          out += '  protocol: ' + (entry.nextHopProtocol || '不明') + '\n';
+          out += '  transferSize: ' + (entry.transferSize || '制限') + '\n';
+
+          if (entry.serverTiming && entry.serverTiming.length > 0) {
+            out += '  ★ Server-Timing:\n';
+            entry.serverTiming.forEach(st => {
+              out += '    → ' + st.name;
+              if (st.duration) out += ' (' + st.duration + 'ms)';
+              if (st.description) out += ' — ' + st.description;
+              out += '\n';
+            });
+          } else {
+            out += '  serverTiming: なし\n';
+            out += '    → Timing-Allow-Origin が必要かもしれません\n';
+          }
+        }
+
+        el.textContent = out;
+      } catch(e) {
+        const isCors = e.message.includes('Failed to fetch') || e.name === 'TypeError';
+        el.textContent = (isCors ? '🔴 CORSエラー' : '❌ エラー: ' + e.message)
+          + '\n\n'
+          + (isCors
+            ? 'OutSystems側でCORS設定が必要です。\n'
+              + 'Lab 06-07 で設定した Access-Control-Allow-Origin が\n'
+              + '有効になっているか確認してください。'
+            : 'URLが正しいか確認してください。');
+      }
+    });
+  </script>
+
+  <div class="note">
+    <strong>HeaderLab モジュールの最終形</strong>:
+    Lab 01〜16 で追加してきたヘッダー設定がすべて揃っているか、
+    DevToolsで総合チェックしましょう。
+    セキュリティスコアは
+    <a href="https://securityheaders.com/" target="_blank">securityheaders.com</a> で確認できます。
+  </div>
+</div>
+
+<hr>
+
+<!-- ============================================ -->
+<!-- 総合まとめ                                     -->
+<!-- ============================================ -->
+<h2>📊 Lab 全体の振り返り — ヘッダー体系マップ</h2>
+
+<div class="diagram">  ┌──────────────────────────────────────────────────────────┐
+  │                    HTTP ヘッダー体系                      │
+  │                                                          │
+  │  <span style="color:var(--danger)">セキュリティ（最優先）</span>                                  │
+  │   ├─ CSP         — Lab 08        ├─ HSTS    — Lab 09    │
+  │   ├─ Cookie属性  — Lab 04-05     ├─ COOP/COEP — Lab 10  │
+  │   └─ Fetch Metadata — Lab 11    └─ CORP    — Lab 10    │
+  │                                                          │
+  │  <span style="color:var(--accent2)">認証・認可</span>                                              │
+  │   ├─ Authorization — Lab 12      ├─ Set-Cookie — Lab 04 │
+  │   └─ OAuth/OIDC   — Lab 12      └─ SameSite  — Lab 05  │
+  │                                                          │
+  │  <span style="color:var(--accent3)">CORS</span>                                                    │
+  │   ├─ Allow-Origin — Lab 06       ├─ Credentials — Lab 07│
+  │   └─ Preflight   — Lab 06       └─ Expose-Headers — 07 │
+  │                                                          │
+  │  <span style="color:var(--warn)">キャッシュ</span>                                                │
+  │   ├─ Cache-Control — Lab 02-03   ├─ ETag — Lab 02       │
+  │   └─ immutable     — Lab 03     └─ Vary — Lab 03       │
+  │                                                          │
+  │  <span style="color:var(--text)">コンテンツ</span>                                                │
+  │   ├─ Content-Type     — Lab 01   ├─ Accept — Lab 01     │
+  │   └─ Content-Encoding — Lab 14  └─ Range  — Lab 14     │
+  │                                                          │
+  │  <span style="color:var(--accent)">パフォーマンス（今回 ★）</span>                                  │
+  │   ├─ Server-Timing — Lab 16      ├─ Link preload — 16  │
+  │   ├─ Timing-Allow-Origin — 16    └─ Alt-Svc — Lab 16   │
+  │   └─ 103 Early Hints — Lab 16                           │
+  │                                                          │
+  │  <span style="color:var(--text-dim)">インフラ</span>                                                  │
+  │   ├─ リダイレクト   — Lab 13     ├─ Forwarded — Lab 15  │
+  │   └─ X-Forwarded-*  — Lab 15    └─ Via       — Lab 15  │
+  └──────────────────────────────────────────────────────────┘</div>
+
+<hr>
+
+<!-- ============================================ -->
+<!-- チェックリスト                                  -->
+<!-- ============================================ -->
+<h2 id="checklist">✅ Lab 16 チェックリスト</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">チェック状態はブラウザに自動保存されます。</p>
+
+<div class="check-item"><input type="checkbox" data-key="lab16-1"> <label>Server-Timing ヘッダーの構文（name, dur, desc）を理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab16-2"> <label>実際のサイトで Server-Timing を DevTools で確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab16-3"> <label>Performance API で serverTiming プロパティを読み取った</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab16-4"> <label>ウォーターフォールチャートでリソースの読み込み順を可視化した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab16-5"> <label>Timing-Allow-Origin がない場合のゼロリセットを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab16-6"> <label>Link preload / prefetch / preconnect の違いを理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab16-7"> <label>fetchpriority（Priority Hints）の効果を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab16-8"> <label>Alt-Svc ヘッダーの役割とHTTP/3切り替えフローを理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab16-9"> <label>DevTools の Protocol カラムで実際の通信プロトコルを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab16-10"> <label>OutSystemsのパフォーマンスヘッダーを確認した</label></div>
+
+<div style="margin-top:1rem; text-align:center;">
+  <span id="progress-text" style="font-family:'IBM Plex Mono',monospace; color:var(--accent); font-size:0.9rem;"></span>
+</div>
+
+<!-- ── localStorage for checkboxes ── -->
+<script>
+  const STORAGE_PREFIX = 'httplab_';
+
+  function updateProgress() {
+    const all = document.querySelectorAll('input[type="checkbox"][data-key]');
+    const checked = [...all].filter(cb => cb.checked).length;
+    const el = document.getElementById('progress-text');
+    if (el) el.textContent = checked + ' / ' + all.length + ' 完了';
+  }
+
+  document.querySelectorAll('input[type="checkbox"][data-key]').forEach(cb => {
+    const saved = localStorage.getItem(STORAGE_PREFIX + cb.dataset.key);
+    if (saved === 'true') {
+      cb.checked = true;
+      cb.closest('.check-item')?.classList.add('checked');
+    }
+    cb.addEventListener('change', () => {
+      localStorage.setItem(STORAGE_PREFIX + cb.dataset.key, cb.checked);
+      cb.closest('.check-item')?.classList.toggle('checked', cb.checked);
+      updateProgress();
+    });
+  });
+
+  updateProgress();
+</script>
+
+<hr>
+
+<div class="note">
+  📖 <strong>参照資料</strong>：このLabの内容は <code>http-headers-guide-v2.md</code> の 第1部 1-2「パフォーマンス」+ 第2部④「CDN」 に対応しています。より詳しい解説・ヘッダー一覧はガイドを参照してください。
+</div>
+
+<h2>📝 Lab 16 学習ノート</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">メモはブラウザに自動保存されます。</p>
+<textarea id="notes" rows="6" placeholder="気づいたこと、疑問点をメモ..."
+  style="width:100%;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:0.8rem;font-family:'Noto Sans JP',sans-serif;font-size:0.9rem;resize:vertical;margin-top:0.5rem;"></textarea>
+
+<script>
+  const notesEl = document.getElementById('notes');
+  const savedNotes = localStorage.getItem(STORAGE_PREFIX + 'lab16_notes');
+  if (savedNotes) notesEl.value = savedNotes;
+  notesEl.addEventListener('input', () => {
+    localStorage.setItem(STORAGE_PREFIX + 'lab16_notes', notesEl.value);
+  });
+</script>
+
+<hr>
+
+<div style="text-align:center; margin:2rem 0;">
+  <p style="font-size:1.1rem; color:var(--accent);">
+    🎉 <strong>Lab 全16回 完了！おつかれさまでした！</strong>
+  </p>
+  <p style="color:var(--text-dim); font-size:0.85rem; margin-top:0.5rem;">
+    HTTPヘッダーの基礎から実践まで、ブラウザ通信の全体像を学びました。<br>
+    各Labのチェックリストを見直して、理解度を確認しましょう。
+  </p>
+</div>
+
+<div class="lab-box" style="border-color:var(--accent);">
+  <h3 style="color:var(--accent); margin-top:0;">🏆 次のステップ</h3>
+  <div class="two-col">
+    <div class="col-card">
+      <h4 style="color:var(--accent2);">セキュリティ検証</h4>
+      <pre style="color:var(--text-dim);">securityheaders.com
+observatory.mozilla.org
+hstspreload.org
+
+→ 自分のサイト/APIの
+  ヘッダーをスキャン</pre>
+    </div>
+    <div class="col-card">
+      <h4 style="color:var(--accent3);">パフォーマンス検証</h4>
+      <pre style="color:var(--text-dim);">PageSpeed Insights
+WebPageTest.org
+Chrome Lighthouse
+
+→ Core Web Vitals を
+  ヘッダー最適化で改善</pre>
+    </div>
+  </div>
+</div>
+
+<p style="color:var(--text-dim); font-size:0.82rem; margin-top:2rem;">
+  ← 前回: <a href="http-header-lab-15.html"><strong>Lab 15 — プロキシ・転送元</strong></a>（X-Forwarded-For, Via, Forwarded）<br>
+  これが最後のLabです。全16 Lab お疲れさまでした！ 🎉
+</p>
+
+</body>
+</html>

@@ -1,0 +1,1347 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HTTP Header Lab 13 — リダイレクト（301/302/307/308, Location）</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;700&display=swap');
+
+  :root {
+    --bg: #ffffff;
+    --surface: #f5f7fa;
+    --surface2: #ebeef2;
+    --border: #c8cdd3;
+    --text: #1a1a2e;
+    --text-dim: #5c6370;
+    --accent: #005cc5;
+    --accent2: #22863a;
+    --accent3: #6f42c1;
+    --warn: #b08800;
+    --danger: #cb2431;
+    --code-bg: #f0f4f8;
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    padding: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+    color: var(--accent);
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 0.8rem;
+    margin-bottom: 1.5rem;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+    color: var(--accent2);
+    margin: 2rem 0 1rem;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  h3 {
+    font-size: 1.05rem;
+    color: var(--accent3);
+    margin: 1.5rem 0 0.8rem;
+  }
+
+  p, li { font-size: 0.92rem; margin-bottom: 0.5rem; }
+
+  /* ── Status Bar ── */
+  .status-bar {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.6rem 1rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.82rem;
+    font-family: 'IBM Plex Mono', monospace;
+    flex-wrap: wrap;
+  }
+  .status-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    animation: pulse 1.5s infinite;
+  }
+  .status-dot.ok { background: var(--accent); animation: none; }
+  .status-dot.err { background: var(--danger); animation: none; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* ── Critical Alert ── */
+  .alert-critical {
+    background: #fef2f2;
+    border: 2px solid var(--danger);
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.88rem;
+  }
+  .alert-critical strong { color: var(--danger); }
+  .alert-critical code {
+    background: rgba(203,36,49,0.1);
+    color: var(--danger);
+  }
+
+  /* ── Lab Section ── */
+  .lab-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+  }
+
+  .step {
+    background: var(--surface2);
+    border-left: 3px solid var(--accent2);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 1rem 1.2rem;
+    margin: 1rem 0;
+  }
+  .step-num {
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--accent2);
+    font-weight: 600;
+    font-size: 0.8rem;
+    margin-bottom: 0.3rem;
+  }
+
+  code, pre {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+  }
+  code {
+    background: var(--code-bg);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    color: var(--accent);
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    overflow-x: auto;
+    margin: 0.8rem 0;
+    line-height: 1.6;
+    color: #24292e;
+  }
+  pre .comment { color: #6a737d; }
+  pre .header-name { color: var(--accent2); }
+  pre .header-val  { color: var(--accent); }
+  pre .highlight    { color: var(--warn); font-weight: 600; }
+
+  .placeholder {
+    color: var(--text-dim);
+    font-style: italic;
+    font-size: 0.8rem;
+  }
+
+  .note {
+    background: #e8f4fd;
+    border: 1px solid #b6d4e8;
+    border-radius: var(--radius);
+    padding: 0.8rem 1rem;
+    margin: 1rem 0;
+    font-size: 0.85rem;
+    color: var(--accent2);
+  }
+  .note::before { content: "💡 "; }
+
+  .warn-box {
+    background: #fff8e1;
+    border: 1px solid #e6d590;
+    border-radius: var(--radius);
+    padding: 0.8rem 1rem;
+    margin: 1rem 0;
+    font-size: 0.85rem;
+    color: var(--warn);
+  }
+  .warn-box::before { content: "⚠️ "; }
+
+  .check-item {
+    background: var(--surface2);
+    border-radius: var(--radius);
+    padding: 0.6rem 1rem;
+    margin: 0.4rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.88rem;
+    transition: opacity 0.3s;
+  }
+  .check-item input[type="checkbox"] {
+    width: 18px; height: 18px;
+    accent-color: var(--accent);
+    flex-shrink: 0;
+  }
+  .check-item.checked { opacity: 0.55; }
+
+  .diagram {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.2rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    overflow-x: auto;
+    white-space: pre;
+    color: var(--text-dim);
+    margin: 1rem 0;
+  }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+  @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+  .four-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem;
+    margin: 1rem 0;
+  }
+  @media (max-width: 768px) { .four-col { grid-template-columns: 1fr; } }
+
+  .col-card {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.8rem;
+    font-size: 0.8rem;
+  }
+  .col-card h4 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .col-card pre {
+    border: none;
+    padding: 0.4rem 0;
+    margin: 0;
+    font-size: 0.75rem;
+    background: transparent;
+  }
+  .col-card.card-301 { border-color: var(--accent); }
+  .col-card.card-301 h4 { color: var(--accent); }
+  .col-card.card-302 { border-color: var(--accent2); }
+  .col-card.card-302 h4 { color: var(--accent2); }
+  .col-card.card-307 { border-color: var(--accent3); }
+  .col-card.card-307 h4 { color: var(--accent3); }
+  .col-card.card-308 { border-color: var(--warn); }
+  .col-card.card-308 h4 { color: var(--warn); }
+
+  a { color: var(--accent2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+
+  /* ── TOC Nav ── */
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+    margin: 1rem 0 2rem;
+  }
+  .toc a {
+    display: inline-block;
+    padding: 0.25rem 0.6rem;
+    margin: 0.15rem;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    background: var(--surface2);
+    transition: background 0.2s;
+  }
+  .toc a:hover { background: var(--border); text-decoration: none; }
+
+  html { scroll-behavior: smooth; }
+
+  .btn {
+    border: none;
+    padding: 0.5rem 1.2rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    font-family: 'Noto Sans JP', sans-serif;
+    margin: 0.3rem;
+    transition: opacity 0.2s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.97); }
+  .btn-accent  { background: var(--accent);  color: var(--bg); }
+  .btn-accent2 { background: var(--accent2); color: var(--bg); }
+  .btn-accent3 { background: var(--accent3); color: var(--bg); }
+  .btn-warn    { background: var(--warn);    color: var(--bg); }
+  .btn-dim     { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+
+  /* ── Comparison table ── */
+  .cmp-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.82rem;
+  }
+  .cmp-table th {
+    background: var(--surface2);
+    color: var(--accent);
+    padding: 0.5rem 0.7rem;
+    text-align: left;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    border-bottom: 2px solid var(--accent);
+  }
+  .cmp-table td {
+    padding: 0.45rem 0.7rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .cmp-table tr:hover { background: var(--surface); }
+  .cmp-table .yes { color: var(--accent); }
+  .cmp-table .no { color: var(--danger); }
+  .cmp-table .maybe { color: var(--warn); }
+</style>
+</head>
+<body>
+
+<!-- ============================================ -->
+<!-- STATUS BAR                                    -->
+<!-- ============================================ -->
+<div class="status-bar">
+  <div class="status-item">
+    <div class="status-dot" id="dot-protocol"></div>
+    <span id="status-protocol">プロトコル確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-httpbin"></div>
+    <span id="status-httpbin">httpbin.org 確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-devtools"></div>
+    <span>DevTools: <kbd style="background:var(--surface2);padding:0.1rem 0.4rem;border-radius:4px;">F12</kbd></span>
+  </div>
+</div>
+<p style="margin-bottom:0.5rem;font-size:0.82rem;"><a href="http-header-lab-index.html" style="color:var(--accent);text-decoration:none;">← マスター索引に戻る</a></p>
+
+<script>
+// ── Protocol check ──
+(function checkProtocol() {
+  const dot = document.getElementById('dot-protocol');
+  const label = document.getElementById('status-protocol');
+  if (location.protocol === 'file:') {
+    dot.classList.add('err');
+    label.innerHTML = '<strong style="color:var(--danger)">file:// 検出（要修正）</strong>';
+    document.getElementById('file-protocol-alert').style.display = 'block';
+  } else {
+    dot.classList.add('ok');
+    label.textContent = location.protocol + '// ✅';
+  }
+})();
+
+// ── httpbin.org health check ──
+(async function checkHttpbin() {
+  const dot = document.getElementById('dot-httpbin');
+  const label = document.getElementById('status-httpbin');
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch('https://httpbin.org/get', { signal: controller.signal });
+    clearTimeout(timeout);
+    if (res.ok) {
+      dot.classList.add('ok');
+      label.textContent = 'httpbin.org ✅';
+    } else {
+      dot.classList.add('err');
+      label.innerHTML = '<strong style="color:var(--danger)">httpbin.org 応答エラー</strong>';
+    }
+  } catch(e) {
+    dot.classList.add('err');
+    label.innerHTML = '<strong style="color:var(--danger)">httpbin.org ❌ 接続不可</strong>';
+  }
+})();
+</script>
+
+<h1>🧪 Lab 13: リダイレクト（301/302/307/308, Location）</h1>
+<p style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.3rem;font-family:'IBM Plex Mono',monospace;">最終更新: 2026年3月</p>
+<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">⏱ 所要時間：25分</span>
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">難易度：★★☆</span>
+</div>
+<p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:1rem;">📋 前提知識：<a href="http-header-lab-02.html">Lab 02</a> 完了推奨（キャッシュとリダイレクトの相互作用を理解するため）</p>
+
+<p>
+  HTTPリダイレクトは、サーバーがクライアントに「別のURLへ移動してください」と指示する仕組みです。
+  ステータスコードによって<strong>永続的 vs 一時的</strong>、<strong>メソッド維持 vs 変更</strong>の違いがあり、
+  誤った使い分けはSEO悪影響・データ喪失・セキュリティリスクにつながります。
+</p>
+
+<div class="lab-box" style="border-color:var(--accent); margin-bottom:1rem;">
+  <h3 style="color:var(--accent); margin-top:0;">🎯 このLabの学習目標</h3>
+  <p style="margin-bottom:0.3rem;">完了すると、以下ができるようになります：</p>
+  <div class="check-item" style="opacity:1;"><span>1. <code>301 Moved Permanently</code> と <code>302 Found</code> の違い（SEO への影響、キャッシュ動作）を説明できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>2. <code>307 Temporary Redirect</code> と <code>308 Permanent Redirect</code> がメソッド・ボディを維持する理由を理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>3. <code>Location</code> ヘッダーがリダイレクト先 URL を指定する仕組みを確認する</span></div>
+  <div class="check-item" style="opacity:1;"><span>4. リダイレクトチェーンが発生する場合のパフォーマンス影響を理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>5. DevTools Network タブで 3xx レスポンスとリダイレクト先を追跡できる</span></div>
+</div>
+
+<div class="warn-box" style="border-color:var(--accent3);background:#fce4ec;">
+  <strong style="color:var(--accent3);">💥 実務での失敗例</strong>：サイトリニューアルで <code>301</code>（永続）の代わりに <code>302</code>（一時）を使用 → SEO評価が新URLに引き継がれず検索順位が大幅低下
+</div>
+
+<!-- ── file:// alert (hidden by default, shown by JS) ── -->
+<div class="alert-critical" id="file-protocol-alert" style="display:none;">
+  <strong>🔴 このページは HTTP サーバー経由で開いてください</strong><br><br>
+  現在 <code>file://</code> で開いています。この状態では <code>fetch()</code> が
+  <strong>CORSエラー</strong>になり、ほとんどの実験が動作しません。<br>
+  Lab 01 の「ローカル Web サーバーのセットアップ」を参照してサーバーを起動してください。
+</div>
+
+<!-- ── DevTools warning ── -->
+<div class="warn-box">
+  <strong style="font-size:1rem; color:var(--danger);">最重要：DevTools を「先に」開いてからリロード</strong><br>
+  <code>F12</code>（Mac: <code>Cmd+Opt+I</code>）→ <strong>Network</strong> タブを選択 →
+  <strong>その後で</strong> <code>Ctrl+Shift+R</code> でリロード。<br>
+  順序が逆だとネットワークログが残りません。全実験でこの手順が前提です。
+</div>
+
+<!-- ── TOC ── -->
+<div class="toc">
+  <strong style="color:var(--text-dim);font-size:0.82rem;">目次:</strong><br>
+  <a href="#overview">📖 リダイレクトの全体像</a>
+  <a href="#exp-13a">13-A: 基本リダイレクト</a>
+  <a href="#exp-13b">13-B: メソッド維持の違い</a>
+  <a href="#exp-13c">13-C: リダイレクトチェーン</a>
+  <a href="#exp-13d">13-D: fetch の redirect オプション</a>
+  <a href="#exp-13e">13-E: OutSystems確認</a>
+  <a href="#checklist">✅ チェックリスト</a>
+</div>
+
+<!-- ============================================ -->
+<h2 id="overview">📖 リダイレクトの全体像</h2>
+
+<div class="diagram">Browser                                Server
+  │                                      │
+  │  GET /old-page                       │
+  │ ──────────────────────────────────▶  │
+  │                                      │
+  │  301 Moved Permanently               │
+  │  Location: /new-page                 │  ← 「恒久的に移動したよ」
+  │ ◀──────────────────────────────────  │
+  │                                      │
+  │  GET /new-page                       │  ← ブラウザが自動で再リクエスト
+  │ ──────────────────────────────────▶  │
+  │                                      │
+  │  200 OK                              │
+  │  Content-Type: text/html             │
+  │ ◀──────────────────────────────────  │
+  │                                      │</div>
+
+<h3>4種類のリダイレクトステータスコード比較</h3>
+
+<table class="cmp-table">
+  <thead>
+    <tr>
+      <th>コード</th>
+      <th>名前</th>
+      <th>永続/一時</th>
+      <th>メソッド維持</th>
+      <th>主な用途</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>301</code></td>
+      <td>Moved Permanently</td>
+      <td><span class="yes">永続的</span></td>
+      <td><span class="no">GETに変更される可能性</span></td>
+      <td>URL変更、ドメイン移転、http→https</td>
+    </tr>
+    <tr>
+      <td><code>302</code></td>
+      <td>Found</td>
+      <td><span class="maybe">一時的</span></td>
+      <td><span class="no">GETに変更される可能性</span></td>
+      <td>一時的な移動、メンテナンス</td>
+    </tr>
+    <tr>
+      <td><code>307</code></td>
+      <td>Temporary Redirect</td>
+      <td><span class="maybe">一時的</span></td>
+      <td><span class="yes">必ず維持</span></td>
+      <td>POST送信後の一時リダイレクト</td>
+    </tr>
+    <tr>
+      <td><code>308</code></td>
+      <td>Permanent Redirect</td>
+      <td><span class="yes">永続的</span></td>
+      <td><span class="yes">必ず維持</span></td>
+      <td>API移転（POSTメソッドの永続転送）</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="diagram">メソッド維持の観点で整理:
+
+  ┌─────────────────┬──────────────────┬──────────────────┐
+  │                 │    一時的         │    永続的         │
+  ├─────────────────┼──────────────────┼──────────────────┤
+  │ メソッド変更あり │  302 Found       │  301 Moved       │
+  │ （GET化される）  │  （歴史的理由）   │  Permanently     │
+  ├─────────────────┼──────────────────┼──────────────────┤
+  │ メソッド維持     │  307 Temporary   │  308 Permanent   │
+  │ （POST→POST等） │  Redirect        │  Redirect        │
+  └─────────────────┴──────────────────┴──────────────────┘
+
+  歴史: 301/302 は HTTP/1.0 時代の仕様。
+        ブラウザが仕様に反してPOST→GETに変更する実装が定着。
+        → この挙動を明確化するため 307/308 が追加された（RFC 7538）。</div>
+
+<div class="warn-box">
+  <strong>301/302 の「メソッド変更」問題</strong>:
+  HTTP仕様では 301/302 でもメソッドを維持すべきとされていましたが、
+  実際にはほぼ全てのブラウザがPOSTリクエストをGETに変更します。
+  POSTの転送が必要な場合は <code>307</code>（一時）または <code>308</code>（永続）を使ってください。
+</div>
+
+<hr>
+
+<!-- ── 実験 13-A ── -->
+<div class="lab-box" id="exp-13a">
+  <h3>実験 13-A: 基本リダイレクト — 4つのステータスコードを比較</h3>
+  <p>
+    httpbin.org の <code>/redirect-to</code> エンドポイントを使って、
+    各ステータスコードのリダイレクト動作を観察します。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — DevTools を開いてからリロード</div>
+    <p>
+      <strong style="color:var(--danger);">必ずこの順序で:</strong>
+      <code>F12</code> → Network タブ選択 → <code>Ctrl+Shift+R</code> でリロード
+    </p>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 各ステータスコードのGETリダイレクトを実行</div>
+    <p>ボタンを押すと <code>fetch()</code> でリダイレクトを発生させます。DevToolsの Network タブで確認してください。</p>
+    <button class="btn btn-accent" id="btn-301">301 Moved Permanently</button>
+    <button class="btn btn-accent2" id="btn-302">302 Found</button>
+    <button class="btn btn-accent3" id="btn-307">307 Temporary Redirect</button>
+    <button class="btn btn-warn" id="btn-308">308 Permanent Redirect</button>
+    <button class="btn btn-dim" id="btn-redir-reset">クリア</button>
+  </div>
+
+  <div class="four-col">
+    <div class="col-card card-301" id="col-301">
+      <h4>301 Moved Permanently</h4>
+      <pre><span class="placeholder">← ボタンを押してください</span></pre>
+    </div>
+    <div class="col-card card-302" id="col-302">
+      <h4>302 Found</h4>
+      <pre><span class="placeholder">← ボタンを押してください</span></pre>
+    </div>
+    <div class="col-card card-307" id="col-307">
+      <h4>307 Temporary Redirect</h4>
+      <pre><span class="placeholder">← ボタンを押してください</span></pre>
+    </div>
+    <div class="col-card card-308" id="col-308">
+      <h4>308 Permanent Redirect</h4>
+      <pre><span class="placeholder">← ボタンを押してください</span></pre>
+    </div>
+  </div>
+
+  <script>
+    async function testRedirect(statusCode, colId) {
+      const col = document.querySelector('#' + colId + ' pre');
+      col.textContent = '送信中...';
+      const targetUrl = 'https://httpbin.org/get';
+      const redirectUrl = 'https://httpbin.org/redirect-to?url='
+        + encodeURIComponent(targetUrl) + '&status_code=' + statusCode;
+      try {
+        const t0 = performance.now();
+        const res = await fetch(redirectUrl);
+        const elapsed = Math.round(performance.now() - t0);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        col.textContent =
+            'ステータス: ' + statusCode + '\n'
+          + '最終URL:\n ' + res.url + '\n'
+          + 'リダイレクト: '
+          + (res.redirected ? '✅ あり' : '✕ なし') + '\n'
+          + '応答時間: ' + elapsed + 'ms\n\n'
+          + 'DevToolsで確認:\n'
+          + ' 1. ' + statusCode + ' レスポンス\n'
+          + '    Location ヘッダー\n'
+          + ' 2. 200 GET /get\n'
+          + '    最終レスポンス';
+      } catch(e) {
+        col.textContent = 'エラー:\n' + e.message;
+      }
+    }
+
+    document.getElementById('btn-301').addEventListener('click', () => testRedirect(301, 'col-301'));
+    document.getElementById('btn-302').addEventListener('click', () => testRedirect(302, 'col-302'));
+    document.getElementById('btn-307').addEventListener('click', () => testRedirect(307, 'col-307'));
+    document.getElementById('btn-308').addEventListener('click', () => testRedirect(308, 'col-308'));
+    document.getElementById('btn-redir-reset').addEventListener('click', () => {
+      ['col-301','col-302','col-307','col-308'].forEach(id => {
+        document.querySelector('#' + id + ' pre').innerHTML =
+          '<span class="placeholder">← ボタンを押してください</span>';
+      });
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — DevToolsで確認するポイント</div>
+    <pre><span class="comment">// Network タブで2つのリクエストが表示される:</span>
+
+<span class="header-name">1つ目のリクエスト（リダイレクト元）:</span>
+   Status: <span class="highlight">301 / 302 / 307 / 308</span>
+   Response Headers:
+     <span class="header-name">Location</span>: <span class="header-val">https://httpbin.org/get</span>  ← リダイレクト先
+
+<span class="header-name">2つ目のリクエスト（リダイレクト先）:</span>
+   Status: <span class="highlight">200 OK</span>
+   Request URL: https://httpbin.org/get
+
+<span class="comment">// GETリクエストの場合、4種類とも最終結果は同じに見える。
+// 違いが出るのはPOSTリクエストの場合（実験13-B）。</span></pre>
+  </div>
+
+  <div class="note">
+    <strong>観察ポイント</strong>: GETリクエストのリダイレクトでは、4種類とも挙動は同じです。
+    <code>Location</code> ヘッダーに指定されたURLへ自動的に再リクエストが発生します。
+    <code>fetch()</code> の <code>res.redirected</code> プロパティで、リダイレクトが発生したかどうかを判定できます。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/Status#%E3%83%AA%E3%83%80%E3%82%A4%E3%83%AC%E3%82%AF%E3%83%88%E3%83%A1%E3%83%83%E3%82%BB%E3%83%BC%E3%82%B8" target="_blank">MDN — HTTP リダイレクトステータス</a></span>
+  </div>
+</div>
+
+<!-- ── 実験 13-B ── -->
+<div class="lab-box" id="exp-13b">
+  <h3>実験 13-B: メソッド維持の違い — POST リダイレクト</h3>
+  <p>
+    リダイレクトの最も重要な違いは「<strong>POSTリクエストがGETに変わるかどうか</strong>」です。
+    301/302 ではPOSTがGETに変換され、307/308 ではPOSTが維持されます。
+  </p>
+
+  <div class="diagram">POSTリクエストのリダイレクト挙動:
+
+  301/302（メソッド変更あり）:
+    Browser ─ POST /submit ─▶ Server
+    Browser ◀─ 302 Location: /result ─ Server
+    Browser ─ <span style="color:#f87171;">GET</span> /result ─▶ Server       ← POST が GET に変わる！
+                                              ボディは失われる
+
+  307/308（メソッド維持）:
+    Browser ─ POST /submit ─▶ Server
+    Browser ◀─ 307 Location: /result ─ Server
+    Browser ─ <span style="color:#6ee7b7;">POST</span> /result ─▶ Server      ← POST のまま維持
+                                              ボディも再送される</div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — POST + 302 vs POST + 307 を比較</div>
+    <p>同じPOSTリクエストでも、リダイレクトのステータスコードによってメソッドが変わることを確認します。</p>
+    <button class="btn btn-accent2" id="btn-post-302">POST → 302 リダイレクト</button>
+    <button class="btn btn-accent3" id="btn-post-307">POST → 307 リダイレクト</button>
+    <button class="btn btn-dim" id="btn-method-reset">クリア</button>
+  </div>
+
+  <div class="two-col">
+    <div class="col-card card-302" id="col-post-302">
+      <h4>POST → 302 Found</h4>
+      <pre><span class="placeholder">← ボタンを押してください</span></pre>
+    </div>
+    <div class="col-card card-307" id="col-post-307">
+      <h4>POST → 307 Temporary Redirect</h4>
+      <pre><span class="placeholder">← ボタンを押してください</span></pre>
+    </div>
+  </div>
+
+  <script>
+    async function testPostRedirect(statusCode, colId) {
+      const col = document.querySelector('#' + colId + ' pre');
+      col.textContent = '送信中...';
+
+      const body = JSON.stringify({ action: 'submit', data: 'test-payload-123' });
+      const targetUrl = 'https://httpbin.org/anything';
+      const redirectUrl = 'https://httpbin.org/redirect-to?url='
+        + encodeURIComponent(targetUrl) + '&status_code=' + statusCode;
+
+      try {
+        const res = await fetch(redirectUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: body
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+
+        const finalMethod = data.method || '不明';
+        const finalBody = data.data || data.json || '(ボディなし)';
+        const methodChanged = finalMethod !== 'POST';
+
+        col.textContent =
+            'リダイレクト: ' + statusCode + '\n\n'
+          + '【結果】\n'
+          + '送信メソッド:  POST\n'
+          + '最終メソッド:  ' + finalMethod
+          + (methodChanged ? ' ← 変更された！' : ' ← 維持された！') + '\n\n'
+          + '送信ボディ:\n'
+          + ' ' + body + '\n\n'
+          + '最終ボディ:\n'
+          + ' ' + (typeof finalBody === 'object'
+              ? JSON.stringify(finalBody)
+              : String(finalBody) || '(空)') + '\n\n'
+          + (methodChanged
+            ? '⚠ POST → GET に変換された\n  ボディデータは失われている'
+            : '✅ POST が維持された\n  ボディデータも再送された');
+      } catch(e) {
+        col.textContent = 'エラー:\n' + e.message
+          + '\n\n※ CORSエラーの場合、\nDevToolsのConsoleを確認';
+      }
+    }
+
+    document.getElementById('btn-post-302').addEventListener('click', () => testPostRedirect(302, 'col-post-302'));
+    document.getElementById('btn-post-307').addEventListener('click', () => testPostRedirect(307, 'col-post-307'));
+    document.getElementById('btn-method-reset').addEventListener('click', () => {
+      ['col-post-302','col-post-307'].forEach(id => {
+        document.querySelector('#' + id + ' pre').innerHTML =
+          '<span class="placeholder">← ボタンを押してください</span>';
+      });
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 永続版も確認: 301 vs 308</div>
+    <p>永続リダイレクトでも同様の違いがあります。</p>
+    <button class="btn btn-accent" id="btn-post-301">POST → 301 リダイレクト</button>
+    <button class="btn btn-warn" id="btn-post-308">POST → 308 リダイレクト</button>
+    <button class="btn btn-dim" id="btn-perm-reset">クリア</button>
+  </div>
+
+  <div class="two-col">
+    <div class="col-card card-301" id="col-post-301">
+      <h4>POST → 301 Moved Permanently</h4>
+      <pre><span class="placeholder">← ボタンを押してください</span></pre>
+    </div>
+    <div class="col-card card-308" id="col-post-308">
+      <h4>POST → 308 Permanent Redirect</h4>
+      <pre><span class="placeholder">← ボタンを押してください</span></pre>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('btn-post-301').addEventListener('click', () => testPostRedirect(301, 'col-post-301'));
+    document.getElementById('btn-post-308').addEventListener('click', () => testPostRedirect(308, 'col-post-308'));
+    document.getElementById('btn-perm-reset').addEventListener('click', () => {
+      ['col-post-301','col-post-308'].forEach(id => {
+        document.querySelector('#' + id + ' pre').innerHTML =
+          '<span class="placeholder">← ボタンを押してください</span>';
+      });
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — DevToolsで確認するポイント</div>
+    <pre><span class="comment">// Network タブで確認すべき項目:</span>
+
+<span class="header-name">302の場合（2つのリクエスト）:</span>
+  1. POST /redirect-to → <span class="highlight">302 Found</span>
+     Response: Location: https://httpbin.org/anything
+  2. <span class="highlight">GET</span> /anything → 200 OK    ← メソッドがGETに変更！
+     Request Headers に Content-Type がない（ボディなし）
+
+<span class="header-name">307の場合（2つのリクエスト）:</span>
+  1. POST /redirect-to → <span class="highlight">307 Temporary Redirect</span>
+     Response: Location: https://httpbin.org/anything
+  2. <span class="highlight">POST</span> /anything → 200 OK   ← メソッドがPOSTのまま！
+     Payload タブにボディが表示される</pre>
+  </div>
+
+  <div class="warn-box">
+    <strong>実務での重要な選択指針</strong>:
+    フォーム送信後のリダイレクト（PRGパターン）では <code>303 See Other</code>（明示的にGETへ変更）が最適です。
+    API設計でPOSTエンドポイントのURL移転には <code>308</code> を使うべきです。
+    <code>301</code> を使うとPOSTがGETに変わり、<strong>データが失われる</strong>危険があります。
+  </div>
+</div>
+
+<!-- ── 実験 13-C ── -->
+<div class="lab-box" id="exp-13c">
+  <h3>実験 13-C: リダイレクトチェーン（連続リダイレクト）</h3>
+  <p>
+    リダイレクトが複数回連続で発生する「リダイレクトチェーン」を観察します。
+    ブラウザには上限があり、過度なチェーンはパフォーマンス低下の原因になります。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — 段階的なリダイレクトチェーンを発生させる</div>
+    <p>httpbin.org の <code>/redirect/:n</code> は指定回数だけリダイレクトしてから最終URLに到達します。</p>
+    <button class="btn btn-accent" id="btn-chain-1">1回リダイレクト</button>
+    <button class="btn btn-accent2" id="btn-chain-3">3回リダイレクト</button>
+    <button class="btn btn-accent3" id="btn-chain-5">5回リダイレクト</button>
+    <button class="btn btn-dim" id="btn-chain-reset">クリア</button>
+  </div>
+
+  <pre id="chain-result" style="min-height:3rem;"><span class="placeholder">← ボタンを押すとリダイレクトチェーンの結果が表示されます</span></pre>
+
+  <script>
+    async function testChain(n) {
+      const el = document.getElementById('chain-result');
+      el.textContent = n + '回リダイレクトを送信中...';
+
+      const url = 'https://httpbin.org/redirect/' + n;
+      const t0 = performance.now();
+      try {
+        const res = await fetch(url);
+        const elapsed = Math.round(performance.now() - t0);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+
+        let output = 'リダイレクト回数: ' + n + '回\n'
+          + '合計応答時間: ' + elapsed + 'ms\n'
+          + 'リダイレクト発生: ' + (res.redirected ? '✅ あり' : '✕ なし') + '\n'
+          + '最終URL: ' + res.url + '\n\n';
+
+        output += 'チェーンの流れ（DevToolsで確認）:\n';
+        for (let i = 0; i < n; i++) {
+          const remaining = n - i;
+          const next = remaining - 1;
+          output += '  ' + (i + 1) + '. GET /redirect/' + remaining
+            + ' → 302 → Location: '
+            + (next > 0 ? '/relative-redirect/' + next : '/get') + '\n';
+        }
+        output += '  ' + (n + 1) + '. GET /get → 200 OK（最終到達）\n\n';
+
+        output += '1回あたり平均: 約' + Math.round(elapsed / (n + 1)) + 'ms\n\n';
+        output += 'DevTools Network タブ:\n'
+          + '  → ' + (n + 1) + '個のリクエストが並んでいるはず\n'
+          + '  → 各リクエストの Status を確認';
+
+        el.textContent = output;
+      } catch(e) {
+        el.textContent = 'エラー: ' + e.message
+          + '\n\n※ リダイレクト回数が多すぎると\n  ブラウザがブロックする場合があります';
+      }
+    }
+
+    document.getElementById('btn-chain-1').addEventListener('click', () => testChain(1));
+    document.getElementById('btn-chain-3').addEventListener('click', () => testChain(3));
+    document.getElementById('btn-chain-5').addEventListener('click', () => testChain(5));
+    document.getElementById('btn-chain-reset').addEventListener('click', () => {
+      document.getElementById('chain-result').innerHTML =
+        '<span class="placeholder">← ボタンを押すとリダイレクトチェーンの結果が表示されます</span>';
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — リダイレクト上限を体験する</div>
+    <p>
+      リダイレクトが多すぎるとブラウザがエラーで停止します。
+      fetchの上限を超えるリクエストを送信し、エラーを確認します。
+    </p>
+    <button class="btn btn-warn" id="btn-chain-too-many">20回リダイレクト（上限テスト）</button>
+    <pre id="chain-limit-result"><span class="placeholder">← ボタンを押すとリダイレクト上限テストが実行されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-chain-too-many').addEventListener('click', async () => {
+      const el = document.getElementById('chain-limit-result');
+      el.textContent = '20回リダイレクトを送信中（時間がかかる場合があります）...';
+      try {
+        const t0 = performance.now();
+        const res = await fetch('https://httpbin.org/redirect/20');
+        const elapsed = Math.round(performance.now() - t0);
+        el.textContent = '結果: 成功（' + elapsed + 'ms）\n'
+          + 'ブラウザの上限内でした。\n'
+          + 'リダイレクト発生: ' + (res.redirected ? 'あり' : 'なし') + '\n'
+          + '最終URL: ' + res.url;
+      } catch(e) {
+        el.textContent = '🔴 エラー: ' + e.message + '\n\n'
+          + 'ブラウザがリダイレクトを中断しました。\n\n'
+          + 'ブラウザの一般的な上限:\n'
+          + '  Chrome / Edge: 20回\n'
+          + '  Firefox: 20回\n'
+          + '  Safari: 16回\n\n'
+          + '→ リダイレクトチェーンは最小限に！\n'
+          + '  理想: 0〜1回、最大でも2〜3回';
+      }
+    });
+  </script>
+
+  <div class="note">
+    <strong>パフォーマンスへの影響</strong>:
+    リダイレクト1回ごとにDNS解決 + TCP接続 + TLSハンドシェイク + HTTPラウンドトリップが追加される可能性があります。
+    特にモバイル環境では1回のリダイレクトで<strong>100〜500ms</strong>の遅延が発生することもあります。
+    Googleの検索ランキングでもリダイレクトチェーンは最適化の対象とされています。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/Redirections" target="_blank">MDN — HTTP リダイレクト</a></span>
+  </div>
+</div>
+
+<!-- ── 実験 13-D ── -->
+<div class="lab-box" id="exp-13d">
+  <h3>実験 13-D: fetch() の redirect オプション</h3>
+  <p>
+    <code>fetch()</code> API の <code>redirect</code> オプションで、リダイレクトの処理方法を制御できます。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — 3つの redirect モードを理解する</div>
+    <pre><span class="comment">// fetch() の redirect オプション:</span>
+
+<span class="header-name">follow</span>（デフォルト）:
+  リダイレクトを自動的に追跡する。最終レスポンスを返す。
+
+<span class="header-name">manual</span>:
+  リダイレクトを追跡しない。リダイレクトレスポンス自体を返す。
+  ※ ただし、opaqueリダイレクトレスポンスになり
+     ヘッダーやボディにアクセスできない（セキュリティ上の制約）
+
+<span class="header-name">error</span>:
+  リダイレクトが発生したらエラーを投げる。
+  → リダイレクトを禁止したい場合に使用。</pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 各モードの動作を確認</div>
+    <button class="btn btn-accent" id="btn-rd-follow">follow（デフォルト）</button>
+    <button class="btn btn-accent2" id="btn-rd-manual">manual</button>
+    <button class="btn btn-accent3" id="btn-rd-error">error</button>
+    <button class="btn btn-dim" id="btn-rd-reset">クリア</button>
+    <pre id="rd-result"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    async function testRedirectOption(mode) {
+      const el = document.getElementById('rd-result');
+      el.textContent = 'fetch({ redirect: "' + mode + '" }) を送信中...';
+      const url = 'https://httpbin.org/redirect-to?url='
+        + encodeURIComponent('https://httpbin.org/get') + '&status_code=302';
+
+      try {
+        const res = await fetch(url, { redirect: mode });
+        let output = 'redirect: "' + mode + '"\n\n';
+        output += 'Response:\n';
+        output += '  status: ' + res.status + '\n';
+        output += '  type: ' + res.type + '\n';
+        output += '  url: ' + (res.url || '(空)') + '\n';
+        output += '  redirected: ' + res.redirected + '\n';
+        output += '  ok: ' + res.ok + '\n';
+
+        if (mode === 'follow') {
+          const data = await res.json();
+          output += '\nレスポンスボディ（最終到達先）:\n'
+            + '  ' + JSON.stringify(data).substring(0, 120) + '...\n\n'
+            + '→ リダイレクトを自動追跡し、最終URLのレスポンスを取得';
+        } else if (mode === 'manual') {
+          output += '\n→ type: "opaqueredirect" = リダイレクトレスポンス\n'
+            + '  status が 0 で、ヘッダー/ボディにアクセス不可\n'
+            + '  （セキュリティ上の制約: CORSのない\n   リダイレクト先の情報漏洩を防ぐため）\n\n'
+            + '用途: Service Worker でリダイレクトを\n'
+            + '      キャッシュに保存する場合など';
+        }
+
+        el.textContent = output;
+      } catch(e) {
+        if (mode === 'error') {
+          el.textContent = 'redirect: "error"\n\n'
+            + '🔴 エラー: ' + e.message + '\n\n'
+            + '→ リダイレクトが発生した時点でエラーが投げられた！\n\n'
+            + '用途: リダイレクトを絶対に許可したくない場合\n'
+            + '  例: APIレスポンスがリダイレクトなら\n'
+            + '      設定エラーの可能性が高い\n'
+            + '  例: 認証トークンが意図しないURLに\n'
+            + '      送信されることを防ぐ';
+        } else {
+          el.textContent = 'エラー: ' + e.message;
+        }
+      }
+    }
+
+    document.getElementById('btn-rd-follow').addEventListener('click', () => testRedirectOption('follow'));
+    document.getElementById('btn-rd-manual').addEventListener('click', () => testRedirectOption('manual'));
+    document.getElementById('btn-rd-error').addEventListener('click', () => testRedirectOption('error'));
+    document.getElementById('btn-rd-reset').addEventListener('click', () => {
+      document.getElementById('rd-result').innerHTML =
+        '<span class="placeholder">← ボタンを押すと結果が表示されます</span>';
+    });
+  </script>
+
+  <div class="note">
+    <strong>実務での使い分け</strong>:
+    通常は <code>follow</code>（デフォルト）で問題ありません。
+    <code>error</code> はAPIクライアントで「リダイレクトが返ってきたら設定ミス」と判断する場合に有用です。
+    <code>manual</code> は Service Worker のキャッシュ戦略で使われますが、
+    opaque レスポンスの制約を理解する必要があります。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/API/Request/redirect" target="_blank">MDN — Request.redirect</a></span>
+  </div>
+</div>
+
+<!-- ── 実験 13-E: OutSystems ── -->
+<div class="lab-box" id="exp-13e">
+  <h3>実験 13-E: OutSystemsで リダイレクト を確認する</h3>
+  <p>OutSystems で REST API にリダイレクトレスポンスを返させ、動作を確認します。</p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — OutSystems で リダイレクト用 REST API を作成</div>
+    <pre><span class="comment">// Service Studio 操作手順:</span>
+
+1. HeaderLab モジュールを開く
+
+2. HeaderTest REST API に新しいメソッドを追加:
+   名前: <span class="header-val">RedirectDemo</span>
+   HTTP Method: <span class="header-val">GET</span>
+
+3. 入力パラメータを追加:
+   名前: <span class="header-val">StatusCode</span> (Integer型)
+   Is Mandatory: Yes
+   Receive In: <span class="header-val">URL</span>
+
+4. フロー内の処理:
+   <span class="comment">// OnResponse コールバックを使ってリダイレクトを実装</span>
+
+   a. If分岐: StatusCode = 301 or StatusCode = 302
+      or StatusCode = 307 or StatusCode = 308
+
+   b. True の場合:
+      - <span class="highlight">SetStatusCode</span>(StatusCode)
+      - Response の HTTPヘッダーに追加:
+        Name: <span class="header-val">Location</span>
+        Value: <span class="header-val">"/HeaderLab/rest/HeaderTest/GetInfo"</span>
+
+   c. False の場合:
+      - Output に Message = "Invalid status code"
+
+5. <span class="highlight">Publish</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — ブラウザでリダイレクトAPIを直接呼ぶ</div>
+    <pre><span class="comment">// ブラウザのアドレスバーで以下を開く:</span>
+https://&lt;your-env&gt;.outsystemscloud.com/HeaderLab/rest/HeaderTest/RedirectDemo?StatusCode=<span class="highlight">302</span>
+
+<span class="comment">// DevTools Network タブで確認:
+// 1. RedirectDemo → 302 Found + Location ヘッダー
+// 2. GetInfo → 200 OK（リダイレクト先）
+//
+// StatusCode を 301, 307, 308 に変えて試す</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — OutSystems の画面リダイレクトとの違い</div>
+    <pre><span class="comment">// OutSystems にはアプリ内の画面遷移方法が複数ある:</span>
+
+<span class="header-name">1. REST API の Location ヘッダー（今回のLabで確認）</span>
+   → HTTPレベルのリダイレクト（301/302/307/308）
+   → サーバー制御、SEO影響あり
+
+<span class="header-name">2. External Site（Server Action）</span>
+   → 302 リダイレクトとして実装される
+   → 外部URLへの遷移に使用
+
+<span class="header-name">3. Destination（Screen 遷移）</span>
+   → Reactive Web ではクライアントサイドルーティング
+   → HTTPリダイレクトは発生しない（SPA内のナビゲーション）
+
+<span class="comment">// Reactive Web App の画面遷移は SPA のため
+// HTTPリダイレクトではなく JavaScript による画面切替
+// → DevTools Network タブにリダイレクトは表示されない</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 4 — このHTMLからOutSystems APIを呼んでリダイレクトを観察</div>
+    <p>
+      下の入力欄にOutSystems環境のURLを入力し、リダイレクトの動作を確認しましょう。
+    </p>
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; margin:0.5rem 0;">
+      <input type="text" id="os-redir-url" placeholder="https://xxx.outsystemscloud.com/HeaderLab/rest/HeaderTest/RedirectDemo?StatusCode=302"
+        style="flex:1; min-width:300px; background:var(--surface2); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:0.5rem 0.8rem; font-family:'IBM Plex Mono',monospace; font-size:0.82rem;">
+      <button class="btn btn-warn" id="btn-os-redir">fetch実行</button>
+    </div>
+    <pre id="os-redir-result"><span class="placeholder">← OutSystems APIのURLを入力して実行してください</span></pre>
+  </div>
+
+  <script>
+    // localStorage でURL保存
+    const osRedirUrlEl = document.getElementById('os-redir-url');
+    const savedRedirUrl = localStorage.getItem('httplab_os_redir_url');
+    if (savedRedirUrl) osRedirUrlEl.value = savedRedirUrl;
+    osRedirUrlEl.addEventListener('input', () => {
+      localStorage.setItem('httplab_os_redir_url', osRedirUrlEl.value);
+    });
+
+    document.getElementById('btn-os-redir').addEventListener('click', async () => {
+      const el = document.getElementById('os-redir-result');
+      const url = osRedirUrlEl.value.trim();
+      if (!url) { el.textContent = 'URLを入力してください'; return; }
+      el.textContent = 'fetchを送信中...\n  URL: ' + url;
+      try {
+        const res = await fetch(url);
+        let output = 'ステータス: ' + res.status + '\n'
+          + 'リダイレクト: ' + (res.redirected ? '✅ あり' : '✕ なし') + '\n'
+          + '最終URL: ' + res.url + '\n'
+          + 'レスポンスtype: ' + res.type + '\n\n';
+
+        if (res.ok) {
+          try {
+            const data = await res.json();
+            output += 'レスポンス:\n  ' + JSON.stringify(data, null, 2).split('\n').join('\n  ');
+          } catch(e2) {
+            const text = await res.text();
+            output += 'レスポンス（テキスト）:\n  ' + text.substring(0, 200);
+          }
+        }
+        el.textContent = output;
+      } catch(e) {
+        const isCors = e.message.includes('Failed to fetch') || e.name === 'TypeError';
+        el.textContent = (isCors ? '🔴 CORSエラー発生' : '❌ エラー: ' + e.message)
+          + '\n\n'
+          + (isCors
+            ? 'リダイレクトとCORSの組み合わせに注意:\n'
+              + '  リダイレクト先のURLもCORSヘッダーを\n'
+              + '  返す必要があります。\n\n'
+              + '  元URL → 302 → リダイレクト先URL\n'
+              + '  両方に Access-Control-Allow-Origin が必要！'
+            : 'URLが正しいか確認してください。');
+      }
+    });
+  </script>
+
+  <div class="warn-box">
+    <strong>リダイレクトとCORSの注意点</strong>:
+    クロスオリジンのリダイレクトでは、リダイレクト元<strong>と</strong>リダイレクト先の
+    <strong>両方</strong>がCORSヘッダーを返す必要があります。
+    一方でも欠けるとCORSエラーになります。
+    この問題は Lab 06（CORS基礎）で学んだ知識と関連しています。
+  </div>
+</div>
+
+<!-- ── 補足: その他のリダイレクト ── -->
+<div class="lab-box">
+  <h3>📚 補足: その他のリダイレクト関連ステータスコード</h3>
+
+  <table class="cmp-table">
+    <thead>
+      <tr>
+        <th>コード</th>
+        <th>名前</th>
+        <th>用途</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>300</code></td>
+        <td>Multiple Choices</td>
+        <td>複数の選択肢がある場合（ほぼ使われない）</td>
+      </tr>
+      <tr>
+        <td><code>303</code></td>
+        <td>See Other</td>
+        <td>POST処理後にGETで結果ページへ誘導（PRGパターン）。<br>
+          <strong>明示的にGETへ変更</strong>する唯一の正式コード</td>
+      </tr>
+      <tr>
+        <td><code>304</code></td>
+        <td>Not Modified</td>
+        <td>キャッシュ検証用（リダイレクトではない）。<br>
+          Lab 02（キャッシュ基礎）で学習済み</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="step">
+    <div class="step-num">PRGパターン（Post/Redirect/Get）</div>
+    <pre><span class="comment">// フォーム二重送信防止の定石パターン:</span>
+
+Browser ─ <span class="highlight">POST</span> /order ──────────────▶ Server
+        ◀─ <span class="highlight">303 See Other</span>              ◀─ Server
+           Location: /order/confirmed
+Browser ─ <span class="highlight">GET</span> /order/confirmed ──────▶ Server
+        ◀─ 200 OK                       ◀─ Server
+
+<span class="comment">// なぜ 303?
+//   → 303 は「別のリソースをGETで取得せよ」という明確な意味
+//   → ユーザーがF5（リロード）してもGETが再送されるだけ
+//   → POSTの二重送信を防げる
+//
+// 302 でも同じ挙動だが、303 の方が仕様上正確</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">HTTPリダイレクト以外のリダイレクト方法</div>
+    <pre><span class="comment">// HTTPヘッダー以外でもリダイレクトは可能:</span>
+
+<span class="header-name">1. HTML meta タグ（非推奨）:</span>
+  &lt;meta http-equiv="refresh" content="5;url=https://example.com/new"&gt;
+  → SEO的にデメリット、アクセシビリティ問題あり
+
+<span class="header-name">2. JavaScript:</span>
+  window.location.href = 'https://example.com/new';
+  window.location.replace('https://example.com/new');
+  → .replace() は履歴に残らない（301/308に近い挙動）
+  → .href は履歴に残る（302/307に近い挙動）
+
+<span class="header-name">3. Service Worker:</span>
+  return Response.redirect(newUrl, 301);
+  → オフライン対応やA/Bテストに使用
+
+<span class="comment">// 推奨順: HTTPリダイレクト > JS > meta タグ
+// HTTPリダイレクトが最も高速で信頼性が高い</span></pre>
+  </div>
+</div>
+
+<!-- ── セキュリティ考慮事項 ── -->
+<div class="lab-box">
+  <h3>🔒 リダイレクトのセキュリティ考慮事項</h3>
+
+  <div class="step">
+    <div class="step-num">オープンリダイレクト脆弱性</div>
+    <pre><span class="comment">// 危険な例: ユーザー入力をそのまま Location に使用</span>
+
+<span class="highlight">❌ 脆弱なコード:</span>
+  GET /redirect?url=https://evil.example.com
+  → 302 Found
+  → Location: https://evil.example.com     ← 攻撃者のサイト！
+
+<span class="comment">// 攻撃シナリオ:
+//   1. 攻撃者がフィッシングリンクを作成:
+//      https://trusted.example.com/redirect?url=https://evil.com/login
+//   2. ユーザーは trusted.example.com を信頼してクリック
+//   3. evil.com の偽ログインページに誘導される
+//   4. 資格情報を窃取される</span>
+
+<span class="header-val">✅ 対策:</span>
+  1. リダイレクト先をホワイトリストで管理する
+  2. 相対URLのみ許可する
+  3. 同一ドメインのURLのみ許可する
+  4. URLの検証に正規表現だけに頼らない
+     （url=https://trusted.example.com@evil.com のバイパスに注意）</pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">認証トークンの漏洩</div>
+    <pre><span class="comment">// リダイレクトとAuthorizationヘッダーの挙動:</span>
+
+<span class="highlight">注意: リダイレクト時にAuthorizationヘッダーが
+      異なるオリジンに送信される可能性</span>
+
+  Browser ─ GET /api (Authorization: Bearer token) ─▶ api.example.com
+          ◀─ 302 Location: https://other.example.com/callback ─
+  Browser ─ GET /callback (<span class="highlight">Authorization: ???</span>) ─▶ other.example.com
+
+<span class="comment">// 異なるオリジンへのリダイレクトでは:
+//   - ブラウザはAuthorizationヘッダーを除去する（RFC 7235）
+//   - ただし、古いブラウザやライブラリによっては送信してしまう
+//   - fetch() の redirect: "error" で防御可能</span>
+
+<span class="header-val">対策:</span>
+  - 機密性の高いAPIでは redirect: "error" を検討
+  - リダイレクト先が信頼できることを確認
+  - トークンをURLパラメータに含めない</pre>
+  </div>
+</div>
+
+<!-- ── チェックリスト ── -->
+<hr>
+<h2 id="checklist">✅ Lab 13 チェックリスト</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">チェック状態はブラウザに自動保存されます。</p>
+
+<div class="check-item"><input type="checkbox" data-key="lab13-1"> <label>301/302/307/308 の4つのステータスコードでGETリダイレクトを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab13-2"> <label>DevToolsで Location ヘッダーとリダイレクト先の2つのリクエストを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab13-3"> <label>POST + 302 でメソッドがGETに変更されることを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab13-4"> <label>POST + 307 でメソッドがPOSTのまま維持されることを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab13-5"> <label>リダイレクトチェーン（1回/3回/5回）の動作を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab13-6"> <label>リダイレクト回数の上限（ブラウザがエラーを返す）を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab13-7"> <label>fetch() の redirect: follow / manual / error の違いを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab13-8"> <label>PRGパターン（303 See Other）の仕組みを理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab13-9"> <label>オープンリダイレクト脆弱性のリスクを理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab13-10"> <label>OutSystemsでリダイレクトAPIの動作を確認した</label></div>
+
+<div style="margin-top:1rem; text-align:center;">
+  <span id="progress-text" style="font-family:'IBM Plex Mono',monospace; color:var(--accent); font-size:0.9rem;"></span>
+</div>
+
+<!-- ── localStorage for checkboxes ── -->
+<script>
+  const STORAGE_PREFIX = 'httplab_';
+
+  function updateProgress() {
+    const all = document.querySelectorAll('input[type="checkbox"][data-key]');
+    const checked = [...all].filter(cb => cb.checked).length;
+    const el = document.getElementById('progress-text');
+    if (el) el.textContent = checked + ' / ' + all.length + ' 完了';
+  }
+
+  document.querySelectorAll('input[type="checkbox"][data-key]').forEach(cb => {
+    const saved = localStorage.getItem(STORAGE_PREFIX + cb.dataset.key);
+    if (saved === 'true') {
+      cb.checked = true;
+      cb.closest('.check-item')?.classList.add('checked');
+    }
+    cb.addEventListener('change', () => {
+      localStorage.setItem(STORAGE_PREFIX + cb.dataset.key, cb.checked);
+      cb.closest('.check-item')?.classList.toggle('checked', cb.checked);
+      updateProgress();
+    });
+  });
+
+  updateProgress();
+</script>
+
+<hr>
+
+<div class="note">
+  📖 <strong>参照資料</strong>：このLabの内容は <code>http-headers-guide-v2.md</code> の 第1部 1-2「リダイレクト」 に対応しています。より詳しい解説・ヘッダー一覧はガイドを参照してください。
+</div>
+
+<h2>📝 Lab 13 学習ノート</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">メモはブラウザに自動保存されます。</p>
+<textarea id="notes" rows="6" placeholder="気づいたこと、疑問点をメモ..."
+  style="width:100%;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:0.8rem;font-family:'Noto Sans JP',sans-serif;font-size:0.9rem;resize:vertical;margin-top:0.5rem;"></textarea>
+
+<script>
+  const notesEl = document.getElementById('notes');
+  const savedNotes = localStorage.getItem(STORAGE_PREFIX + 'lab13_notes');
+  if (savedNotes) notesEl.value = savedNotes;
+  notesEl.addEventListener('input', () => {
+    localStorage.setItem(STORAGE_PREFIX + 'lab13_notes', notesEl.value);
+  });
+</script>
+
+<p style="color:var(--text-dim); font-size:0.82rem; margin-top:2rem;">
+  ← 前回: <a href="http-header-lab-12.html"><strong>Lab 12 — Client Hints</strong></a>（Sec-CH-UA-*, navigator.userAgentData）<br>
+  次回: <a href="http-header-lab-14.html"><strong>Lab 14 — 圧縮・転送</strong></a>（Content-Encoding, Transfer-Encoding, Range）
+  <br><span style="color:var(--text-dim);font-size:0.78rem;">リダイレクトを理解したら、次はレスポンスボディの圧縮・転送の最適化へ</span>
+</p>
+
+</body>
+</html>

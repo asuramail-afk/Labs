@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HTTP Header Lab 14 — 圧縮・転送</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;700&display=swap');
+
+  :root {
+    --bg: #ffffff;
+    --surface: #f5f7fa;
+    --surface2: #ebeef2;
+    --border: #c8cdd3;
+    --text: #1a1a2e;
+    --text-dim: #5c6370;
+    --accent: #005cc5;
+    --accent2: #22863a;
+    --accent3: #6f42c1;
+    --warn: #b08800;
+    --danger: #cb2431;
+    --code-bg: #f0f4f8;
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    padding: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+    color: var(--accent);
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 0.8rem;
+    margin-bottom: 1.5rem;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+    color: var(--accent2);
+    margin: 2rem 0 1rem;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  h3 {
+    font-size: 1.05rem;
+    color: var(--accent3);
+    margin: 1.5rem 0 0.8rem;
+  }
+
+  p, li { font-size: 0.92rem; margin-bottom: 0.5rem; }
+
+  /* ── Status Bar ── */
+  .status-bar {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.6rem 1rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.82rem;
+    font-family: 'IBM Plex Mono', monospace;
+    flex-wrap: wrap;
+  }
+  .status-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    animation: pulse 1.5s infinite;
+  }
+  .status-dot.ok { background: var(--accent); animation: none; }
+  .status-dot.err { background: var(--danger); animation: none; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* ── Alert ── */
+  .alert-critical {
+    background: #fef2f2;
+    border: 2px solid var(--danger);
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.88rem;
+  }
+  .alert-critical strong { color: var(--danger); }
+  .alert-critical code {
+    background: rgba(203,36,49,0.1);
+    color: var(--danger);
+  }
+
+  /* ── Lab Section ── */
+  .lab-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+  }
+
+  .step {
+    background: var(--surface2);
+    border-left: 3px solid var(--accent2);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 1rem 1.2rem;
+    margin: 1rem 0;
+  }
+  .step-num {
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--accent2);
+    font-weight: 600;
+    font-size: 0.8rem;
+    margin-bottom: 0.3rem;
+  }
+
+  code, pre {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+  }
+  code {
+    background: var(--code-bg);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    color: var(--accent);
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    overflow-x: auto;
+    margin: 0.8rem 0;
+    line-height: 1.6;
+    color: #24292e;
+  }
+  pre .comment { color: #6a737d; }
+  pre .header-name { color: var(--accent2); }
+  pre .header-val  { color: var(--accent); }
+  pre .highlight    { color: var(--warn); font-weight: 600; }
+
+  .result-area pre { min-height: 2.5rem; }
+  .placeholder {
+    color: var(--text-dim);
+    font-style: italic;
+    font-size: 0.8rem;
+  }
+
+  .note {
+    background: #e8f4fd;
+    border: 1px solid #b6d4e8;
+    border-radius: var(--radius);
+    padding: 0.8rem 1rem;
+    margin: 1rem 0;
+    font-size: 0.85rem;
+    color: var(--accent2);
+  }
+  .note::before { content: "💡 "; }
+
+  .warn-box {
+    background: #fff8e1;
+    border: 1px solid #e6d590;
+    border-radius: var(--radius);
+    padding: 0.8rem 1rem;
+    margin: 1rem 0;
+    font-size: 0.85rem;
+    color: var(--warn);
+  }
+  .warn-box::before { content: "⚠️ "; }
+
+  .check-item {
+    background: var(--surface2);
+    border-radius: var(--radius);
+    padding: 0.6rem 1rem;
+    margin: 0.4rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.88rem;
+    transition: opacity 0.3s;
+  }
+  .check-item input[type="checkbox"] {
+    width: 18px; height: 18px;
+    accent-color: var(--accent);
+    flex-shrink: 0;
+  }
+  .check-item.checked { opacity: 0.55; }
+
+  .diagram {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.2rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    overflow-x: auto;
+    white-space: pre;
+    color: var(--text-dim);
+    margin: 1rem 0;
+  }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+  .three-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.8rem;
+    margin: 1rem 0;
+  }
+  @media (max-width: 900px) { .three-col { grid-template-columns: 1fr; } }
+  @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+  .col-card {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.8rem;
+    font-size: 0.8rem;
+  }
+  .col-card h4 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .col-card pre {
+    border: none;
+    padding: 0.4rem 0;
+    margin: 0;
+    font-size: 0.75rem;
+    background: transparent;
+  }
+  .col-card.card-gzip   { border-color: var(--accent);  }
+  .col-card.card-gzip   h4 { color: var(--accent); }
+  .col-card.card-brotli { border-color: var(--accent2); }
+  .col-card.card-brotli h4 { color: var(--accent2); }
+  .col-card.card-deflate { border-color: var(--accent3); }
+  .col-card.card-deflate h4 { color: var(--accent3); }
+
+  /* ── Bar Chart ── */
+  .bar-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 1rem 0;
+  }
+  .bar-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+  }
+  .bar-label {
+    min-width: 100px;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .bar-track {
+    flex: 1;
+    height: 24px;
+    background: var(--surface2);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.8s ease;
+    display: flex;
+    align-items: center;
+    padding-left: 0.5rem;
+    font-size: 0.72rem;
+    color: var(--bg);
+    font-weight: 600;
+  }
+  .bar-value {
+    min-width: 70px;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+  }
+
+  /* ── Range Slider ── */
+  .range-slider-container {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    margin: 0.8rem 0;
+  }
+  .range-visual {
+    height: 32px;
+    background: var(--surface2);
+    border-radius: 6px;
+    position: relative;
+    margin: 0.8rem 0;
+    overflow: hidden;
+  }
+  .range-fill {
+    position: absolute;
+    height: 100%;
+    background: var(--accent2);
+    opacity: 0.6;
+    border-radius: 6px;
+    transition: left 0.3s, width 0.3s;
+  }
+  .range-labels {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--text-dim);
+  }
+
+  a { color: var(--accent2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+
+  /* ── TOC Nav ── */
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+    margin: 1rem 0 2rem;
+  }
+  .toc a {
+    display: inline-block;
+    padding: 0.25rem 0.6rem;
+    margin: 0.15rem;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    background: var(--surface2);
+    transition: background 0.2s;
+  }
+  .toc a:hover { background: var(--border); text-decoration: none; }
+
+  html { scroll-behavior: smooth; }
+
+  .btn {
+    border: none;
+    padding: 0.5rem 1.2rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    font-family: 'Noto Sans JP', sans-serif;
+    margin: 0.3rem;
+    transition: opacity 0.2s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.97); }
+  .btn-accent  { background: var(--accent);  color: var(--bg); }
+  .btn-accent2 { background: var(--accent2); color: var(--bg); }
+  .btn-accent3 { background: var(--accent3); color: var(--bg); }
+  .btn-warn    { background: var(--warn);    color: var(--bg); }
+  .btn-dim     { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+
+  /* ── Comparison Table ── */
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    margin: 1rem 0;
+  }
+  .compare-table th {
+    background: var(--surface2);
+    color: var(--accent);
+    padding: 0.5rem 0.7rem;
+    text-align: left;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    border-bottom: 2px solid var(--accent);
+  }
+  .compare-table td {
+    padding: 0.45rem 0.7rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .compare-table tr:hover { background: var(--surface); }
+</style>
+</head>
+<body>
+
+<!-- ============================================ -->
+<!-- STATUS BAR                                    -->
+<!-- ============================================ -->
+<div class="status-bar">
+  <div class="status-item">
+    <div class="status-dot" id="dot-protocol"></div>
+    <span id="status-protocol">プロトコル確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-httpbin"></div>
+    <span id="status-httpbin">httpbin.org 確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-devtools"></div>
+    <span>DevTools: <kbd style="background:var(--surface2);padding:0.1rem 0.4rem;border-radius:4px;">F12</kbd></span>
+  </div>
+</div>
+<p style="margin-bottom:0.5rem;font-size:0.82rem;"><a href="http-header-lab-index.html" style="color:var(--accent);text-decoration:none;">← マスター索引に戻る</a></p>
+
+<script>
+(function checkProtocol() {
+  const dot = document.getElementById('dot-protocol');
+  const label = document.getElementById('status-protocol');
+  if (location.protocol === 'file:') {
+    dot.classList.add('err');
+    label.innerHTML = '<strong style="color:var(--danger)">file:// 検出（要修正）</strong>';
+    document.getElementById('file-protocol-alert').style.display = 'block';
+  } else {
+    dot.classList.add('ok');
+    label.textContent = location.protocol + '// ✅';
+  }
+})();
+
+(async function checkHttpbin() {
+  const dot = document.getElementById('dot-httpbin');
+  const label = document.getElementById('status-httpbin');
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch('https://httpbin.org/get', { signal: controller.signal });
+    clearTimeout(timeout);
+    if (res.ok) {
+      dot.classList.add('ok');
+      label.textContent = 'httpbin.org ✅';
+    } else {
+      dot.classList.add('err');
+      label.innerHTML = '<strong style="color:var(--danger)">httpbin.org 応答エラー</strong>';
+    }
+  } catch(e) {
+    dot.classList.add('err');
+    label.innerHTML = '<strong style="color:var(--danger)">httpbin.org ❌ 接続不可</strong>';
+  }
+})();
+</script>
+
+<h1>🧪 Lab 14: 圧縮・転送（Content-Encoding / Transfer-Encoding / Range）</h1>
+<p style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.3rem;font-family:'IBM Plex Mono',monospace;">最終更新: 2026年3月</p>
+<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">⏱ 所要時間：25分</span>
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">難易度：★★☆</span>
+</div>
+<p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:1rem;">📋 前提知識：<a href="http-header-lab-01.html">Lab 01</a> 完了推奨（Accept-Encoding / Content-Encoding を Lab 01 で体験済み）</p>
+
+<!-- ── file:// alert ── -->
+<div class="alert-critical" id="file-protocol-alert" style="display:none;">
+  <strong>🔴 このページは HTTP サーバー経由で開いてください</strong><br><br>
+  現在 <code>file://</code> で開いています。この状態では <code>fetch()</code> が
+  <strong>CORSエラー</strong>になり、ほとんどの実験が動作しません。<br>
+  Lab 01 の「ローカル Web サーバーのセットアップ」を参照してサーバーを起動してください。
+</div>
+
+<!-- ── DevTools warning ── -->
+<div class="warn-box">
+  <strong style="font-size:1rem; color:var(--danger);">最重要：DevTools を「先に」開いてからリロード</strong><br>
+  <code>F12</code>（Mac: <code>Cmd+Opt+I</code>）→ <strong>Network</strong> タブを選択 →
+  <strong>その後で</strong> <code>Ctrl+Shift+R</code> でリロード。<br>
+  順序が逆だとネットワークログが残りません。全実験でこの手順が前提です。
+</div>
+
+<div class="lab-box" style="border-color:var(--accent); margin-bottom:1rem;">
+  <h3 style="color:var(--accent); margin-top:0;">🎯 このLabの学習目標</h3>
+  <p style="margin-bottom:0.3rem;">完了すると、以下ができるようになります：</p>
+  <div class="check-item" style="opacity:1;"><span>1. <code>Content-Encoding</code>（<code>gzip</code>, <code>br</code>, <code>zstd</code>）の違いとブラウザの対応状況を理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>2. <code>Transfer-Encoding: chunked</code> によるストリーミング転送の仕組みを理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>3. <code>Range</code> / <code>Content-Range</code> ヘッダーによる部分取得（レジューム）の動作を確認する</span></div>
+  <div class="check-item" style="opacity:1;"><span>4. 圧縮前後のサイズ比較でDevToolsの転送サイズとリソースサイズの違いを体感する</span></div>
+  <div class="check-item" style="opacity:1;"><span>5. 静的ファイルでの Brotli 事前圧縮と動的 gzip の使い分けを理解する</span></div>
+</div>
+
+<div class="warn-box" style="border-color:var(--accent3);background:#fce4ec;">
+  <strong style="color:var(--accent3);">💥 実務での失敗例</strong>：gzip圧縮を未設定のままAPIを公開 → レスポンスサイズが10倍、モバイル回線でのタイムアウトとユーザー離脱が急増
+</div>
+
+<p>
+  HTTPの圧縮と転送に関わるヘッダーを実験します。
+  ブラウザは <code>Accept-Encoding</code> で対応圧縮方式をサーバーに伝え、
+  サーバーは <code>Content-Encoding</code> で実際に使った圧縮方式を返します。
+  また <code>Range</code> / <code>Content-Range</code> を使った部分取得や、
+  HTTP/1.1 の <code>Transfer-Encoding: chunked</code> の仕組みも確認します。
+</p>
+
+<div class="diagram">Browser                              Server
+  │                                    │
+  │  GET /large-file.js                │
+  │  Accept-Encoding: gzip, br, zstd   │  ← 「これらの圧縮に対応しているよ」
+  │ ─────────────────────────────────▶ │
+  │                                    │
+  │  200 OK                            │
+  │  Content-Encoding: br              │  ← 「Brotliで圧縮したよ」
+  │  Content-Length: 42,300            │  ← 圧縮後のサイズ
+  │  [圧縮されたボディ]                 │  ← ブラウザが透過的に展開
+  │ ◀───────────────────────────────── │
+  │                                    │
+  │  GET /video.mp4                    │
+  │  Range: bytes=0-1048575            │  ← 「最初の1MBだけちょうだい」
+  │ ─────────────────────────────────▶ │
+  │                                    │
+  │  206 Partial Content               │
+  │  Content-Range: bytes 0-1048575/…  │  ← 「はい、一部分だけ返すよ」
+  │ ◀───────────────────────────────── │</div>
+
+<!-- ── TOC ── -->
+<div class="toc">
+  <strong style="color:var(--text-dim);font-size:0.82rem;">目次:</strong><br>
+  <a href="#exp-14a">14-A: 圧縮方式の比較</a>
+  <a href="#exp-14b">14-B: Content-Encoding 観察</a>
+  <a href="#exp-14c">14-C: 圧縮率の視覚化</a>
+  <a href="#exp-14d">14-D: Range リクエスト</a>
+  <a href="#exp-14e">14-E: Transfer-Encoding</a>
+  <a href="#exp-14f">14-F: OutSystems確認</a>
+  <a href="#checklist">✅ チェックリスト</a>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 14-A: 圧縮方式の比較                      -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-14a">
+  <h3>実験 14-A: 圧縮方式を理解する</h3>
+  <p>
+    現代のWebで使われる主要な圧縮方式を比較します。
+    まず自分のブラウザがどの方式に対応しているか確認しましょう。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — ブラウザの Accept-Encoding を確認</div>
+    <p>httpbin.org 経由でブラウザが実際に送っている <code>Accept-Encoding</code> を取得します。</p>
+    <button class="btn btn-accent" id="btn-14a-ae">Accept-Encoding を取得</button>
+    <pre id="result-14a-ae"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-14a-ae').addEventListener('click', async () => {
+      const el = document.getElementById('result-14a-ae');
+      el.textContent = '取得中...';
+      try {
+        const res = await fetch('https://httpbin.org/headers');
+        if (!res.ok) throw new Error('HTTPエラー: ' + res.status);
+        const data = await res.json();
+        const ae = data.headers['Accept-Encoding'] || '(未送信)';
+        const parts = ae.split(',').map(s => s.trim());
+        const dict = {
+          'gzip':     '✅ gzip     — 最も普及。ほぼ全サーバー対応（RFC 1952）',
+          'deflate':  '✅ deflate  — zlib形式。現在はgzip優先（RFC 1950）',
+          'br':       '✅ br       — Brotli。gzipより20-26%高圧縮（HTTPS専用）',
+          'zstd':     '✅ zstd     — Zstandard。最新。高速＋高圧縮（Chrome 123+）',
+          'identity': '⬜ identity — 圧縮なし',
+        };
+        let out = 'Accept-Encoding: ' + ae + '\n\n対応方式の詳細:\n';
+        parts.forEach(p => {
+          const key = p.split(';')[0].trim();
+          out += '  ' + (dict[key] || '⬜ ' + key + ' — 不明な方式') + '\n';
+        });
+
+        const has_zstd = parts.some(p => p.split(';')[0].trim() === 'zstd');
+        const has_br = parts.some(p => p.split(';')[0].trim() === 'br');
+        out += '\nサーバー側の推奨優先順位: ';
+        if (has_zstd) out += 'zstd > ';
+        if (has_br) out += 'br > ';
+        out += 'gzip > deflate\n';
+        if (!has_zstd) out += '\n※ zstd 未対応: Chrome 123以上へのアップデートを推奨';
+
+        el.textContent = out;
+      } catch(e) { el.textContent = 'エラー: ' + e.message; }
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 圧縮方式の比較表を確認</div>
+  </div>
+
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th>方式</th>
+        <th>ヘッダー値</th>
+        <th>圧縮率</th>
+        <th>展開速度</th>
+        <th>HTTPS必須</th>
+        <th>ブラウザ対応</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>gzip</code></td>
+        <td><code>Content-Encoding: gzip</code></td>
+        <td>⭐⭐⭐</td>
+        <td>⭐⭐⭐</td>
+        <td>不要</td>
+        <td>全ブラウザ</td>
+      </tr>
+      <tr>
+        <td><code>Brotli</code></td>
+        <td><code>Content-Encoding: br</code></td>
+        <td>⭐⭐⭐⭐</td>
+        <td>⭐⭐⭐</td>
+        <td><strong style="color:var(--warn)">必須</strong></td>
+        <td>全モダンブラウザ</td>
+      </tr>
+      <tr>
+        <td><code>Zstandard</code></td>
+        <td><code>Content-Encoding: zstd</code></td>
+        <td>⭐⭐⭐⭐</td>
+        <td>⭐⭐⭐⭐⭐</td>
+        <td><strong style="color:var(--warn)">必須</strong></td>
+        <td>Chrome 123+, Firefox 126+</td>
+      </tr>
+      <tr>
+        <td><code>deflate</code></td>
+        <td><code>Content-Encoding: deflate</code></td>
+        <td>⭐⭐⭐</td>
+        <td>⭐⭐⭐</td>
+        <td>不要</td>
+        <td>全ブラウザ（レガシー）</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <strong>Brotli は HTTPS 専用</strong>:
+    ブラウザは HTTP（非暗号化）接続では <code>br</code> を <code>Accept-Encoding</code>
+    に含めません。中間プロキシによるデータ破損を防ぐためです。<code>zstd</code> も同様です。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/Headers/Content-Encoding" target="_blank">MDN — Content-Encoding</a></span>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 14-B: Content-Encoding の観察             -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-14b">
+  <h3>実験 14-B: Content-Encoding をリアルタイムで観察する</h3>
+  <p>
+    httpbin.org の各圧縮エンドポイントを呼び出し、サーバーが返す
+    <code>Content-Encoding</code> とブラウザの透過的な展開を確認します。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — 3つの圧縮方式でリクエストを送信</div>
+    <p>各ボタンを押して、DevToolsのNetworkタブでResponse Headersを比較してください。</p>
+    <button class="btn btn-accent" id="btn-14b-gzip">gzip</button>
+    <button class="btn btn-accent2" id="btn-14b-brotli">Brotli</button>
+    <button class="btn btn-accent3" id="btn-14b-deflate">deflate</button>
+    <button class="btn btn-dim" id="btn-14b-reset">クリア</button>
+  </div>
+
+  <div class="three-col">
+    <div class="col-card card-gzip" id="col-14b-gzip">
+      <h4>gzip</h4>
+      <pre><span class="placeholder">← ボタンを押してください</span></pre>
+    </div>
+    <div class="col-card card-brotli" id="col-14b-brotli">
+      <h4>Brotli</h4>
+      <pre><span class="placeholder">← ボタンを押してください</span></pre>
+    </div>
+    <div class="col-card card-deflate" id="col-14b-deflate">
+      <h4>deflate</h4>
+      <pre><span class="placeholder">← ボタンを押してください</span></pre>
+    </div>
+  </div>
+
+  <script>
+    async function fetchEncoding(endpoint, colId, fieldName) {
+      const col = document.querySelector('#' + colId + ' pre');
+      col.textContent = '送信中...';
+      try {
+        const t0 = performance.now();
+        const res = await fetch('https://httpbin.org/' + endpoint);
+        const elapsed = Math.round(performance.now() - t0);
+        if (!res.ok) throw new Error('HTTPエラー: ' + res.status);
+        const data = await res.json();
+
+        const ce = res.headers.get('Content-Encoding') || '(なし)';
+        const cl = res.headers.get('Content-Length') || '(不明)';
+
+        col.textContent = 'Content-Encoding:\n  ' + ce
+          + '\n\nContent-Length:\n  ' + cl
+          + '\n\n応答時間: ' + elapsed + 'ms'
+          + '\n\n' + fieldName + ': '
+          + (data[fieldName] !== undefined
+              ? (data[fieldName] ? '✅ true' : '❌ false')
+              : '(フィールド未検出)')
+          + '\n\nブラウザ側:\n  展開済みJSONを\n  そのまま読める\n  （透過的展開）';
+      } catch(e) {
+        col.textContent = 'エラー:\n' + e.message;
+      }
+    }
+
+    document.getElementById('btn-14b-gzip').addEventListener('click', () =>
+      fetchEncoding('gzip', 'col-14b-gzip', 'gzipped'));
+    document.getElementById('btn-14b-brotli').addEventListener('click', () =>
+      fetchEncoding('brotli', 'col-14b-brotli', 'brotli'));
+    document.getElementById('btn-14b-deflate').addEventListener('click', () =>
+      fetchEncoding('deflate', 'col-14b-deflate', 'deflated'));
+    document.getElementById('btn-14b-reset').addEventListener('click', () => {
+      ['col-14b-gzip', 'col-14b-brotli', 'col-14b-deflate'].forEach(id => {
+        document.querySelector('#' + id + ' pre').innerHTML =
+          '<span class="placeholder">← ボタンを押してください</span>';
+      });
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — DevToolsで「転送サイズ」と「リソースサイズ」を比較</div>
+    <pre><span class="comment">// Network タブの Size 列に注目:</span>
+
+<span class="header-name">transferred（転送サイズ）</span> = 圧縮後のバイト数（ネットワーク上を流れた量）
+<span class="header-name">resource size（リソースサイズ）</span> = 展開後のバイト数（ブラウザが使う量）
+
+<span class="comment">// 例:</span>
+Name           Status   Size
+/gzip          200      <span class="highlight">180 B</span> (transferred)  ← 圧縮後
+                        <span class="header-val">256 B</span> (resource)     ← 展開後
+
+<span class="comment">// Network タブ右下の合計にも注目:</span>
+<span class="highlight">XX KB transferred</span> / <span class="header-val">XX KB resources</span></pre>
+  </div>
+
+  <div class="note">
+    <strong>ブラウザの透過的展開</strong>:
+    <code>fetch()</code> や <code>XMLHttpRequest</code> で取得したデータは
+    常に展開済みです。JavaScript から圧縮を意識する必要はありません。
+    <code>Content-Encoding</code> による圧縮・展開はHTTPレイヤーで完全に透過的に処理されます。
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 14-C: 圧縮率の視覚化                      -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-14c">
+  <h3>実験 14-C: 圧縮率を視覚的に比較する</h3>
+  <p>
+    テキストデータに対する各圧縮方式の効果を視覚的に比較します。
+    httpbin.org の gzip / brotli / deflate エンドポイントの実際の転送サイズを測定します。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — 圧縮効果を測定</div>
+    <p>3つの圧縮方式でリクエストし、実際の転送サイズを比較します。</p>
+    <button class="btn btn-accent" id="btn-14c-measure">圧縮効果を測定</button>
+    <button class="btn btn-dim" id="btn-14c-reset">クリア</button>
+  </div>
+
+  <div id="chart-14c">
+    <div class="bar-chart" id="bars-14c">
+      <p class="placeholder" style="text-align:center;">← ボタンを押して測定を開始してください</p>
+    </div>
+  </div>
+
+  <pre id="result-14c"><span class="placeholder">← 比較結果がここに表示されます</span></pre>
+
+  <script>
+    document.getElementById('btn-14c-measure').addEventListener('click', async () => {
+      const barsEl = document.getElementById('bars-14c');
+      const resultEl = document.getElementById('result-14c');
+      barsEl.innerHTML = '<p style="text-align:center; color:var(--text-dim);">測定中... 4つのリクエストを送信しています...</p>';
+      resultEl.textContent = '測定中...';
+
+      try {
+        // 各エンドポイントのレスポンスサイズを測定
+        const endpoints = [
+          { name: '未圧縮（/get）', url: 'https://httpbin.org/get', color: 'var(--text-dim)' },
+          { name: 'gzip', url: 'https://httpbin.org/gzip', color: 'var(--accent)' },
+          { name: 'Brotli', url: 'https://httpbin.org/brotli', color: 'var(--accent2)' },
+          { name: 'deflate', url: 'https://httpbin.org/deflate', color: 'var(--accent3)' },
+        ];
+
+        const results = [];
+        for (const ep of endpoints) {
+          const t0 = performance.now();
+          const res = await fetch(ep.url);
+          const elapsed = Math.round(performance.now() - t0);
+          const body = await res.text();
+          const bodySize = new Blob([body]).size;
+          const ce = res.headers.get('Content-Encoding') || 'none';
+          results.push({ ...ep, bodySize, elapsed, ce });
+        }
+
+        const maxSize = Math.max(...results.map(r => r.bodySize));
+
+        barsEl.innerHTML = results.map(r => {
+          const pct = ((r.bodySize / maxSize) * 100).toFixed(0);
+          return `<div class="bar-row">
+            <span class="bar-label" style="color:${r.color}">${r.name}</span>
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${pct}%; background:${r.color};">${r.bodySize} B</div>
+            </div>
+            <span class="bar-value">${r.elapsed}ms</span>
+          </div>`;
+        }).join('');
+
+        resultEl.textContent = '測定結果:\n\n'
+          + results.map(r =>
+            '  ' + r.name.padEnd(18) + ': ' + r.bodySize + ' B'
+            + ' (Content-Encoding: ' + r.ce + ', ' + r.elapsed + 'ms)'
+          ).join('\n')
+          + '\n\n解説:\n'
+          + '  ※ httpbin.org の各エンドポイントは異なるJSONを返すため、\n'
+          + '    厳密な圧縮率比較ではありません。\n'
+          + '  ※ 実際の圧縮効果を確認するには、同一データに対して\n'
+          + '    異なる圧縮を適用する必要があります。\n\n'
+          + '一般的な圧縮率（テキストデータ）:\n'
+          + '  gzip    : 元サイズの約 30-40%（60-70%削減）\n'
+          + '  Brotli  : 元サイズの約 25-35%（65-75%削減）\n'
+          + '  zstd    : 元サイズの約 25-35%（Brotli同等+高速展開）';
+      } catch(e) {
+        barsEl.innerHTML = '<p style="color:var(--danger)">エラー: ' + e.message + '</p>';
+        resultEl.textContent = 'エラー: ' + e.message;
+      }
+    });
+
+    document.getElementById('btn-14c-reset').addEventListener('click', () => {
+      document.getElementById('bars-14c').innerHTML =
+        '<p class="placeholder" style="text-align:center;">← ボタンを押して測定を開始してください</p>';
+      document.getElementById('result-14c').innerHTML =
+        '<span class="placeholder">← 比較結果がここに表示されます</span>';
+    });
+  </script>
+
+  <div class="warn-box">
+    <strong>圧縮が逆効果になるケース</strong>:
+    画像（JPEG/PNG/WebP）や動画（MP4）はすでに圧縮されているため、
+    <code>Content-Encoding</code> による追加圧縮はほぼ効果がなく、むしろCPU負荷が増えます。
+    圧縮はテキスト系リソース（HTML, CSS, JS, JSON, SVG）に適用しましょう。
+  </div>
+
+  <div class="note">
+    <strong>CDNでの圧縮戦略（ガイド④参照）</strong>:
+    静的ファイルではビルド時にBrotli圧縮ファイル（<code>.br</code>）を事前生成し、
+    CDNから配信するのが最も効率的です。
+    動的コンテンツ（APIレスポンス等）はサーバーがオンザフライで gzip 圧縮するのが一般的です。
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 14-D: Range リクエスト                    -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-14d">
+  <h3>実験 14-D: Range リクエスト（部分取得）を体験する</h3>
+  <p>
+    <code>Range</code> ヘッダーを使うと、リソースの一部分だけを取得できます。
+    動画のシーク、大きなファイルのダウンロード再開、PDFのページ単位取得などに活用されます。
+  </p>
+
+  <div class="diagram">全体: [====================================] 10,000 bytes
+                 ↓ Range: bytes=0-999
+取得:  [====]                                   1,000 bytes (10%)
+                 ↓ Range: bytes=2000-4999
+取得:          [=========]                      3,000 bytes (30%)
+                 ↓ Range: bytes=8000-
+取得:                              [=========]  2,000 bytes (20%)</div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — Accept-Ranges ヘッダーの確認</div>
+    <p>サーバーが Range リクエストに対応しているかは、
+      レスポンスの <code>Accept-Ranges</code> ヘッダーで確認できます。</p>
+    <button class="btn btn-accent" id="btn-14d-check">Accept-Ranges を確認</button>
+    <pre id="result-14d-check"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-14d-check').addEventListener('click', async () => {
+      const el = document.getElementById('result-14d-check');
+      el.textContent = '確認中...';
+      try {
+        const res = await fetch('https://httpbin.org/range/10000', { method: 'HEAD' });
+        const ar = res.headers.get('Accept-Ranges') || '(なし)';
+        const cl = res.headers.get('Content-Length') || '(不明)';
+        const ct = res.headers.get('Content-Type') || '(不明)';
+
+        el.textContent = 'HEAD /range/10000 のレスポンス:\n\n'
+          + '  Accept-Ranges: ' + ar + '\n'
+          + '  Content-Length: ' + cl + '\n'
+          + '  Content-Type: ' + ct + '\n\n'
+          + (ar === 'bytes'
+            ? '✅ このサーバーは Range リクエストに対応しています！\n'
+              + '   → bytes 単位で部分取得が可能'
+            : ar !== '(なし)'
+              ? '⬜ Accept-Ranges: ' + ar + '\n'
+                + '   → Range リクエストの対応状況を確認してください'
+              : '⬜ Accept-Ranges ヘッダーがありません。\n'
+                + '   Range リクエストが制限されている可能性があります。');
+      } catch(e) { el.textContent = 'エラー: ' + e.message; }
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 範囲を指定して部分取得</div>
+    <p>スライダーで範囲を指定し、その部分だけをサーバーから取得します。</p>
+  </div>
+
+  <div class="range-slider-container">
+    <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap; margin-bottom:0.5rem;">
+      <label style="font-family:'IBM Plex Mono',monospace; font-size:0.82rem;">
+        開始: <input type="range" id="range-start" min="0" max="9000" value="0" step="500"
+                 style="width:140px; accent-color:var(--accent2);">
+        <span id="range-start-val" style="color:var(--accent2)">0</span>
+      </label>
+      <label style="font-family:'IBM Plex Mono',monospace; font-size:0.82rem;">
+        終了: <input type="range" id="range-end" min="999" max="9999" value="2999" step="500"
+                 style="width:140px; accent-color:var(--accent3);">
+        <span id="range-end-val" style="color:var(--accent3)">2999</span>
+      </label>
+    </div>
+    <p style="font-family:'IBM Plex Mono',monospace; font-size:0.78rem; color:var(--text-dim);">
+      全体: 10,000 bytes
+    </p>
+    <div class="range-visual">
+      <div class="range-fill" id="range-fill-bar"></div>
+    </div>
+    <div class="range-labels">
+      <span>0</span>
+      <span>2500</span>
+      <span>5000</span>
+      <span>7500</span>
+      <span>10000</span>
+    </div>
+  </div>
+
+  <button class="btn btn-accent2" id="btn-14d-range">Range リクエスト送信</button>
+  <pre id="result-14d-range"><span class="placeholder">← スライダーで範囲を調整してボタンを押してください</span></pre>
+
+  <script>
+    const rangeStart = document.getElementById('range-start');
+    const rangeEnd = document.getElementById('range-end');
+    const startVal = document.getElementById('range-start-val');
+    const endVal = document.getElementById('range-end-val');
+    const fillBar = document.getElementById('range-fill-bar');
+
+    function updateRangeVisual() {
+      const s = parseInt(rangeStart.value);
+      const e = parseInt(rangeEnd.value);
+      startVal.textContent = s;
+      endVal.textContent = e;
+      const left = (s / 10000) * 100;
+      const width = ((e - s) / 10000) * 100;
+      fillBar.style.left = left + '%';
+      fillBar.style.width = Math.max(0, width) + '%';
+    }
+
+    rangeStart.addEventListener('input', () => {
+      if (parseInt(rangeStart.value) > parseInt(rangeEnd.value) - 500) {
+        rangeEnd.value = parseInt(rangeStart.value) + 500;
+      }
+      updateRangeVisual();
+    });
+    rangeEnd.addEventListener('input', () => {
+      if (parseInt(rangeEnd.value) < parseInt(rangeStart.value) + 500) {
+        rangeStart.value = parseInt(rangeEnd.value) - 500;
+      }
+      updateRangeVisual();
+    });
+    updateRangeVisual();
+
+    document.getElementById('btn-14d-range').addEventListener('click', async () => {
+      const el = document.getElementById('result-14d-range');
+      const s = parseInt(rangeStart.value);
+      const e = parseInt(rangeEnd.value);
+      el.textContent = 'Range: bytes=' + s + '-' + e + ' を送信中...';
+
+      try {
+        const res = await fetch('https://httpbin.org/range/10000', {
+          headers: { 'Range': 'bytes=' + s + '-' + e }
+        });
+        const status = res.status;
+        const statusText = res.statusText;
+        const cr = res.headers.get('Content-Range') || '(なし)';
+        const cl = res.headers.get('Content-Length') || '(不明)';
+        const ct = res.headers.get('Content-Type') || '(不明)';
+        const body = await res.text();
+        const bodyLen = body.length;
+
+        el.textContent = 'リクエスト:\n'
+          + '  Range: bytes=' + s + '-' + e + '\n\n'
+          + 'レスポンス:\n'
+          + '  ステータス: ' + status + ' ' + statusText + '\n'
+          + '  Content-Range: ' + cr + '\n'
+          + '  Content-Length: ' + cl + '\n'
+          + '  Content-Type: ' + ct + '\n\n'
+          + '受信したバイト数: ' + bodyLen + '\n'
+          + '全体に対する割合: ' + ((bodyLen / 10000) * 100).toFixed(1) + '%\n\n'
+          + (status === 206
+            ? '✅ 206 Partial Content — 部分取得成功！\n'
+              + '   サーバーは指定範囲のデータのみを返しました。\n\n'
+              + '   DevTools で確認:\n'
+              + '   ・ステータスコードが 206\n'
+              + '   ・Request Headers に Range がある\n'
+              + '   ・Response Headers に Content-Range がある'
+            : status === 200
+              ? '⬜ 200 OK — サーバーが Range を無視し全体を返しました。\n'
+                + '   このエンドポイントは Range 非対応の可能性があります。'
+              : '❓ ステータス ' + status + ' — 予期しない応答です。');
+      } catch(e) { el.textContent = 'エラー: ' + e.message; }
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — If-Range で条件付き Range リクエスト</div>
+    <pre><span class="comment">// If-Range は「リソースが変更されていなければ部分取得、
+// 変更されていれば全体を取得」を実現します。</span>
+
+<span class="header-name">リクエスト:</span>
+  GET /large-file.zip HTTP/1.1
+  <span class="header-val">Range: bytes=5000-</span>             <span class="comment">← 5000バイト目以降を取得</span>
+  <span class="header-val">If-Range: "abc123"</span>             <span class="comment">← このETagが一致すれば部分取得</span>
+
+<span class="header-name">レスポンス A（ETag一致 → 部分取得）:</span>
+  <span class="highlight">206 Partial Content</span>
+  Content-Range: bytes 5000-9999/10000
+
+<span class="header-name">レスポンス B（ETag不一致 → 全体返却）:</span>
+  <span class="highlight">200 OK</span>
+  Content-Length: 12000           <span class="comment">← 更新後の全データ</span>
+
+<span class="comment">// ダウンロード再開に最適: 中断中にファイルが更新されていたら
+// 古い部分データ + 新しい残りデータ = 壊れたファイル を防止</span></pre>
+  </div>
+
+  <div class="note">
+    <strong>Range の実用例</strong>:
+    動画プレイヤーでシーク → ブラウザが自動で <code>Range</code> リクエストを送信。
+    大きなファイルのダウンロード中断 → 再開時に <code>Range: bytes=受信済みバイト数-</code> で続きから取得。
+    PDF.js → ページごとに必要な範囲だけ取得して高速表示。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/Range_requests" target="_blank">MDN — Range requests</a></span>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 14-E: Transfer-Encoding                  -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-14e">
+  <h3>実験 14-E: Transfer-Encoding を理解する</h3>
+  <p>
+    <code>Transfer-Encoding</code> と <code>Content-Encoding</code> は似ていますが、
+    役割が異なります。この実験で違いを明確にします。
+  </p>
+
+  <div class="two-col">
+    <div class="col-card" style="border-color:var(--accent2);">
+      <h4 style="color:var(--accent2);">Content-Encoding（コンテンツの圧縮）</h4>
+      <pre style="font-size:0.75rem;">
+目的: コンテンツ自体の圧縮
+対象: エンドツーエンド
+例:   gzip, br, zstd
+特徴:
+  - キャッシュ可能
+  - 中間プロキシは変更しない
+  - Vary: Accept-Encoding 必要
+  - HTTP/2・H/3 でも使用</pre>
+    </div>
+    <div class="col-card" style="border-color:var(--accent3);">
+      <h4 style="color:var(--accent3);">Transfer-Encoding（転送の符号化）</h4>
+      <pre style="font-size:0.75rem;">
+目的: 転送方法の制御
+対象: ホップバイホップ
+例:   chunked
+特徴:
+  - Content-Length 不要
+  - 中間プロキシで終端
+  - HTTP/1.1 専用
+  - H/2・H/3 では不要
+    （フレーム管理で代替）</pre>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — ストリーミングレスポンスを取得</div>
+    <p>httpbin.org のストリーミングエンドポイントで <code>Transfer-Encoding: chunked</code> を確認します。</p>
+    <button class="btn btn-accent2" id="btn-14e-chunked">ストリーミングレスポンスを取得</button>
+    <pre id="result-14e-chunked"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-14e-chunked').addEventListener('click', async () => {
+      const el = document.getElementById('result-14e-chunked');
+      el.textContent = '送信中...';
+      try {
+        const res = await fetch('https://httpbin.org/stream/5');
+        const te = res.headers.get('Transfer-Encoding') || '(ヘッダーなし ※ブラウザが非公開)';
+        const cl = res.headers.get('Content-Length') || '(なし — chunkedのため事前不明)';
+        const ct = res.headers.get('Content-Type') || '(不明)';
+        const body = await res.text();
+        const lines = body.trim().split('\n');
+
+        el.textContent = 'GET /stream/5 — 5チャンクのストリーミング\n\n'
+          + 'レスポンスヘッダー:\n'
+          + '  Transfer-Encoding: ' + te + '\n'
+          + '  Content-Length: ' + cl + '\n'
+          + '  Content-Type: ' + ct + '\n\n'
+          + '受信したチャンク数: ' + lines.length + '\n\n'
+          + 'チャンクの内容（最初の2つ）:\n'
+          + lines.slice(0, 2).map((line, i) => {
+              try {
+                const obj = JSON.parse(line);
+                return '  chunk ' + i + ': id=' + obj.id + ', url=' + (obj.url || '...');
+              } catch { return '  chunk ' + i + ': ' + line.substring(0, 60) + '...'; }
+            }).join('\n')
+          + '\n  ...\n\n'
+          + '解説:\n'
+          + '  Transfer-Encoding: chunked はサーバーが Content-Length を\n'
+          + '  事前に知らない場合に使用します。データは「チャンク」として\n'
+          + '  少しずつ送信され、空チャンク (サイズ0) で終了を通知します。\n\n'
+          + '  ※ ブラウザの fetch() API は Transfer-Encoding ヘッダーを\n'
+          + '    直接公開しないことがあります。DevTools の Network タブの\n'
+          + '    Response Headers で確認してください。';
+      } catch(e) { el.textContent = 'エラー: ' + e.message; }
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — chunked の構造を理解</div>
+    <pre><span class="comment">// HTTP/1.1 での chunked 転送のワイヤーフォーマット:</span>
+
+HTTP/1.1 200 OK
+<span class="header-name">Transfer-Encoding</span>: <span class="header-val">chunked</span>
+Content-Type: application/json
+
+<span class="highlight">1a</span>                          <span class="comment">← チャンクサイズ（16進数 = 26バイト）</span>
+{"id":0,"name":"chunk-0"}   <span class="comment">← チャンクデータ</span>
+<span class="highlight">1a</span>                          <span class="comment">← 次のチャンクサイズ</span>
+{"id":1,"name":"chunk-1"}   <span class="comment">← 次のチャンクデータ</span>
+<span class="highlight">0</span>                           <span class="comment">← 空チャンク = 転送終了</span>
+                            <span class="comment">← 最後のCRLF</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — HTTP/2・HTTP/3 での変化</div>
+    <pre><span class="comment">// HTTP/1.1:</span>
+Transfer-Encoding: chunked     <span class="comment">← 必要（Content-Length不明時）</span>
+Connection: keep-alive         <span class="comment">← 必要</span>
+
+<span class="comment">// HTTP/2・HTTP/3:</span>
+<span class="highlight">Transfer-Encoding は使用不可</span>
+<span class="comment">← フレーム管理で自動処理されるため不要</span>
+<span class="comment">← DATA フレームの END_STREAM フラグで終了を通知</span>
+<span class="comment">← Connection ヘッダーも不要（多重化）</span>
+
+<span class="comment">// 確認方法: DevTools → Network → Protocol 列を表示</span>
+<span class="comment">//   h2 = HTTP/2, h3 = HTTP/3 を使用中</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 4 — このページのプロトコルバージョンを確認</div>
+    <button class="btn btn-accent3" id="btn-14e-proto">プロトコルを確認</button>
+    <pre id="result-14e-proto"><span class="placeholder">← ボタンを押すと確認方法が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-14e-proto').addEventListener('click', () => {
+      const el = document.getElementById('result-14e-proto');
+      const proto = performance.getEntriesByType('navigation')[0]?.nextHopProtocol || '(取得不可)';
+      el.textContent = 'このページのプロトコル: ' + proto + '\n\n'
+        + 'DevTools での確認方法:\n'
+        + '  1. Network タブを開く\n'
+        + '  2. 列ヘッダーを右クリック → "Protocol" にチェック\n'
+        + '  3. Protocol 列に表示される値:\n'
+        + '     h2        = HTTP/2\n'
+        + '     h3        = HTTP/3\n'
+        + '     http/1.1  = HTTP/1.1\n\n'
+        + (proto === 'http/1.1'
+          ? '現在 HTTP/1.1 で接続中 → Transfer-Encoding: chunked が使用可能'
+          : proto.startsWith('h2') || proto.startsWith('h3')
+            ? '現在 ' + proto.toUpperCase() + ' で接続中\n→ Transfer-Encoding は不要（フレーム管理）'
+            : 'プロトコル情報を取得できませんでした。\n  DevTools で直接確認してください。');
+    });
+  </script>
+
+  <div class="warn-box">
+    <strong>Content-Encoding と Transfer-Encoding の同時使用</strong>:
+    HTTP/1.1 では <code>Content-Encoding: gzip</code>（コンテンツ圧縮）と
+    <code>Transfer-Encoding: chunked</code>（チャンク転送）を同時に使用できます。
+    この場合: gzip圧縮 → チャンク分割で転送 → チャンク結合 → gzip展開 の順で処理されます。
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 実験 14-F: OutSystems 確認                    -->
+<!-- ============================================ -->
+<div class="lab-box" id="exp-14f">
+  <h3>実験 14-F: OutSystemsの圧縮設定を確認する</h3>
+  <p>
+    OutSystems環境が実際にどの圧縮方式を使っているか、DevToolsで確認します。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — OutSystems 画面のレスポンスヘッダーを確認</div>
+    <pre><span class="comment">// OutSystems の画面を開き、DevTools → Network で確認:</span>
+
+<span class="header-name">1. HTML ドキュメント（画面）</span>
+   Content-Encoding: <span class="header-val">gzip</span>  <span class="comment">← プラットフォームが自動圧縮</span>
+   Content-Type: text/html; charset=utf-8
+
+<span class="header-name">2. JavaScript バンドル</span>
+   Content-Encoding: <span class="header-val">gzip</span> or <span class="header-val">br</span>
+   Cache-Control: public, max-age=...
+
+<span class="header-name">3. CSS ファイル</span>
+   Content-Encoding: <span class="header-val">gzip</span> or <span class="header-val">br</span>
+
+<span class="header-name">4. REST API レスポンス</span>
+   Content-Encoding: <span class="header-val">gzip</span>
+   Content-Type: application/json; charset=utf-8
+
+<span class="header-name">5. 画像ファイル（.png, .jpg）</span>
+   Content-Encoding: <span class="highlight">(なし)</span>  <span class="comment">← 画像は既に圧縮済み → 追加圧縮不要</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — OutSystems API を fetch して確認</div>
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; margin:0.5rem 0;">
+      <input type="text" id="os-url-14f" placeholder="https://xxx.outsystemscloud.com/HeaderLab/rest/HeaderTest/GetInfo"
+        style="flex:1; min-width:300px; background:var(--surface2); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:0.5rem 0.8rem; font-family:'IBM Plex Mono',monospace; font-size:0.82rem;">
+      <button class="btn btn-warn" id="btn-14f-fetch">fetch 実行</button>
+    </div>
+    <pre id="result-14f"><span class="placeholder">← OutSystems API の URL を入力して実行</span></pre>
+  </div>
+
+  <script>
+    const osUrl14f = document.getElementById('os-url-14f');
+    const saved14f = localStorage.getItem('httplab_os_url');
+    if (saved14f) osUrl14f.value = saved14f;
+    osUrl14f.addEventListener('input', () => {
+      localStorage.setItem('httplab_os_url', osUrl14f.value);
+    });
+
+    document.getElementById('btn-14f-fetch').addEventListener('click', async () => {
+      const el = document.getElementById('result-14f');
+      const url = osUrl14f.value.trim();
+      if (!url) { el.textContent = 'URLを入力してください'; return; }
+      el.textContent = 'fetch送信中...\n  URL: ' + url;
+      try {
+        const res = await fetch(url);
+        const ce = res.headers.get('Content-Encoding') || '(なし/アクセス不可)';
+        const cl = res.headers.get('Content-Length') || '(不明)';
+        const ct = res.headers.get('Content-Type') || '(不明)';
+        const te = res.headers.get('Transfer-Encoding') || '(なし)';
+        const vary = res.headers.get('Vary') || '(なし)';
+        const data = await res.json();
+
+        el.textContent = '✅ 成功！\n\n'
+          + 'レスポンスヘッダー:\n'
+          + '  Content-Encoding: ' + ce + '\n'
+          + '  Content-Type: ' + ct + '\n'
+          + '  Content-Length: ' + cl + '\n'
+          + '  Transfer-Encoding: ' + te + '\n'
+          + '  Vary: ' + vary + '\n\n'
+          + 'レスポンスボディ:\n  ' + JSON.stringify(data, null, 2).split('\n').join('\n  ')
+          + '\n\n注意:\n'
+          + '  fetch() API では CORS ポリシーにより一部ヘッダーが\n'
+          + '  読めないことがあります（Access-Control-Expose-Headers\n'
+          + '  で公開されていないヘッダー）。\n'
+          + '  正確な値は DevTools の Network タブで確認してください。';
+      } catch(e) {
+        const isCors = e.message.includes('Failed to fetch') || e.name === 'TypeError';
+        el.textContent = (isCors
+          ? '🔴 CORSエラー — OutSystems環境に直接アクセスして\n'
+            + '   DevTools の Network タブで確認してください。\n'
+          : '❌ エラー: ' + e.message + '\n')
+          + '\n代替手順:\n'
+          + '  1. OutSystems 環境に直接ブラウザでアクセス\n'
+          + '  2. F12 → Network タブ\n'
+          + '  3. 各リソースの Content-Encoding を確認\n'
+          + '  4. 下部ステータスバーの transferred / resources を比較';
+      }
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — 転送サイズの節約効果を確認</div>
+    <pre><span class="comment">// DevTools → Network → 下部のステータスバーを確認:</span>
+
+<span class="header-val">XX requests</span> | <span class="highlight">XXX KB transferred</span> | <span class="header-val">X.X MB resources</span>
+
+<span class="comment">// 例: OutSystems の画面読み込み</span>
+45 requests | <span class="highlight">850 KB transferred</span> | <span class="header-val">3.2 MB resources</span>
+
+<span class="comment">// → 圧縮により転送量が約74%削減されている！</span>
+<span class="comment">// → 3.2MB のリソースを 850KB で転送</span></pre>
+  </div>
+
+  <div class="note">
+    <strong>OutSystems の圧縮はプラットフォームが自動管理</strong>:
+    テキスト系リソース（HTML, JS, CSS, JSON）は自動で gzip/br 圧縮されます。
+    開発者が明示的に設定する必要はありませんが、DevTools で実際の効果を確認する習慣は重要です。
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- チェックリスト                                 -->
+<!-- ============================================ -->
+<hr>
+<h2 id="checklist">✅ Lab 14 チェックリスト</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">チェック状態はブラウザに自動保存されます。</p>
+
+<div class="check-item"><input type="checkbox" data-key="lab14-1"> <label>Accept-Encoding で自分のブラウザが対応する圧縮方式を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab14-2"> <label>gzip / Brotli / deflate の3方式の Content-Encoding を比較した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab14-3"> <label>DevTools で transferred サイズと resource サイズの違いを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab14-4"> <label>圧縮率がデータの種類（テキスト vs 画像）で異なることを理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab14-5"> <label>Range リクエストで 206 Partial Content を受信した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab14-6"> <label>Content-Range ヘッダーの構造（範囲/全体）を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab14-7"> <label>Transfer-Encoding: chunked の仕組みと Content-Encoding との違いを理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab14-8"> <label>HTTP/2・H/3 では Transfer-Encoding が不要な理由を理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab14-9"> <label>OutSystems 環境の圧縮状態を DevTools で確認した</label></div>
+
+<div style="margin-top:1rem; text-align:center;">
+  <span id="progress-text" style="font-family:'IBM Plex Mono',monospace; color:var(--accent); font-size:0.9rem;"></span>
+</div>
+
+<script>
+  const STORAGE_PREFIX = 'httplab_';
+
+  function updateProgress() {
+    const all = document.querySelectorAll('input[type="checkbox"][data-key]');
+    const checked = [...all].filter(cb => cb.checked).length;
+    const el = document.getElementById('progress-text');
+    if (el) el.textContent = checked + ' / ' + all.length + ' 完了';
+  }
+
+  document.querySelectorAll('input[type="checkbox"][data-key]').forEach(cb => {
+    const saved = localStorage.getItem(STORAGE_PREFIX + cb.dataset.key);
+    if (saved === 'true') {
+      cb.checked = true;
+      cb.closest('.check-item')?.classList.add('checked');
+    }
+    cb.addEventListener('change', () => {
+      localStorage.setItem(STORAGE_PREFIX + cb.dataset.key, cb.checked);
+      cb.closest('.check-item')?.classList.toggle('checked', cb.checked);
+      updateProgress();
+    });
+  });
+
+  updateProgress();
+</script>
+
+<hr>
+
+<div class="note">
+  📖 <strong>参照資料</strong>：このLabの内容は <code>http-headers-guide-v2.md</code> の 第1部 1-1「接続・転送」+ 第2部④「圧縮の優先順位」 に対応しています。より詳しい解説・ヘッダー一覧はガイドを参照してください。
+</div>
+
+<h2>📝 Lab 14 学習ノート</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">メモはブラウザに自動保存されます。</p>
+<textarea id="notes" rows="6" placeholder="気づいたこと、疑問点をメモ..."
+  style="width:100%;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:0.8rem;font-family:'Noto Sans JP',sans-serif;font-size:0.9rem;resize:vertical;margin-top:0.5rem;"></textarea>
+
+<script>
+  const notesEl = document.getElementById('notes');
+  const savedNotes = localStorage.getItem(STORAGE_PREFIX + 'lab14_notes');
+  if (savedNotes) notesEl.value = savedNotes;
+  notesEl.addEventListener('input', () => {
+    localStorage.setItem(STORAGE_PREFIX + 'lab14_notes', notesEl.value);
+  });
+</script>
+
+<hr>
+
+<h2>📚 まとめ: 圧縮・転送ヘッダーの関係図</h2>
+
+<div class="diagram">                   圧縮・転送ヘッダーの全体像
+
+  リクエスト側                              レスポンス側
+  ┌──────────────────────┐    ┌──────────────────────────────────┐
+  │ Accept-Encoding:     │    │ Content-Encoding: br             │
+  │   gzip, br, zstd     │───▶│   → コンテンツ自体の圧縮          │
+  │ （対応方式を申告）     │    │   → エンドツーエンド              │
+  └──────────────────────┘    │   → キャッシュ可能                │
+                              │   → Vary: Accept-Encoding 必要   │
+  ┌──────────────────────┐    ├──────────────────────────────────┤
+  │ Range:               │    │ Transfer-Encoding: chunked       │
+  │   bytes=0-1023       │    │   → 転送方法の制御                │
+  │ （部分取得を要求）     │    │   → ホップバイホップ              │
+  └──────────────────────┘    │   → HTTP/1.1 専用                │
+         │                    │   → H/2・H/3 では不要             │
+         ▼                    ├──────────────────────────────────┤
+  ┌──────────────────────┐    │ Content-Range:                   │
+  │ If-Range:            │    │   bytes 0-1023/4096              │
+  │   "etag" / 日時      │    │   → 部分レスポンスの範囲          │
+  │ （条件付きRange）      │    │   → 206 Partial Content          │
+  └──────────────────────┘    │   → Accept-Ranges: bytes で宣言  │
+                              └──────────────────────────────────┘
+
+  ※ Content-Encoding と Transfer-Encoding は同時使用可能（HTTP/1.1）:
+    gzip圧縮データ → chunked分割転送 → 結合 → gzip展開</div>
+
+<p style="color:var(--text-dim); font-size:0.82rem; margin-top:2rem;">
+  ← 前回: <a href="http-header-lab-13.html"><strong>Lab 13 — リダイレクト</strong></a>（301/302/307/308, Location）<br>
+  次回: <a href="http-header-lab-15.html"><strong>Lab 15 — プロキシ・転送元</strong></a>（X-Forwarded-For, Via, Forwarded）
+  <br><span style="color:var(--text-dim);font-size:0.78rem;">圧縮・転送を理解したら、次はプロキシ / CDN 経由時のヘッダー書き換えを学びます</span>
+</p>
+
+</body>
+</html>

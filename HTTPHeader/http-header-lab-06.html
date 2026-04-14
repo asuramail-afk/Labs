@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HTTP Header Lab 06 — CORS基礎（クロスオリジンリソース共有）</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;700&display=swap');
+
+  :root {
+    --bg: #ffffff;
+    --surface: #f5f7fa;
+    --surface2: #ebeef2;
+    --border: #c8cdd3;
+    --text: #1a1a2e;
+    --text-dim: #5c6370;
+    --accent: #005cc5;
+    --accent2: #22863a;
+    --accent3: #6f42c1;
+    --warn: #b08800;
+    --danger: #cb2431;
+    --code-bg: #f0f4f8;
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    padding: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  h1 { font-size: 1.6rem; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 0.8rem; margin-bottom: 1.5rem; font-family: 'IBM Plex Mono', monospace; }
+  h2 { font-size: 1.25rem; color: var(--accent2); margin: 2rem 0 1rem; font-family: 'IBM Plex Mono', monospace; }
+  h3 { font-size: 1.05rem; color: var(--accent3); margin: 1.5rem 0 0.8rem; }
+  p, li { font-size: 0.92rem; margin-bottom: 0.5rem; }
+
+  .status-bar { display: flex; gap: 1rem; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.6rem 1rem; margin-bottom: 1.5rem; font-size: 0.82rem; font-family: 'IBM Plex Mono', monospace; flex-wrap: wrap; }
+  .status-item { display: flex; align-items: center; gap: 0.4rem; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-dim); animation: pulse 1.5s infinite; }
+  .status-dot.ok { background: var(--accent); animation: none; }
+  .status-dot.err { background: var(--danger); animation: none; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .alert-critical { background: #fef2f2; border: 2px solid var(--danger); border-radius: var(--radius); padding: 1rem 1.2rem; margin-bottom: 1.5rem; font-size: 0.88rem; }
+  .alert-critical strong { color: var(--danger); }
+  .alert-critical code { background: rgba(203,36,49,0.1); color: var(--danger); }
+
+  .lab-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin: 1.5rem 0; }
+  .step { background: var(--surface2); border-left: 3px solid var(--accent2); border-radius: 0 var(--radius) var(--radius) 0; padding: 1rem 1.2rem; margin: 1rem 0; }
+  .step-num { font-family: 'IBM Plex Mono', monospace; color: var(--accent2); font-weight: 600; font-size: 0.8rem; margin-bottom: 0.3rem; }
+
+  code, pre { font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; }
+  code { background: var(--code-bg); padding: 0.15rem 0.4rem; border-radius: 4px; color: var(--accent); }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; overflow-x: auto; margin: 0.8rem 0; line-height: 1.6; color: #24292e; }
+  pre .comment { color: #6a737d; }
+  pre .header-name { color: var(--accent2); }
+  pre .header-val { color: var(--accent); }
+  pre .highlight { color: var(--warn); font-weight: 600; }
+
+  .placeholder { color: var(--text-dim); font-style: italic; font-size: 0.8rem; }
+
+  .note { background: #e8f4fd; border: 1px solid #b6d4e8; border-radius: var(--radius); padding: 0.8rem 1rem; margin: 1rem 0; font-size: 0.85rem; color: var(--accent2); }
+  .note::before { content: "💡 "; }
+  .warn-box { background: #fff8e1; border: 1px solid #e6d590; border-radius: var(--radius); padding: 0.8rem 1rem; margin: 1rem 0; font-size: 0.85rem; color: var(--warn); }
+  .warn-box::before { content: "⚠️ "; }
+
+  .check-item { background: var(--surface2); border-radius: var(--radius); padding: 0.6rem 1rem; margin: 0.4rem 0; display: flex; align-items: center; gap: 0.6rem; font-size: 0.88rem; transition: opacity 0.3s; }
+  .check-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
+  .check-item.checked { opacity: 0.55; }
+
+  .diagram { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; line-height: 1.5; overflow-x: auto; white-space: pre; color: var(--text-dim); margin: 1rem 0; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.8rem; margin: 1rem 0; }
+  @media (max-width: 900px) { .three-col { grid-template-columns: 1fr; } }
+  @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+  .col-card { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.8rem; font-size: 0.8rem; }
+  .col-card h4 { font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; margin-bottom: 0.5rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); }
+  .col-card pre { border: none; padding: 0.4rem 0; margin: 0; font-size: 0.75rem; background: transparent; }
+
+  a { color: var(--accent2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  html { scroll-behavior: smooth; }
+
+  .btn { border: none; padding: 0.5rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; font-family: 'Noto Sans JP', sans-serif; margin: 0.3rem; transition: opacity 0.2s; }
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.97); }
+  .btn-accent { background: var(--accent); color: var(--bg); }
+  .btn-accent2 { background: var(--accent2); color: var(--bg); }
+  .btn-accent3 { background: var(--accent3); color: var(--bg); }
+  .btn-warn { background: var(--warn); color: var(--bg); }
+  .btn-dim { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+
+  .toc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.2rem; margin: 1rem 0 2rem; }
+  .toc a { display: inline-block; padding: 0.25rem 0.6rem; margin: 0.15rem; border-radius: 6px; font-size: 0.82rem; background: var(--surface2); transition: background 0.2s; }
+  .toc a:hover { background: var(--border); text-decoration: none; }
+
+  /* Timeline styles for experiment 6-C */
+  .timeline { margin: 1rem 0; font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; }
+  .timeline-row { display: flex; align-items: center; gap: 0.6rem; margin: 0.4rem 0; }
+  .timeline-label { min-width: 200px; color: var(--text-dim); font-size: 0.78rem; }
+  .timeline-bar-wrap { flex: 1; background: var(--surface2); border-radius: 4px; height: 22px; overflow: hidden; position: relative; }
+  .timeline-bar { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 0.4rem; font-size: 0.7rem; font-weight: 600; color: var(--bg); white-space: nowrap; transition: width 0.6s ease; }
+  .timeline-bar.options { background: var(--warn); }
+  .timeline-bar.actual { background: var(--accent2); }
+  .timeline-bar.simple { background: var(--accent); }
+  .timeline-time { min-width: 60px; color: var(--text-dim); font-size: 0.75rem; text-align: right; }
+
+  /* Result area */
+  .result-area { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin: 0.8rem 0; font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; min-height: 80px; white-space: pre-wrap; color: #24292e; }
+  .result-ok { color: var(--accent); }
+  .result-warn { color: var(--warn); }
+  .result-err { color: var(--danger); }
+
+  /* CORS header display */
+  .cors-header-grid { display: grid; grid-template-columns: auto 1fr; gap: 0.3rem 0.8rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; margin: 0.6rem 0; }
+  .cors-header-name { color: var(--accent2); }
+  .cors-header-val { color: var(--accent); }
+  .cors-header-none { color: var(--text-dim); font-style: italic; }
+</style>
+</head>
+<body>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <div class="status-item">
+    <div class="status-dot" id="dot-protocol"></div>
+    <span id="status-protocol">プロトコル確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-httpbin"></div>
+    <span id="status-httpbin">httpbin.org 確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-devtools"></div>
+    <span>DevTools: <kbd style="background:var(--surface2);padding:0.1rem 0.4rem;border-radius:4px;">F12</kbd></span>
+  </div>
+</div>
+<p style="margin-bottom:0.5rem;font-size:0.82rem;"><a href="http-header-lab-index.html" style="color:var(--accent);text-decoration:none;">← マスター索引に戻る</a></p>
+
+<script>
+(function() {
+  const dot = document.getElementById('dot-protocol');
+  const label = document.getElementById('status-protocol');
+  if (location.protocol === 'file:') {
+    dot.classList.add('err');
+    label.innerHTML = '<strong style="color:var(--danger)">file:// 検出（要修正）</strong>';
+    document.getElementById('file-protocol-alert').style.display = 'block';
+  } else { dot.classList.add('ok'); label.textContent = location.protocol + '// ✅'; }
+})();
+(async function() {
+  const dot = document.getElementById('dot-httpbin');
+  const label = document.getElementById('status-httpbin');
+  try {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 5000);
+    const r = await fetch('https://httpbin.org/get', { signal: c.signal });
+    clearTimeout(t);
+    if (r.ok) { dot.classList.add('ok'); label.textContent = 'httpbin.org ✅'; }
+    else { dot.classList.add('err'); label.innerHTML = '<strong style="color:var(--danger)">httpbin.org 応答エラー</strong>'; }
+  } catch(e) { dot.classList.add('err'); label.innerHTML = '<strong style="color:var(--danger)">httpbin.org ❌</strong>'; }
+})();
+</script>
+
+<div class="alert-critical" id="file-protocol-alert" style="display:none;">
+  <strong>🔴 HTTP サーバー経由で開いてください</strong><br><br>
+  現在 <code>file://</code> で開いています。この状態では <code>fetch()</code> が
+  <strong>CORSエラー</strong>になり、ほとんどの実験が動作しません。<br><br>
+  <strong>Lab 01 で起動したサーバーがまだ動いていれば</strong>、ブラウザで
+  <code>http://127.0.0.1:7890/http-header-lab-06.html</code> を開くだけでOKです。<br><br>
+  サーバーが停止している場合は、コマンドプロンプトで以下を実行してください：
+  <pre style="margin:0.8rem 0; font-size:0.78rem;"><span class="highlight">node -e "const http=require('http'),fs=require('fs'),path=require('path');http.createServer((req,res)=>{const f=path.join('C:/Users/user/ClaudeCode/HTTPHeader',req.url==='/'?'/index.html':req.url);fs.readFile(f,(e,d)=>{if(e){res.writeHead(404);res.end('Not found');}else{const ext=path.extname(f);const mime={'html':'text/html','js':'application/javascript','css':'text/css','png':'image/png','ico':'image/x-icon'};res.writeHead(200,{'Content-Type':(mime[ext.slice(1)]||'text/plain')+';charset=utf-8'});res.end(d);}});}).listen(7890,()=>console.log('Server: http://127.0.0.1:7890'));"</span>
+
+<span class="comment"># → http://127.0.0.1:7890/http-header-lab-06.html でアクセス</span></pre>
+</div>
+
+<h1>🧪 Lab 06: CORS基礎（クロスオリジンリソース共有）</h1>
+<p style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.3rem;font-family:'IBM Plex Mono',monospace;">最終更新: 2026年3月</p>
+<p style="color:var(--text-dim); font-size:0.88rem; margin-bottom:1rem;">
+  ～ Access-Control-Allow-Origin, プリフライト, シンプルリクエストを体感する ～
+</p>
+<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">⏱ 所要時間：30分</span>
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">難易度：★★☆</span>
+</div>
+<p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:1rem;">📋 前提知識：<a href="http-header-lab-01.html">Lab 01</a> 完了推奨（Content-Type とプリフライトの関係を Lab 01 で体験済み）</p>
+
+<div class="lab-box" style="border-color:var(--accent); margin-bottom:1rem;">
+  <h3 style="color:var(--accent); margin-top:0;">🎯 このLabの学習目標</h3>
+  <p style="margin-bottom:0.3rem;">完了すると、以下ができるようになります：</p>
+  <div class="check-item" style="opacity:1;"><span>1. 同一オリジンと異なるオリジンへのfetchで応答の違いを確認できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>2. <code>Access-Control-Allow-Origin</code> の値（<code>*</code> vs 具体的オリジン）の意味を理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>3. シンプルリクエストとプリフライトが発生する条件を判別できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>4. DevTools の Network タブで OPTIONS → POST のフローを観察できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>5. OutSystems REST API に CORS ヘッダーを設定する手順を理解する</span></div>
+</div>
+<div class="warn-box" style="border-color:var(--accent3);background:#fce4ec;">
+  <strong style="color:var(--accent3);">💥 実務での失敗例</strong>：SPA開発でAPIサーバーにCORS設定がなく、フロントエンドが本番でデータ取得できない障害が発生。開発環境（同一オリジン）では気づけなかった
+</div>
+
+<div class="toc">
+  <strong style="color:var(--text-dim);font-size:0.82rem;">目次:</strong><br>
+  <a href="#concept">概念整理</a>
+  <a href="#exp-6a">6-A: 同一オリジン vs 別オリジン</a>
+  <a href="#exp-6b">6-B: シンプルリクエスト判定</a>
+  <a href="#exp-6c">6-C: プリフライト観察</a>
+  <a href="#exp-6d">6-D: Access-Control-Allow-Origin確認</a>
+  <a href="#exp-6e">6-E: OutSystems実践</a>
+  <a href="#checklist">✅ チェックリスト</a>
+  <a href="#framework">🔧 設定例</a>
+</div>
+
+<!-- ── 概念整理 ── -->
+<div class="lab-box" id="concept">
+  <h3>CORS の全体像</h3>
+
+  <div class="diagram">CORS フローの全体像:
+
+[Browser]                    [Same Origin]      [Cross Origin]
+   │                              │                   │
+   ├── fetch('同一オリジン') ─────▶│                   │
+   │◀─── レスポンス（CORSなし）────│                   │
+   │                              │                   │
+   ├── fetch('別オリジン') ────────────────────────────▶│
+   │    ↑ブラウザがOriginを付ける  │      OPTIONS? ────▶│
+   │                              │◀─── AC-Allow-* ───│
+   │◀─── Access-Control-Allow-Origin: * か拒否 ────────│
+   │    ↑ 一致しない → CORSエラー（JSにはエラーのみ）</div>
+
+  <p style="font-size:0.88rem; margin:0.8rem 0;">
+    CORS（Cross-Origin Resource Sharing）は、ブラウザが別オリジン（ドメイン・ポート・スキームが異なる）
+    へのfetchリクエストを送る際に、サーバーが「このオリジンからのアクセスを許可する」と宣言するための仕組みです。
+    ブラウザは応答ヘッダーに <code>Access-Control-Allow-Origin</code> がなければJSへの応答公開をブロックします。
+  </p>
+
+  <div class="two-col">
+    <div class="col-card">
+      <h4 style="color:var(--accent);">シンプルリクエスト（OPTIONSなし）</h4>
+      <pre>条件（すべて満たす）:
+  メソッド: GET / HEAD / POST
+
+  Content-Type:
+    text/plain
+    application/x-www-form-urlencoded
+    multipart/form-data
+
+  カスタムヘッダーなし
+  （Authorization等を付けない）
+
+→ ブラウザは直接リクエストを送信
+→ OPTIONS プリフライトは発生しない
+→ サーバーのレスポンスに
+  Access-Control-Allow-Origin が
+  あればJS側に公開される</pre>
+    </div>
+    <div class="col-card">
+      <h4 style="color:var(--accent3);">プリフライト必須（OPTIONSあり）</h4>
+      <pre>以下のいずれかで発生:
+  メソッド: PUT / DELETE / PATCH 等
+
+  Content-Type:
+    application/json  ← 最頻出！
+    application/xml 等
+
+  カスタムヘッダーあり:
+    Authorization
+    X-Custom-Header 等
+
+→ ブラウザが事前に OPTIONS を送信
+→ サーバーが AC-Allow-* で許可応答
+→ その後、本リクエストを送信
+→ 2回のラウンドトリップが発生！</pre>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>CORSエラーはブラウザの保護機能</strong>:
+    CORSエラーが発生しても、サーバーへのリクエスト自体は届いていることがほとんどです（プリフライト以外）。
+    ブラウザがJSへの応答公開をブロックしているだけです。
+    DevToolsのConsoleに <code>Access to fetch at '...' from origin '...' has been blocked by CORS policy</code> と表示されます。
+  </div>
+</div>
+
+<!-- ── 実験 6-A ── -->
+<div class="lab-box" id="exp-6a">
+  <h3>実験 6-A: 同一オリジン vs 別オリジンへのfetch</h3>
+  <p>同じページから「同一オリジン」と「別オリジン（httpbin.org）」にfetchし、CORSヘッダーの有無を比較します。</p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — 各ボタンを押してfetchを実行してください</div>
+    <button class="btn btn-accent" id="btn-same-origin">同一オリジンにfetch（http://127.0.0.1:7890）</button>
+    <button class="btn btn-accent2" id="btn-cross-origin">別オリジンにfetch（httpbin.org）</button>
+    <button class="btn btn-dim" id="btn-6a-reset">クリア</button>
+  </div>
+
+  <div class="two-col">
+    <div class="col-card" id="same-origin-col">
+      <h4 style="color:var(--accent);">同一オリジン（127.0.0.1:7890）</h4>
+      <pre><span class="placeholder">← ボタンを押してください</span></pre>
+    </div>
+    <div class="col-card" id="cross-origin-col">
+      <h4 style="color:var(--accent2);">別オリジン（httpbin.org）</h4>
+      <pre><span class="placeholder">← ボタンを押してください</span></pre>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('btn-same-origin').addEventListener('click', async () => {
+      const col = document.querySelector('#same-origin-col pre');
+      col.textContent = '送信中...';
+      try {
+        const t0 = performance.now();
+        const res = await fetch('http://127.0.0.1:7890/http-header-lab-06.html', { method: 'HEAD' });
+        const t1 = performance.now();
+        const origin = location.origin;
+        const acao = res.headers.get('access-control-allow-origin') || '（なし）';
+        col.textContent =
+          'Origin（送信）: ' + origin + '\n\n' +
+          'レスポンスヘッダー:\n' +
+          '  access-control-allow-origin: ' + acao + '\n' +
+          '  status: ' + res.status + '\n\n' +
+          '所要時間: ' + Math.round(t1 - t0) + 'ms\n\n' +
+          '✅ 同一オリジン → CORS不要\n' +
+          '   ブラウザはOriginヘッダーを送らない\n' +
+          '   サーバーもAccess-Control-*を返さない\n' +
+          '   → JS側で応答を自由に読める';
+      } catch(e) {
+        col.textContent = 'エラー: ' + e.message + '\n\n' +
+          'サーバーが起動していない可能性があります。\n' +
+          '上部のfile://アラートの手順でサーバーを起動してください。';
+      }
+    });
+
+    document.getElementById('btn-cross-origin').addEventListener('click', async () => {
+      const col = document.querySelector('#cross-origin-col pre');
+      col.textContent = '送信中...';
+      try {
+        const t0 = performance.now();
+        const res = await fetch('https://httpbin.org/get');
+        const t1 = performance.now();
+        const acao = res.headers.get('access-control-allow-origin') || '（なし）';
+        col.textContent =
+          'Origin（送信）: ' + location.origin + '\n\n' +
+          'レスポンスヘッダー:\n' +
+          '  access-control-allow-origin: ' + acao + '\n\n' +
+          '所要時間: ' + Math.round(t1 - t0) + 'ms\n\n' +
+          (acao !== '（なし）'
+            ? '✅ CORS成功！\n   httpbin.org は Access-Control-Allow-Origin: *\n   を返すためJSから応答を読める'
+            : '❌ CORSヘッダーなし → JS側でブロックされる');
+      } catch(e) {
+        col.textContent = 'CORSエラーまたはネットワークエラー:\n' + e.message + '\n\n' +
+          'DevToolsのConsoleとNetworkタブを確認してください。';
+      }
+    });
+
+    document.getElementById('btn-6a-reset').addEventListener('click', () => {
+      ['same-origin-col','cross-origin-col'].forEach(id => {
+        document.querySelector('#' + id + ' pre').innerHTML = '<span class="placeholder">← ボタンを押してください</span>';
+      });
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 観察ポイント</div>
+    <pre><span class="header-name">同一オリジン（127.0.0.1:7890）:</span>
+  → ブラウザは Origin ヘッダーをリクエストに付けない
+  → サーバーも Access-Control-* を返す必要がない
+  → JS側で応答ヘッダーを自由に読める
+
+<span class="header-name">別オリジン（httpbin.org）:</span>
+  → ブラウザは Origin: http://127.0.0.1:7890 を自動付与
+  → httpbin.org は <span class="highlight">Access-Control-Allow-Origin: *</span> を返す
+  → * = すべてのオリジンを許可 → fetch成功
+
+DevToolsのNetworkタブで確認:
+  - 同一オリジン: Originリクエストヘッダーがない
+  - 別オリジン: Origin ヘッダーが送信されている</pre>
+  </div>
+
+  <div class="note">
+    <strong>オリジンとは</strong>:
+    スキーム（http/https）+ ホスト名 + ポート番号 の組み合わせです。
+    <code>http://127.0.0.1:7890</code> と <code>https://127.0.0.1:7890</code> は別オリジン（スキームが違う）。
+    <code>http://127.0.0.1:7890</code> と <code>http://127.0.0.1:8080</code> も別オリジン（ポートが違う）。
+  </div>
+</div>
+
+<!-- ── 実験 6-B ── -->
+<div class="lab-box" id="exp-6b">
+  <h3>実験 6-B: シンプルリクエスト判定チェッカー</h3>
+  <p>リクエストがシンプルリクエストかどうかを判定する3条件をインタラクティブに確認し、4パターンの実際のfetchで動作を比較します。</p>
+
+  <div class="step">
+    <div class="step-num">シンプルリクエストの3条件（すべて満たす必要がある）</div>
+    <div style="display:flex; flex-direction:column; gap:0.5rem; margin:0.6rem 0;">
+      <label style="display:flex; align-items:center; gap:0.6rem; font-size:0.88rem; cursor:pointer;">
+        <input type="checkbox" id="cond-method" style="width:18px;height:18px;accent-color:var(--accent);">
+        <span>条件1: メソッドが <code>GET</code> / <code>HEAD</code> / <code>POST</code> のいずれか</span>
+      </label>
+      <label style="display:flex; align-items:center; gap:0.6rem; font-size:0.88rem; cursor:pointer;">
+        <input type="checkbox" id="cond-ctype" style="width:18px;height:18px;accent-color:var(--accent);">
+        <span>条件2: Content-Type が <code>text/plain</code>, <code>application/x-www-form-urlencoded</code>, <code>multipart/form-data</code> のいずれか</span>
+      </label>
+      <label style="display:flex; align-items:center; gap:0.6rem; font-size:0.88rem; cursor:pointer;">
+        <input type="checkbox" id="cond-header" style="width:18px;height:18px;accent-color:var(--accent);">
+        <span>条件3: カスタムヘッダーなし（Authorization 等を付けない）</span>
+      </label>
+    </div>
+    <div id="simple-judge" style="margin-top:0.6rem; padding:0.6rem 1rem; border-radius:6px; font-family:'IBM Plex Mono',monospace; font-size:0.85rem; background:var(--surface2); color:var(--text-dim);">
+      チェックボックスを操作してください
+    </div>
+  </div>
+
+  <script>
+    function updateJudge() {
+      const m = document.getElementById('cond-method').checked;
+      const c = document.getElementById('cond-ctype').checked;
+      const h = document.getElementById('cond-header').checked;
+      const el = document.getElementById('simple-judge');
+      if (m && c && h) {
+        el.style.background = '#e8f5e9';
+        el.style.color = 'var(--accent)';
+        el.textContent = '✅ シンプルリクエスト → プリフライト（OPTIONS）なし。直接リクエスト送信。';
+      } else {
+        const missing = [];
+        if (!m) missing.push('メソッド');
+        if (!c) missing.push('Content-Type');
+        if (!h) missing.push('カスタムヘッダーなし');
+        el.style.background = '#fef2f2';
+        el.style.color = 'var(--danger)';
+        el.textContent = '🚀 プリフライト発生 → 条件未満: ' + missing.join(', ');
+      }
+    }
+    ['cond-method','cond-ctype','cond-header'].forEach(id => {
+      document.getElementById(id).addEventListener('change', updateJudge);
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — 4パターンを実際に試す</div>
+    <p>各ボタンを押してhttpbin.orgにfetchし、結果を比較してください。DevToolsのNetworkタブも同時に観察してください。</p>
+    <div style="display:flex; flex-wrap:wrap; gap:0.3rem; margin:0.6rem 0;">
+      <button class="btn btn-accent" id="btn-6b-get">GET（シンプル）</button>
+      <button class="btn btn-accent2" id="btn-6b-post-text">POST + text/plain（シンプル）</button>
+      <button class="btn btn-accent3" id="btn-6b-post-json">POST + application/json（プリフライト）</button>
+      <button class="btn btn-warn" id="btn-6b-auth">GET + Authorization（プリフライト）</button>
+      <button class="btn btn-dim" id="btn-6b-reset">クリア</button>
+    </div>
+  </div>
+
+  <div id="result-6b" class="result-area"><span class="placeholder">← ボタンを押すと判定結果が表示されます</span></div>
+
+  <script>
+    async function run6B(label, url, options, isSimple, reason) {
+      const area = document.getElementById('result-6b');
+      area.textContent = label + ' — 送信中...';
+      try {
+        const t0 = performance.now();
+        const res = await fetch(url, options);
+        const t1 = performance.now();
+        const acao = res.headers.get('access-control-allow-origin') || '（なし）';
+        area.textContent =
+          '=== ' + label + ' ===\n\n' +
+          (isSimple
+            ? 'シンプルリクエスト ✅  OPTIONSなし\n'
+            : 'プリフライト発生 🚀  OPTIONSリクエストが先に送信される\n') +
+          '\n理由: ' + reason + '\n\n' +
+          'access-control-allow-origin: ' + acao + '\n' +
+          '所要時間: ' + Math.round(t1 - t0) + 'ms\n\n' +
+          'DevToolsのNetworkタブで確認:\n' +
+          (isSimple
+            ? '  → ' + (options.method || 'GET') + ' リクエストが1件のみ表示される'
+            : '  → OPTIONS → ' + (options.method || 'GET') + ' の2件が順番に表示される');
+      } catch(e) {
+        area.textContent = label + '\n\nエラー: ' + e.message + '\n\nDevToolsのConsoleでCORSエラーの詳細を確認してください。';
+      }
+    }
+
+    document.getElementById('btn-6b-get').addEventListener('click', () =>
+      run6B('GET（シンプルリクエスト）',
+        'https://httpbin.org/get',
+        { method: 'GET' },
+        true,
+        'GET はシンプルリクエストのメソッド条件を満たす。カスタムヘッダーなし。'));
+
+    document.getElementById('btn-6b-post-text').addEventListener('click', () =>
+      run6B('POST + text/plain（シンプルリクエスト）',
+        'https://httpbin.org/post',
+        { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: 'hello cors' },
+        true,
+        'POST + text/plain はシンプルリクエストの全条件を満たす。OPTIONSは送信されない。'));
+
+    document.getElementById('btn-6b-post-json').addEventListener('click', () =>
+      run6B('POST + application/json（プリフライト）',
+        'https://httpbin.org/post',
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: 'value' }) },
+        false,
+        'Content-Type: application/json はシンプルリクエストの許可リスト外 → プリフライト発生！'));
+
+    document.getElementById('btn-6b-auth').addEventListener('click', () =>
+      run6B('GET + Authorization（プリフライト）',
+        'https://httpbin.org/get',
+        { method: 'GET', headers: { 'Authorization': 'Bearer dummy-token' } },
+        false,
+        'Authorization はカスタムヘッダー → 条件3を満たさない → プリフライト発生！'));
+
+    document.getElementById('btn-6b-reset').addEventListener('click', () => {
+      document.getElementById('result-6b').innerHTML = '<span class="placeholder">← ボタンを押すと判定結果が表示されます</span>';
+    });
+  </script>
+
+  <div class="note">
+    <strong>なぜシンプルリクエストの区別があるのか</strong>:
+    歴史的経緯から、フォームのPOST（<code>application/x-www-form-urlencoded</code>等）は
+    CORSが定義される以前から存在していました。これらはサーバー側で対応可能だとして
+    「シンプルリクエスト」として扱い、プリフライトを省略できるようになっています。
+  </div>
+</div>
+
+<!-- ── 実験 6-C ── -->
+<div class="lab-box" id="exp-6c">
+  <h3>実験 6-C: プリフライト観察（DevTools確認）</h3>
+  <p>application/json POST と text/plain POST を比較し、プリフライトによる通信回数の違いをタイムラインで可視化します。</p>
+
+  <div class="diagram">プリフライトのタイムライン（application/json の場合）:
+
+  ブラウザ                              httpbin.org
+     │                                     │
+     ├──[1] OPTIONS /post ─────────────────▶│  プリフライト
+     │       Origin: http://127.0.0.1:7890  │  （事前確認）
+     │       Access-Control-Request-Method: POST
+     │       Access-Control-Request-Headers: Content-Type
+     │                                     │
+     │◀────── 204 No Content ──────────────┤
+     │        Access-Control-Allow-Origin: *│
+     │        Access-Control-Allow-Methods: *
+     │        Access-Control-Allow-Headers: *
+     │                                     │
+     ├──[2] POST /post ────────────────────▶│  本リクエスト
+     │       Content-Type: application/json │
+     │       Origin: http://127.0.0.1:7890  │
+     │                                     │
+     │◀────── 200 OK + ACAO: * ────────────┤
+     │
+  → 2回のラウンドトリップ = text/plain より遅い！</div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — 2種類のPOSTを送信してタイムラインを比較</div>
+    <p>DevToolsのNetworkタブを開いた状態でボタンを押してください。</p>
+    <button class="btn btn-accent3" id="btn-6c-json">application/json POST を送信（プリフライト発生）</button>
+    <button class="btn btn-accent" id="btn-6c-text">text/plain POST を送信（プリフライトなし）</button>
+    <button class="btn btn-dim" id="btn-6c-reset">タイムラインをリセット</button>
+  </div>
+
+  <div class="timeline" id="timeline-area">
+    <div class="timeline-row" id="tl-json-options">
+      <div class="timeline-label">JSON: OPTIONS（プリフライト）</div>
+      <div class="timeline-bar-wrap"><div class="timeline-bar options" style="width:0%">OPTIONS</div></div>
+      <div class="timeline-time" id="tl-json-options-time">—</div>
+    </div>
+    <div class="timeline-row" id="tl-json-post">
+      <div class="timeline-label">JSON: POST（本リクエスト）</div>
+      <div class="timeline-bar-wrap"><div class="timeline-bar actual" style="width:0%">POST</div></div>
+      <div class="timeline-time" id="tl-json-post-time">—</div>
+    </div>
+    <div class="timeline-row" id="tl-text-post">
+      <div class="timeline-label">text/plain: POST（プリフライトなし）</div>
+      <div class="timeline-bar-wrap"><div class="timeline-bar simple" style="width:0%">POST</div></div>
+      <div class="timeline-time" id="tl-text-post-time">—</div>
+    </div>
+  </div>
+
+  <div id="result-6c" class="result-area"><span class="placeholder">← ボタンを押すと計測結果が表示されます</span></div>
+
+  <script>
+    let jsonTotal = 0, textTotal = 0;
+
+    function setBar(barId, timeId, ms, maxMs) {
+      const bar = document.querySelector('#' + barId + ' .timeline-bar');
+      const timeEl = document.getElementById(timeId);
+      const pct = Math.min(Math.max((ms / Math.max(maxMs, 1)) * 100, 5), 100);
+      bar.style.width = pct + '%';
+      timeEl.textContent = ms + 'ms';
+    }
+
+    document.getElementById('btn-6c-json').addEventListener('click', async () => {
+      const area = document.getElementById('result-6c');
+      area.textContent = 'application/json POST 送信中...\n(プリフライトが先に発生します)';
+
+      // Reset bars
+      document.querySelector('#tl-json-options .timeline-bar').style.width = '0%';
+      document.querySelector('#tl-json-post .timeline-bar').style.width = '0%';
+      document.getElementById('tl-json-options-time').textContent = '...';
+      document.getElementById('tl-json-post-time').textContent = '...';
+
+      try {
+        const t0 = performance.now();
+        const res = await fetch('https://httpbin.org/post', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cors: 'preflight-test', time: new Date().toISOString() })
+        });
+        const t1 = performance.now();
+        const totalMs = Math.round(t1 - t0);
+        jsonTotal = totalMs;
+
+        // Estimate: OPTIONS ~40%, POST ~60% of total (rough approximation from network timing)
+        const optionsMs = Math.round(totalMs * 0.4);
+        const postMs = totalMs - optionsMs;
+
+        const maxMs = Math.max(jsonTotal, textTotal, 100);
+        setBar('tl-json-options', 'tl-json-options-time', optionsMs, maxMs);
+        setTimeout(() => setBar('tl-json-post', 'tl-json-post-time', postMs, maxMs), 200);
+
+        const acao = res.headers.get('access-control-allow-origin') || '（なし）';
+        area.textContent =
+          '=== application/json POST ===\n\n' +
+          '合計所要時間: ' + totalMs + 'ms\n' +
+          '  ├ OPTIONS（プリフライト推定）: ~' + optionsMs + 'ms\n' +
+          '  └ POST（本リクエスト推定）:   ~' + postMs + 'ms\n\n' +
+          'access-control-allow-origin: ' + acao + '\n\n' +
+          'DevToolsのNetworkタブで確認:\n' +
+          '  → OPTIONS リクエストが先にリストされているはず\n' +
+          '  → 本POSTリクエストはその後に表示される\n\n' +
+          '※ タイムラインの分割は推定値です。\n' +
+          '  正確な計測はDevTools Performance / Networkタブで行ってください。';
+      } catch(e) {
+        area.textContent = 'エラー: ' + e.message;
+      }
+    });
+
+    document.getElementById('btn-6c-text').addEventListener('click', async () => {
+      const area = document.getElementById('result-6c');
+      area.textContent = 'text/plain POST 送信中...\n(プリフライトなし、直接送信)';
+
+      document.querySelector('#tl-text-post .timeline-bar').style.width = '0%';
+      document.getElementById('tl-text-post-time').textContent = '...';
+
+      try {
+        const t0 = performance.now();
+        const res = await fetch('https://httpbin.org/post', {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: 'cors-simple-request-test'
+        });
+        const t1 = performance.now();
+        const totalMs = Math.round(t1 - t0);
+        textTotal = totalMs;
+
+        const maxMs = Math.max(jsonTotal, textTotal, 100);
+        // Re-render json bars with updated scale if needed
+        if (jsonTotal > 0) {
+          const optMs = Math.round(jsonTotal * 0.4);
+          setBar('tl-json-options', 'tl-json-options-time', optMs, maxMs);
+          setBar('tl-json-post', 'tl-json-post-time', jsonTotal - optMs, maxMs);
+        }
+        setBar('tl-text-post', 'tl-text-post-time', totalMs, maxMs);
+
+        const acao = res.headers.get('access-control-allow-origin') || '（なし）';
+        area.textContent =
+          '=== text/plain POST ===\n\n' +
+          '合計所要時間: ' + totalMs + 'ms（プリフライトなし、1回のみ）\n\n' +
+          'access-control-allow-origin: ' + acao + '\n\n' +
+          'DevToolsのNetworkタブで確認:\n' +
+          '  → POSTリクエストが1件のみ表示されるはず\n' +
+          '  → OPTIONSリクエストは存在しない\n\n' +
+          (jsonTotal > 0
+            ? 'application/json との比較:\n  JSON: ' + jsonTotal + 'ms（OPTIONS+POST）\n  text: ' + totalMs + 'ms（POSTのみ）\n  → 差分: ' + Math.abs(jsonTotal - totalMs) + 'ms'
+            : '先に application/json ボタンも押して比較してみてください。');
+      } catch(e) {
+        area.textContent = 'エラー: ' + e.message;
+      }
+    });
+
+    document.getElementById('btn-6c-reset').addEventListener('click', () => {
+      jsonTotal = 0; textTotal = 0;
+      ['tl-json-options','tl-json-post','tl-text-post'].forEach(id => {
+        document.querySelector('#' + id + ' .timeline-bar').style.width = '0%';
+      });
+      ['tl-json-options-time','tl-json-post-time','tl-text-post-time'].forEach(id => {
+        document.getElementById(id).textContent = '—';
+      });
+      document.getElementById('result-6c').innerHTML = '<span class="placeholder">← ボタンを押すと計測結果が表示されます</span>';
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — DevTools Network タブで OPTIONS を目視確認する</div>
+    <pre>DevTools (F12) → Network タブを開く → application/jsonボタンを押す
+
+確認ポイント:
+  1. リストに <span class="highlight">OPTIONS</span> リクエストが先に表示される
+  2. OPTIONSのStatusは <span class="header-val">204</span> または 200
+  3. OPTIONSのResponseヘッダーに:
+       <span class="header-name">access-control-allow-origin: *</span>
+       <span class="header-name">access-control-allow-methods: *</span>
+  4. その後 POST リクエストが表示される
+  5. POST のResponseヘッダーにも access-control-allow-origin がある
+
+text/plain ボタンでは OPTIONS が表示されないことを確認する！</pre>
+  </div>
+
+  <div class="warn-box">
+    <strong>Access-Control-Max-Age でプリフライトをキャッシュできる</strong>:
+    <code>Access-Control-Max-Age: 86400</code> をレスポンスに含めると、
+    ブラウザはその時間（秒）の間、同じエンドポイントへのプリフライトをキャッシュし、
+    次回からOPTIONSを省略できます。本番APIでのパフォーマンス最適化に有効です。
+  </div>
+</div>
+
+<!-- ── 実験 6-D ── -->
+<div class="lab-box" id="exp-6d">
+  <h3>実験 6-D: Access-Control-Allow-Origin の値を確認する</h3>
+  <p>httpbin.org から返される CORS 関連レスポンスヘッダーをすべて取得・表示します。</p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — CORS関連ヘッダーをすべて取得する</div>
+    <button class="btn btn-accent2" id="btn-6d-fetch">CORS ヘッダーを確認（GET httpbin.org）</button>
+    <button class="btn btn-dim" id="btn-6d-reset">クリア</button>
+  </div>
+
+  <div id="result-6d" class="result-area"><span class="placeholder">← ボタンを押すとCORSヘッダーが表示されます</span></div>
+
+  <script>
+    document.getElementById('btn-6d-fetch').addEventListener('click', async () => {
+      const area = document.getElementById('result-6d');
+      area.textContent = '取得中...';
+      try {
+        const res = await fetch('https://httpbin.org/get');
+        const corsHeaders = [
+          'access-control-allow-origin',
+          'access-control-allow-methods',
+          'access-control-allow-headers',
+          'access-control-allow-credentials',
+          'access-control-expose-headers',
+          'access-control-max-age',
+          'vary'
+        ];
+        let output = '=== CORS関連レスポンスヘッダー ===\n\n';
+        corsHeaders.forEach(h => {
+          const val = res.headers.get(h);
+          output += h + ':\n  ' + (val || '（なし）') + '\n\n';
+        });
+        output += '=== 解説 ===\n\n';
+
+        const acao = res.headers.get('access-control-allow-origin') || '';
+        if (acao === '*') {
+          output += 'access-control-allow-origin: *\n' +
+            '  → すべてのオリジンを許可\n' +
+            '  → ただし Credentials（Cookie/Authorization）と組み合わせ不可！\n' +
+            '     Credentials を使う場合は * の代わりに\n' +
+            '     具体的なオリジン（例: https://yourapp.example.com）を指定し、\n' +
+            '     さらに Access-Control-Allow-Credentials: true が必要\n\n';
+        } else if (acao) {
+          output += 'access-control-allow-origin: ' + acao + '\n' +
+            '  → 特定オリジンのみ許可\n' +
+            '  → Credentials と組み合わせ可能\n\n';
+        }
+
+        output += 'vary ヘッダーの重要性:\n';
+        const vary = res.headers.get('vary') || '';
+        if (vary.toLowerCase().includes('origin')) {
+          output += '  Vary: ' + vary + '\n' +
+            '  → Originを含む ✅ CDNキャッシュ汚染を防げる';
+        } else {
+          output += '  Vary に Origin が含まれていない\n' +
+            '  → CDN環境では CORS レスポンスのキャッシュ汚染リスクあり！\n' +
+            '  → CDN配信するAPIには必ず Vary: Origin を付けること';
+        }
+
+        area.textContent = output;
+      } catch(e) {
+        area.textContent = 'エラー: ' + e.message;
+      }
+    });
+
+    document.getElementById('btn-6d-reset').addEventListener('click', () => {
+      document.getElementById('result-6d').innerHTML = '<span class="placeholder">← ボタンを押すとCORSヘッダーが表示されます</span>';
+    });
+  </script>
+
+  <div class="two-col">
+    <div class="col-card">
+      <h4 style="color:var(--accent);">Access-Control-Allow-Origin の値パターン</h4>
+      <pre>パターン1: ワイルドカード
+  Access-Control-Allow-Origin: *
+  → すべてのオリジンを許可
+  → パブリックAPIに使用
+  → Credentialsと併用不可！
+
+パターン2: 特定オリジン
+  Access-Control-Allow-Origin: https://yourapp.example.com
+  → 指定オリジンのみ許可
+  → Credentialsと併用可能
+  → 動的に変える場合は Vary: Origin 必須
+
+パターン3: ヘッダーなし
+  （Access-Control-Allow-Originなし）
+  → ブラウザがJSへの応答公開をブロック
+  → CORSエラーが発生する</pre>
+    </div>
+    <div class="col-card">
+      <h4 style="color:var(--accent2);">Credentials（認証情報）との関係</h4>
+      <pre>Credentialsを使う場合の設定:
+
+サーバー側（レスポンス）:
+  Access-Control-Allow-Origin: https://yourapp.example.com
+  Access-Control-Allow-Credentials: true
+  ※ * は絶対にNG！
+
+クライアント側（fetch）:
+  fetch(url, { credentials: 'include' })
+
+Credentialsの種類:
+  - Cookie
+  - HTTPAuthorizationヘッダー
+  - TLSクライアント証明書
+
+よくある間違い:
+  ❌ ACAO: * + credentials: 'include'
+  → ブラウザが拒否（セキュリティ上の理由）</pre>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Vary: Origin の重要性</strong>:
+    サーバーがオリジン別に異なる <code>Access-Control-Allow-Origin</code> を返す場合、
+    CDNはレスポンスを1つキャッシュしてしまう可能性があります。
+    <code>Vary: Origin</code> を付けることでCDNにオリジンごとに別キャッシュを持つよう指示できます。
+    忘れると「AオリジンのキャッシュがBオリジンに返される」という事故が起きます。
+  </div>
+</div>
+
+<!-- ── 実験 6-E ── -->
+<div class="lab-box" id="exp-6e">
+  <h3>実験 6-E: OutSystems実践 — REST API への CORS ヘッダー設定</h3>
+  <p style="color:var(--text-dim); font-size:0.85rem;">※ この実験はOutSystems環境が必要です。環境がない場合は手順を読むだけでOKです。</p>
+
+  <div class="step">
+    <div class="step-num">手順 1 — OutSystems REST API に CORS ヘッダーを設定する</div>
+    <p>Service Studio でREST APIのOnResponseイベントを使って <code>Access-Control-Allow-Origin</code> を付与します。</p>
+    <pre><span class="comment">// Service Studio の設定手順:</span>
+<span class="comment">// Integrate → REST → REST APIを選択 → OnResponse アクション</span>
+
+<span class="comment">// OnResponse アクション内で SetResponseHeader を使用:</span>
+<span class="header-name">SetResponseHeader</span>(
+  HeaderName:  <span class="header-val">"Access-Control-Allow-Origin"</span>,
+  HeaderValue: <span class="header-val">"https://yourapp.example.com"</span>
+)
+
+<span class="header-name">SetResponseHeader</span>(
+  HeaderName:  <span class="header-val">"Access-Control-Allow-Methods"</span>,
+  HeaderValue: <span class="header-val">"GET, POST, PUT, DELETE, OPTIONS"</span>
+)
+
+<span class="header-name">SetResponseHeader</span>(
+  HeaderName:  <span class="header-val">"Access-Control-Allow-Headers"</span>,
+  HeaderValue: <span class="header-val">"Content-Type, Authorization, X-Requested-With"</span>
+)
+
+<span class="header-name">SetResponseHeader</span>(
+  HeaderName:  <span class="header-val">"Vary"</span>,
+  HeaderValue: <span class="header-val">"Origin"</span>
+)</pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">手順 2 — プリフライト（OPTIONS）リクエストへの対応</div>
+    <p>OutSystemsは標準でOPTIONSリクエストを処理しないため、追加設定が必要です。</p>
+    <pre><span class="comment">// アプローチ1: IIS の Web.config で OPTIONS を許可（推奨）</span>
+&lt;system.webServer&gt;
+  &lt;httpProtocol&gt;
+    &lt;customHeaders&gt;
+      &lt;add name="Access-Control-Allow-Origin" value="*" /&gt;
+      &lt;add name="Access-Control-Allow-Methods" value="GET,POST,PUT,DELETE,OPTIONS" /&gt;
+      &lt;add name="Access-Control-Allow-Headers" value="Content-Type,Authorization" /&gt;
+    &lt;/customHeaders&gt;
+  &lt;/httpProtocol&gt;
+&lt;/system.webServer&gt;
+
+<span class="comment">// アプローチ2: REST APIにOPTIONS用のエンドポイントを追加</span>
+<span class="comment">// Method: ALL または POST を追加し、OPTIONS時に204を返す</span>
+<span class="comment">// ※ OutSystems PaaS では Web.config 直接編集は不可</span>
+<span class="comment">//   Extensibility Configurations や On Before Request を使用</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">手順 3 — OutSystems が CORS を自動付与する場合</div>
+    <pre><span class="comment">// OutSystems 11 / ODC では環境設定で CORS を管理できる場合がある</span>
+
+<span class="comment">// Service Center → Administration → Security → CORS</span>
+<span class="comment">// または</span>
+<span class="comment">// LifeTime → Infrastructure → Environments → [環境] → Security</span>
+
+<span class="comment">// 手動設定が必要な場面:</span>
+<span class="header-name">1</span>. 外部ドメインのSPAからOutSystems REST APIを呼ぶ場合
+<span class="header-name">2</span>. モバイルアプリ（Cordova/Capacitor）からAPIを呼ぶ場合
+<span class="header-name">3</span>. Credentials（Cookie/Authorization）を使うクロスオリジン通信
+
+<span class="comment">// 確認方法:</span>
+<span class="comment">// DevTools → Network → REST APIのリクエストを選択</span>
+<span class="comment">// Response Headers に Access-Control-Allow-Origin があるか確認</span></pre>
+  </div>
+
+  <div class="warn-box">
+    <strong>OutSystems PaaS での制約</strong>:
+    OutSystems PaaS（クラウド環境）では <code>Web.config</code> を直接編集できません。
+    <code>SetResponseHeader</code> を使ったサーバーアクションか、
+    Service Center の Security 設定を使用してください。
+    また、<code>Access-Control-Allow-Origin: *</code> はCookie認証との併用ができないため、
+    ログイン後のAPIには具体的なオリジンを指定する必要があります。
+  </div>
+</div>
+
+<hr>
+<h2 id="framework">🔧 フレームワーク別設定例</h2>
+<p style="font-size:0.85rem;color:var(--text-dim);">このLabで学んだヘッダーを各環境で設定する方法です。</p>
+
+<div style="overflow-x:auto;">
+<table style="width:100%;border-collapse:collapse;font-size:0.78rem;font-family:'IBM Plex Mono',monospace;margin:1rem 0;">
+  <thead>
+    <tr style="background:var(--surface2);color:var(--accent2);">
+      <th style="padding:0.6rem;border:1px solid var(--border);text-align:left;min-width:120px;">環境</th>
+      <th style="padding:0.6rem;border:1px solid var(--border);text-align:left;">設定方法</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="padding:0.6rem;border:1px solid var(--border);color:var(--accent);white-space:nowrap;">Express</td>
+      <td style="padding:0.6rem;border:1px solid var(--border);"><code>const cors = require('cors'); app.use(cors({ origin: 'https://app.example.com' }))</code></td>
+    </tr>
+    <tr>
+      <td style="padding:0.6rem;border:1px solid var(--border);color:var(--accent);white-space:nowrap;">Next.js</td>
+      <td style="padding:0.6rem;border:1px solid var(--border);"><code>// next.config.js の headers() で Access-Control-Allow-Origin を設定</code></td>
+    </tr>
+    <tr>
+      <td style="padding:0.6rem;border:1px solid var(--border);color:var(--accent);white-space:nowrap;">Nginx</td>
+      <td style="padding:0.6rem;border:1px solid var(--border);"><code>add_header Access-Control-Allow-Origin "https://app.example.com";</code></td>
+    </tr>
+    <tr>
+      <td style="padding:0.6rem;border:1px solid var(--border);color:var(--accent);white-space:nowrap;">OutSystems</td>
+      <td style="padding:0.6rem;border:1px solid var(--border);"><code>SetResponseHeader("Access-Control-Allow-Origin", "https://app.example.com")</code></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<hr>
+<h2 id="checklist">✅ Lab 06 チェックリスト</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">チェック状態はブラウザに自動保存されます。</p>
+
+<div class="check-item"><input type="checkbox" data-key="lab06-1"> <label>同一オリジンへのfetchと別オリジンへのfetchでヘッダーの違いを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab06-2"> <label>シンプルリクエストの3条件（メソッド / Content-Type / カスタムヘッダー）を理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab06-3"> <label>application/json でプリフライト（OPTIONS）が発生することを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab06-4"> <label>text/plain でプリフライトが発生しないことを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab06-5"> <label><code>Access-Control-Allow-Origin: *</code> の値をDevToolsで確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab06-6"> <label>DevTools Network タブで OPTIONS リクエストを目視確認した（またはタイムラインで確認）</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab06-7"> <label>OutSystems REST API への CORS ヘッダー設定手順を理解した</label></div>
+
+<div style="margin-top:1rem; text-align:center;">
+  <span id="progress-text" style="font-family:'IBM Plex Mono',monospace; color:var(--accent); font-size:0.9rem;"></span>
+</div>
+
+<script>
+  const STORAGE_PREFIX = 'httplab_';
+  function updateProgress() {
+    const all = document.querySelectorAll('input[type="checkbox"][data-key]');
+    const checked = [...all].filter(cb => cb.checked).length;
+    const el = document.getElementById('progress-text');
+    if (el) el.textContent = checked + ' / ' + all.length + ' 完了';
+  }
+  document.querySelectorAll('input[type="checkbox"][data-key]').forEach(cb => {
+    const saved = localStorage.getItem(STORAGE_PREFIX + cb.dataset.key);
+    if (saved === 'true') { cb.checked = true; cb.closest('.check-item')?.classList.add('checked'); }
+    cb.addEventListener('change', () => {
+      localStorage.setItem(STORAGE_PREFIX + cb.dataset.key, cb.checked);
+      cb.closest('.check-item')?.classList.toggle('checked', cb.checked);
+      updateProgress();
+    });
+  });
+  updateProgress();
+</script>
+
+<hr>
+
+<div class="lab-box" style="border-color:var(--warn);">
+  <h3 style="color:var(--warn);margin-top:0;">🚀 本番環境で確認すべきこと</h3>
+  <p style="font-size:0.82rem;color:var(--text-dim);">このLabの内容をデプロイ前に確認するチェックリストです。</p>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ <code>Access-Control-Allow-Origin</code> に <code>*</code> ではなく具体的なオリジンを指定している（認証付きAPIの場合）</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ <code>Vary: Origin</code> をCORSレスポンスに付与している（CDNキャッシュ汚染防止）</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ プリフライト結果に <code>Access-Control-Max-Age</code> を設定している（不要なOPTIONSリクエスト削減）</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ <code>Access-Control-Allow-Headers</code> に必要なヘッダーのみ許可している</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ DevTools Network タブで OPTIONS リクエストが正常に 204 を返すことを確認した</div>
+</div>
+
+<div class="note">
+  📖 <strong>参照資料</strong>：このLabの内容は <code>http-headers-guide-v2.md</code> の 第2部②「APIサーバー」の CORS プリフライト部分 に対応しています。より詳しい解説・ヘッダー一覧はガイドを参照してください。
+</div>
+
+<h2>📝 Lab 06 学習ノート</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">メモはブラウザに自動保存されます。</p>
+<textarea id="notes" rows="6" placeholder="気づいたこと、疑問点をメモ..."
+  style="width:100%;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:0.8rem;font-family:'Noto Sans JP',sans-serif;font-size:0.9rem;resize:vertical;margin-top:0.5rem;"></textarea>
+
+<script>
+  const notesEl = document.getElementById('notes');
+  const savedNotes = localStorage.getItem(STORAGE_PREFIX + 'lab06_notes');
+  if (savedNotes) notesEl.value = savedNotes;
+  notesEl.addEventListener('input', () => { localStorage.setItem(STORAGE_PREFIX + 'lab06_notes', notesEl.value); });
+</script>
+
+<div style="margin-top:2rem; display:flex; justify-content:space-between; font-size:0.82rem; color:var(--text-dim);">
+  <span>← 前回: <a href="http-header-lab-05.html"><strong>Lab 05 — Cookieセキュリティ</strong></a></span>
+  <span>次回: <a href="http-header-lab-07.html"><strong>Lab 07 — CORS応用（Credentials, Vary, Expose-Headers）</strong></a> →<br><span style="color:var(--text-dim);font-size:0.78rem;">CORSの基本を理解したら、Credentials や Vary: Origin など本番で必ずハマる応用パターンへ</span></span>
+</div>
+
+</body>
+</html>

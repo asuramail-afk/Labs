@@ -1,0 +1,1436 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HTTP Header Lab 11 — Fetch Metadata（Sec-Fetch-*）</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;700&display=swap');
+
+  :root {
+    --bg: #ffffff;
+    --surface: #f5f7fa;
+    --surface2: #ebeef2;
+    --border: #c8cdd3;
+    --text: #1a1a2e;
+    --text-dim: #5c6370;
+    --accent: #005cc5;
+    --accent2: #22863a;
+    --accent3: #6f42c1;
+    --warn: #b08800;
+    --danger: #cb2431;
+    --code-bg: #f0f4f8;
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    padding: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+    color: var(--accent);
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 0.8rem;
+    margin-bottom: 1.5rem;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+    color: var(--accent2);
+    margin: 2rem 0 1rem;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  h3 {
+    font-size: 1.05rem;
+    color: var(--accent3);
+    margin: 1.5rem 0 0.8rem;
+  }
+
+  p, li { font-size: 0.92rem; margin-bottom: 0.5rem; }
+
+  /* ── Status Bar ── */
+  .status-bar {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.6rem 1rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.82rem;
+    font-family: 'IBM Plex Mono', monospace;
+    flex-wrap: wrap;
+  }
+  .status-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    animation: pulse 1.5s infinite;
+  }
+  .status-dot.ok { background: var(--accent); animation: none; }
+  .status-dot.err { background: var(--danger); animation: none; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* ── Critical Alert ── */
+  .alert-critical {
+    background: #fef2f2;
+    border: 2px solid var(--danger);
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.88rem;
+  }
+  .alert-critical strong { color: var(--danger); }
+  .alert-critical code {
+    background: rgba(203,36,49,0.1);
+    color: var(--danger);
+  }
+
+  /* ── Lab Section ── */
+  .lab-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+  }
+
+  .step {
+    background: var(--surface2);
+    border-left: 3px solid var(--accent2);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 1rem 1.2rem;
+    margin: 1rem 0;
+  }
+  .step-num {
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--accent2);
+    font-weight: 600;
+    font-size: 0.8rem;
+    margin-bottom: 0.3rem;
+  }
+
+  code, pre {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+  }
+  code {
+    background: var(--code-bg);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    color: var(--accent);
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    overflow-x: auto;
+    margin: 0.8rem 0;
+    line-height: 1.6;
+    color: #24292e;
+  }
+  pre .comment { color: #6a737d; }
+  pre .header-name { color: var(--accent2); }
+  pre .header-val  { color: var(--accent); }
+  pre .highlight    { color: var(--warn); font-weight: 600; }
+
+  .result-area pre { min-height: 2.5rem; }
+  .placeholder {
+    color: var(--text-dim);
+    font-style: italic;
+    font-size: 0.8rem;
+  }
+
+  .note {
+    background: #e8f4fd;
+    border: 1px solid #b6d4e8;
+    border-radius: var(--radius);
+    padding: 0.8rem 1rem;
+    margin: 1rem 0;
+    font-size: 0.85rem;
+    color: var(--accent2);
+  }
+  .note::before { content: "💡 "; }
+
+  .warn-box {
+    background: #fff8e1;
+    border: 1px solid #e6d590;
+    border-radius: var(--radius);
+    padding: 0.8rem 1rem;
+    margin: 1rem 0;
+    font-size: 0.85rem;
+    color: var(--warn);
+  }
+  .warn-box::before { content: "⚠️ "; }
+
+  .check-item {
+    background: var(--surface2);
+    border-radius: var(--radius);
+    padding: 0.6rem 1rem;
+    margin: 0.4rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.88rem;
+    transition: opacity 0.3s;
+  }
+  .check-item input[type="checkbox"] {
+    width: 18px; height: 18px;
+    accent-color: var(--accent);
+    flex-shrink: 0;
+  }
+  .check-item.checked { opacity: 0.55; }
+
+  .diagram {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.2rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    overflow-x: auto;
+    white-space: pre;
+    color: var(--text-dim);
+    margin: 1rem 0;
+  }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+  @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* ── Result Table ── */
+  .result-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.8rem 0;
+    font-size: 0.82rem;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .result-table th {
+    background: var(--surface2);
+    color: var(--accent2);
+    padding: 0.5rem 0.6rem;
+    text-align: left;
+    border-bottom: 2px solid var(--accent2);
+    font-weight: 600;
+  }
+  .result-table td {
+    padding: 0.45rem 0.6rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .result-table tr:hover { background: var(--surface); }
+  .val-navigate { color: var(--accent); }
+  .val-cors { color: var(--accent2); }
+  .val-nocors { color: var(--accent3); }
+  .val-same { color: var(--accent); }
+  .val-cross { color: var(--danger); }
+  .val-none { color: var(--warn); }
+
+  /* ── Decision Tree ── */
+  .decision-tree {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.2rem;
+    margin: 1rem 0;
+  }
+  .decision-node {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.6rem 1rem;
+    margin: 0.4rem 0;
+    font-size: 0.82rem;
+    transition: all 0.3s;
+    cursor: default;
+  }
+  .decision-node.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 12px rgba(110,231,183,0.15);
+  }
+  .decision-node.blocked {
+    border-color: var(--danger);
+    background: linear-gradient(135deg, #fef2f2, var(--surface2));
+  }
+  .decision-node.allowed {
+    border-color: var(--accent);
+    background: linear-gradient(135deg, #1a2d1e, var(--surface2));
+  }
+  .decision-arrow {
+    color: var(--text-dim);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    padding-left: 1.5rem;
+    margin: 0.2rem 0;
+  }
+
+  /* ── Live Monitor ── */
+  .monitor-log {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.8rem;
+    max-height: 350px;
+    overflow-y: auto;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    line-height: 1.6;
+    margin: 0.8rem 0;
+  }
+  .log-entry {
+    padding: 0.3rem 0.5rem;
+    border-bottom: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.6rem;
+    align-items: start;
+  }
+  .log-entry:last-child { border-bottom: none; }
+  .log-tag {
+    display: inline-block;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .tag-navigate    { background: #e8f5e9; color: var(--accent); }
+  .tag-cors        { background: #e3f2fd; color: var(--accent2); }
+  .tag-no-cors     { background: #2d1e35; color: var(--accent3); }
+  .tag-same-origin { background: #1a2d1e; color: var(--accent); }
+  .tag-cross-site  { background: #fef2f2; color: var(--danger); }
+  .tag-same-site   { background: #fff8e1; color: var(--warn); }
+
+  a { color: var(--accent2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+
+  /* ── TOC Nav ── */
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+    margin: 1rem 0 2rem;
+  }
+  .toc a {
+    display: inline-block;
+    padding: 0.25rem 0.6rem;
+    margin: 0.15rem;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    background: var(--surface2);
+    transition: background 0.2s;
+  }
+  .toc a:hover { background: var(--border); text-decoration: none; }
+
+  html { scroll-behavior: smooth; }
+
+  .btn {
+    border: none;
+    padding: 0.5rem 1.2rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    font-family: 'Noto Sans JP', sans-serif;
+    margin: 0.3rem;
+    transition: opacity 0.2s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.97); }
+  .btn-accent  { background: var(--accent);  color: var(--bg); }
+  .btn-accent2 { background: var(--accent2); color: var(--bg); }
+  .btn-accent3 { background: var(--accent3); color: var(--bg); }
+  .btn-warn    { background: var(--warn);    color: var(--bg); }
+  .btn-danger  { background: var(--danger);  color: var(--bg); }
+  .btn-dim     { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<!-- ============================================ -->
+<!-- STATUS BAR                                    -->
+<!-- ============================================ -->
+<div class="status-bar">
+  <div class="status-item">
+    <div class="status-dot" id="dot-protocol"></div>
+    <span id="status-protocol">プロトコル確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-httpbin"></div>
+    <span id="status-httpbin">httpbin.org 確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-devtools"></div>
+    <span>DevTools: <kbd style="background:var(--surface2);padding:0.1rem 0.4rem;border-radius:4px;">F12</kbd></span>
+  </div>
+</div>
+<p style="margin-bottom:0.5rem;font-size:0.82rem;"><a href="http-header-lab-index.html" style="color:var(--accent);text-decoration:none;">← マスター索引に戻る</a></p>
+
+<script>
+(function checkProtocol() {
+  const dot = document.getElementById('dot-protocol');
+  const label = document.getElementById('status-protocol');
+  if (location.protocol === 'file:') {
+    dot.classList.add('err');
+    label.innerHTML = '<strong style="color:var(--danger)">file:// 検出（要修正）</strong>';
+    document.getElementById('file-protocol-alert').style.display = 'block';
+  } else {
+    dot.classList.add('ok');
+    label.textContent = location.protocol + '// ✅';
+  }
+})();
+
+(async function checkHttpbin() {
+  const dot = document.getElementById('dot-httpbin');
+  const label = document.getElementById('status-httpbin');
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch('https://httpbin.org/get', { signal: controller.signal });
+    clearTimeout(timeout);
+    if (res.ok) {
+      dot.classList.add('ok');
+      label.textContent = 'httpbin.org ✅';
+    } else {
+      dot.classList.add('err');
+      label.innerHTML = '<strong style="color:var(--danger)">httpbin.org 応答エラー</strong>';
+    }
+  } catch(e) {
+    dot.classList.add('err');
+    label.innerHTML = '<strong style="color:var(--danger)">httpbin.org ❌ 接続不可</strong>';
+  }
+})();
+</script>
+
+<h1>🧪 Lab 11: Fetch Metadata（Sec-Fetch-*）</h1>
+<p style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.3rem;font-family:'IBM Plex Mono',monospace;">最終更新: 2026年3月</p>
+<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">⏱ 所要時間：25分</span>
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">難易度：★★☆</span>
+</div>
+<p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:1rem;">📋 前提知識：<a href="http-header-lab-06.html">Lab 06</a> 完了推奨（CORS の Origin / プリフライトを理解していると Fetch Metadata の価値がわかる）</p>
+
+<!-- ── file:// alert ── -->
+<div class="alert-critical" id="file-protocol-alert" style="display:none;">
+  <strong>🔴 このページは HTTP サーバー経由で開いてください</strong><br><br>
+  現在 <code>file://</code> で開いています。この状態では <code>fetch()</code> が
+  <strong>CORSエラー</strong>になり、ほとんどの実験が動作しません。<br>
+  Lab 01 の「ローカル Web サーバーのセットアップ」を参照してサーバーを起動してください。
+</div>
+
+<!-- ── DevTools warning ── -->
+<div class="warn-box">
+  <strong style="font-size:1rem; color:var(--danger);">最重要：DevTools を「先に」開いてからリロード</strong><br>
+  <code>F12</code>（Mac: <code>Cmd+Opt+I</code>）→ <strong>Network</strong> タブを選択 →
+  <strong>その後で</strong> <code>Ctrl+Shift+R</code> でリロード。<br>
+  順序が逆だとネットワークログが残りません。全実験でこの手順が前提です。
+</div>
+
+<p>
+  <strong>Fetch Metadata</strong>（<code>Sec-Fetch-*</code>）は、ブラウザがすべてのリクエストに
+  自動付与するセキュリティヘッダーです。サーバーはこれを読み取ることで、
+  <strong>「このリクエストは信頼できるか？」</strong>をリクエスト処理前に判定できます。
+  CSRF防御の新しい標準として注目されています。
+</p>
+
+<div class="lab-box" style="border-color:var(--accent); margin-bottom:1rem;">
+  <h3 style="color:var(--accent); margin-top:0;">🎯 このLabの学習目標</h3>
+  <p style="margin-bottom:0.3rem;">完了すると、以下ができるようになります：</p>
+  <div class="check-item" style="opacity:1;"><span>1. <code>Sec-Fetch-Mode</code> の値（<code>navigate</code>, <code>cors</code>, <code>no-cors</code>, <code>same-origin</code>）がリクエスト種別で異なることを確認する</span></div>
+  <div class="check-item" style="opacity:1;"><span>2. <code>Sec-Fetch-Site</code> がオリジン関係（<code>same-origin</code>, <code>same-site</code>, <code>cross-site</code>, <code>none</code>）を示すことを理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>3. <code>Sec-Fetch-Dest</code> がリソースの用途（<code>document</code>, <code>script</code>, <code>image</code> 等）を示すことを理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>4. <code>Sec-Fetch-User</code> がユーザー起因のナビゲーションで <code>?1</code> となることを理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>5. Fetch Metadata を使ったサーバー側 CSRF 防御の実装パターンを理解する</span></div>
+</div>
+
+<div class="warn-box" style="border-color:var(--accent3);background:#fce4ec;">
+  <strong style="color:var(--accent3);">💥 実務での失敗例</strong>：Fetch Metadata（<code>Sec-Fetch-*</code>）をサーバー側で活用しなかったため、CORS設定だけでは防げないCSRF攻撃パターンを見逃した
+</div>
+
+<div class="diagram">Browser                                     Server
+  │                                             │
+  │  GET /api/transfer                          │
+  │  <span style="color:#6ee7b7;">Sec-Fetch-Site: same-origin</span>                │  ← 同一オリジン？クロスサイト？
+  │  <span style="color:#38bdf8;">Sec-Fetch-Mode: cors</span>                      │  ← navigate？cors？no-cors？
+  │  <span style="color:#f472b6;">Sec-Fetch-Dest: empty</span>                     │  ← document？script？image？
+  │  <span style="color:#fbbf24;">Sec-Fetch-User: ?1</span>                        │  ← ユーザー操作が起因？
+  │ ──────────────────────────────────────────▶ │
+  │                                             │
+  │               サーバー側で判定:              │
+  │               cross-site + cors + empty     │
+  │               → <span style="color:#f87171;">403 ブロック</span> or <span style="color:#6ee7b7;">200 許可</span>    │
+  │ ◀────────────────────────────────────────── │</div>
+
+<!-- ── TOC ── -->
+<div class="toc">
+  <strong style="color:var(--text-dim);font-size:0.82rem;">目次:</strong><br>
+  <a href="#overview">📖 概要</a>
+  <a href="#exp-11a">11-A: 4つのヘッダー観察</a>
+  <a href="#exp-11b">11-B: リソース種別と値の変化</a>
+  <a href="#exp-11c">11-C: クロスオリジン比較</a>
+  <a href="#exp-11d">11-D: CSRF防御シミュレーション</a>
+  <a href="#exp-11e">11-E: OutSystems確認</a>
+  <a href="#monitor">🔍 ライブモニター</a>
+  <a href="#checklist">✅ チェックリスト</a>
+</div>
+
+<!-- ============================================ -->
+<h2 id="overview">📖 Fetch Metadata ヘッダー概要</h2>
+
+<p>ブラウザが自動付与する4つの <code>Sec-Fetch-*</code> ヘッダーを理解します。</p>
+
+<table class="result-table">
+  <thead>
+    <tr>
+      <th>ヘッダー</th>
+      <th>質問</th>
+      <th>取りうる値</th>
+      <th>用途</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>Sec-Fetch-Site</code></td>
+      <td>リクエスト元との関係は？</td>
+      <td><span class="val-same">same-origin</span>, <code>same-site</code>, <span class="val-cross">cross-site</span>, <span class="val-none">none</span></td>
+      <td>CSRF防御の最重要指標</td>
+    </tr>
+    <tr>
+      <td><code>Sec-Fetch-Mode</code></td>
+      <td>リクエストのモードは？</td>
+      <td><span class="val-navigate">navigate</span>, <span class="val-cors">cors</span>, <span class="val-nocors">no-cors</span>, <code>same-origin</code>, <code>websocket</code></td>
+      <td>ナビゲーション vs API呼び出しの判別</td>
+    </tr>
+    <tr>
+      <td><code>Sec-Fetch-Dest</code></td>
+      <td>リソースの用途は？</td>
+      <td><code>document</code>, <code>script</code>, <code>image</code>, <code>style</code>, <code>empty</code>, <code>iframe</code>, ...</td>
+      <td>不正なリソース利用の検出</td>
+    </tr>
+    <tr>
+      <td><code>Sec-Fetch-User</code></td>
+      <td>ユーザー操作が起因か？</td>
+      <td><code>?1</code>（true）のみ。false時は<strong>送信されない</strong></td>
+      <td>ユーザー意図の有無</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="note">
+  <strong><code>Sec-</code> プレフィックスの意味</strong>:
+  <code>Sec-</code> で始まるヘッダーはブラウザのみが設定でき、
+  JavaScriptからの偽装が<strong>不可能</strong>です。
+  これがFetch Metadataをセキュリティに使える根拠です。
+  <code>fetch()</code> の <code>headers</code> に <code>Sec-Fetch-Site</code> を設定しても
+  ブラウザは無視して正しい値を上書きします。<br>
+  <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/Headers/Sec-Fetch-Site" target="_blank">MDN — Sec-Fetch-Site</a></span>
+</div>
+
+<div class="note" style="border-color:var(--accent);background:#e8f5e9;">
+  🔒 <strong style="color:var(--accent);">なぜ Sec-Fetch-* は偽装できないのか</strong><br><br>
+  <span style="font-size:0.85rem;">
+  通常のヘッダー（<code>Authorization</code>, <code>Content-Type</code> 等）は JS の <code>fetch()</code> で自由に設定できます。<br>
+  しかし <code>Sec-Fetch-*</code> は<strong>「禁止ヘッダー名」</strong>（Forbidden Header Name）に指定されており：<br><br>
+
+  ① JS から <code>headers.set('Sec-Fetch-Site', 'same-origin')</code> としても<strong>ブラウザが無視</strong>する<br>
+  ② ブラウザが<strong>リクエスト生成時に自動計算</strong>して付与する（ページのオリジン・コンテキストから）<br>
+  ③ <code>Sec-</code> プレフィックスが付いたヘッダーは <strong>すべて</strong> JS から設定不可<br><br>
+
+  <strong>だから安全</strong>：サーバーは <code>Sec-Fetch-Site: cross-site</code> を見たら、「本当にクロスサイトからのリクエストだ」と<strong>信頼できる</strong>。<br>
+  従来の CSRF トークン方式と違い、トークンの管理・配布が不要で、<strong>ゼロコストで CSRF 防御層を追加</strong>できます。
+  </span>
+</div>
+
+<hr>
+
+<!-- ── 実験 11-A ── -->
+<div class="lab-box" id="exp-11a">
+  <h3>実験 11-A: このページのリクエストで4つのヘッダーを観察する</h3>
+  <p>
+    ページロード時にブラウザが送信する <code>Sec-Fetch-*</code> ヘッダーを、
+    DevTools Network タブで直接確認します。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — DevTools を開いてリロード</div>
+    <p>
+      <code>F12</code> → Network タブ → <code>Ctrl+Shift+R</code><br>
+      最初のリクエスト（このHTMLファイル自体）をクリックし、
+      <strong>Headers → Request Headers</strong> を確認します。
+    </p>
+    <pre><span class="comment">// このページ自体のリクエスト（ナビゲーション）に表示される値:</span>
+<span class="header-name">Sec-Fetch-Site</span>: <span class="header-val">none</span>         <span class="comment">← アドレスバー直接入力 = none</span>
+<span class="header-name">Sec-Fetch-Mode</span>: <span class="header-val">navigate</span>     <span class="comment">← ページ遷移</span>
+<span class="header-name">Sec-Fetch-Dest</span>: <span class="header-val">document</span>     <span class="comment">← HTMLドキュメント</span>
+<span class="header-name">Sec-Fetch-User</span>: <span class="header-val">?1</span>           <span class="comment">← ユーザーが操作（Enter/クリック）</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — httpbin.org経由で実際の値を取得</div>
+    <p>ボタンを押して、サーバーが受け取った <code>Sec-Fetch-*</code> の値を確認します。</p>
+    <button class="btn btn-accent" id="btn-11a-check">Sec-Fetch-* を取得</button>
+    <pre id="result-11a"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-11a-check').addEventListener('click', async () => {
+      const el = document.getElementById('result-11a');
+      el.textContent = '取得中...';
+      try {
+        const res = await fetch('https://httpbin.org/headers');
+        if (!res.ok) throw new Error('HTTPエラー: ' + res.status);
+        const data = await res.json();
+        const h = data.headers;
+        const site = h['Sec-Fetch-Site'] || '(未送信)';
+        const mode = h['Sec-Fetch-Mode'] || '(未送信)';
+        const dest = h['Sec-Fetch-Dest'] || '(未送信)';
+        const user = h['Sec-Fetch-User'] || '(未送信 = ユーザー操作なし)';
+
+        el.textContent =
+          'サーバーが受け取った Sec-Fetch-* ヘッダー:\n\n'
+          + '  Sec-Fetch-Site: ' + site + '\n'
+          + '  Sec-Fetch-Mode: ' + mode + '\n'
+          + '  Sec-Fetch-Dest: ' + dest + '\n'
+          + '  Sec-Fetch-User: ' + user + '\n\n'
+          + '解説:\n'
+          + '  Site = cross-site → このHTML(' + location.origin + ')と\n'
+          + '                       httpbin.org は異なるオリジン\n'
+          + '  Mode = cors       → fetch() はデフォルトで cors モード\n'
+          + '  Dest = empty      → fetch() によるデータ取得（documentでもscriptでもない）\n'
+          + '  User = (未送信)   → JSコードからの呼び出し（ユーザー操作起因でない）';
+      } catch(e) { el.textContent = 'エラー: ' + e.message; }
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — ページリクエスト vs fetch() の違い</div>
+    <pre><span class="comment">// ページ自体（アドレスバーからアクセス）:</span>
+  Sec-Fetch-Site: <span class="highlight">none</span>       ← ブラウザUIからの直接アクセス
+  Sec-Fetch-Mode: <span class="highlight">navigate</span>   ← ページ遷移
+  Sec-Fetch-Dest: <span class="highlight">document</span>   ← HTMLドキュメント
+  Sec-Fetch-User: <span class="highlight">?1</span>         ← ユーザー操作
+
+<span class="comment">// fetch() でhttpbin.orgを呼んだ場合:</span>
+  Sec-Fetch-Site: <span class="header-val">cross-site</span> ← 異なるサイトへのリクエスト
+  Sec-Fetch-Mode: <span class="header-val">cors</span>       ← CORS リクエスト
+  Sec-Fetch-Dest: <span class="header-val">empty</span>      ← JS からのデータ取得
+  Sec-Fetch-User: <span class="header-val">(未送信)</span>   ← JSコード起因</pre>
+  </div>
+
+  <div class="note">
+    <strong>Sec-Fetch-Site の4つの値を理解する</strong>:<br>
+    <code>same-origin</code> — 完全に同じオリジン（スキーム＋ホスト＋ポート）<br>
+    <code>same-site</code> — 同じサイト（例: api.example.com → www.example.com）<br>
+    <code>cross-site</code> — 異なるサイト（例: example.com → evil.com）<br>
+    <code>none</code> — ブラウザUIからの直接入力、ブックマーク等<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://web.dev/articles/fetch-metadata" target="_blank">web.dev — Fetch Metadata</a></span>
+  </div>
+</div>
+
+<!-- ── 実験 11-B ── -->
+<div class="lab-box" id="exp-11b">
+  <h3>実験 11-B: リソース種別による Sec-Fetch-Dest / Mode の変化</h3>
+  <p>
+    ブラウザは読み込むリソースの種類に応じて <code>Sec-Fetch-Dest</code> と
+    <code>Sec-Fetch-Mode</code> を自動的に変えます。DevToolsで比較観察します。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — 各リソースの Sec-Fetch-* をDevToolsで確認</div>
+    <p>Network タブで各リクエストの Request Headers を確認してください。</p>
+  </div>
+
+  <!-- テスト用リソース読み込み -->
+  <img id="test-img-11b" src="https://httpbin.org/image/png" alt="test"
+       style="width:60px; height:60px; border-radius:8px; border:1px solid var(--border); margin:0.5rem 0;"
+       loading="lazy">
+
+  <table class="result-table">
+    <thead>
+      <tr>
+        <th>リソース</th>
+        <th>Sec-Fetch-Dest</th>
+        <th>Sec-Fetch-Mode</th>
+        <th>Sec-Fetch-Site</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>このHTML（ナビゲーション）</td>
+        <td><span class="val-navigate">document</span></td>
+        <td><span class="val-navigate">navigate</span></td>
+        <td><span class="val-none">none</span></td>
+      </tr>
+      <tr>
+        <td>Google Fonts CSS</td>
+        <td><code>style</code></td>
+        <td><span class="val-nocors">no-cors</span></td>
+        <td><span class="val-cross">cross-site</span></td>
+      </tr>
+      <tr>
+        <td>Google Fonts woff2</td>
+        <td><code>font</code></td>
+        <td><span class="val-cors">cors</span></td>
+        <td><span class="val-cross">cross-site</span></td>
+      </tr>
+      <tr>
+        <td>テスト画像（上の画像）</td>
+        <td><code>image</code></td>
+        <td><span class="val-nocors">no-cors</span></td>
+        <td><span class="val-cross">cross-site</span></td>
+      </tr>
+      <tr>
+        <td>fetch() 呼び出し</td>
+        <td><code>empty</code></td>
+        <td><span class="val-cors">cors</span></td>
+        <td><span class="val-cross">cross-site</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — fetch の mode を変えて Sec-Fetch-Mode を比較</div>
+    <p>以下のボタンで <code>fetch()</code> の <code>mode</code> オプションを変えたときの
+    <code>Sec-Fetch-Mode</code> の変化を確認します。</p>
+    <button class="btn btn-accent2" id="btn-mode-cors">mode: "cors"（デフォルト）</button>
+    <button class="btn btn-accent3" id="btn-mode-nocors">mode: "no-cors"</button>
+    <button class="btn btn-accent" id="btn-mode-sameorigin">mode: "same-origin"</button>
+    <button class="btn btn-dim" id="btn-mode-reset">クリア</button>
+    <pre id="result-11b-mode"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    async function fetchWithMode(mode) {
+      const el = document.getElementById('result-11b-mode');
+      el.textContent = mode + ' モードで送信中...';
+      try {
+        const res = await fetch('https://httpbin.org/headers', { mode: mode });
+        if (mode === 'no-cors') {
+          el.textContent = 'mode: "no-cors" の結果:\n\n'
+            + '  → opaque レスポンス（中身を読めない）\n'
+            + '  → res.type = "opaque", res.status = 0\n\n'
+            + 'DevTools Network タブでリクエストを確認:\n'
+            + '  Sec-Fetch-Mode: no-cors\n\n'
+            + '※ no-cors はレスポンスのJSからの読み取りを放棄する代わりに\n'
+            + '  プリフライトなしでリクエスト送信が可能になるモードです。\n'
+            + '  Service Worker でのキャッシュなどに使われます。';
+          return;
+        }
+        const data = await res.json();
+        const sfm = data.headers['Sec-Fetch-Mode'] || '(未送信)';
+        el.textContent = 'mode: "' + mode + '" の結果:\n\n'
+          + '  サーバーが受信した Sec-Fetch-Mode: ' + sfm + '\n\n'
+          + (mode === 'same-origin'
+            ? '→ same-origin モードで cross-site に送信すると\n  TypeError で失敗するはずですが、結果を確認してください。'
+            : '→ デフォルトの cors モードです。');
+      } catch(e) {
+        if (mode === 'same-origin') {
+          el.textContent = 'mode: "same-origin" の結果:\n\n'
+            + '  → TypeError: ' + e.message + '\n\n'
+            + '  same-origin モードでは、異なるオリジンへのリクエストは\n'
+            + '  ブラウザがブロックします（リクエスト自体が送信されない）。\n\n'
+            + '  これは「同一オリジン以外には絶対にリクエストしない」\n'
+            + '  という最も厳格な制約です。';
+        } else {
+          el.textContent = 'エラー: ' + e.message;
+        }
+      }
+    }
+
+    document.getElementById('btn-mode-cors').addEventListener('click', () => fetchWithMode('cors'));
+    document.getElementById('btn-mode-nocors').addEventListener('click', () => fetchWithMode('no-cors'));
+    document.getElementById('btn-mode-sameorigin').addEventListener('click', () => fetchWithMode('same-origin'));
+    document.getElementById('btn-mode-reset').addEventListener('click', () => {
+      document.getElementById('result-11b-mode').innerHTML = '<span class="placeholder">← ボタンを押すと結果が表示されます</span>';
+    });
+  </script>
+
+  <div class="warn-box">
+    <strong>no-cors の落とし穴</strong>:
+    <code>mode: "no-cors"</code> はリクエストを送信できますが、
+    レスポンスの中身をJSから<strong>一切読めません</strong>（opaque response）。
+    「CORSエラーを回避する裏技」ではなく、特殊な用途（Service Worker等）向けです。
+  </div>
+</div>
+
+<!-- ── 実験 11-C ── -->
+<div class="lab-box" id="exp-11c">
+  <h3>実験 11-C: Sec-Fetch-Site のクロスオリジン比較</h3>
+  <p>
+    同一オリジンとクロスサイトの違いを実際のリクエストで確認します。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — 2パターンの Sec-Fetch-Site を確認</div>
+    <button class="btn btn-accent" id="btn-site-same">同一オリジン（このサーバー）</button>
+    <button class="btn btn-accent2" id="btn-site-cross">クロスサイト（httpbin.org）</button>
+    <button class="btn btn-dim" id="btn-site-reset">クリア</button>
+    <pre id="result-11c"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-site-same').addEventListener('click', async () => {
+      const el = document.getElementById('result-11c');
+      el.textContent = '同一オリジンへ送信中...';
+      try {
+        const res = await fetch(location.origin + location.pathname);
+        el.textContent = '同一オリジンリクエスト:\n'
+          + '  URL: ' + location.origin + location.pathname + '\n\n'
+          + '  DevTools Network タブで確認してください:\n'
+          + '  Sec-Fetch-Site: same-origin\n'
+          + '  Sec-Fetch-Mode: cors\n'
+          + '  Sec-Fetch-Dest: empty\n\n'
+          + '→ 同じオリジン内のリクエストなので same-origin になります。\n'
+          + '  サーバー側はこの値を見て「安全なリクエスト」と判断できます。';
+      } catch(e) { el.textContent = 'エラー: ' + e.message; }
+    });
+
+    document.getElementById('btn-site-cross').addEventListener('click', async () => {
+      const el = document.getElementById('result-11c');
+      el.textContent = 'クロスサイトへ送信中...';
+      try {
+        const res = await fetch('https://httpbin.org/headers');
+        if (!res.ok) throw new Error('HTTPエラー: ' + res.status);
+        const data = await res.json();
+        const site = data.headers['Sec-Fetch-Site'] || '(未送信)';
+        el.textContent = 'クロスサイトリクエスト:\n'
+          + '  URL: https://httpbin.org/headers\n\n'
+          + '  Sec-Fetch-Site: ' + site + '\n\n'
+          + '→ ' + location.origin + ' と https://httpbin.org は\n'
+          + '  異なるサイトなので cross-site になります。\n'
+          + '  サーバー側はこの値を見て「外部からのリクエスト」と判断し、\n'
+          + '  追加の検証やブロックを行えます。';
+      } catch(e) { el.textContent = 'エラー: ' + e.message; }
+    });
+
+    document.getElementById('btn-site-reset').addEventListener('click', () => {
+      document.getElementById('result-11c').innerHTML = '<span class="placeholder">← ボタンを押すと結果が表示されます</span>';
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — same-origin vs same-site vs cross-site の違い</div>
+    <pre><span class="comment">// 具体例で理解する:</span>
+
+<span class="header-name">same-origin</span>（完全一致）:
+  https://www.example.com/page1 → https://www.example.com/page2  ✅
+  https://www.example.com:443  → https://www.example.com:443     ✅
+
+<span class="header-name">same-site</span>（サイトは同じだがオリジンは異なる）:
+  https://www.example.com → https://api.example.com             ✅ <span class="highlight">same-site</span>
+  https://www.example.com → http://www.example.com              ❌ <span class="comment">スキーム違い = cross-site</span>
+
+<span class="header-name">cross-site</span>（異なるサイト）:
+  https://example.com → https://evil-site.com                   ❌ cross-site
+  https://example.com → https://httpbin.org                     ❌ cross-site
+
+<span class="header-name">none</span>（ブラウザUI起因）:
+  アドレスバーにURL入力 → Enter
+  ブックマーククリック
+  別アプリからのリンク</pre>
+  </div>
+
+  <div class="note">
+    <strong>same-origin vs same-site の見分け方</strong>:
+    same-origin はスキーム・ホスト・ポートが<strong>すべて一致</strong>。
+    same-site はeTLD+1が一致すれば良い（サブドメイン違いはOK）。
+    CSRF防御では <code>same-origin</code> と <code>same-site</code> を許可し、
+    <code>cross-site</code> をブロックするのが一般的なパターンです。
+  </div>
+</div>
+
+<!-- ── 実験 11-D ── -->
+<div class="lab-box" id="exp-11d">
+  <h3>実験 11-D: Fetch Metadata によるCSRF防御ロジックのシミュレーション</h3>
+  <p>
+    サーバー側のFetch Metadata検証ロジックをブラウザ上でシミュレーションします。
+    様々なシナリオで「許可」「ブロック」がどう判定されるか体験してください。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — 防御ロジック（擬似コード）</div>
+    <pre><span class="comment">// OWASP推奨の Fetch Metadata 検証パターン:</span>
+
+function validateFetchMetadata(request) {
+  const site = request.headers['<span class="header-name">Sec-Fetch-Site</span>'];
+  const mode = request.headers['<span class="header-name">Sec-Fetch-Mode</span>'];
+  const dest = request.headers['<span class="header-name">Sec-Fetch-Dest</span>'];
+
+  <span class="comment">// Step 1: 同一オリジン・同一サイト・ブラウザUI → 許可</span>
+  if (site === '<span class="header-val">same-origin</span>'
+   || site === '<span class="header-val">same-site</span>'
+   || site === '<span class="header-val">none</span>') {
+    return <span style="color:var(--accent);">ALLOW</span>;
+  }
+
+  <span class="comment">// Step 2: クロスサイトのGETナビゲーション → 許可</span>
+  <span class="comment">//         （通常のリンククリックやブックマーク）</span>
+  if (mode === '<span class="header-val">navigate</span>'
+   && request.method === 'GET'
+   && dest === '<span class="header-val">document</span>') {
+    return <span style="color:var(--accent);">ALLOW</span>;
+  }
+
+  <span class="comment">// Step 3: それ以外のクロスサイトリクエスト → ブロック</span>
+  return <span style="color:var(--danger);">BLOCK</span>;  // → 403 Forbidden
+}</pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — シナリオをテスト</div>
+    <p>各シナリオのボタンを押して、防御ロジックがどう判定するか確認してください。</p>
+    <div style="display:flex; flex-wrap:wrap; gap:0.4rem; margin:0.5rem 0;">
+      <button class="btn btn-accent" onclick="simulateCSRF('legit-api')">正規APIコール</button>
+      <button class="btn btn-accent" onclick="simulateCSRF('legit-nav')">正規リンク遷移</button>
+      <button class="btn btn-accent2" onclick="simulateCSRF('bookmark')">ブックマーク</button>
+      <button class="btn btn-danger" onclick="simulateCSRF('csrf-post')">CSRF攻撃(POST)</button>
+      <button class="btn btn-danger" onclick="simulateCSRF('csrf-fetch')">CSRF攻撃(fetch)</button>
+      <button class="btn btn-warn" onclick="simulateCSRF('cross-nav')">外部リンク(GET)</button>
+      <button class="btn btn-accent3" onclick="simulateCSRF('img-track')">トラッキング画像</button>
+      <button class="btn btn-dim" onclick="resetDecisionTree()">リセット</button>
+    </div>
+  </div>
+
+  <div class="decision-tree" id="decision-tree">
+    <div style="font-size:0.82rem; margin-bottom:0.8rem;">
+      <strong style="color:var(--accent2);">判定フロー:</strong>
+      <span id="scenario-label" style="color:var(--text-dim);"> ← シナリオを選択してください</span>
+    </div>
+    <div class="decision-node" id="dt-input">
+      📥 受信リクエスト: <span id="dt-input-detail" style="color:var(--text-dim);">...</span>
+    </div>
+    <div class="decision-arrow" id="dt-arrow1">↓</div>
+    <div class="decision-node" id="dt-step1">
+      Step 1: <code>Sec-Fetch-Site</code> ∈ {same-origin, same-site, none} ?
+      <span id="dt-step1-result"></span>
+    </div>
+    <div class="decision-arrow" id="dt-arrow2">↓ No</div>
+    <div class="decision-node" id="dt-step2">
+      Step 2: <code>mode=navigate</code> + <code>GET</code> + <code>dest=document</code> ?
+      <span id="dt-step2-result"></span>
+    </div>
+    <div class="decision-arrow" id="dt-arrow3">↓ No</div>
+    <div class="decision-node" id="dt-step3">
+      Step 3: デフォルト → <span style="color:var(--danger);">BLOCK (403)</span>
+    </div>
+    <pre id="csrf-explanation" style="margin-top:0.8rem; border:none; background:transparent; padding:0;"><span class="placeholder">← シナリオを選択すると解説が表示されます</span></pre>
+  </div>
+
+  <script>
+    const scenarios = {
+      'legit-api': {
+        label: '正規APIコール（同一オリジンのSPA）',
+        site: 'same-origin', mode: 'cors', dest: 'empty', method: 'POST',
+        passStep: 1,
+        explanation:
+          '→ ✅ ALLOW（Step 1で許可）\n\n'
+          + '理由: SPAからのAPI呼び出しは same-origin なので安全。\n'
+          + 'これが最も一般的な正規リクエストパターンです。'
+      },
+      'legit-nav': {
+        label: '正規リンク遷移（同一サイト内）',
+        site: 'same-site', mode: 'navigate', dest: 'document', method: 'GET',
+        passStep: 1,
+        explanation:
+          '→ ✅ ALLOW（Step 1で許可）\n\n'
+          + '理由: 同一サイト内の通常ナビゲーション。\n'
+          + 'api.example.com → www.example.com のような遷移。'
+      },
+      'bookmark': {
+        label: 'ブックマークからのアクセス',
+        site: 'none', mode: 'navigate', dest: 'document', method: 'GET',
+        passStep: 1,
+        explanation:
+          '→ ✅ ALLOW（Step 1で許可）\n\n'
+          + '理由: ブラウザUIからの直接アクセスは site=none。\n'
+          + 'アドレスバー入力やブックマークはユーザーの意図的な操作。'
+      },
+      'csrf-post': {
+        label: 'CSRF攻撃: 悪意あるサイトからの自動POST',
+        site: 'cross-site', mode: 'navigate', dest: 'document', method: 'POST',
+        passStep: 0,
+        explanation:
+          '→ 🔴 BLOCK（Step 3でブロック）\n\n'
+          + '攻撃シナリオ:\n'
+          + '  evil.com に <form action="bank.com/transfer" method="POST"> を設置\n'
+          + '  ユーザーがevil.comを訪問すると自動送信される\n\n'
+          + 'Fetch Metadataの防御:\n'
+          + '  Step 1: site=cross-site → 不合格\n'
+          + '  Step 2: mode=navigate だが method=POST → 不合格（GETのみ許可）\n'
+          + '  Step 3: → 403 Forbidden ！'
+      },
+      'csrf-fetch': {
+        label: 'CSRF攻撃: 悪意あるサイトからのfetch',
+        site: 'cross-site', mode: 'cors', dest: 'empty', method: 'POST',
+        passStep: 0,
+        explanation:
+          '→ 🔴 BLOCK（Step 3でブロック）\n\n'
+          + '攻撃シナリオ:\n'
+          + '  evil.com のJSが fetch("bank.com/api/transfer", {method:"POST"}) を実行\n\n'
+          + 'Fetch Metadataの防御:\n'
+          + '  Step 1: site=cross-site → 不合格\n'
+          + '  Step 2: mode=cors（navigateではない）→ 不合格\n'
+          + '  Step 3: → 403 Forbidden ！\n\n'
+          + '※ CORSでもブロックされますが、Fetch Metadataは\n'
+          + '  リクエスト処理前にブロックできるのが強みです。'
+      },
+      'cross-nav': {
+        label: '外部サイトからのリンク（GET）',
+        site: 'cross-site', mode: 'navigate', dest: 'document', method: 'GET',
+        passStep: 2,
+        explanation:
+          '→ ✅ ALLOW（Step 2で許可）\n\n'
+          + '理由: 通常のリンククリック（GET + ナビゲーション）は許可。\n'
+          + 'Googleの検索結果からの遷移、SNSでのリンク共有など、\n'
+          + 'Webの基本的な動作を妨げないための例外です。\n\n'
+          + '注意: GETリクエストで副作用のある処理は行わないこと！\n'
+          + '      （例: GET /delete-account は危険な設計）'
+      },
+      'img-track': {
+        label: 'トラッキング画像（1x1ピクセル）',
+        site: 'cross-site', mode: 'no-cors', dest: 'image', method: 'GET',
+        passStep: 0,
+        explanation:
+          '→ 🔴 BLOCK（Step 3でブロック）\n\n'
+          + '攻撃/トラッキング シナリオ:\n'
+          + '  <img src="tracker.evil.com/pixel.gif"> をページに埋め込み\n'
+          + '  ユーザーのCookieを含むリクエストが自動送信される\n\n'
+          + 'Fetch Metadataの防御:\n'
+          + '  Step 1: site=cross-site → 不合格\n'
+          + '  Step 2: mode=no-cors, dest=image（navigateではない）→ 不合格\n'
+          + '  Step 3: → ブロック！\n\n'
+          + '※ ただし、正規の外部画像もブロックされるため、\n'
+          + '  画像配信エンドポイントでは別の判定ロジックが必要です。'
+      }
+    };
+
+    function resetDecisionTree() {
+      document.getElementById('scenario-label').textContent = ' ← シナリオを選択してください';
+      document.getElementById('dt-input-detail').textContent = '...';
+      ['dt-input','dt-step1','dt-step2','dt-step3'].forEach(id => {
+        const el = document.getElementById(id);
+        el.classList.remove('active','blocked','allowed');
+      });
+      document.getElementById('dt-step1-result').textContent = '';
+      document.getElementById('dt-step2-result').textContent = '';
+      document.getElementById('dt-arrow2').textContent = '↓ No';
+      document.getElementById('dt-arrow3').textContent = '↓ No';
+      document.getElementById('csrf-explanation').innerHTML =
+        '<span class="placeholder">← シナリオを選択すると解説が表示されます</span>';
+    }
+
+    function simulateCSRF(key) {
+      resetDecisionTree();
+      const s = scenarios[key];
+      document.getElementById('scenario-label').textContent = s.label;
+      document.getElementById('dt-input-detail').innerHTML =
+        '<span style="color:var(--accent2)">' + s.method + '</span> | '
+        + 'Site=<span style="color:' + (s.site === 'cross-site' ? 'var(--danger)' : 'var(--accent)') + '">' + s.site + '</span> | '
+        + 'Mode=' + s.mode + ' | Dest=' + s.dest;
+
+      const inputEl = document.getElementById('dt-input');
+      inputEl.classList.add('active');
+
+      setTimeout(() => {
+        const step1 = document.getElementById('dt-step1');
+        step1.classList.add('active');
+        if (s.passStep === 1) {
+          step1.classList.add('allowed');
+          document.getElementById('dt-step1-result').innerHTML =
+            ' → <span style="color:var(--accent)">Yes → ALLOW ✅</span>';
+          document.getElementById('dt-arrow2').textContent = '';
+        } else {
+          document.getElementById('dt-step1-result').innerHTML =
+            ' → <span style="color:var(--danger)">No</span>';
+        }
+
+        if (s.passStep !== 1) {
+          setTimeout(() => {
+            const step2 = document.getElementById('dt-step2');
+            step2.classList.add('active');
+            if (s.passStep === 2) {
+              step2.classList.add('allowed');
+              document.getElementById('dt-step2-result').innerHTML =
+                ' → <span style="color:var(--accent)">Yes → ALLOW ✅</span>';
+              document.getElementById('dt-arrow3').textContent = '';
+            } else {
+              document.getElementById('dt-step2-result').innerHTML =
+                ' → <span style="color:var(--danger)">No</span>';
+            }
+
+            if (s.passStep === 0) {
+              setTimeout(() => {
+                document.getElementById('dt-step3').classList.add('active','blocked');
+              }, 300);
+            }
+          }, 400);
+        }
+      }, 300);
+
+      setTimeout(() => {
+        document.getElementById('csrf-explanation').textContent = s.explanation;
+      }, s.passStep === 1 ? 500 : (s.passStep === 2 ? 900 : 1200));
+    }
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — Sec-Fetch-* の偽装不可能性を確認</div>
+    <p>
+      <code>Sec-</code> プレフィックス付きヘッダーはJSから設定できません。
+      下のボタンで偽装を試み、ブラウザが無視することを確認します。
+    </p>
+    <button class="btn btn-danger" id="btn-spoof">Sec-Fetch-Site の偽装を試みる</button>
+    <pre id="result-spoof"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-spoof').addEventListener('click', async () => {
+      const el = document.getElementById('result-spoof');
+      el.textContent = '偽装ヘッダーで送信中...';
+      try {
+        const res = await fetch('https://httpbin.org/headers', {
+          headers: {
+            'Sec-Fetch-Site': 'same-origin',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-User': '?1'
+          }
+        });
+        if (!res.ok) throw new Error('HTTPエラー: ' + res.status);
+        const data = await res.json();
+        const h = data.headers;
+        el.textContent = '偽装を試みた値 vs サーバーが実際に受信した値:\n\n'
+          + '                偽装値          実際の値\n'
+          + '  Site:    same-origin    →  ' + (h['Sec-Fetch-Site'] || '(未送信)') + '\n'
+          + '  Mode:    navigate       →  ' + (h['Sec-Fetch-Mode'] || '(未送信)') + '\n'
+          + '  Dest:    document       →  ' + (h['Sec-Fetch-Dest'] || '(未送信)') + '\n'
+          + '  User:    ?1             →  ' + (h['Sec-Fetch-User'] || '(未送信)') + '\n\n'
+          + '→ ブラウザはJSからの Sec-* ヘッダー設定を完全に無視し、\n'
+          + '  正しい値（cross-site, cors, empty, 未送信）を上書きしています。\n\n'
+          + '  これが Fetch Metadata がセキュリティに使える理由です！\n'
+          + '  攻撃者のJSは Sec-Fetch-Site を偽装できません。';
+      } catch(e) { el.textContent = 'エラー: ' + e.message; }
+    });
+  </script>
+
+  <div class="note">
+    <strong>CSRF防御のレイヤー比較</strong>:<br>
+    ① <strong>CSRFトークン</strong>: 従来の方法。フォームに秘密トークンを埋め込む。実装コスト高<br>
+    ② <strong>SameSite Cookie</strong>: Cookie属性で制御。シンプルだが粗い制御<br>
+    ③ <strong>Fetch Metadata</strong>: ブラウザが自動付与。サーバー側で柔軟に判定可能<br>
+    → 理想はすべてを組み合わせた<strong>多層防御（Defense in Depth）</strong>
+  </div>
+</div>
+
+<!-- ── 実験 11-E: OutSystems ── -->
+<div class="lab-box" id="exp-11e">
+  <h3>実験 11-E: OutSystemsで Fetch Metadata を確認する</h3>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — OutSystems画面に直接アクセスして確認</div>
+    <p>
+      OutSystemsの画面（Screen）にブラウザで直接アクセスし、
+      DevTools Network タブで最初のリクエストの <code>Sec-Fetch-*</code> を確認します。
+    </p>
+    <pre><span class="comment">// ブラウザのアドレスバーから直接アクセスした場合:</span>
+<span class="header-name">Sec-Fetch-Site</span>: <span class="header-val">none</span>       <span class="comment">← ブラウザUIから直接</span>
+<span class="header-name">Sec-Fetch-Mode</span>: <span class="header-val">navigate</span>   <span class="comment">← ページ遷移</span>
+<span class="header-name">Sec-Fetch-Dest</span>: <span class="header-val">document</span>   <span class="comment">← HTMLドキュメント</span>
+<span class="header-name">Sec-Fetch-User</span>: <span class="header-val">?1</span>         <span class="comment">← ユーザーのEnterキー</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — OutSystems画面内のAjaxリクエストを確認</div>
+    <p>
+      OutSystems Reactive Appは、画面遷移やデータ取得にAjax（fetch）を使います。
+      画面内のボタンをクリックした際のリクエストを確認してください。
+    </p>
+    <pre><span class="comment">// 画面内のAjaxリクエスト（OutSystemsが自動生成）:</span>
+<span class="header-name">Sec-Fetch-Site</span>: <span class="header-val">same-origin</span>  <span class="comment">← 同じOutSystemsサーバーへ</span>
+<span class="header-name">Sec-Fetch-Mode</span>: <span class="header-val">cors</span>         <span class="comment">← fetch() による通信</span>
+<span class="header-name">Sec-Fetch-Dest</span>: <span class="header-val">empty</span>        <span class="comment">← データ取得</span>
+<span class="header-name">Sec-Fetch-User</span>: <span class="header-val">(未送信)</span>    <span class="comment">← JSコード起因</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — このHTMLからOutSystems APIをfetchした場合</div>
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; margin:0.5rem 0;">
+      <input type="text" id="os-url-11" placeholder="https://xxx.outsystemscloud.com/HeaderLab/rest/HeaderTest/GetInfo"
+        style="flex:1; min-width:300px; background:var(--surface2); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:0.5rem 0.8rem; font-family:'IBM Plex Mono',monospace; font-size:0.82rem;">
+      <button class="btn btn-warn" id="btn-os-11">fetch実行</button>
+    </div>
+    <pre id="os-result-11"><span class="placeholder">← OutSystems APIのURLを入力して実行してください</span></pre>
+  </div>
+
+  <script>
+    const osUrl11 = document.getElementById('os-url-11');
+    const saved11 = localStorage.getItem('httplab_os_url');
+    if (saved11) osUrl11.value = saved11;
+    osUrl11.addEventListener('input', () => {
+      localStorage.setItem('httplab_os_url', osUrl11.value);
+    });
+
+    document.getElementById('btn-os-11').addEventListener('click', async () => {
+      const el = document.getElementById('os-result-11');
+      const url = osUrl11.value.trim();
+      if (!url) { el.textContent = 'URLを入力してください'; return; }
+      el.textContent = 'fetch送信中...\n  URL: ' + url;
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        el.textContent = '✅ 成功！\n\n'
+          + 'DevTools Network タブで確認してください:\n\n'
+          + '  Sec-Fetch-Site: cross-site\n'
+          + '    ← このページ(' + location.origin + ') と\n'
+          + '       OutSystems(' + new URL(url).origin + ') は異なるサイト\n\n'
+          + '  Sec-Fetch-Mode: cors\n'
+          + '  Sec-Fetch-Dest: empty\n\n'
+          + '→ もしOutSystemsがFetch MetadataベースのCSRF防御を実装していたら、\n'
+          + '  cross-site + cors + empty のリクエストはブロックされる可能性があります。';
+      } catch(e) {
+        el.textContent = '🔴 エラー: ' + e.message + '\n\n'
+          + 'DevTools Network タブでリクエスト自体の Sec-Fetch-* を確認してください:\n\n'
+          + '  Sec-Fetch-Site: cross-site    ← 異なるサイト\n'
+          + '  Sec-Fetch-Mode: cors          ← fetch()\n'
+          + '  Sec-Fetch-Dest: empty         ← データ取得\n\n'
+          + '→ CORSエラーの場合でも、ブラウザは Sec-Fetch-* を\n'
+          + '  正しく付与してリクエストを送信しています。\n'
+          + '  サーバーはCORS判定前にFetch Metadataで\n'
+          + '  早期ブロックが可能です。';
+      }
+    });
+  </script>
+
+  <div class="note">
+    <strong>Fetch Metadata と CORS の関係</strong>:
+    Fetch Metadata は CORS よりも<strong>先に</strong>サーバー側で判定できます。
+    CORSはレスポンスヘッダーでブラウザに「読み取り許可」を伝える仕組みですが、
+    Fetch Metadata はリクエストヘッダーでサーバーが「処理する前にブロック」できます。
+    つまり、不正なリクエストの<strong>処理コスト自体を節約</strong>できるのが大きな利点です。
+  </div>
+</div>
+
+<!-- ── ライブモニター ── -->
+<hr>
+<h2 id="monitor">🔍 Sec-Fetch-* ライブモニター</h2>
+<p>
+  以下の各ボタンでリクエストを送信し、<code>Sec-Fetch-*</code> の変化をリアルタイムで記録します。
+  全パターンを試して違いを比較してください。
+</p>
+
+<div style="display:flex; flex-wrap:wrap; gap:0.4rem; margin:0.8rem 0;">
+  <button class="btn btn-accent" onclick="monitorFetch('GET fetch (cors)', 'https://httpbin.org/headers', {})">GET fetch</button>
+  <button class="btn btn-accent2" onclick="monitorFetch('POST fetch (json)', 'https://httpbin.org/post', {method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})">POST fetch (json)</button>
+  <button class="btn btn-accent3" onclick="monitorFetch('GET no-cors', 'https://httpbin.org/headers', {mode:'no-cors'})">GET no-cors</button>
+  <button class="btn btn-warn" onclick="monitorNav()">ナビゲーション（リンク）</button>
+  <button class="btn btn-dim" onclick="document.getElementById('monitor-log').innerHTML='<div style=\'color:var(--text-dim);font-style:italic;padding:0.5rem;\'>← ボタンを押すとリクエストログが追加されます</div>';logCounter=0;">ログクリア</button>
+</div>
+
+<div class="monitor-log" id="monitor-log">
+  <div style="color:var(--text-dim); font-style:italic; padding:0.5rem;">← ボタンを押すとリクエストログが追加されます</div>
+</div>
+
+<script>
+  let logCounter = 0;
+
+  async function monitorFetch(label, url, opts) {
+    const log = document.getElementById('monitor-log');
+    if (logCounter === 0) log.innerHTML = '';
+    logCounter++;
+    const id = 'log-' + logCounter;
+
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    entry.id = id;
+    entry.innerHTML = '<span class="log-tag" style="background:var(--surface2);color:var(--text-dim);">...</span>'
+      + '<span style="color:var(--text-dim);">' + label + ' — 取得中...</span>';
+    log.prepend(entry);
+
+    try {
+      const res = await fetch(url, opts);
+      if (opts.mode === 'no-cors') {
+        entry.innerHTML =
+          '<span class="log-tag tag-no-cors">no-cors</span>'
+          + '<span><strong>' + label + '</strong><br>'
+          + 'Site: <span style="color:var(--danger)">cross-site</span> | '
+          + 'Mode: <span style="color:var(--accent3)">no-cors</span> | '
+          + 'Dest: empty | User: (なし)<br>'
+          + '<span style="color:var(--text-dim)">※opaque response — DevToolsで確認</span></span>';
+        return;
+      }
+      const data = await res.json();
+      const h = data.headers;
+      const site = h['Sec-Fetch-Site'] || '?';
+      const mode = h['Sec-Fetch-Mode'] || '?';
+      const dest = h['Sec-Fetch-Dest'] || '?';
+      const user = h['Sec-Fetch-User'] || '(なし)';
+
+      const siteClass = site === 'same-origin' ? 'tag-same-origin'
+                       : site === 'cross-site' ? 'tag-cross-site'
+                       : site === 'same-site' ? 'tag-same-site'
+                       : '';
+
+      entry.innerHTML =
+        '<span class="log-tag ' + siteClass + '">' + site + '</span>'
+        + '<span><strong>' + label + '</strong><br>'
+        + 'Site: <strong style="color:' + (site === 'cross-site' ? 'var(--danger)' : 'var(--accent)') + '">' + site + '</strong> | '
+        + 'Mode: <strong>' + mode + '</strong> | '
+        + 'Dest: ' + dest + ' | '
+        + 'User: ' + user + '</span>';
+    } catch(e) {
+      entry.innerHTML =
+        '<span class="log-tag" style="background:#fef2f2;color:var(--danger)">ERR</span>'
+        + '<span>' + label + ' — ' + e.message + '</span>';
+    }
+    log.scrollTop = 0;
+  }
+
+  function monitorNav() {
+    const log = document.getElementById('monitor-log');
+    if (logCounter === 0) log.innerHTML = '';
+    logCounter++;
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    entry.innerHTML =
+      '<span class="log-tag tag-navigate">navigate</span>'
+      + '<span><strong>ナビゲーション（リンククリック）</strong><br>'
+      + 'Site: <strong style="color:var(--warn)">none</strong> | '
+      + 'Mode: <strong>navigate</strong> | '
+      + 'Dest: document | '
+      + 'User: ?1<br>'
+      + '<span style="color:var(--text-dim)">※アドレスバー入力と同等。DevToolsでページ遷移時に確認</span></span>';
+    log.prepend(entry);
+    log.scrollTop = 0;
+  }
+</script>
+
+<div class="note" style="border-color:var(--accent3);background:#f3e8fd;">
+  🔗 <strong style="color:var(--accent3);">多層防御クロスリファレンス</strong>：Fetch Metadata（このLab）は <a href="http-header-lab-06.html">Lab 06 の CORS</a>（レスポンス側のチェック）を補完する、<strong>リクエスト側のチェック</strong>です。両方を組み合わせると、クロスオリジン攻撃に対する防御が二重になります。
+</div>
+
+<!-- ── チェックリスト ── -->
+<hr>
+<h2 id="checklist">✅ Lab 11 チェックリスト</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">チェック状態はブラウザに自動保存されます。</p>
+
+<div class="check-item"><input type="checkbox" data-key="lab11-1"> <label>ページ自体のリクエストで Sec-Fetch-Site=none, Mode=navigate, Dest=document を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab11-2"> <label>fetch() のリクエストで Sec-Fetch-Site=cross-site, Mode=cors, Dest=empty を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab11-3"> <label>画像・CSS・フォント等で Sec-Fetch-Dest が異なる値になることを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab11-4"> <label>fetch の mode オプション (cors / no-cors / same-origin) と Sec-Fetch-Mode の対応を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab11-5"> <label>same-origin / same-site / cross-site / none の違いを理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab11-6"> <label>CSRF防御シミュレーションで正規リクエストと攻撃の判定差を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab11-7"> <label>Sec-Fetch-* ヘッダーがJSから偽装不可能であることを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab11-8"> <label>OutSystemsの画面アクセスとAjaxリクエストで Sec-Fetch-* の違いを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab11-9"> <label>ライブモニターで複数パターンのリクエストを比較した</label></div>
+
+<div style="margin-top:1rem; text-align:center;">
+  <span id="progress-text" style="font-family:'IBM Plex Mono',monospace; color:var(--accent); font-size:0.9rem;"></span>
+</div>
+
+<script>
+  const STORAGE_PREFIX = 'httplab_';
+
+  function updateProgress() {
+    const all = document.querySelectorAll('input[type="checkbox"][data-key]');
+    const checked = [...all].filter(cb => cb.checked).length;
+    const el = document.getElementById('progress-text');
+    if (el) el.textContent = checked + ' / ' + all.length + ' 完了';
+  }
+
+  document.querySelectorAll('input[type="checkbox"][data-key]').forEach(cb => {
+    const saved = localStorage.getItem(STORAGE_PREFIX + cb.dataset.key);
+    if (saved === 'true') {
+      cb.checked = true;
+      cb.closest('.check-item')?.classList.add('checked');
+    }
+    cb.addEventListener('change', () => {
+      localStorage.setItem(STORAGE_PREFIX + cb.dataset.key, cb.checked);
+      cb.closest('.check-item')?.classList.toggle('checked', cb.checked);
+      updateProgress();
+    });
+  });
+
+  updateProgress();
+</script>
+
+<hr>
+
+<div class="note">
+  📖 <strong>参照資料</strong>：このLabの内容は <code>http-headers-guide-v2.md</code> の 第1部 1-1「Fetch Metadata」+ 第2部②「Fetch Metadataによるサーバー側CSRF防御」 に対応しています。より詳しい解説・ヘッダー一覧はガイドを参照してください。
+</div>
+
+<h2>📝 Lab 11 学習ノート</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">メモはブラウザに自動保存されます。</p>
+<textarea id="notes" rows="6" placeholder="気づいたこと、疑問点をメモ..."
+  style="width:100%;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:0.8rem;font-family:'Noto Sans JP',sans-serif;font-size:0.9rem;resize:vertical;margin-top:0.5rem;"></textarea>
+
+<script>
+  const notesEl = document.getElementById('notes');
+  const savedNotes = localStorage.getItem(STORAGE_PREFIX + 'lab11_notes');
+  if (savedNotes) notesEl.value = savedNotes;
+  notesEl.addEventListener('input', () => {
+    localStorage.setItem(STORAGE_PREFIX + 'lab11_notes', notesEl.value);
+  });
+</script>
+
+<hr>
+
+<h2>📚 まとめ：Fetch Metadata の実装ガイドライン</h2>
+
+<div class="lab-box">
+  <div class="step" style="border-left-color:var(--accent);">
+    <div class="step-num" style="color:var(--accent);">サーバー側実装の推奨事項</div>
+    <pre><span class="comment">// 1. Resource Isolation Policy（リソース分離ポリシー）:</span>
+<span class="comment">//    API エンドポイントに適用</span>
+if (Sec-Fetch-Site ∉ {same-origin, same-site, none}) → <span style="color:var(--danger)">403</span>
+
+<span class="comment">// 2. Navigation Isolation Policy（ナビゲーション分離ポリシー）:</span>
+<span class="comment">//    HTMLページに適用</span>
+if (cross-site && !(GET + navigate + document)) → <span style="color:var(--danger)">403</span>
+
+<span class="comment">// 3. 段階的導入:</span>
+<span class="comment">//    まず Report-Only（ログのみ）でテスト</span>
+<span class="comment">//    → 問題なければ本番ブロックに切替</span>
+
+<span class="comment">// 4. ヘッダーが存在しない場合:</span>
+<span class="comment">//    古いブラウザは Sec-Fetch-* を送信しない</span>
+<span class="comment">//    → ヘッダー未送信時は従来のCSRF防御にフォールバック</span></pre>
+  </div>
+</div>
+
+<p style="color:var(--text-dim); font-size:0.82rem; margin-top:2rem;">
+  ← 前回: <a href="http-header-lab-10.html"><strong>Lab 10 — COOP/COEP/CORP</strong></a><br>
+  次回: <a href="http-header-lab-12.html"><strong>Lab 12 — Client Hints</strong></a>（Sec-CH-UA-*, navigator.userAgentData）
+  <br><span style="color:var(--text-dim);font-size:0.78rem;">リクエストのメタデータを理解したら、次はクライアント情報の送り方（Client Hints）を学びます</span>
+</p>
+
+</body>
+</html>

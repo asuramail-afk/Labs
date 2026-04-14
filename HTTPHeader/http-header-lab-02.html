@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HTTP Header Lab 02 - キャッシュ基礎</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;700&display=swap');
+
+  :root {
+    --bg: #ffffff;
+    --surface: #f5f7fa;
+    --surface2: #ebeef2;
+    --border: #c8cdd3;
+    --text: #1a1a2e;
+    --text-dim: #5c6370;
+    --accent: #005cc5;
+    --accent2: #22863a;
+    --accent3: #6f42c1;
+    --warn: #b08800;
+    --danger: #cb2431;
+    --code-bg: #f0f4f8;
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    padding: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  h1 { font-size: 1.6rem; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 0.8rem; margin-bottom: 1.5rem; font-family: 'IBM Plex Mono', monospace; }
+  h2 { font-size: 1.25rem; color: var(--accent2); margin: 2rem 0 1rem; font-family: 'IBM Plex Mono', monospace; }
+  h3 { font-size: 1.05rem; color: var(--accent3); margin: 1.5rem 0 0.8rem; }
+  p, li { font-size: 0.92rem; margin-bottom: 0.5rem; }
+
+  .status-bar { display: flex; gap: 1rem; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.6rem 1rem; margin-bottom: 1.5rem; font-size: 0.82rem; font-family: 'IBM Plex Mono', monospace; flex-wrap: wrap; }
+  .status-item { display: flex; align-items: center; gap: 0.4rem; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-dim); animation: pulse 1.5s infinite; }
+  .status-dot.ok { background: var(--accent); animation: none; }
+  .status-dot.err { background: var(--danger); animation: none; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .alert-critical { background: #fef2f2; border: 2px solid var(--danger); border-radius: var(--radius); padding: 1rem 1.2rem; margin-bottom: 1.5rem; font-size: 0.88rem; }
+  .alert-critical strong { color: var(--danger); }
+  .alert-critical code { background: rgba(203,36,49,0.1); color: var(--danger); }
+
+  .lab-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin: 1.5rem 0; }
+  .step { background: var(--surface2); border-left: 3px solid var(--accent2); border-radius: 0 var(--radius) var(--radius) 0; padding: 1rem 1.2rem; margin: 1rem 0; }
+  .step-num { font-family: 'IBM Plex Mono', monospace; color: var(--accent2); font-weight: 600; font-size: 0.8rem; margin-bottom: 0.3rem; }
+
+  code, pre { font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; }
+  code { background: var(--code-bg); padding: 0.15rem 0.4rem; border-radius: 4px; color: var(--accent); }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; overflow-x: auto; margin: 0.8rem 0; line-height: 1.6; color: #24292e; }
+  pre .comment { color: #6a737d; }
+  pre .header-name { color: var(--accent2); }
+  pre .header-val { color: var(--accent); }
+  pre .highlight { color: var(--warn); font-weight: 600; }
+
+  .placeholder { color: var(--text-dim); font-style: italic; font-size: 0.8rem; }
+
+  .note { background: #e8f4fd; border: 1px solid #b6d4e8; border-radius: var(--radius); padding: 0.8rem 1rem; margin: 1rem 0; font-size: 0.85rem; color: var(--accent2); }
+  .note::before { content: "💡 "; }
+  .warn-box { background: #fff8e1; border: 1px solid #e6d590; border-radius: var(--radius); padding: 0.8rem 1rem; margin: 1rem 0; font-size: 0.85rem; color: var(--warn); }
+  .warn-box::before { content: "⚠️ "; }
+
+  .check-item { background: var(--surface2); border-radius: var(--radius); padding: 0.6rem 1rem; margin: 0.4rem 0; display: flex; align-items: center; gap: 0.6rem; font-size: 0.88rem; transition: opacity 0.3s; }
+  .check-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
+  .check-item.checked { opacity: 0.55; }
+
+  .diagram { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; line-height: 1.5; overflow-x: auto; white-space: pre; color: var(--text-dim); margin: 1rem 0; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.8rem; margin: 1rem 0; }
+  @media (max-width: 900px) { .three-col { grid-template-columns: 1fr; } }
+  @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+  .col-card { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.8rem; font-size: 0.8rem; }
+  .col-card h4 { font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; margin-bottom: 0.5rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); }
+  .col-card pre { border: none; padding: 0.4rem 0; margin: 0; font-size: 0.75rem; background: transparent; }
+
+  a { color: var(--accent2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  html { scroll-behavior: smooth; }
+
+  .btn { border: none; padding: 0.5rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; font-family: 'Noto Sans JP', sans-serif; margin: 0.3rem; transition: opacity 0.2s; }
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.97); }
+  .btn-accent { background: var(--accent); color: var(--bg); }
+  .btn-accent2 { background: var(--accent2); color: var(--bg); }
+  .btn-accent3 { background: var(--accent3); color: var(--bg); }
+  .btn-warn { background: var(--warn); color: var(--bg); }
+  .btn-dim { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+
+  .toc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.2rem; margin: 1rem 0 2rem; }
+  .toc a { display: inline-block; padding: 0.25rem 0.6rem; margin: 0.15rem; border-radius: 6px; font-size: 0.82rem; background: var(--surface2); transition: background 0.2s; }
+  .toc a:hover { background: var(--border); text-decoration: none; }
+
+  /* Cache flow visualization */
+  .cache-flow { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin: 0.8rem 0; font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; }
+  .cache-flow .arrow { color: var(--text-dim); }
+  .cache-flow .tag-200 { background: #e8f5e9; color: var(--accent); padding: 0.2rem 0.5rem; border-radius: 4px; }
+  .cache-flow .tag-304 { background: #fff8e1; color: var(--warn); padding: 0.2rem 0.5rem; border-radius: 4px; }
+  .cache-flow .tag-cache { background: #e3f2fd; color: var(--accent2); padding: 0.2rem 0.5rem; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <div class="status-item">
+    <div class="status-dot" id="dot-protocol"></div>
+    <span id="status-protocol">プロトコル確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-httpbin"></div>
+    <span id="status-httpbin">httpbin.org 確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-devtools"></div>
+    <span>DevTools: <kbd style="background:var(--surface2);padding:0.1rem 0.4rem;border-radius:4px;">F12</kbd></span>
+  </div>
+</div>
+<p style="margin-bottom:0.5rem;font-size:0.82rem;"><a href="http-header-lab-index.html" style="color:var(--accent);text-decoration:none;">← マスター索引に戻る</a></p>
+
+<script>
+(function() {
+  const dot = document.getElementById('dot-protocol');
+  const label = document.getElementById('status-protocol');
+  if (location.protocol === 'file:') {
+    dot.classList.add('err');
+    label.innerHTML = '<strong style="color:var(--danger)">file:// 検出（要修正）</strong>';
+    document.getElementById('file-protocol-alert').style.display = 'block';
+  } else { dot.classList.add('ok'); label.textContent = location.protocol + '// ✅'; }
+})();
+(async function() {
+  const dot = document.getElementById('dot-httpbin');
+  const label = document.getElementById('status-httpbin');
+  try {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 5000);
+    const r = await fetch('https://httpbin.org/get', { signal: c.signal });
+    clearTimeout(t);
+    if (r.ok) { dot.classList.add('ok'); label.textContent = 'httpbin.org ✅'; }
+    else { dot.classList.add('err'); label.innerHTML = '<strong style="color:var(--danger)">httpbin.org 応答エラー</strong>'; }
+  } catch(e) { dot.classList.add('err'); label.innerHTML = '<strong style="color:var(--danger)">httpbin.org ❌</strong>'; }
+})();
+</script>
+
+<div class="alert-critical" id="file-protocol-alert" style="display:none;">
+  <strong>🔴 HTTP サーバー経由で開いてください</strong><br><br>
+  現在 <code>file://</code> で開いています。この状態では <code>fetch()</code> が
+  <strong>CORSエラー</strong>になり、ほとんどの実験が動作しません。<br><br>
+  <strong>Lab 01 で起動したサーバーがまだ動いていれば</strong>、ブラウザで
+  <code>http://127.0.0.1:7890/http-header-lab-02.html</code> を開くだけでOKです。<br><br>
+  サーバーが停止している場合は、コマンドプロンプトで以下を実行してください：
+  <pre style="margin:0.8rem 0; font-size:0.78rem;"><span class="highlight">node -e "const http=require('http'),fs=require('fs'),path=require('path');http.createServer((req,res)=>{const f=path.join('C:/Users/user/ClaudeCode/HTTPHeader',req.url==='/'?'/index.html':req.url);fs.readFile(f,(e,d)=>{if(e){res.writeHead(404);res.end('Not found');}else{const ext=path.extname(f);const mime={'html':'text/html','js':'application/javascript','css':'text/css','png':'image/png','ico':'image/x-icon'};res.writeHead(200,{'Content-Type':(mime[ext.slice(1)]||'text/plain')+';charset=utf-8'});res.end(d);}});}).listen(7890,()=>console.log('Server: http://127.0.0.1:7890'));"</span>
+
+<span class="comment"># → http://127.0.0.1:7890/http-header-lab-02.html でアクセス</span></pre>
+</div>
+
+<h1>🧪 Lab 02: HTTPキャッシュの基礎</h1>
+<p style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.3rem;font-family:'IBM Plex Mono',monospace;">最終更新: 2026年3月</p>
+<p style="color:var(--text-dim); font-size:0.88rem; margin-bottom:1rem;">
+  ～ max-age, ETag, 304, no-cache / no-store を体感する ～
+</p>
+<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">⏱ 所要時間：25分</span>
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">難易度：★☆☆</span>
+</div>
+<p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:1rem;">📋 前提知識：<a href="http-header-lab-01.html">Lab 01</a> 完了推奨（Accept / Content-Type の基本）</p>
+
+<div class="lab-box" style="border-color:var(--accent); margin-bottom:1rem;">
+  <h3 style="color:var(--accent); margin-top:0;">🎯 このLabの学習目標</h3>
+  <p style="margin-bottom:0.3rem;">完了すると、以下ができるようになります：</p>
+  <div class="check-item" style="opacity:1;"><span>1. <code>Cache-Control</code> の <code>max-age</code> / <code>no-cache</code> / <code>no-store</code> の違いを体感し、適切に使い分けられる</span></div>
+  <div class="check-item" style="opacity:1;"><span>2. <code>ETag</code> と <code>Last-Modified</code> の役割と、ブラウザの再検証メカニズムを理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>3. <code>304 Not Modified</code> による転送量削減の効果を実感する</span></div>
+  <div class="check-item" style="opacity:1;"><span>4. OutSystems REST API で <code>SetResponseHeader</code> を使ってキャッシュ制御ヘッダーを正しく設定できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>5. ブラウザのリロード操作（F5 / Ctrl+Shift+R）がキャッシュに与える影響を理解する</span></div>
+</div>
+<div class="warn-box" style="border-color:var(--accent3);background:#fce4ec;">
+  <strong style="color:var(--accent3);">💥 実務での失敗例</strong>：<code>Cache-Control</code> 設定ミスで古いCSSが表示され続け、緊急修正がユーザーに反映されない事故が発生
+</div>
+
+<p>
+  HTTPキャッシュの仕組みを理解し、<code>Cache-Control</code>, <code>ETag</code>,
+  <code>Last-Modified</code>, <code>304 Not Modified</code> の動作を実際に確認します。
+</p>
+
+<div class="warn-box">
+  <strong style="color:var(--danger);">DevTools を先に開いてからリロード</strong>:
+  <code>F12</code> → Network タブ → <code>Ctrl+Shift+R</code>。
+  さらに <strong>「Disable cache」にチェックを入れない</strong>状態で実験してください（キャッシュの動作を見るため）。
+</div>
+
+<div class="toc">
+  <strong style="color:var(--text-dim);font-size:0.82rem;">目次:</strong><br>
+  <a href="#concept">概念整理</a>
+  <a href="#exp-2a">2-A: Cache-Control</a>
+  <a href="#exp-2a2">2-A': リロード操作の違い</a>
+  <a href="#exp-2b">2-B: ETagと304</a>
+  <a href="#exp-2c">2-C: Last-Modified</a>
+  <a href="#exp-2d">2-D: OutSystems実践</a>
+  <a href="#exp-2e">2-E: no-cache vs no-store</a>
+  <a href="#strategy">キャッシュ戦略早見表</a>
+  <a href="#checklist">✅ チェックリスト</a>
+  <a href="#framework">🔧 設定例</a>
+</div>
+
+<!-- ── 概念整理 ── -->
+<div class="lab-box" id="concept">
+  <h3>キャッシュの全体像</h3>
+
+  <div class="diagram">キャッシュの判断フロー（ブラウザ視点）:
+
+  リクエスト発生
+    │
+    ├─ キャッシュにある？
+    │   ├─ NO → サーバーに問い合わせ → 200 OK（フルレスポンス）
+    │   │
+    │   └─ YES → まだ有効（max-age 以内）？
+    │       ├─ YES → キャッシュから返す（ネットワーク通信なし！）
+    │       │         DevTools: Status = 200, Size = "(disk cache)"
+    │       │
+    │       └─ NO（期限切れ）→ 条件付きリクエストで再検証
+    │           ├─ If-None-Match: "etag値"
+    │           │   または If-Modified-Since: 日時
+    │           │
+    │           ├─ サーバー: 変更なし → 304 Not Modified（ボディなし）
+    │           │   → キャッシュを再利用（転送量ゼロ！）
+    │           │
+    │           └─ サーバー: 変更あり → 200 OK（新しいフルレスポンス）
+    │               → キャッシュを更新</div>
+
+  <div class="two-col">
+    <div class="col-card">
+      <h4 style="color:var(--accent);">鮮度チェック（Freshness）</h4>
+      <pre>Cache-Control: max-age=3600
+→ 3600秒間はサーバーに聞かずにキャッシュを使う
+
+Cache-Control: no-cache
+→ 毎回サーバーに確認する（でもキャッシュは保持）
+
+Cache-Control: no-store
+→ 一切キャッシュしない</pre>
+    </div>
+    <div class="col-card">
+      <h4 style="color:var(--accent2);">再検証（Validation）</h4>
+      <pre>ETag（内容のハッシュ / バージョンID）:
+  レスポンス: ETag: "abc123"
+  次回リクエスト: If-None-Match: "abc123"
+
+Last-Modified（最終更新日時）:
+  レスポンス: Last-Modified: Wed, 21 Oct ...
+  次回リクエスト: If-Modified-Since: Wed, 21 Oct ...</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ── 実験 2-A ── -->
+<div class="lab-box" id="exp-2a">
+  <h3>実験 2-A: Cache-Control の観察</h3>
+  <p>異なる <code>Cache-Control</code> 値を持つレスポンスをhttpbin.orgから取得し、ブラウザの振る舞いを比較します。</p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — Cache-Control 値を指定してレスポンスを取得</div>
+    <p>httpbin.org の <code>/response-headers</code> エンドポイントを使い、サーバーに任意のレスポンスヘッダーを返させます。</p>
+    <button class="btn btn-accent" id="btn-cc-maxage">max-age=10（10秒キャッシュ）</button>
+    <button class="btn btn-accent2" id="btn-cc-nocache">no-cache（毎回検証）</button>
+    <button class="btn btn-accent3" id="btn-cc-nostore">no-store（キャッシュ禁止）</button>
+    <button class="btn btn-dim" id="btn-cc-reset">クリア</button>
+  </div>
+
+  <div class="three-col">
+    <div class="col-card" id="cc-col-maxage">
+      <h4 style="color:var(--accent);">max-age=10</h4>
+      <pre><span class="placeholder">← ボタンを押してください</span></pre>
+    </div>
+    <div class="col-card" id="cc-col-nocache">
+      <h4 style="color:var(--accent2);">no-cache</h4>
+      <pre><span class="placeholder">← ボタンを押してください</span></pre>
+    </div>
+    <div class="col-card" id="cc-col-nostore">
+      <h4 style="color:var(--accent3);">no-store</h4>
+      <pre><span class="placeholder">← ボタンを押してください</span></pre>
+    </div>
+  </div>
+
+  <script>
+    async function fetchCC(ccValue, colId) {
+      const col = document.querySelector('#' + colId + ' pre');
+      col.textContent = '送信中...';
+      try {
+        const url = 'https://httpbin.org/response-headers?Cache-Control=' + encodeURIComponent(ccValue);
+        const t0 = performance.now();
+        const res = await fetch(url);
+        const t1 = performance.now();
+        const cc = res.headers.get('Cache-Control') || '(なし)';
+        col.textContent = 'レスポンスヘッダー:\n'
+          + '  Cache-Control: ' + cc + '\n\n'
+          + 'DevToolsで確認:\n'
+          + '  所要時間: ' + Math.round(t1 - t0) + 'ms\n\n'
+          + '→ 同じボタンをもう一度\n'
+          + '  押して比較してください';
+      } catch(e) { col.textContent = 'エラー:\n' + e.message; }
+    }
+
+    document.getElementById('btn-cc-maxage').addEventListener('click', () =>
+      fetchCC('max-age=10', 'cc-col-maxage'));
+    document.getElementById('btn-cc-nocache').addEventListener('click', () =>
+      fetchCC('no-cache', 'cc-col-nocache'));
+    document.getElementById('btn-cc-nostore').addEventListener('click', () =>
+      fetchCC('no-store', 'cc-col-nostore'));
+    document.getElementById('btn-cc-reset').addEventListener('click', () => {
+      ['cc-col-maxage','cc-col-nocache','cc-col-nostore'].forEach(id => {
+        document.querySelector('#' + id + ' pre').innerHTML = '<span class="placeholder">← ボタンを押してください</span>';
+      });
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 2回目の実行でキャッシュの違いを確認</div>
+    <p>各ボタンをもう一度押して、DevToolsのNetworkタブで以下の違いを観察してください：</p>
+    <pre><span class="header-name">max-age=10</span> を2回実行（10秒以内）:
+  1回目: Status=200, Size=通常の転送サイズ
+  2回目: Status=200, Size=<span class="highlight">(disk cache)</span> ← ネットワーク通信なし！
+
+<span class="header-name">no-cache</span> を2回実行:
+  1回目: Status=200, Size=通常
+  2回目: Status=200, Size=通常 ← 毎回サーバーに確認
+
+<span class="header-name">no-store</span> を2回実行:
+  1回目: Status=200, Size=通常
+  2回目: Status=200, Size=通常 ← キャッシュ自体が存在しない</pre>
+  </div>
+
+  <div class="note">
+    <strong>disk cache vs memory cache</strong>:
+    ブラウザは状況に応じて「ディスクキャッシュ」と「メモリキャッシュ」を使い分けます。
+    同一タブ内での再取得は <code>(memory cache)</code>、
+    新しいタブや再起動後は <code>(disk cache)</code> と表示されることが多いです。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/Caching" target="_blank">MDN — HTTPキャッシュ</a></span>
+  </div>
+</div>
+
+<!-- ── 実験 2-A': リロード操作の違い ── -->
+<div class="lab-box" id="exp-2a2">
+  <h3>実験 2-A': ブラウザのリロード操作がキャッシュに与える影響</h3>
+  <p>
+    「<code>max-age</code> を設定したのにキャッシュが効かない！」という混乱の多くは、
+    <strong>リロード操作による自動ヘッダー付与</strong>が原因です。
+  </p>
+
+  <div class="diagram">リロード操作ごとのブラウザ挙動:
+
+  操作                          リクエストに付与されるヘッダー     結果
+  ─────────────────────────────────────────────────────────────────────
+  リンククリック / JS遷移       (なし)                            max-age内ならキャッシュ利用 ✅
+  F5 / Ctrl+R（通常リロード）   Cache-Control: max-age=0          毎回サーバーに再検証 ⚡
+  Ctrl+Shift+R（強制リロード）  Cache-Control: no-cache            キャッシュ完全無視 🔄
+                                Pragma: no-cache
+
+  → max-age=3600 を設定していても、F5 で再検証されてしまう！
+  → キャッシュのテストは「アドレスバーで Enter」か「リンク遷移」で行うこと</div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — max-age カウントダウンで体感する</div>
+    <p>
+      下のボタンを押すと <code>max-age=10</code> のリソースを取得し、
+      キャッシュの残り寿命をカウントダウン表示します。
+    </p>
+    <button class="btn btn-accent" id="btn-countdown">max-age=10 を取得 &amp; カウントダウン開始</button>
+    <div id="countdown-area" style="margin:0.8rem 0;">
+      <div style="display:flex; align-items:center; gap:0.8rem;">
+        <div style="flex:1; background:var(--surface2); border-radius:6px; height:24px; overflow:hidden;">
+          <div id="countdown-bar" style="height:100%; background:var(--accent); width:0%; transition:width 1s linear; border-radius:6px;"></div>
+        </div>
+        <span id="countdown-text" style="font-family:'IBM Plex Mono',monospace; font-size:0.85rem; min-width:120px; color:var(--text-dim);">未開始</span>
+      </div>
+      <pre id="countdown-result" style="margin-top:0.5rem;"><span class="placeholder">← ボタンを押すとカウントダウンが始まります</span></pre>
+    </div>
+  </div>
+
+  <script>
+    let countdownTimer = null;
+    document.getElementById('btn-countdown').addEventListener('click', async () => {
+      const bar = document.getElementById('countdown-bar');
+      const text = document.getElementById('countdown-text');
+      const result = document.getElementById('countdown-result');
+      if (countdownTimer) clearInterval(countdownTimer);
+
+      result.textContent = '取得中...';
+      bar.style.width = '0%';
+      bar.style.transition = 'none';
+
+      try {
+        const url = 'https://httpbin.org/response-headers?Cache-Control=' + encodeURIComponent('max-age=10');
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('HTTPエラー: ' + res.status);
+        const fetchedAt = Date.now();
+        const maxAge = 10;
+
+        result.textContent = '✅ 取得成功！ max-age=10 のキャッシュが有効です\n'
+          + '→ 10秒以内にブラウザの「アドレスバーで Enter」すると (disk cache) になります\n'
+          + '→ F5 を押すと max-age=0 が自動付与され、キャッシュが効きません';
+
+        // Start countdown
+        requestAnimationFrame(() => {
+          bar.style.transition = 'width 1s linear';
+          bar.style.width = '100%';
+          bar.style.background = 'var(--accent)';
+        });
+
+        let remaining = maxAge;
+        text.textContent = 'あと ' + remaining + '秒 有効';
+
+        countdownTimer = setInterval(() => {
+          remaining--;
+          if (remaining > 0) {
+            const pct = ((maxAge - remaining) / maxAge) * 100;
+            bar.style.width = (100 - pct) + '%';
+            text.textContent = 'あと ' + remaining + '秒 有効';
+            if (remaining <= 3) {
+              bar.style.background = 'var(--warn)';
+              text.style.color = 'var(--warn)';
+            }
+          } else {
+            clearInterval(countdownTimer);
+            bar.style.width = '0%';
+            bar.style.background = 'var(--danger)';
+            text.textContent = '期限切れ！';
+            text.style.color = 'var(--danger)';
+            result.textContent += '\n\n⏰ キャッシュ期限切れ！\n→ 次のアクセスではサーバーに再検証（304 or 200）が発生します';
+          }
+        }, 1000);
+      } catch(e) { result.textContent = 'エラー: ' + e.message; }
+    });
+  </script>
+
+  <div class="warn-box">
+    <strong>よくある失敗</strong>:
+    キャッシュの動作テスト時に <code>F5</code> や <code>Ctrl+R</code> でリロードすると、
+    ブラウザが自動的に <code>Cache-Control: max-age=0</code> をリクエストヘッダーに追加し、
+    せっかくの <code>max-age</code> 設定が無視されます。<br>
+    テストは<strong>「アドレスバーで Enter」</strong>か<strong>「別タブでURLを開く」</strong>で行ってください。
+  </div>
+</div>
+
+<!-- ── 実験 2-B ── -->
+<div class="lab-box" id="exp-2b">
+  <h3>実験 2-B: ETag と 304 Not Modified</h3>
+  <p>
+    サーバーが <code>ETag</code> を返すと、次回リクエスト時にブラウザは
+    <code>If-None-Match</code> でそのETag値を送ります。変更がなければ 304 が返ります。
+  </p>
+
+  <div class="diagram">1回目のリクエスト:
+  Browser ──▶ GET /resource
+  Browser ◀── 200 OK
+               ETag: "abc123"
+               Cache-Control: no-cache  ← 毎回検証させる
+               Body: { ... }
+
+2回目のリクエスト:
+  Browser ──▶ GET /resource
+               If-None-Match: "abc123"  ← 前回のETagを送る
+  Browser ◀── 304 Not Modified          ← ボディなし！転送量ゼロ
+               ETag: "abc123"           ← 同じETag
+
+→ ブラウザはキャッシュ済みのボディを使用</div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — httpbin.org の /etag エンドポイントで確認</div>
+    <p>
+      httpbin.org は <code>/etag/:value</code> で任意のETagを返すエンドポイントがあります。<br>
+      <code>If-None-Match</code> が一致すれば 304 を返します。
+    </p>
+    <button class="btn btn-accent" id="btn-etag-first">① 1回目（200 + ETag取得）</button>
+    <button class="btn btn-warn" id="btn-etag-second">② 2回目（If-None-Match送信 → 304?）</button>
+    <button class="btn btn-dim" id="btn-etag-reset">クリア</button>
+    <pre id="etag-result"><span class="placeholder">← ①→②の順にボタンを押してください</span></pre>
+  </div>
+
+  <script>
+    let savedEtag = null;
+
+    document.getElementById('btn-etag-first').addEventListener('click', async () => {
+      const el = document.getElementById('etag-result');
+      el.textContent = '1回目を送信中...';
+      try {
+        const res = await fetch('https://httpbin.org/etag/lab02-test-etag', {
+          headers: { 'Accept': 'application/json' }
+        });
+        savedEtag = res.headers.get('ETag');
+        el.textContent = '① 1回目のレスポンス:\n'
+          + '  Status: ' + res.status + ' ' + res.statusText + '\n'
+          + '  ETag: ' + savedEtag + '\n\n'
+          + '→ このETag値をブラウザが記憶します\n'
+          + '→ 次に②ボタンを押してください';
+      } catch(e) { el.textContent = 'エラー: ' + e.message; }
+    });
+
+    document.getElementById('btn-etag-second').addEventListener('click', async () => {
+      const el = document.getElementById('etag-result');
+      if (!savedEtag) {
+        el.textContent = '先に①ボタンでETagを取得してください';
+        return;
+      }
+      el.textContent = '2回目を送信中...\n  If-None-Match: ' + savedEtag;
+      try {
+        const res = await fetch('https://httpbin.org/etag/lab02-test-etag', {
+          headers: {
+            'Accept': 'application/json',
+            'If-None-Match': savedEtag
+          }
+        });
+        el.textContent = '② 2回目のレスポンス:\n'
+          + '  Status: ' + res.status + ' ' + res.statusText + '\n'
+          + '  ETag: ' + (res.headers.get('ETag') || '(なし)') + '\n\n'
+          + '送信したリクエストヘッダー:\n'
+          + '  If-None-Match: ' + savedEtag + '\n\n'
+          + (res.status === 304
+            ? '✅ 304 Not Modified!\n   → ボディの転送なし。キャッシュを再利用。\n   → DevTools の Size 欄を確認してください。'
+            : '（httpbin.org が 200 を返す場合もあります。\n  DevTools で実際のネットワーク通信を確認してください）');
+      } catch(e) { el.textContent = 'エラー: ' + e.message; }
+    });
+
+    document.getElementById('btn-etag-reset').addEventListener('click', () => {
+      savedEtag = null;
+      document.getElementById('etag-result').innerHTML = '<span class="placeholder">← ①→②の順にボタンを押してください</span>';
+    });
+  </script>
+
+  <div class="warn-box">
+    <strong>fetch API と 304 の注意点</strong>:
+    ブラウザの <code>fetch()</code> API は 304 レスポンスを透過的に処理するため、
+    JS側からは <code>status === 200</code> に見えることがあります。
+    実際の 304 は <strong>DevTools の Network タブ</strong>で確認してください。
+    手動で <code>If-None-Match</code> を付けた場合はJSでも 304 が見えます。
+  </div>
+</div>
+
+<!-- ── 実験 2-C ── -->
+<div class="lab-box" id="exp-2c">
+  <h3>実験 2-C: Last-Modified と If-Modified-Since</h3>
+  <p>
+    <code>Last-Modified</code> は ETag と同様の再検証メカニズムですが、日時ベースです。
+    ETag が「内容のハッシュ」なら、Last-Modified は「最終更新日時」です。
+  </p>
+
+  <div class="two-col">
+    <div class="col-card">
+      <h4 style="color:var(--accent);">ETag（内容ベース）</h4>
+      <pre>長所:
+  内容が1バイトでも変われば検出
+  内容が同一なら同じETag
+短所:
+  サーバーがハッシュ計算必要
+
+レスポンス: ETag: "abc123"
+リクエスト: If-None-Match: "abc123"</pre>
+    </div>
+    <div class="col-card">
+      <h4 style="color:var(--accent2);">Last-Modified（日時ベース）</h4>
+      <pre>長所:
+  サーバーの負荷が軽い
+  ファイルシステムの日時をそのまま使える
+短所:
+  1秒以内の変更を検出できない
+  内容が戻っても日時は進む
+
+レスポンス: Last-Modified: Wed, 21 Oct...
+リクエスト: If-Modified-Since: Wed, 21 Oct...</pre>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — Last-Modified の動作を確認</div>
+    <p>httpbin.org の /cache エンドポイントで、<code>Last-Modified</code> を含むレスポンスを取得します。</p>
+    <button class="btn btn-accent2" id="btn-lm">Last-Modified 付きレスポンスを取得</button>
+    <pre id="lm-result"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-lm').addEventListener('click', async () => {
+      const el = document.getElementById('lm-result');
+      el.textContent = '送信中...';
+      try {
+        // /cache/N は N秒間のmax-ageを返し、Last-Modified も含む
+        const res = await fetch('https://httpbin.org/cache/5');
+        const lm = res.headers.get('Last-Modified') || '(なし)';
+        const etag = res.headers.get('ETag') || '(なし)';
+        const cc = res.headers.get('Cache-Control') || '(なし)';
+        el.textContent = 'レスポンスヘッダー:\n'
+          + '  Cache-Control: ' + cc + '\n'
+          + '  Last-Modified: ' + lm + '\n'
+          + '  ETag: ' + etag + '\n\n'
+          + 'DevToolsで確認:\n'
+          + '  5秒以内に再度ボタンを押す → (disk cache)\n'
+          + '  5秒経過後に押す → If-Modified-Since が送られる\n\n'
+          + '※ ETag と Last-Modified の両方が返っている場合、\n'
+          + '  ブラウザは両方（If-None-Match + If-Modified-Since）\n'
+          + '  を送信します。サーバーは ETag を優先します。';
+      } catch(e) { el.textContent = 'エラー: ' + e.message; }
+    });
+  </script>
+
+  <div class="note">
+    <strong>ETag と Last-Modified の優先順位</strong>:
+    両方存在する場合、サーバーは <code>ETag</code> を優先して判定すべきとRFCで定められています。
+    ブラウザは両方のヘッダーを送信しますが、サーバーがETagで一致を確認できれば
+    Last-Modifiedは無視されます。
+  </div>
+</div>
+
+<!-- ── 実験 2-D: OutSystems ── -->
+<div class="lab-box" id="exp-2d">
+  <h3>実験 2-D: OutSystems でキャッシュ制御ヘッダーを設定する</h3>
+  <p>Lab 01 で作成した <code>HeaderLab</code> モジュールに、キャッシュ制御の REST API を追加します。</p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — REST APIメソッドを追加</div>
+    <pre><span class="comment">// Service Studio 操作手順:</span>
+
+<span class="comment">// Lab 01 の HeaderLab モジュールを開く</span>
+
+1. HeaderTest REST API に新しいメソッドを追加:
+   名前: <span class="header-val">GetCached</span>
+   HTTP Method: <span class="header-val">GET</span>
+
+2. Input Parameter を追加:
+   名前: <span class="header-val">CacheSeconds</span> (Integer型)
+   Is Mandatory: <span class="header-val">Yes</span>
+   Receive In: <span class="header-val">URL</span>
+
+3. Output Parameter を追加:
+   名前: <span class="header-val">Message</span> (Text型)
+   名前: <span class="header-val">GeneratedAt</span> (Text型)
+
+4. GetCached のフロー:
+   a. Assign ノード:
+      Message = <span class="header-val">"Cached for " + CacheSeconds + " seconds"</span>
+      GeneratedAt = <span class="header-val">CurrDateTime()</span>
+
+   b. <span class="highlight">Assign ノード（ヘッダー設定）</span>:
+      ※ OnResponse の Server Action は不要。
+      代わりに SetResponseHeader を使用:
+
+      <span class="highlight">SetResponseHeader("Cache-Control", "public, max-age=" + CacheSeconds)</span>
+      <span class="highlight">SetResponseHeader("X-Generated-At", CurrDateTime())</span>
+
+5. <span class="highlight">Publish</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — ブラウザで動作確認</div>
+    <p>以下のURLにアクセスし、DevToolsで Cache-Control ヘッダーを確認します：</p>
+    <pre>https://&lt;your-env&gt;.outsystemscloud.com/HeaderLab/rest/HeaderTest/GetCached?CacheSeconds=<span class="highlight">10</span></pre>
+    <p>確認ポイント：</p>
+    <pre><span class="comment">// 1回目のアクセス:</span>
+<span class="header-name">Cache-Control</span>: <span class="header-val">public, max-age=10</span>
+<span class="header-name">X-Generated-At</span>: <span class="header-val">2026-03-31 10:00:00</span>  ← 生成時刻
+
+<span class="comment">// 10秒以内に再アクセス（DevToolsで確認）:</span>
+Status: 200
+Size: <span class="highlight">(disk cache)</span>  ← ネットワーク通信なし！
+<span class="header-name">X-Generated-At</span>: <span class="header-val">2026-03-31 10:00:00</span>  ← 同じ時刻 = キャッシュ
+
+<span class="comment">// 10秒経過後に再アクセス:</span>
+Status: 200
+Size: 通常の転送サイズ
+<span class="header-name">X-Generated-At</span>: <span class="header-val">2026-03-31 10:00:15</span>  ← 新しい時刻 = 新規取得</pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — CacheSeconds を変えて実験</div>
+    <p>URLの <code>CacheSeconds</code> パラメータを変えて動作の違いを確認します：</p>
+    <pre><span class="comment">// パターン1: 長期キャッシュ</span>
+?CacheSeconds=<span class="highlight">60</span>   → 1分間キャッシュ
+
+<span class="comment">// パターン2: キャッシュなし（0秒 = 毎回取得）</span>
+?CacheSeconds=<span class="highlight">0</span>    → max-age=0 → 毎回サーバーに問い合わせ
+
+<span class="comment">// 比較: ブラウザの強制リロード</span>
+Ctrl+Shift+R       → DevTools上 Cache-Control: max-age=0 が
+                      リクエストヘッダーに自動付与される</pre>
+  </div>
+
+  <div class="note">
+    <strong>OutSystems の SetResponseHeader</strong>:
+    REST API のフロー内で <code>SetResponseHeader</code> アクションを使うと、
+    任意のレスポンスヘッダーを追加できます。
+    キャッシュ制御だけでなく、今後のLabで CORS, CSP 等の設定にも使います。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/Headers/Cache-Control" target="_blank">MDN — Cache-Control</a></span>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 4 — public vs private の違いを理解する</div>
+    <pre><span class="header-name">public</span>: ブラウザだけでなく、CDN・プロキシ等の共有キャッシュも保存可
+  → <span class="header-val">Cache-Control: public, max-age=3600</span>
+  → 用途: 静的アセット（JS/CSS/画像）、全ユーザー共通のデータ
+
+<span class="header-name">private</span>: ブラウザのみ保存可。CDN・プロキシには保存させない
+  → <span class="header-val">Cache-Control: private, max-age=3600</span>
+  → 用途: ログイン後の個人情報、ユーザー固有のAPIレスポンス
+
+<span class="highlight">⚠ 危険な間違い:</span>
+  個人情報を含むレスポンスに public を付けると、
+  CDN が他のユーザーにそのキャッシュを返してしまう事故が発生！
+  → ユーザー固有のデータには必ず <span class="header-val">private</span> を使う</pre>
+  </div>
+
+  <div class="warn-box">
+    <strong>OutSystems 環境での注意</strong>:
+    OutSystems PaaS環境では、IISやCDN（CloudFront等）のレイヤーで
+    <code>Cache-Control</code> が上書きされるケースがあります。
+    DevToolsで実際に返ってくるヘッダー値が意図通りかを必ず確認してください。
+  </div>
+</div>
+
+<!-- ── 実験 2-E ── -->
+<div class="lab-box" id="exp-2e">
+  <h3>実験 2-E: no-cache vs no-store の違い</h3>
+  <p>
+    よく混同される <code>no-cache</code> と <code>no-store</code> の動作の違いを体感します。
+  </p>
+
+  <div class="diagram">no-cache（キャッシュするが、毎回確認）:
+  ┌─────────┐     ┌──────────┐
+  │ Browser │ ──▶ │  Server  │  毎回 If-None-Match / If-Modified-Since を送る
+  │(cache有)│ ◀── │          │  変更なし → 304（ボディ転送なし = 高速）
+  └─────────┘     └──────────┘  変更あり → 200（フル取得）
+
+no-store（キャッシュ自体を禁止）:
+  ┌─────────┐     ┌──────────┐
+  │ Browser │ ──▶ │  Server  │  毎回フルリクエスト
+  │(cache無)│ ◀── │          │  常に 200（フルボディ転送）
+  └─────────┘     └──────────┘  304 は発生しない
+</div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — 実際の違いを比較</div>
+    <p>2つのボタンを順番に押し、DevToolsの転送サイズを比較してください。</p>
+    <button class="btn btn-accent2" id="btn-nc">no-cache で取得</button>
+    <button class="btn btn-accent3" id="btn-ns">no-store で取得</button>
+  </div>
+
+  <div class="two-col">
+    <div class="col-card" id="nc-col">
+      <h4 style="color:var(--accent2);">no-cache</h4>
+      <pre><span class="placeholder">← ボタンを押してください</span></pre>
+    </div>
+    <div class="col-card" id="ns-col">
+      <h4 style="color:var(--accent3);">no-store</h4>
+      <pre><span class="placeholder">← ボタンを押してください</span></pre>
+    </div>
+  </div>
+
+  <script>
+    async function fetchCacheMode(ccValue, colId, label) {
+      const col = document.querySelector('#' + colId + ' pre');
+      col.textContent = '送信中...';
+      try {
+        const url = 'https://httpbin.org/response-headers?Cache-Control='
+          + encodeURIComponent(ccValue)
+          + '&ETag=' + encodeURIComponent('"lab02-etag"');
+        const t0 = performance.now();
+        const res = await fetch(url);
+        const t1 = performance.now();
+        col.textContent = label + '\n\n'
+          + 'レスポンスヘッダー:\n'
+          + '  Cache-Control: ' + (res.headers.get('Cache-Control') || '?') + '\n'
+          + '  ETag: ' + (res.headers.get('ETag') || '?') + '\n\n'
+          + '所要時間: ' + Math.round(t1 - t0) + 'ms\n\n'
+          + 'DevToolsで確認:\n'
+          + (ccValue.includes('no-cache')
+            ? '  → 2回目以降: If-None-Match が送信されるか\n    → 304 が返るか確認'
+            : '  → 2回目も常に 200 (フル取得)\n    → If-None-Match は送信されない');
+      } catch(e) { col.textContent = 'エラー:\n' + e.message; }
+    }
+
+    document.getElementById('btn-nc').addEventListener('click', () =>
+      fetchCacheMode('no-cache', 'nc-col', 'Cache-Control: no-cache'));
+    document.getElementById('btn-ns').addEventListener('click', () =>
+      fetchCacheMode('no-store', 'ns-col', 'Cache-Control: no-store'));
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 使い分けの指針</div>
+    <pre><span class="comment">// どちらを使うべきか？</span>
+
+<span class="header-name">no-cache を使うべき場面:</span>
+  HTMLドキュメント（常に最新を表示したいが、304で転送量削減したい）
+  APIレスポンス（データは変わりうるが、変わっていなければ再利用したい）
+
+<span class="header-name">no-store を使うべき場面:</span>
+  <span class="highlight">認証トークン・機密情報</span>（キャッシュに残ってはいけない）
+  ワンタイムパスワード等のセキュリティ情報
+  個人情報を含むレスポンス（GDPR等の規制要件）
+
+<span class="comment">// よくある間違い:</span>
+<span class="highlight">❌ セキュリティのために no-cache を使う</span>
+   → キャッシュは保存される！ no-store を使うべき</pre>
+  </div>
+</div>
+
+<!-- ── キャッシュ戦略早見表 ── -->
+<div class="lab-box" id="strategy">
+  <h3>キャッシュ戦略の早見表（実務リファレンス）</h3>
+
+  <div class="diagram">シナリオ別の推奨 Cache-Control 設定:
+
+  シナリオ                        推奨設定                                     理由
+  ────────────────────────────────────────────────────────────────────────────────────────
+  SPA の JS/CSS（ハッシュ付き）   public, max-age=31536000, immutable          ファイル名がバージョン
+  HTMLドキュメント                 no-cache                                    常に最新＋ETagで304
+  REST API（ユーザー共通データ）  public, max-age=60, stale-while-revalidate=300
+  REST API（ユーザー固有データ）  private, no-cache                           CDNに漏洩防止
+  認証トークン・機密情報          no-store                                    キャッシュ自体を禁止
+  画像（CDN配信）                 public, max-age=86400                       1日キャッシュ
+  フォント（CDN配信）             public, max-age=31536000, immutable          めったに変わらない</div>
+
+  <h3 style="margin-top:1.5rem;">⚠ 実務でよくあるキャッシュ事故 Top 5</h3>
+
+  <div class="step" style="border-left-color:var(--danger);">
+    <div class="step-num" style="color:var(--danger);">事故1: JSの更新が反映されない</div>
+    <p>原因: <code>max-age=31536000</code> でファイル名にハッシュがない（<code>app.js</code>）<br>
+    対策: ビルド時にハッシュ付きファイル名（<code>app-3a7c9f2e.js</code>）+ <code>immutable</code></p>
+  </div>
+  <div class="step" style="border-left-color:var(--danger);">
+    <div class="step-num" style="color:var(--danger);">事故2: 個人情報がCDNにキャッシュされた</div>
+    <p>原因: ユーザー固有APIに <code>public</code> を設定<br>
+    対策: ユーザー固有データには必ず <code>private</code> または <code>no-store</code></p>
+  </div>
+  <div class="step" style="border-left-color:var(--danger);">
+    <div class="step-num" style="color:var(--danger);">事故3: no-cacheなのにキャッシュに残っている</div>
+    <p>原因: <code>no-cache</code> はキャッシュを保存する（毎回検証するだけ）<br>
+    対策: キャッシュに残してはいけないデータは <code>no-store</code> を使う</p>
+  </div>
+  <div class="step" style="border-left-color:var(--danger);">
+    <div class="step-num" style="color:var(--danger);">事故4: F5でテストして「キャッシュが効かない」と判断</div>
+    <p>原因: F5はブラウザが <code>max-age=0</code> を自動付与する<br>
+    対策: テストはアドレスバーで Enter、またはリンク遷移で行う</p>
+  </div>
+  <div class="step" style="border-left-color:var(--danger);">
+    <div class="step-num" style="color:var(--danger);">事故5: CDNとオリジンのCache-Controlが競合</div>
+    <p>原因: CDN設定がオリジンの <code>Cache-Control</code> を上書き<br>
+    対策: <code>s-maxage</code> でCDN専用の有効期間を設定し、<code>max-age</code> はブラウザ用に分離</p>
+  </div>
+</div>
+<hr>
+<h2 id="framework">🔧 フレームワーク別設定例</h2>
+<p style="font-size:0.85rem;color:var(--text-dim);">このLabで学んだヘッダーを各環境で設定する方法です。</p>
+
+<div style="overflow-x:auto;">
+<table style="width:100%;border-collapse:collapse;font-size:0.78rem;font-family:'IBM Plex Mono',monospace;margin:1rem 0;">
+  <thead>
+    <tr style="background:var(--surface2);color:var(--accent2);">
+      <th style="padding:0.6rem;border:1px solid var(--border);text-align:left;min-width:120px;">環境</th>
+      <th style="padding:0.6rem;border:1px solid var(--border);text-align:left;">設定方法</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="padding:0.6rem;border:1px solid var(--border);color:var(--accent);white-space:nowrap;">Express</td>
+      <td style="padding:0.6rem;border:1px solid var(--border);"><code>res.set('Cache-Control', 'public, max-age=31536000, immutable')</code></td>
+    </tr>
+    <tr>
+      <td style="padding:0.6rem;border:1px solid var(--border);color:var(--accent);white-space:nowrap;">Next.js</td>
+      <td style="padding:0.6rem;border:1px solid var(--border);"><code>// next.config.js headers() で Cache-Control を返す</code></td>
+    </tr>
+    <tr>
+      <td style="padding:0.6rem;border:1px solid var(--border);color:var(--accent);white-space:nowrap;">Nginx</td>
+      <td style="padding:0.6rem;border:1px solid var(--border);"><code>location /static/ { add_header Cache-Control "public, max-age=31536000, immutable"; }</code></td>
+    </tr>
+    <tr>
+      <td style="padding:0.6rem;border:1px solid var(--border);color:var(--accent);white-space:nowrap;">OutSystems</td>
+      <td style="padding:0.6rem;border:1px solid var(--border);"><code>SetResponseHeader("Cache-Control", "no-cache")  // REST API</code></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<hr>
+<h2 id="checklist">✅ Lab 02 チェックリスト</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">チェック状態はブラウザに自動保存されます。</p>
+
+<div class="check-item"><input type="checkbox" data-key="lab02-1"> <label>max-age で指定した期間内は (disk cache) になることを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab02-2"> <label>ETag + If-None-Match で 304 Not Modified が返ることを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab02-3"> <label>Last-Modified の存在と、ETag との優先順位を理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab02-4"> <label>OutSystems で SetResponseHeader を使い Cache-Control を設定した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab02-5"> <label>CacheSeconds パラメータで max-age の期間を変え、キャッシュ有効期間の違いを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab02-6"> <label>no-cache と no-store の動作の違いを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab02-7"> <label>no-store は「キャッシュに保存しない」、no-cache は「毎回検証」の違いを理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab02-8"> <label>F5 / Ctrl+Shift+R のリロード操作がキャッシュに与える影響を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab02-9"> <label>public vs private の違いと、個人情報に private を使う理由を理解した</label></div>
+
+<div style="margin-top:1rem; text-align:center;">
+  <span id="progress-text" style="font-family:'IBM Plex Mono',monospace; color:var(--accent); font-size:0.9rem;"></span>
+</div>
+
+<script>
+  const STORAGE_PREFIX = 'httplab_';
+  function updateProgress() {
+    const all = document.querySelectorAll('input[type="checkbox"][data-key]');
+    const checked = [...all].filter(cb => cb.checked).length;
+    const el = document.getElementById('progress-text');
+    if (el) el.textContent = checked + ' / ' + all.length + ' 完了';
+  }
+  document.querySelectorAll('input[type="checkbox"][data-key]').forEach(cb => {
+    const saved = localStorage.getItem(STORAGE_PREFIX + cb.dataset.key);
+    if (saved === 'true') { cb.checked = true; cb.closest('.check-item')?.classList.add('checked'); }
+    cb.addEventListener('change', () => {
+      localStorage.setItem(STORAGE_PREFIX + cb.dataset.key, cb.checked);
+      cb.closest('.check-item')?.classList.toggle('checked', cb.checked);
+      updateProgress();
+    });
+  });
+  updateProgress();
+</script>
+
+<hr>
+
+<div class="note">
+  📖 <strong>参照資料</strong>：このLabの内容は <code>http-headers-guide-v2.md</code> の 第1部 1-2「キャッシュ制御」+ 第3部 3-3「キャッシュ戦略」 に対応しています。より詳しい解説・ヘッダー一覧はガイドを参照してください。
+</div>
+
+<h2>📝 Lab 02 学習ノート</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">メモはブラウザに自動保存されます。</p>
+<textarea id="notes" rows="6" placeholder="気づいたこと、疑問点をメモ..."
+  style="width:100%;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:0.8rem;font-family:'Noto Sans JP',sans-serif;font-size:0.9rem;resize:vertical;margin-top:0.5rem;"></textarea>
+
+<script>
+  const notesEl = document.getElementById('notes');
+  const savedNotes = localStorage.getItem(STORAGE_PREFIX + 'lab02_notes');
+  if (savedNotes) notesEl.value = savedNotes;
+  notesEl.addEventListener('input', () => { localStorage.setItem(STORAGE_PREFIX + 'lab02_notes', notesEl.value); });
+</script>
+
+<div style="margin-top:2rem; display:flex; justify-content:space-between; font-size:0.82rem; color:var(--text-dim);">
+  <span>← 前回: <a href="http-header-lab-01.html"><strong>Lab 01 — コンテンツ交渉</strong></a></span>
+  <span>次回: <a href="http-header-lab-03.html"><strong>Lab 03 — キャッシュ応用</strong></a>（immutable, stale-while-revalidate, Vary, Age）→
+  <br><span style="color:var(--text-dim);font-size:0.78rem;">基本を押さえたら、immutable / stale-while-revalidate など実務で差がつくキャッシュ戦略へ</span></span>
+</div>
+
+</body>
+</html>

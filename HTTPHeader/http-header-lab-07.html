@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HTTP Header Lab 07 - CORS応用</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;700&display=swap');
+
+  :root {
+    --bg: #ffffff;
+    --surface: #f5f7fa;
+    --surface2: #ebeef2;
+    --border: #c8cdd3;
+    --text: #1a1a2e;
+    --text-dim: #5c6370;
+    --accent: #005cc5;
+    --accent2: #22863a;
+    --accent3: #6f42c1;
+    --warn: #b08800;
+    --danger: #cb2431;
+    --code-bg: #f0f4f8;
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    padding: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  h1 { font-size: 1.6rem; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 0.8rem; margin-bottom: 1.5rem; font-family: 'IBM Plex Mono', monospace; }
+  h2 { font-size: 1.25rem; color: var(--accent2); margin: 2rem 0 1rem; font-family: 'IBM Plex Mono', monospace; }
+  h3 { font-size: 1.05rem; color: var(--accent3); margin: 1.5rem 0 0.8rem; }
+  p, li { font-size: 0.92rem; margin-bottom: 0.5rem; }
+
+  .status-bar { display: flex; gap: 1rem; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.6rem 1rem; margin-bottom: 1.5rem; font-size: 0.82rem; font-family: 'IBM Plex Mono', monospace; flex-wrap: wrap; }
+  .status-item { display: flex; align-items: center; gap: 0.4rem; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-dim); animation: pulse 1.5s infinite; }
+  .status-dot.ok { background: var(--accent); animation: none; }
+  .status-dot.err { background: var(--danger); animation: none; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .alert-critical { background: #fef2f2; border: 2px solid var(--danger); border-radius: var(--radius); padding: 1rem 1.2rem; margin-bottom: 1.5rem; font-size: 0.88rem; }
+  .alert-critical strong { color: var(--danger); }
+  .alert-critical code { background: rgba(203,36,49,0.1); color: var(--danger); }
+
+  .lab-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin: 1.5rem 0; }
+  .step { background: var(--surface2); border-left: 3px solid var(--accent2); border-radius: 0 var(--radius) var(--radius) 0; padding: 1rem 1.2rem; margin: 1rem 0; }
+  .step-num { font-family: 'IBM Plex Mono', monospace; color: var(--accent2); font-weight: 600; font-size: 0.8rem; margin-bottom: 0.3rem; }
+
+  code, pre { font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; }
+  code { background: var(--code-bg); padding: 0.15rem 0.4rem; border-radius: 4px; color: var(--accent); }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; overflow-x: auto; margin: 0.8rem 0; line-height: 1.6; color: #24292e; }
+  pre .comment { color: #6a737d; }
+  pre .header-name { color: var(--accent2); }
+  pre .header-val { color: var(--accent); }
+  pre .highlight { color: var(--warn); font-weight: 600; }
+
+  .placeholder { color: var(--text-dim); font-style: italic; font-size: 0.8rem; }
+
+  .note { background: #e8f4fd; border: 1px solid #b6d4e8; border-radius: var(--radius); padding: 0.8rem 1rem; margin: 1rem 0; font-size: 0.85rem; color: var(--accent2); }
+  .note::before { content: "💡 "; }
+  .warn-box { background: #fff8e1; border: 1px solid #e6d590; border-radius: var(--radius); padding: 0.8rem 1rem; margin: 1rem 0; font-size: 0.85rem; color: var(--warn); }
+  .warn-box::before { content: "⚠️ "; }
+
+  .check-item { background: var(--surface2); border-radius: var(--radius); padding: 0.6rem 1rem; margin: 0.4rem 0; display: flex; align-items: center; gap: 0.6rem; font-size: 0.88rem; transition: opacity 0.3s; }
+  .check-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
+  .check-item.checked { opacity: 0.55; }
+
+  .diagram { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; line-height: 1.5; overflow-x: auto; white-space: pre; color: var(--text-dim); margin: 1rem 0; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.8rem; margin: 1rem 0; }
+  @media (max-width: 900px) { .three-col { grid-template-columns: 1fr; } }
+  @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+  .col-card { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.8rem; font-size: 0.8rem; }
+  .col-card h4 { font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; margin-bottom: 0.5rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); }
+  .col-card pre { border: none; padding: 0.4rem 0; margin: 0; font-size: 0.75rem; background: transparent; }
+
+  a { color: var(--accent2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  html { scroll-behavior: smooth; }
+
+  .btn { border: none; padding: 0.5rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; font-family: 'Noto Sans JP', sans-serif; margin: 0.3rem; transition: opacity 0.2s; }
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.97); }
+  .btn-accent { background: var(--accent); color: var(--bg); }
+  .btn-accent2 { background: var(--accent2); color: var(--bg); }
+  .btn-accent3 { background: var(--accent3); color: var(--bg); }
+  .btn-warn { background: var(--warn); color: var(--bg); }
+  .btn-dim { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+
+  .toc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.2rem; margin: 1rem 0 2rem; }
+  .toc a { display: inline-block; padding: 0.25rem 0.6rem; margin: 0.15rem; border-radius: 6px; font-size: 0.82rem; background: var(--surface2); transition: background 0.2s; }
+  .toc a:hover { background: var(--border); text-decoration: none; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin: 0.8rem 0; }
+  th { background: var(--surface2); color: var(--accent2); font-family: 'IBM Plex Mono', monospace; padding: 0.5rem 0.8rem; text-align: left; border: 1px solid var(--border); }
+  td { padding: 0.5rem 0.8rem; border: 1px solid var(--border); vertical-align: top; }
+  tr:nth-child(even) td { background: var(--surface2); }
+
+  .tag-ok { background: #e8f5e9; color: var(--accent); padding: 0.15rem 0.5rem; border-radius: 4px; font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; display: inline-block; }
+  .tag-ng { background: #fef2f2; color: var(--danger); padding: 0.15rem 0.5rem; border-radius: 4px; font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; display: inline-block; }
+  .tag-warn { background: #fff8e1; color: var(--warn); padding: 0.15rem 0.5rem; border-radius: 4px; font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; display: inline-block; }
+</style>
+</head>
+<body>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <div class="status-item">
+    <div class="status-dot" id="dot-protocol"></div>
+    <span id="status-protocol">プロトコル確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-httpbin"></div>
+    <span id="status-httpbin">httpbin.org 確認中...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="dot-devtools"></div>
+    <span>DevTools: <kbd style="background:var(--surface2);padding:0.1rem 0.4rem;border-radius:4px;">F12</kbd></span>
+  </div>
+</div>
+<p style="margin-bottom:0.5rem;font-size:0.82rem;"><a href="http-header-lab-index.html" style="color:var(--accent);text-decoration:none;">← マスター索引に戻る</a></p>
+
+<script>
+(function() {
+  const dot = document.getElementById('dot-protocol');
+  const label = document.getElementById('status-protocol');
+  if (location.protocol === 'file:') {
+    dot.classList.add('err');
+    label.innerHTML = '<strong style="color:var(--danger)">file:// 検出（要修正）</strong>';
+    document.getElementById('file-protocol-alert').style.display = 'block';
+  } else { dot.classList.add('ok'); label.textContent = location.protocol + '// ✅'; }
+})();
+(async function() {
+  const dot = document.getElementById('dot-httpbin');
+  const label = document.getElementById('status-httpbin');
+  try {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 5000);
+    const r = await fetch('https://httpbin.org/get', { signal: c.signal });
+    clearTimeout(t);
+    if (r.ok) { dot.classList.add('ok'); label.textContent = 'httpbin.org ✅'; }
+    else { dot.classList.add('err'); label.innerHTML = '<strong style="color:var(--danger)">httpbin.org 応答エラー</strong>'; }
+  } catch(e) { dot.classList.add('err'); label.innerHTML = '<strong style="color:var(--danger)">httpbin.org ❌</strong>'; }
+})();
+</script>
+
+<div class="alert-critical" id="file-protocol-alert" style="display:none;">
+  <strong>🔴 HTTP サーバー経由で開いてください</strong><br><br>
+  現在 <code>file://</code> で開いています。この状態では <code>fetch()</code> が
+  <strong>CORSエラー</strong>になり、ほとんどの実験が動作しません。<br><br>
+  <strong>Lab 01 で起動したサーバーがまだ動いていれば</strong>、ブラウザで
+  <code>http://127.0.0.1:7890/http-header-lab-07.html</code> を開くだけでOKです。<br><br>
+  サーバーが停止している場合は、コマンドプロンプトで以下を実行してください：
+  <pre style="margin:0.8rem 0; font-size:0.78rem;"><span class="highlight">node -e "const http=require('http'),fs=require('fs'),path=require('path');http.createServer((req,res)=>{const f=path.join('C:/Users/user/ClaudeCode/HTTPHeader',req.url==='/'?'/index.html':req.url);fs.readFile(f,(e,d)=>{if(e){res.writeHead(404);res.end('Not found');}else{const ext=path.extname(f);const mime={'html':'text/html','js':'application/javascript','css':'text/css','png':'image/png','ico':'image/x-icon'};res.writeHead(200,{'Content-Type':(mime[ext.slice(1)]||'text/plain')+';charset=utf-8'});res.end(d);}});}).listen(7890,()=>console.log('Server: http://127.0.0.1:7890'));"</span>
+
+<span class="comment"># → http://127.0.0.1:7890/http-header-lab-07.html でアクセス</span></pre>
+</div>
+
+<h1>🧪 Lab 07: CORS応用（Credentials, Vary, Expose-Headers）</h1>
+<p style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.3rem;font-family:'IBM Plex Mono',monospace;">最終更新: 2026年3月</p>
+<p style="color:var(--text-dim); font-size:0.88rem; margin-bottom:1rem;">
+  ～ 認証情報付きCORS, Varyヘッダー, 公開ヘッダーの制御を理解する ～
+</p>
+<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">⏱ 所要時間：30分</span>
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">難易度：★★★</span>
+</div>
+<p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:1rem;">📋 前提知識：<a href="http-header-lab-06.html">Lab 06</a> 必須（CORS の基本概念・プリフライト・シンプルリクエスト）</p>
+
+<div class="lab-box" style="border-color:var(--accent); margin-bottom:1rem;">
+  <h3 style="color:var(--accent); margin-top:0;">🎯 このLabの学習目標</h3>
+  <p style="margin-bottom:0.3rem;">完了すると、以下ができるようになります：</p>
+  <div class="check-item" style="opacity:1;"><span>1. <code>Access-Control-Allow-Credentials: true</code> と <code>withCredentials</code> の組み合わせを理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>2. <code>Access-Control-Allow-Origin: *</code> と credentials の組み合わせが禁止される理由を理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>3. <code>Vary: Origin</code> を忘れた場合のCDNキャッシュ汚染リスクを説明できる</span></div>
+  <div class="check-item" style="opacity:1;"><span>4. <code>Access-Control-Expose-Headers</code> を使ってJSから追加ヘッダーを読む方法を理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>5. <code>Access-Control-Max-Age</code> によるプリフライトキャッシュの効果を理解する</span></div>
+</div>
+<div class="warn-box" style="border-color:var(--accent3);background:#fce4ec;">
+  <strong style="color:var(--accent3);">💥 実務での失敗例</strong>：<code>Vary: Origin</code> を忘れてCDN経由で配信 → 別オリジンからのリクエストにキャッシュ済みの <code>Access-Control-Allow-Origin</code> が返され、CORSエラーが断続的に発生
+</div>
+
+<div class="toc">
+  <strong style="color:var(--text-dim);font-size:0.82rem;">目次:</strong><br>
+  <a href="#concept">概念整理</a>
+  <a href="#exp-7a">7-A: Credentialsとワイルドカードの禁則</a>
+  <a href="#exp-7b">7-B: Vary:Originの重要性</a>
+  <a href="#exp-7c">7-C: Expose-Headersで公開する</a>
+  <a href="#exp-7d">7-D: Max-Ageプリフライトキャッシュ</a>
+  <a href="#exp-7e">7-E: OutSystems実践</a>
+  <a href="#checklist">✅ チェックリスト</a>
+</div>
+
+<!-- ── 概念整理 ── -->
+<div class="lab-box" id="concept">
+  <h3>CORSの応用: Credentials・Vary・Expose-Headers の全体像</h3>
+
+  <div class="diagram">Credentialsを使う場合のCORS:
+
+                                        ❌ 不正:
+  Access-Control-Allow-Origin: *          │
+  Access-Control-Allow-Credentials: true  │ → ブラウザがエラー!
+
+                                        ✅ 正しい:
+  Access-Control-Allow-Origin: https://app.example.com  (具体的オリジン)
+  Access-Control-Allow-Credentials: true
+  Vary: Origin  ← CDN汚染防止に必須!</div>
+
+  <p>CORSには「基本CORS」（Lab 06）で学んだシンプルな使い方に加え、
+  実運用で必ず直面する応用パターンがあります。このLabでは以下の4つを深掘りします：</p>
+
+  <div class="two-col">
+    <div class="col-card">
+      <h4 style="color:var(--accent);">Credentials（認証情報）</h4>
+      <pre>Cookieやベーシック認証を
+クロスオリジンリクエストに含める:
+
+JS側: fetch(url, { credentials: 'include' })
+      または XHR: xhr.withCredentials = true
+
+サーバー側:
+  ACAO: 具体的オリジン（*は不可）
+  ACAC: true
+  Vary: Origin</pre>
+    </div>
+    <div class="col-card">
+      <h4 style="color:var(--accent2);">Expose-Headers（公開ヘッダー）</h4>
+      <pre>JSがデフォルトで読めるのは
+「セーフリスト」7種のみ:
+
+1. Cache-Control
+2. Content-Language
+3. Content-Length
+4. Content-Type
+5. Expires
+6. Last-Modified
+7. Pragma
+
+それ以外はサーバーが明示的に公開必要:
+ACEH: X-Request-Id, RateLimit-Remaining</pre>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="col-card">
+      <h4 style="color:var(--warn);">Vary: Origin（CDNキャッシュ制御）</h4>
+      <pre>CORS応答では必須のヘッダー。
+Vary: Origin がないと:
+  CDNがOriginAのACACO応答を
+  OriginBのリクエストに返してしまう
+  → キャッシュ汚染！
+
+Vary: Origin があれば:
+  CDNはOriginごとに別キャッシュを
+  保持する（安全）</pre>
+    </div>
+    <div class="col-card">
+      <h4 style="color:var(--accent3);">Max-Age（プリフライトキャッシュ）</h4>
+      <pre>Access-Control-Max-Age: 86400
+
+OPTIONSプリフライトの結果を
+86400秒（24時間）キャッシュ。
+
+→ 毎リクエスト前のOPTIONS送信を省略
+→ レイテンシ削減・サーバー負荷低減
+
+ブラウザ上限:
+  Chrome: 7200秒（2時間）
+  Firefox: 86400秒（24時間）</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ── 実験 7-A ── -->
+<div class="lab-box" id="exp-7a">
+  <h3>実験 7-A: Credentials とワイルドカードの禁則</h3>
+
+  <div class="step" style="border-left-color:var(--danger);">
+    <div class="step-num" style="color:var(--danger);">ルール: withCredentials=true のとき、ACAO: * は使用不可</div>
+    <p>セキュリティ上の理由：ワイルドカード <code>*</code> を credentials と組み合わせると、
+    任意の悪意あるサイトが認証済みリクエストを送れてしまいます。
+    ブラウザはこの組み合わせを検出した瞬間にリクエストを拒否します。</p>
+    <pre><span class="comment">// ❌ ブラウザがエラーを出すサーバー設定:</span>
+<span class="header-name">Access-Control-Allow-Origin</span>: <span class="highlight">*</span>
+<span class="header-name">Access-Control-Allow-Credentials</span>: <span class="highlight">true</span>
+
+<span class="comment">// エラーメッセージ（コンソール）:</span>
+<span class="highlight">The value of the 'Access-Control-Allow-Origin' header in the response
+must not be the wildcard '*' when the request's credentials mode is 'include'.</span>
+
+<span class="comment">// ✅ 正しいサーバー設定:</span>
+<span class="header-name">Access-Control-Allow-Origin</span>: <span class="header-val">https://app.example.com</span>
+<span class="header-name">Access-Control-Allow-Credentials</span>: <span class="header-val">true</span>
+<span class="header-name">Vary</span>: <span class="header-val">Origin</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — withCredentials=false の場合（正常動作を確認）</div>
+    <p>
+      <code>credentials: 'omit'</code>（デフォルト）の場合、httpbin.org は
+      <code>Access-Control-Allow-Origin: *</code> を返し、正常にレスポンスを取得できます。
+    </p>
+    <button class="btn btn-accent" id="btn-7a-normal">withCredentials=false + fetch（正常）</button>
+    <button class="btn btn-dim" id="btn-7a-clear">クリア</button>
+    <pre id="result-7a"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-7a-normal').addEventListener('click', async () => {
+      const el = document.getElementById('result-7a');
+      el.textContent = '送信中（credentials: omit）...';
+      try {
+        const t0 = performance.now();
+        const res = await fetch('https://httpbin.org/get', {
+          credentials: 'omit'
+        });
+        const t1 = performance.now();
+        const acao = res.headers.get('Access-Control-Allow-Origin') || '(なし)';
+        const acac = res.headers.get('Access-Control-Allow-Credentials') || '(なし)';
+        const vary = res.headers.get('Vary') || '(なし)';
+        el.textContent = '✅ 成功（credentials: omit）\n'
+          + '所要時間: ' + Math.round(t1 - t0) + 'ms\n\n'
+          + 'レスポンスヘッダー:\n'
+          + '  Access-Control-Allow-Origin: ' + acao + '\n'
+          + '  Access-Control-Allow-Credentials: ' + acac + '\n'
+          + '  Vary: ' + vary + '\n\n'
+          + '→ ACAO: * でも credentials=omit なら問題なし\n'
+          + '→ Cookieは送信されていない（omit = 認証情報を除外）\n\n'
+          + '比較: withCredentials=true を試みた場合\n'
+          + '  fetch(url, { credentials: "include" }) + ACAO: *\n'
+          + '  → ブラウザが即座にエラー！（サーバーに到達する前に拒否）\n'
+          + '  → 具体的オリジン指定 + ACAC: true が必要';
+      } catch(e) {
+        el.textContent = 'エラー: ' + e.message;
+      }
+    });
+    document.getElementById('btn-7a-clear').addEventListener('click', () => {
+      document.getElementById('result-7a').innerHTML = '<span class="placeholder">← ボタンを押すと結果が表示されます</span>';
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — withCredentials=true を試みる（期待動作の説明）</div>
+    <p>
+      <code>credentials: 'include'</code> を指定した場合、サーバーが
+      <code>Access-Control-Allow-Origin: *</code> を返すと、ブラウザはレスポンスを拒否します。
+      以下は実際に発生するシナリオのシミュレーションです。
+    </p>
+    <button class="btn btn-warn" id="btn-7a-simulate">withCredentials=true を試みる（期待動作の説明）</button>
+    <pre id="result-7a-sim"><span class="placeholder">← ボタンを押すとシミュレーション結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-7a-simulate').addEventListener('click', async () => {
+      const el = document.getElementById('result-7a-sim');
+      el.textContent = 'シミュレーション中...';
+
+      // Attempt credentials: 'include' against httpbin.org (returns ACAO: *)
+      // This will be blocked by the browser because ACAO: * + credentials: include is forbidden
+      try {
+        const res = await fetch('https://httpbin.org/get', {
+          credentials: 'include'
+        });
+        // If we somehow get here (unlikely with a * server):
+        const acao = res.headers.get('Access-Control-Allow-Origin') || '(なし)';
+        el.textContent = '取得結果:\n'
+          + '  Access-Control-Allow-Origin: ' + acao + '\n\n'
+          + '注意: httpbin.org は ACAO: * を返しますが、\n'
+          + 'credentials: include との組み合わせはブラウザが拒否します。\n'
+          + '（DevToolsのNetworkタブでCORSエラーを確認してください）';
+      } catch(e) {
+        el.textContent = '🔴 ブラウザにブロックされました（期待通り）\n\n'
+          + 'エラー: ' + e.message + '\n\n'
+          + '--- シミュレーション ---\n'
+          + 'シナリオ: credentials: include + ACAO: * のサーバー\n\n'
+          + '[1] ブラウザがOPTIONSプリフライトを送信\n'
+          + '[2] サーバーが ACAO: * を返す\n'
+          + '[3] ブラウザ: "credentials mode = include なのに ACAO: * は禁止！"\n'
+          + '[4] → NetworkエラーでfetchがRejectされる\n\n'
+          + '✅ 正しいサーバー設定が必要:\n'
+          + '  Access-Control-Allow-Origin: https://app.example.com\n'
+          + '  Access-Control-Allow-Credentials: true\n'
+          + '  Vary: Origin\n\n'
+          + '理由（セキュリティ）:\n'
+          + '  * = 全オリジン許可 + Credentials送信を同時に許可すると\n'
+          + '  → 悪意あるサイトが被害者のCookieを添えてAPIを叩ける\n'
+          + '  → CSRF攻撃の成立を許してしまう';
+      }
+    });
+  </script>
+
+  <div class="note">
+    <strong>なぜ <code>*</code> + credentials が禁止なのか</strong>:
+    <code>*</code> は「全オリジンを許可」という意味です。これに <code>credentials: include</code> を組み合わせると、
+    攻撃者のサイト（<code>evil.com</code>）が被害者のブラウザから認証済みCookieを添えてAPIを叩けてしまいます。
+    具体的オリジンを指定することで「信頼するサイトのみ」に制限できます。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/CORS#資格情報を含むリクエスト" target="_blank">MDN — 資格情報を含むリクエスト</a></span>
+  </div>
+</div>
+
+<!-- ── 実験 7-B ── -->
+<div class="lab-box" id="exp-7b">
+  <h3>実験 7-B: Vary: Origin の重要性</h3>
+
+  <p>
+    <code>Vary: Origin</code> はCORSレスポンスに必須のヘッダーです。
+    忘れると、CDNが間違ったオリジン向けのレスポンスをキャッシュして返す「キャッシュ汚染」が発生します。
+  </p>
+
+  <div class="diagram">Vary: Origin がない場合のCDNキャッシュ汚染:
+
+  User A (origin: https://app.example.com) → CDN → API Server
+                                             ← 200 OK
+                                                ACAO: https://app.example.com
+                                                (Vary: Origin がない！)
+  CDN が応答をキャッシュ（Originの区別なし）
+
+  User B (origin: https://evil.example.com) → CDN
+                                             ← キャッシュ返却
+                                                ACAO: https://app.example.com  ← 汚染！
+  → evil.example.com からの JS が app.example.com 向けのCORS許可を得てしまう！
+
+  ───────────────────────────────────────────────────────────────────
+
+  Vary: Origin がある場合の正しい動作:
+
+  User A (origin: https://app.example.com) → CDN → API Server
+                                             ← 200 OK  ACAO: app.example.com
+                                                        Vary: Origin
+  CDN がキャッシュ（キー: URL + Origin: app.example.com）
+
+  User B (origin: https://evil.example.com) → CDN → API Server（キャッシュミス）
+                                             ← 200 OK  ACAO: （evil.example.comは未許可）
+  → CORSエラー（正しい動作）</div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — httpbin.org の Vary ヘッダーを確認する</div>
+    <p>httpbin.org へのリクエストで、実際にどのような <code>Vary</code> ヘッダーが返るか確認します。</p>
+    <button class="btn btn-accent2" id="btn-7b-vary">httpbin の Vary ヘッダーを確認</button>
+    <button class="btn btn-dim" id="btn-7b-clear">クリア</button>
+    <pre id="result-7b"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-7b-vary').addEventListener('click', async () => {
+      const el = document.getElementById('result-7b');
+      el.textContent = '送信中...';
+      try {
+        const res = await fetch('https://httpbin.org/get');
+        const vary = res.headers.get('Vary') || '(なし)';
+        const acao = res.headers.get('Access-Control-Allow-Origin') || '(なし)';
+        el.textContent = 'レスポンスヘッダー（抜粋）:\n'
+          + '  Access-Control-Allow-Origin: ' + acao + '\n'
+          + '  Vary: ' + vary + '\n\n'
+          + '--- 解釈 ---\n'
+          + (vary.toLowerCase().includes('origin')
+            ? '✅ Vary に Origin が含まれています\n   → CDNはOriginごとに別キャッシュを保持（安全）'
+            : '⚠️  Vary に Origin が含まれていません\n   → ACAO: * の場合は問題ないが、\n   → 動的オリジンの場合はキャッシュ汚染リスクあり')
+          + '\n\n--- なぜ Vary: Origin が必要か ---\n'
+          + 'CORS対応サーバーはOriginヘッダーの値によって\n'
+          + 'ACACOを動的に変えることがあります。\n'
+          + 'CDNに "このOriginの値によって応答が変わる" と伝えるために\n'
+          + 'Vary: Origin が必要です。\n\n'
+          + '推奨設定:\n'
+          + '  Vary: Origin, Accept-Encoding\n'
+          + '  （Accept-Encodingはgzip等の圧縮でも必要）';
+      } catch(e) {
+        el.textContent = 'エラー: ' + e.message;
+      }
+    });
+    document.getElementById('btn-7b-clear').addEventListener('click', () => {
+      document.getElementById('result-7b').innerHTML = '<span class="placeholder">← ボタンを押すと結果が表示されます</span>';
+    });
+  </script>
+
+  <div class="two-col">
+    <div class="col-card">
+      <h4 style="color:var(--danger);">❌ Vary: Origin なし（危険）</h4>
+      <pre>サーバーレスポンス:
+  ACAO: https://app.example.com
+  （Vary なし）
+
+CDNキャッシュのキー:
+  URL だけ
+
+→ 別オリジンからの同じURLへの
+  リクエストに同じ応答が返る
+→ CORS設定の意味が消える！</pre>
+    </div>
+    <div class="col-card">
+      <h4 style="color:var(--accent);">✅ Vary: Origin あり（安全）</h4>
+      <pre>サーバーレスポンス:
+  ACAO: https://app.example.com
+  Vary: Origin
+
+CDNキャッシュのキー:
+  URL + Origin の組み合わせ
+
+→ オリジンごとに別々にキャッシュ
+→ 許可されたオリジンにだけ
+  正しいCORS応答が返る</pre>
+    </div>
+  </div>
+
+  <div class="warn-box">
+    <strong>実務での注意</strong>:
+    AWS CloudFront, Fastly, Nginx 等のCDNを使う場合、デフォルトでは
+    <code>Origin</code> リクエストヘッダーはキャッシュキーに含まれません。
+    CDN側の設定でも <code>Origin</code> をキャッシュキーに追加する必要があります
+    （CloudFront: Cache Policy / Fastly: Vary設定）。
+  </div>
+
+  <div class="warn-box">
+    <strong style="color:var(--danger);">⚠ 実際に起きた事故パターン</strong>：<br>
+    <span style="font-size:0.85rem;">
+    ① <code>app.example.com</code> → API → <code>ACAO: app.example.com</code> ✅ CDNにキャッシュ<br>
+    ② <code>staging.example.com</code> → CDN → キャッシュ済みの <code>ACAO: app.example.com</code> を返す<br>
+    ③ staging側で <strong>CORSエラー</strong>が発生 → 原因特定に数時間<br><br>
+    <strong>根本原因</strong>：<code>Vary: Origin</code> がないため、CDNが Origin の違いを区別せずキャッシュ。<br>
+    <strong>対策</strong>：CORS レスポンスには <strong>必ず</strong> <code>Vary: Origin</code> を付ける。
+    </span>
+  </div>
+</div>
+
+<!-- ── 実験 7-C ── -->
+<div class="lab-box" id="exp-7c">
+  <h3>実験 7-C: Expose-Headers でカスタムヘッダーを公開する</h3>
+
+  <p>
+    JSがクロスオリジンレスポンスから読めるのは、デフォルトでは以下の
+    <strong>セーフリスト（7種類）</strong>のみです。
+    それ以外のヘッダーを読むには、サーバーが <code>Access-Control-Expose-Headers</code> で明示的に公開する必要があります。
+  </p>
+
+  <div class="diagram">JSがデフォルトで読めるセーフリストヘッダー（7種類）:
+
+  1. Cache-Control
+  2. Content-Language
+  3. Content-Length
+  4. Content-Type
+  5. Expires
+  6. Last-Modified
+  7. Pragma
+
+  それ以外のヘッダー（X-Request-Id, RateLimit-Remaining 等）は:
+    → response.headers.get('X-Request-Id') === null  ← JSから見えない！
+
+  サーバーが以下を追加することで公開できる:
+    Access-Control-Expose-Headers: X-Request-Id, RateLimit-Remaining</div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — カスタムヘッダーを含むレスポンスを取得して読み取る</div>
+    <p>
+      httpbin.org の <code>/response-headers</code> エンドポイントで任意のヘッダーを返させ、
+      JSからどのヘッダーが読めるか確認します。
+    </p>
+    <button class="btn btn-accent3" id="btn-7c-fetch">カスタムヘッダーを含むレスポンスを取得</button>
+    <button class="btn btn-dim" id="btn-7c-clear">クリア</button>
+    <pre id="result-7c"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-7c-fetch').addEventListener('click', async () => {
+      const el = document.getElementById('result-7c');
+      el.textContent = '送信中...';
+      try {
+        const url = 'https://httpbin.org/response-headers'
+          + '?X-Custom-Header=hello'
+          + '&X-Request-Id=test123'
+          + '&Content-Type=application%2Fjson';
+        const res = await fetch(url);
+
+        // Safe-listed headers
+        const contentType  = res.headers.get('Content-Type');
+        const contentLength = res.headers.get('Content-Length');
+
+        // Custom headers (may or may not be readable depending on ACEH)
+        const xCustom  = res.headers.get('X-Custom-Header');
+        const xReqId   = res.headers.get('X-Request-Id');
+        const aceh     = res.headers.get('Access-Control-Expose-Headers');
+        const acao     = res.headers.get('Access-Control-Allow-Origin');
+
+        el.textContent = 'レスポンスヘッダー読み取り結果:\n\n'
+          + '=== セーフリストヘッダー（常に読める） ===\n'
+          + '  Content-Type:   ' + (contentType  || '(なし)') + '\n'
+          + '  Content-Length: ' + (contentLength || '(なし)') + '\n\n'
+          + '=== カスタムヘッダー（ACEH依存） ===\n'
+          + '  X-Custom-Header: ' + (xCustom || '(null — JSから読めない)') + '\n'
+          + '  X-Request-Id:    ' + (xReqId  || '(null — JSから読めない)') + '\n\n'
+          + '=== CORSヘッダー ===\n'
+          + '  Access-Control-Allow-Origin:   ' + (acao || '(なし)') + '\n'
+          + '  Access-Control-Expose-Headers: ' + (aceh || '(なし → カスタムヘッダーは非公開)') + '\n\n'
+          + '--- 解釈 ---\n'
+          + (xCustom
+            ? '✅ X-Custom-Header が読めました！\n   httpbin.orgがACEHで公開しています。'
+            : '⚠️  X-Custom-Header は null です。\n   サーバーがACEHで公開していないため\n   JSからは見えません。')
+          + '\n\n--- 自サーバーで公開する場合 ---\n'
+          + '  Access-Control-Expose-Headers: X-Request-Id, X-Custom-Header\n'
+          + '  → JS: response.headers.get("X-Request-Id") で読める';
+      } catch(e) {
+        el.textContent = 'エラー: ' + e.message;
+      }
+    });
+    document.getElementById('btn-7c-clear').addEventListener('click', () => {
+      document.getElementById('result-7c').innerHTML = '<span class="placeholder">← ボタンを押すと結果が表示されます</span>';
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 正しい Expose-Headers の設定例</div>
+    <pre><span class="comment">// サーバーレスポンスに追加するヘッダー:</span>
+<span class="header-name">Access-Control-Expose-Headers</span>: <span class="header-val">X-Request-Id, RateLimit-Remaining, RateLimit-Reset</span>
+
+<span class="comment">// JS側での読み取り:</span>
+const res = await fetch('https://api.example.com/data');
+const requestId = res.headers.get('<span class="header-val">X-Request-Id</span>');      <span class="comment">// ✅ 読める</span>
+const remaining = res.headers.get('<span class="header-val">RateLimit-Remaining</span>'); <span class="comment">// ✅ 読める</span>
+const custom    = res.headers.get('<span class="header-val">X-My-Custom</span>');        <span class="comment">// ❌ null（非公開）</span>
+
+<span class="comment">// 全ヘッダーを公開したい場合（セキュリティ注意）:</span>
+<span class="header-name">Access-Control-Expose-Headers</span>: <span class="highlight">*</span>
+<span class="comment">// ※ ただし credentials: include の場合は * は使えない（7-A と同じルール）</span></pre>
+  </div>
+
+  <div class="note">
+    <strong>実務でよく公開するカスタムヘッダー</strong>:
+    <code>X-Request-Id</code>（リクエスト追跡）、
+    <code>RateLimit-Remaining</code>/<code>RateLimit-Reset</code>（レート制限情報）、
+    <code>X-Total-Count</code>（ページネーション総件数）、
+    <code>Deprecation</code>/<code>Sunset</code>（API廃止予告）など。
+    フロントエンドが必要な情報をACEHで事前に公開しておくことで、デバッグやUI更新が容易になります。
+  </div>
+</div>
+
+<!-- ── 実験 7-D ── -->
+<div class="lab-box" id="exp-7d">
+  <h3>実験 7-D: Max-Age プリフライトキャッシュ</h3>
+
+  <p>
+    <code>Access-Control-Max-Age</code> を設定すると、OPTIONSプリフライトの結果をブラウザがキャッシュします。
+    同じオリジン・メソッド・ヘッダーの組み合わせに対して、再度OPTIONSを送らずに済みます。
+  </p>
+
+  <div class="diagram">Max-Age なし（毎回プリフライト）:
+
+  1回目のリクエスト:
+    Browser → OPTIONS /api/data     （プリフライト）
+    Browser ← 204 No Content        ACAO, ACAM, ACAH
+    Browser → POST /api/data        （実リクエスト）
+    Browser ← 200 OK { ... }
+
+  2回目のリクエスト（同じエンドポイント）:
+    Browser → OPTIONS /api/data     （また送る！）
+    Browser ← 204 No Content
+    Browser → POST /api/data
+    Browser ← 200 OK { ... }
+
+  ──────────────────────────────────────────────────────────────
+
+  Max-Age: 86400 あり（プリフライトをキャッシュ）:
+
+  1回目のリクエスト:
+    Browser → OPTIONS /api/data     （プリフライト）
+    Browser ← 204 No Content        ACAO, ACAM, ACAH
+                                    Access-Control-Max-Age: 86400
+    Browser → POST /api/data        （実リクエスト）
+    Browser ← 200 OK { ... }
+
+  2回目のリクエスト（86400秒以内）:
+    Browser → POST /api/data        （OPTIONSなし！キャッシュを使用）
+    Browser ← 200 OK { ... }        ← 1RTT削減！</div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — プリフライトを2回連続送信して効果を測定する</div>
+    <p>
+      JSONボディを含むPOSTリクエスト（プリフライトが発生する）を2回連続で送り、
+      所要時間を比較します。DevToolsのNetworkタブで OPTIONS の有無を確認してください。
+    </p>
+    <button class="btn btn-accent" id="btn-7d-preflight">プリフライトを2回連続送信（タイミング計測）</button>
+    <button class="btn btn-dim" id="btn-7d-clear">クリア</button>
+    <pre id="result-7d"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-7d-preflight').addEventListener('click', async () => {
+      const el = document.getElementById('result-7d');
+      el.textContent = '1回目を送信中（DevToolsのNetworkタブを確認してください）...';
+
+      async function sendPost(label) {
+        const t0 = performance.now();
+        const res = await fetch('https://httpbin.org/post', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ test: label, ts: Date.now() })
+        });
+        const t1 = performance.now();
+        const acma = res.headers.get('Access-Control-Max-Age');
+        return { ms: Math.round(t1 - t0), status: res.status, acma };
+      }
+
+      try {
+        const r1 = await sendPost('first');
+        el.textContent = '1回目完了: ' + r1.ms + 'ms\n2回目を送信中...';
+
+        const r2 = await sendPost('second');
+
+        const diff = r1.ms - r2.ms;
+        el.textContent = '=== 2回のPOSTリクエスト計測結果 ===\n\n'
+          + '1回目: ' + r1.ms + 'ms  (Status: ' + r1.status + ')\n'
+          + '2回目: ' + r2.ms + 'ms  (Status: ' + r2.status + ')\n'
+          + '差分:  ' + diff + 'ms\n\n'
+          + 'Access-Control-Max-Age: ' + (r1.acma || '(なし)') + '\n\n'
+          + '--- DevTools で確認すること ---\n'
+          + '1. Networkタブでリクエスト一覧を確認\n'
+          + '2. OPTIONS メソッドのリクエストが何回あるか確認\n'
+          + '   → Max-Age なし: 両方にOPTIONSが発生（計4件）\n'
+          + '   → Max-Age あり: 1回目だけOPTIONS（計3件）\n\n'
+          + '--- なぜ速くなるか ---\n'
+          + 'プリフライトは追加の1往復（RTT）が必要。\n'
+          + 'Max-Age=86400 ならそのRTTが2回目以降なくなる。\n'
+          + 'APIコールが多いSPAでは大きな効果あり。\n\n'
+          + '注意: httpbin.orgはMax-Ageを返さないため\n'
+          + '毎回OPTIONSが発生します（デモのため）。\n'
+          + '自サーバーでMax-Ageを設定した場合の違いを\n'
+          + 'OutSystems実践（7-E）で確認してください。';
+      } catch(e) {
+        el.textContent = 'エラー: ' + e.message;
+      }
+    });
+    document.getElementById('btn-7d-clear').addEventListener('click', () => {
+      document.getElementById('result-7d').innerHTML = '<span class="placeholder">← ボタンを押すと結果が表示されます</span>';
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — Max-Age 推奨値の早見表</div>
+    <table>
+      <tr>
+        <th>Max-Age 値</th>
+        <th>意味</th>
+        <th>用途</th>
+        <th>ブラウザ上限</th>
+      </tr>
+      <tr>
+        <td><code>0</code></td>
+        <td>キャッシュ無効</td>
+        <td>デバッグ時、CORSポリシーを頻繁に変更する場合</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td><code>600</code></td>
+        <td>10分</td>
+        <td>開発環境、動的なCORS設定が変わりうる場合</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td><code>3600</code></td>
+        <td>1時間</td>
+        <td>ステージング環境、一般的なAPIサーバー</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td><code>7200</code></td>
+        <td>2時間</td>
+        <td>Chrome/Chromiumの最大値（この値が実質上限）</td>
+        <td>Chrome: 7200秒</td>
+      </tr>
+      <tr>
+        <td><code>86400</code></td>
+        <td>24時間</td>
+        <td>本番環境（Firefoxではフル24時間有効）</td>
+        <td>Firefox: 86400秒</td>
+      </tr>
+    </table>
+    <div class="note">
+      <strong>ブラウザごとの上限差異</strong>:
+      <code>Max-Age: 86400</code> と設定しても、Chromeでは最大2時間（7200秒）しかキャッシュされません。
+      本番環境では <code>86400</code> を設定しておくと、Firefoxでは24時間、Chromeでは2時間の効果が得られます。
+    </div>
+  </div>
+</div>
+
+<!-- ── 実験 7-E ── -->
+<div class="lab-box" id="exp-7e">
+  <h3>実験 7-E: OutSystems 実践（静的解説）</h3>
+
+  <p>
+    OutSystems の REST API で CORS応用ヘッダーを設定する方法を示します。
+    <code>SetResponseHeader</code> アクションを OnBeforeResponse（または各メソッドのフロー内）に配置します。
+  </p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — Service Studio での設定手順</div>
+    <pre><span class="comment">// Service Studio 操作手順:</span>
+
+1. REST API の OnBeforeResponse に移動（または各メソッドのフロー末尾）
+
+2. <span class="highlight">SetResponseHeader</span> アクションを追加:
+
+   <span class="comment">// 認証情報付きCORS（credentials: include をサポートする場合）</span>
+   SetResponseHeader(
+     "Access-Control-Allow-Origin",
+     <span class="header-val">"https://app.example.com"</span>  <span class="comment">← 具体的オリジンを指定（* は不可）</span>
+   )
+   SetResponseHeader(
+     "Access-Control-Allow-Credentials",
+     <span class="header-val">"true"</span>
+   )
+
+   <span class="comment">// カスタムヘッダーをJSに公開</span>
+   SetResponseHeader(
+     "Access-Control-Expose-Headers",
+     <span class="header-val">"X-Request-Id, RateLimit-Remaining"</span>
+   )
+
+   <span class="comment">// プリフライトキャッシュ（OPTIONSメソッドのレスポンスに追加）</span>
+   SetResponseHeader(
+     "Access-Control-Max-Age",
+     <span class="header-val">"86400"</span>
+   )
+
+   <span class="comment">// CDNキャッシュ汚染防止（必須！）</span>
+   SetResponseHeader(
+     "Vary",
+     <span class="header-val">"Origin"</span>
+   )</pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 完成形のヘッダーセット</div>
+    <pre><span class="comment">// プリフライトレスポンス（OPTIONS）に必要な全ヘッダー:</span>
+<span class="header-name">Access-Control-Allow-Origin</span>:      <span class="header-val">https://app.example.com</span>
+<span class="header-name">Access-Control-Allow-Methods</span>:     <span class="header-val">GET, POST, PUT, DELETE, PATCH</span>
+<span class="header-name">Access-Control-Allow-Headers</span>:     <span class="header-val">Authorization, Content-Type, X-Request-Id</span>
+<span class="header-name">Access-Control-Allow-Credentials</span>: <span class="header-val">true</span>
+<span class="header-name">Access-Control-Max-Age</span>:           <span class="header-val">86400</span>
+<span class="header-name">Vary</span>:                            <span class="header-val">Origin</span>
+
+<span class="comment">// 実リクエストのレスポンスに必要な全ヘッダー:</span>
+<span class="header-name">Access-Control-Allow-Origin</span>:      <span class="header-val">https://app.example.com</span>
+<span class="header-name">Access-Control-Allow-Credentials</span>: <span class="header-val">true</span>
+<span class="header-name">Access-Control-Expose-Headers</span>:    <span class="header-val">X-Request-Id, RateLimit-Remaining</span>
+<span class="header-name">Vary</span>:                            <span class="header-val">Origin</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 3 — 複数オリジンを動的に許可する場合</div>
+    <pre><span class="comment">// OutSystems Server Action での動的オリジン許可:</span>
+
+<span class="comment">// 1. 許可オリジンリストを定義（Site Property や DB で管理）</span>
+AllowedOrigins = "https://app1.example.com,https://app2.example.com"
+
+<span class="comment">// 2. リクエストのOriginヘッダーを確認</span>
+RequestOrigin = GetRequestHeader("Origin")
+
+<span class="comment">// 3. 許可リストに含まれるかチェック</span>
+If Index(AllowedOrigins, RequestOrigin) > 0 Then
+  SetResponseHeader("Access-Control-Allow-Origin", RequestOrigin)
+  SetResponseHeader("Access-Control-Allow-Credentials", "true")
+  SetResponseHeader("Vary", "Origin")  <span class="comment">← 動的オリジンの場合は必須！</span>
+End If
+
+<span class="comment">// 注意: 動的オリジン + Vary: Origin がセット。忘れると CDN汚染！</span></pre>
+  </div>
+
+  <div class="two-col">
+    <div class="col-card">
+      <h4 style="color:var(--danger);">❌ よくある間違い</h4>
+      <pre>// 全ユーザー共通データに:
+ACAO: *
+ACAC: true
+→ ブラウザエラー
+
+// 動的オリジン設定で:
+Vary を忘れる
+→ CDNキャッシュ汚染
+
+// Expose-Headers 未設定で:
+JS側で X-Request-Id を
+.get() しようとする
+→ 常に null が返る
+
+// Max-Age に大きな値を:
+Max-Age: 604800 (7日)
+→ ChromeはMax 7200秒で
+  無視される</pre>
+    </div>
+    <div class="col-card">
+      <h4 style="color:var(--accent);">✅ 正しい設定パターン</h4>
+      <pre>// 認証API（credentials必須）:
+ACAO: https://app.example.com
+ACAC: true
+ACEH: X-Request-Id
+Max-Age: 86400
+Vary: Origin
+
+// 公開API（認証不要）:
+ACAO: *
+// ACAC は設定しない
+Max-Age: 7200
+// Vary は動的の場合のみ
+
+// 開発環境:
+ACAO: http://localhost:3000
+ACAC: true
+Max-Age: 0  ← デバッグ用
+Vary: Origin</pre>
+    </div>
+  </div>
+
+  <div class="warn-box">
+    <strong>OutSystems PaaS環境での注意</strong>:
+    OutSystems クラウド環境では、リバースプロキシやCDNレイヤーで
+    一部のCORSヘッダーが上書きされる場合があります。
+    <code>SetResponseHeader</code> を設定後、必ずDevToolsで実際に返るヘッダーを確認してください。
+    また、OPTIONSメソッドのハンドリングはOutSystems側が自動処理するため、
+    プリフライト専用のAPIメソッドを作成する必要はありません。
+  </div>
+</div>
+
+<div class="note" style="border-color:var(--accent3);background:#f3e8fd;">
+  🔗 <strong style="color:var(--accent3);">多層防御クロスリファレンス</strong>：CORS の <code>Vary: Origin</code>（このLab）は、<a href="http-header-lab-03.html">Lab 03 のキャッシュ戦略</a>（CDN層）と密接に関係します。キャッシュキーに Origin を含めないと、CDN 経由で CORS エラーが発生します。
+</div>
+
+<hr>
+<h2 id="checklist">✅ Lab 07 チェックリスト</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">チェック状態はブラウザに自動保存されます。</p>
+
+<div class="check-item"><input type="checkbox" data-key="lab07-1"> <label><code>withCredentials=false</code> では ACAO: * で問題なく動作することを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab07-2"> <label>withCredentials=true 時に <code>*</code> が使えない理由を説明できる（セキュリティ上の理由）</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab07-3"> <label>Vary: Origin を忘れるとCDNがキャッシュ汚染されるリスクを理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab07-4"> <label>JSがデフォルトで読めるセーフリストヘッダー（7種類）を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab07-5"> <label><code>Access-Control-Expose-Headers</code> でカスタムヘッダーをJSに公開できることを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab07-6"> <label><code>Access-Control-Max-Age</code> の効果（プリフライトキャッシュ）を理解した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab07-7"> <label>OutSystems での正しいCORS応用ヘッダー設定パターンを確認した</label></div>
+
+<div style="margin-top:1rem; text-align:center;">
+  <span id="progress-text" style="font-family:'IBM Plex Mono',monospace; color:var(--accent); font-size:0.9rem;"></span>
+</div>
+
+<script>
+  const STORAGE_PREFIX = 'httplab_';
+  function updateProgress() {
+    const all = document.querySelectorAll('input[type="checkbox"][data-key]');
+    const checked = [...all].filter(cb => cb.checked).length;
+    const el = document.getElementById('progress-text');
+    if (el) el.textContent = checked + ' / ' + all.length + ' 完了';
+  }
+  document.querySelectorAll('input[type="checkbox"][data-key]').forEach(cb => {
+    const saved = localStorage.getItem(STORAGE_PREFIX + cb.dataset.key);
+    if (saved === 'true') { cb.checked = true; cb.closest('.check-item')?.classList.add('checked'); }
+    cb.addEventListener('change', () => {
+      localStorage.setItem(STORAGE_PREFIX + cb.dataset.key, cb.checked);
+      cb.closest('.check-item')?.classList.toggle('checked', cb.checked);
+      updateProgress();
+    });
+  });
+  updateProgress();
+</script>
+
+<hr>
+
+<div class="note">
+  📖 <strong>参照資料</strong>：このLabの内容は <code>http-headers-guide-v2.md</code> の 第2部②「APIサーバー」の CORS 詳細 + Vary: Origin に対応しています。より詳しい解説・ヘッダー一覧はガイドを参照してください。
+</div>
+
+<h2>📝 Lab 07 学習ノート</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">メモはブラウザに自動保存されます。</p>
+<textarea id="notes" rows="6" placeholder="気づいたこと、疑問点をメモ..."
+  style="width:100%;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:0.8rem;font-family:'Noto Sans JP',sans-serif;font-size:0.9rem;resize:vertical;margin-top:0.5rem;"></textarea>
+
+<script>
+  const notesEl = document.getElementById('notes');
+  const savedNotes = localStorage.getItem(STORAGE_PREFIX + 'lab07_notes');
+  if (savedNotes) notesEl.value = savedNotes;
+  notesEl.addEventListener('input', () => { localStorage.setItem(STORAGE_PREFIX + 'lab07_notes', notesEl.value); });
+</script>
+
+<div style="margin-top:2rem; display:flex; justify-content:space-between; font-size:0.82rem; color:var(--text-dim);">
+  <span>← 前回: <a href="http-header-lab-06.html"><strong>Lab 06 — CORS基礎</strong></a></span>
+  <span>次回: <a href="http-header-lab-08.html"><strong>Lab 08 — CSP（Content-Security-Policy）</strong></a> →<br><span style="color:var(--text-dim);font-size:0.78rem;">CORS（レスポンス側の許可）を学んだら、次はCSP（コンテンツ読み込み元の制限）でセキュリティを強化</span></span>
+</div>
+
+</body>
+</html>

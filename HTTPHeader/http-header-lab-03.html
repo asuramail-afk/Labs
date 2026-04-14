@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HTTP Header Lab 03 - キャッシュ応用</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;700&display=swap');
+
+  :root {
+    --bg: #ffffff; --surface: #f5f7fa; --surface2: #ebeef2; --border: #c8cdd3;
+    --text: #1a1a2e; --text-dim: #5c6370;
+    --accent: #005cc5; --accent2: #22863a; --accent3: #6f42c1;
+    --warn: #b08800; --danger: #cb2431; --code-bg: #f0f4f8; --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; padding: 2rem; max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 1.6rem; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 0.8rem; margin-bottom: 1.5rem; font-family: 'IBM Plex Mono', monospace; }
+  h2 { font-size: 1.25rem; color: var(--accent2); margin: 2rem 0 1rem; font-family: 'IBM Plex Mono', monospace; }
+  h3 { font-size: 1.05rem; color: var(--accent3); margin: 1.5rem 0 0.8rem; }
+  p, li { font-size: 0.92rem; margin-bottom: 0.5rem; }
+
+  .status-bar { display: flex; gap: 1rem; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.6rem 1rem; margin-bottom: 1.5rem; font-size: 0.82rem; font-family: 'IBM Plex Mono', monospace; flex-wrap: wrap; }
+  .status-item { display: flex; align-items: center; gap: 0.4rem; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-dim); animation: pulse 1.5s infinite; }
+  .status-dot.ok { background: var(--accent); animation: none; }
+  .status-dot.err { background: var(--danger); animation: none; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
+  .alert-critical { background: #fef2f2; border: 2px solid var(--danger); border-radius: var(--radius); padding: 1rem 1.2rem; margin-bottom: 1.5rem; font-size: 0.88rem; display: none; }
+  .alert-critical strong { color: var(--danger); }
+  .alert-critical code { background: rgba(203,36,49,0.1); color: var(--danger); }
+
+  .lab-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin: 1.5rem 0; }
+  .step { background: var(--surface2); border-left: 3px solid var(--accent2); border-radius: 0 var(--radius) var(--radius) 0; padding: 1rem 1.2rem; margin: 1rem 0; }
+  .step-num { font-family: 'IBM Plex Mono', monospace; color: var(--accent2); font-weight: 600; font-size: 0.8rem; margin-bottom: 0.3rem; }
+
+  code, pre { font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; }
+  code { background: var(--code-bg); padding: 0.15rem 0.4rem; border-radius: 4px; color: var(--accent); }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; overflow-x: auto; margin: 0.8rem 0; line-height: 1.6; color: #24292e; }
+  pre .comment { color: #6a737d; }
+  pre .header-name { color: var(--accent2); }
+  pre .header-val { color: var(--accent); }
+  pre .highlight { color: var(--warn); font-weight: 600; }
+
+  .placeholder { color: var(--text-dim); font-style: italic; font-size: 0.8rem; }
+  .note { background: #e8f4fd; border: 1px solid #b6d4e8; border-radius: var(--radius); padding: 0.8rem 1rem; margin: 1rem 0; font-size: 0.85rem; color: var(--accent2); }
+  .note::before { content: "💡 "; }
+  .warn-box { background: #fff8e1; border: 1px solid #e6d590; border-radius: var(--radius); padding: 0.8rem 1rem; margin: 1rem 0; font-size: 0.85rem; color: var(--warn); }
+  .warn-box::before { content: "⚠️ "; }
+
+  .check-item { background: var(--surface2); border-radius: var(--radius); padding: 0.6rem 1rem; margin: 0.4rem 0; display: flex; align-items: center; gap: 0.6rem; font-size: 0.88rem; transition: opacity 0.3s; }
+  .check-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
+  .check-item.checked { opacity: 0.55; }
+
+  .diagram { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; line-height: 1.5; overflow-x: auto; white-space: pre; color: var(--text-dim); margin: 1rem 0; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.8rem; margin: 1rem 0; }
+  @media (max-width: 900px) { .three-col { grid-template-columns: 1fr; } }
+  @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+  .col-card { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.8rem; font-size: 0.8rem; }
+  .col-card h4 { font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; margin-bottom: 0.5rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); }
+  .col-card pre { border: none; padding: 0.4rem 0; margin: 0; font-size: 0.75rem; background: transparent; }
+
+  a { color: var(--accent2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  html { scroll-behavior: smooth; }
+
+  .btn { border: none; padding: 0.5rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; font-family: 'Noto Sans JP', sans-serif; margin: 0.3rem; transition: opacity 0.2s; }
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.97); }
+  .btn-accent { background: var(--accent); color: var(--bg); }
+  .btn-accent2 { background: var(--accent2); color: var(--bg); }
+  .btn-accent3 { background: var(--accent3); color: var(--bg); }
+  .btn-warn { background: var(--warn); color: var(--bg); }
+  .btn-dim { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+
+  .toc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.2rem; margin: 1rem 0 2rem; }
+  .toc a { display: inline-block; padding: 0.25rem 0.6rem; margin: 0.15rem; border-radius: 6px; font-size: 0.82rem; background: var(--surface2); transition: background 0.2s; }
+  .toc a:hover { background: var(--border); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <div class="status-item"><div class="status-dot" id="dot-protocol"></div><span id="status-protocol">確認中...</span></div>
+  <div class="status-item"><div class="status-dot" id="dot-httpbin"></div><span id="status-httpbin">httpbin.org 確認中...</span></div>
+  <div class="status-item"><div class="status-dot" id="dot-devtools"></div><span>DevTools: <kbd style="background:var(--surface2);padding:0.1rem 0.4rem;border-radius:4px;">F12</kbd></span></div>
+</div>
+<p style="margin-bottom:0.5rem;font-size:0.82rem;"><a href="http-header-lab-index.html" style="color:var(--accent);text-decoration:none;">← マスター索引に戻る</a></p>
+<script>
+(function(){const d=document.getElementById('dot-protocol'),l=document.getElementById('status-protocol');if(location.protocol==='file:'){d.classList.add('err');l.innerHTML='<strong style="color:var(--danger)">file:// 検出</strong>';document.getElementById('file-protocol-alert').style.display='block';}else{d.classList.add('ok');l.textContent=location.protocol+'// ✅';}})();
+(async function(){const d=document.getElementById('dot-httpbin'),l=document.getElementById('status-httpbin');try{const c=new AbortController();const t=setTimeout(()=>c.abort(),5000);const r=await fetch('https://httpbin.org/get',{signal:c.signal});clearTimeout(t);if(r.ok){d.classList.add('ok');l.textContent='httpbin.org ✅';}else{d.classList.add('err');l.innerHTML='<strong style="color:var(--danger)">httpbin.org エラー</strong>';}}catch(e){d.classList.add('err');l.innerHTML='<strong style="color:var(--danger)">httpbin.org ❌</strong>';}})();
+</script>
+
+<div class="alert-critical" id="file-protocol-alert">
+  <strong>🔴 HTTP サーバー経由で開いてください</strong><br><br>
+  Lab 01 で起動したサーバーがまだ動いていれば
+  <code>http://127.0.0.1:7890/http-header-lab-03.html</code> を開くだけでOKです。
+</div>
+
+<h1>🧪 Lab 03: キャッシュ応用</h1>
+<p style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.3rem;font-family:'IBM Plex Mono',monospace;">最終更新: 2026年3月</p>
+<p style="color:var(--text-dim); font-size:0.88rem; margin-bottom:1rem;">
+  ～ immutable, stale-while-revalidate, Vary, Age, s-maxage を体感する ～
+</p>
+<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">⏱ 所要時間：25分</span>
+  <span style="background:var(--surface2);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">難易度：★★☆</span>
+</div>
+<p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:1rem;">📋 前提知識：<a href="http-header-lab-02.html">Lab 02</a> 必須（Cache-Control / ETag / 304 の基本）</p>
+
+<div class="lab-box" style="border-color:var(--accent); margin-bottom:1rem;">
+  <h3 style="color:var(--accent); margin-top:0;">🎯 このLabの学習目標</h3>
+  <p style="margin-bottom:0.3rem;">完了すると、以下ができるようになります：</p>
+  <div class="check-item" style="opacity:1;"><span>1. <code>immutable</code> が再検証リクエストを完全に抑制する仕組みを理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>2. <code>stale-while-revalidate</code> がユーザー体感を損なわずにキャッシュを更新する仕組みを理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>3. <code>Vary</code> ヘッダーがキャッシュキーに与える影響を実験で確認する</span></div>
+  <div class="check-item" style="opacity:1;"><span>4. <code>Age</code> と <code>s-maxage</code> で共有キャッシュ（CDN/プロキシ）の制御を理解する</span></div>
+  <div class="check-item" style="opacity:1;"><span>5. Lab 02 の知識と合わせ、実務のキャッシュ設計を判断できるようになる</span></div>
+</div>
+<div class="warn-box" style="border-color:var(--accent3);background:#fce4ec;">
+  <strong style="color:var(--accent3);">💥 実務での失敗例</strong>：<code>immutable</code> を付けたファイルにバグ修正を上書きデプロイ → 1年間キャッシュが効いて修正が反映されず、CDN Purge対応に
+</div>
+
+<div class="warn-box">
+  <strong style="color:var(--danger);">DevTools を先に開いてからリロード</strong>:
+  <code>F12</code> → Network タブ → <code>Ctrl+Shift+R</code>。
+  <strong>「Disable cache」にチェックを入れない</strong>状態で実験してください。
+</div>
+
+<div class="toc">
+  <strong style="color:var(--text-dim);font-size:0.82rem;">目次:</strong><br>
+  <a href="#concept">Lab 02 との関係</a>
+  <a href="#exp-3a">3-A: immutable</a>
+  <a href="#exp-3b">3-B: stale-while-revalidate</a>
+  <a href="#exp-3c">3-C: Vary</a>
+  <a href="#exp-3d">3-D: Age と s-maxage</a>
+  <a href="#exp-3e">3-E: OutSystems 実践</a>
+  <a href="#summary">まとめ早見表</a>
+  <a href="#checklist">✅ チェックリスト</a>
+</div>
+
+<!-- ── 概念整理 ── -->
+<div class="lab-box" id="concept">
+  <h3>Lab 02（基礎）と Lab 03（応用）の関係</h3>
+
+  <div class="diagram">Lab 02 で学んだこと（ブラウザキャッシュの基本）:
+  max-age     → 「N秒間キャッシュを使え」
+  no-cache    → 「毎回サーバーに確認しろ」
+  no-store    → 「一切キャッシュするな」
+  ETag / 304  → 「変わってなければボディ転送省略」
+
+Lab 03 で学ぶこと（実務で差がつく応用）:
+  immutable               → 「max-age中は条件付きGET（再検証）すら不要」← CDN/静的アセット向け
+  stale-while-revalidate  → 「古いキャッシュを返しつつバックグラウンドで更新」← UX最適化
+  Vary                    → 「何をキーにキャッシュを分けるか」← CORS/多言語で必須
+  Age                     → 「CDN上で何秒経過したか」← 共有キャッシュの残り寿命
+  s-maxage                → 「CDN専用の有効期間」← ブラウザとCDNで別制御</div>
+
+  <div class="two-col">
+    <div class="col-card">
+      <h4 style="color:var(--accent);">ブラウザキャッシュ（Lab 02）</h4>
+      <pre>対象: 1ユーザーのブラウザ
+制御: max-age, private
+特徴:
+  - ユーザーごとに独立
+  - リロード操作で無効化される
+  - DevToolsで直接確認可能</pre>
+    </div>
+    <div class="col-card">
+      <h4 style="color:var(--accent2);">共有キャッシュ（Lab 03）</h4>
+      <pre>対象: CDN / リバースプロキシ
+制御: s-maxage, public, Vary
+特徴:
+  - 全ユーザーで共有される
+  - Age ヘッダーで経過時間を報告
+  - 設定ミスで他人のデータが表示される事故も</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ── 実験 3-A: immutable ── -->
+<div class="lab-box" id="exp-3a">
+  <h3>実験 3-A: immutable — 再検証すら不要にする</h3>
+  <p>
+    <code>immutable</code> は「<code>max-age</code> の期間中、ブラウザはサーバーに一切問い合わせるな」
+    という指示です。通常の <code>max-age</code> だけだと、ユーザーがリロード（F5）した際に
+    再検証リクエスト（304確認）が発生しますが、<code>immutable</code> はこれも抑制します。
+  </p>
+
+  <div class="diagram">max-age=3600 のみ:
+  通常アクセス → キャッシュ利用（通信なし）  ✅
+  F5リロード   → 再検証リクエスト発生（304）  ⚡ ← ネットワーク通信あり
+
+max-age=3600, immutable:
+  通常アクセス → キャッシュ利用（通信なし）  ✅
+  F5リロード   → キャッシュ利用（通信なし）  ✅ ← 再検証すら不要！
+
+→ ハッシュ付きファイル名（app-3a7c9f2e.js）との組み合わせが前提。
+  ファイル内容が変われば名前が変わるので、古いキャッシュが使われる心配がない。</div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — immutable の効果を観察</div>
+    <p>2つのボタンで <code>max-age</code> のみ と <code>max-age + immutable</code> を比較します。</p>
+    <button class="btn btn-accent" id="btn-imm-normal">max-age=30 のみ</button>
+    <button class="btn btn-accent2" id="btn-imm-immutable">max-age=30, immutable</button>
+    <button class="btn btn-dim" id="btn-imm-reset">クリア</button>
+  </div>
+
+  <div class="two-col">
+    <div class="col-card" id="imm-col-normal">
+      <h4 style="color:var(--accent);">max-age=30 のみ</h4>
+      <pre><span class="placeholder">← ボタンを押してください</span></pre>
+    </div>
+    <div class="col-card" id="imm-col-immutable">
+      <h4 style="color:var(--accent2);">max-age=30, immutable</h4>
+      <pre><span class="placeholder">← ボタンを押してください</span></pre>
+    </div>
+  </div>
+
+  <script>
+    async function fetchImm(ccValue, colId, btnId) {
+      const col = document.querySelector('#' + colId + ' pre');
+      const btn = document.getElementById(btnId);
+      btn.disabled = true;
+      col.textContent = '送信中...';
+      try {
+        const url = 'https://httpbin.org/response-headers?Cache-Control=' + encodeURIComponent(ccValue);
+        const t0 = performance.now();
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('HTTPエラー: ' + res.status);
+        const t1 = performance.now();
+        col.textContent = 'Cache-Control: ' + (res.headers.get('Cache-Control') || '?')
+          + '\n所要時間: ' + Math.round(t1 - t0) + 'ms'
+          + '\n\n確認手順:'
+          + '\n1. このボタンをもう一度押す'
+          + '\n   → (disk cache) になるはず'
+          + '\n2. F5 でリロードしてから'
+          + '\n   DevTools で確認:'
+          + (ccValue.includes('immutable')
+            ? '\n   → immutable: キャッシュ利用（通信なし）'
+            : '\n   → 通常: 条件付きGET（304 Not Modified）発生');
+      } catch(e) { col.textContent = 'エラー: ' + e.message + '\n\nDevToolsのConsoleタブで詳細を確認してください。'; }
+      btn.disabled = false;
+    }
+
+    document.getElementById('btn-imm-normal').addEventListener('click', () => fetchImm('max-age=30', 'imm-col-normal', 'btn-imm-normal'));
+    document.getElementById('btn-imm-immutable').addEventListener('click', () => fetchImm('max-age=30, immutable', 'imm-col-immutable', 'btn-imm-immutable'));
+    document.getElementById('btn-imm-reset').addEventListener('click', () => {
+      ['imm-col-normal','imm-col-immutable'].forEach(id => {
+        document.querySelector('#' + id + ' pre').innerHTML = '<span class="placeholder">← ボタンを押してください</span>';
+      });
+    });
+  </script>
+
+  <div class="warn-box">
+    <strong>immutable を安全に使える条件</strong>:
+    ファイル名にハッシュが含まれている場合（<code>app-3a7c9f2e.js</code>）のみ使用すること。<br>
+    <code>style.css</code> のようなバージョンなしのファイル名で immutable を設定すると、
+    内容を更新してもユーザーに古いファイルが max-age の期間中ずっと表示され続けます。
+  </div>
+
+  <div class="note">
+    <strong>immutable の正確な挙動と限界</strong>:<br>
+    ・immutable は「max-age 期間中、ブラウザが条件付きリクエスト（If-None-Match / If-Modified-Since）すら行わない」ことを指示するディレクティブ<br>
+    ・ただし <strong>Ctrl+Shift+R（強制リロード）ではブラウザによっては無視される</strong>。DevToolsの「Disable cache」も同様<br>
+    ・<strong>ブラウザキャッシュには強く効くが、CDNキャッシュには効果が薄い</strong>。CDN上のキャッシュ更新は別途 Purge（キャッシュクリア）操作が必要<br>
+    ・Firefox は immutable を厳密にサポート（2017年〜）。Chrome はヒューリスティクスで類似の最適化を行うが、仕様上の immutable 対応は部分的<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/Headers/Cache-Control#immutable" target="_blank">MDN — Cache-Control: immutable</a></span>
+  </div>
+</div>
+
+<!-- ── 実験 3-B: stale-while-revalidate ── -->
+<div class="lab-box" id="exp-3b">
+  <h3>実験 3-B: stale-while-revalidate — 古いキャッシュを返しつつバックグラウンドで更新</h3>
+  <p>
+    <code>stale-while-revalidate</code> は、キャッシュの有効期限が切れた後も
+    <strong>まず古いキャッシュをユーザーに即座に返し</strong>、バックグラウンドでサーバーに新しいデータを取りに行く仕組みです。
+    ユーザー体感では待ち時間ゼロです。
+  </p>
+
+  <div class="diagram">Cache-Control: max-age=5, stale-while-revalidate=30
+
+タイムライン:
+  0秒          5秒                  35秒
+  │── 新鮮 ──│── stale期間 ──────│── 完全期限切れ ──
+  │           │                    │
+  │ キャッシュ │ 古いキャッシュを返す │ サーバーに
+  │ そのまま  │ + バックグラウンド   │ フル問い合わせ
+  │ 返す      │   で再取得           │ （待ちが発生）
+
+比較: max-age=5 のみ（stale-while-revalidateなし）
+  0秒          5秒
+  │── 新鮮 ──│── 即座にサーバー問い合わせ（ユーザーが待つ）</div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — stale-while-revalidate の動作確認</div>
+    <p>5秒で期限切れ、その後30秒間は stale 期間です。ステータス表示で現在の状態を確認できます。</p>
+    <button class="btn btn-accent3" id="btn-swr">max-age=5, stale-while-revalidate=30 で取得</button>
+    <div id="swr-status" style="margin:0.6rem 0; display:none;">
+      <div style="display:flex; align-items:center; gap:0.8rem;">
+        <div style="flex:1; background:var(--surface2); border-radius:6px; height:20px; overflow:hidden; position:relative;">
+          <div id="swr-bar-fresh" style="position:absolute;left:0;top:0;height:100%;background:var(--accent);width:0%;transition:width 0.5s;border-radius:6px 0 0 6px;"></div>
+          <div id="swr-bar-stale" style="position:absolute;left:0;top:0;height:100%;background:var(--warn);width:0%;transition:width 0.5s;opacity:0.7;border-radius:0;"></div>
+        </div>
+        <span id="swr-status-text" style="font-family:'IBM Plex Mono',monospace;font-size:0.82rem;min-width:180px;"></span>
+      </div>
+    </div>
+    <pre id="swr-result"><span class="placeholder">← ボタンを押してください。5秒後に再度押すと stale 動作を確認できます。</span></pre>
+  </div>
+
+  <script>
+    let swrCount = 0;
+    let swrTimer = null;
+    document.getElementById('btn-swr').addEventListener('click', async () => {
+      const el = document.getElementById('swr-result');
+      const btn = document.getElementById('btn-swr');
+      btn.disabled = true;
+      swrCount++;
+      const n = swrCount;
+      el.textContent = n + '回目: 送信中...';
+      try {
+        const url = 'https://httpbin.org/response-headers?Cache-Control='
+          + encodeURIComponent('max-age=5, stale-while-revalidate=30')
+          + '&X-Fetch-Count=' + n;
+        const t0 = performance.now();
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('HTTPエラー: ' + res.status);
+        const t1 = performance.now();
+        const cc = res.headers.get('Cache-Control') || '?';
+
+        // Start status countdown
+        const statusArea = document.getElementById('swr-status');
+        const barFresh = document.getElementById('swr-bar-fresh');
+        const barStale = document.getElementById('swr-bar-stale');
+        const statusText = document.getElementById('swr-status-text');
+        statusArea.style.display = 'block';
+        if (swrTimer) clearInterval(swrTimer);
+
+        const startTime = Date.now();
+        const maxAge = 5;
+        const swrSec = 30;
+        const total = maxAge + swrSec;
+
+        function updateStatus() {
+          const elapsed = (Date.now() - startTime) / 1000;
+          if (elapsed < maxAge) {
+            const pct = (elapsed / maxAge) * (maxAge / total) * 100;
+            barFresh.style.width = ((maxAge / total) * 100) + '%';
+            barStale.style.width = '0%';
+            statusText.innerHTML = '<span style="color:var(--accent);">🟢 新鮮</span> あと ' + Math.ceil(maxAge - elapsed) + '秒';
+          } else if (elapsed < total) {
+            const stalePct = ((elapsed - maxAge) / swrSec) * (swrSec / total) * 100;
+            barFresh.style.width = ((maxAge / total) * 100) + '%';
+            barStale.style.width = ((maxAge / total) * 100 + stalePct) + '%';
+            barStale.style.left = ((maxAge / total) * 100) + '%';
+            statusText.innerHTML = '<span style="color:var(--warn);">🟡 stale</span> あと ' + Math.ceil(total - elapsed) + '秒（バックグラウンド更新）';
+          } else {
+            clearInterval(swrTimer);
+            barStale.style.width = '100%';
+            barStale.style.left = '0';
+            barStale.style.background = 'var(--danger)';
+            statusText.innerHTML = '<span style="color:var(--danger);">🔴 期限切れ</span> サーバーにフル問い合わせ';
+          }
+        }
+        updateStatus();
+        swrTimer = setInterval(updateStatus, 500);
+
+        el.textContent = n + '回目のレスポンス:\n'
+          + '  Cache-Control: ' + cc + '\n'
+          + '  所要時間: ' + Math.round(t1 - t0) + 'ms\n\n'
+          + 'DevTools の Network タブで確認:\n'
+          + '  🟢 5秒以内に再実行 → Size: (disk cache)\n'
+          + '  🟡 5〜35秒後に再実行:\n'
+          + '    → 即座にレスポンス + DevToolsに2つ目のリクエスト\n'
+          + '  🔴 35秒以降 → フル取得（通常の200）';
+      } catch(e) { el.textContent = 'エラー: ' + e.message; }
+      btn.disabled = false;
+    });
+  </script>
+
+  <div class="warn-box">
+    <strong>httpbin.org の制約に注意</strong>:
+    httpbin.org は <code>stale-while-revalidate</code> のヘッダーを返すことはできますが、
+    ブラウザの stale 配信動作を<strong>正しくシミュレートできない場合があります</strong>。<br>
+    <strong>→ この実験は OutSystems 環境（実験 3-E）で確認することを強く推奨します。</strong><br>
+    OutSystems の REST API なら実際のサーバーとして動作するため、stale 動作をより正確に観察できます。
+  </div>
+
+  <div class="note">
+    <strong>実務での活用シーン</strong>:<br>
+    バージョン管理されていない静的ファイル（<code>style.css</code>）に最適。
+    <code>max-age=86400, stale-while-revalidate=604800</code>（1日新鮮 + 7日間stale）なら、
+    ユーザーは常に即座にページを見られ、バックグラウンドで最新版を取得します。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/Headers/Cache-Control#stale-while-revalidate" target="_blank">MDN — stale-while-revalidate</a></span>
+  </div>
+</div>
+
+<!-- ── 実験 3-C: Vary ── -->
+<div class="lab-box" id="exp-3c">
+  <h3>実験 3-C: Vary — キャッシュを何で分けるか</h3>
+  <p>
+    <code>Vary</code> ヘッダーは、CDNやブラウザに「このヘッダーの値が異なれば別のキャッシュとして扱え」と指示します。
+    <strong>CORSやコンテンツ交渉で必須</strong>のヘッダーです。
+  </p>
+
+  <div class="diagram">Vary: Accept-Encoding の場合:
+
+  リクエスト①: Accept-Encoding: gzip     → キャッシュA（gzip圧縮版）
+  リクエスト②: Accept-Encoding: br       → キャッシュB（Brotli圧縮版）
+  リクエスト③: Accept-Encoding: gzip     → キャッシュA を再利用 ✅
+
+Vary: Origin の場合（CORS で重要）:
+
+  リクエスト①: Origin: https://app-a.com → キャッシュX（AC-Allow-Origin: app-a.com）
+  リクエスト②: Origin: https://app-b.com → キャッシュY（AC-Allow-Origin: app-b.com）
+
+  ⚠ Vary: Origin を忘れると:
+  リクエスト①の応答（app-a.com許可）がキャッシュされ、
+  リクエスト②にもそのキャッシュが返される → app-b.com で CORSエラー！</div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — Vary ヘッダー付きレスポンスを取得</div>
+    <p>httpbin.org に <code>Vary: Accept-Encoding, Origin</code> を返させます。</p>
+    <button class="btn btn-accent" id="btn-vary">Vary付きレスポンスを取得</button>
+    <pre id="vary-result"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-vary').addEventListener('click', async () => {
+      const el = document.getElementById('vary-result');
+      const btn = document.getElementById('btn-vary');
+      btn.disabled = true;
+      el.textContent = '送信中...';
+      try {
+        const url = 'https://httpbin.org/response-headers?Vary='
+          + encodeURIComponent('Accept-Encoding, Origin')
+          + '&Cache-Control=' + encodeURIComponent('public, max-age=60');
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('HTTPエラー: ' + res.status);
+        const vary = res.headers.get('Vary') || '(なし)';
+        const cc = res.headers.get('Cache-Control') || '(なし)';
+        el.textContent = 'レスポンスヘッダー:\n'
+          + '  Cache-Control: ' + cc + '\n'
+          + '  Vary: ' + vary + '\n\n'
+          + '意味:\n'
+          + '  このレスポンスは以下の条件ごとに別のキャッシュとして保存される:\n'
+          + '  - Accept-Encoding の値（gzip / br / zstd 等）\n'
+          + '  - Origin の値（リクエスト元オリジン）\n\n'
+          + 'DevTools で確認:\n'
+          + '  Response Headers → Vary の値を確認してください。';
+      } catch(e) { el.textContent = 'エラー: ' + e.message; }
+      btn.disabled = false;
+    });
+  </script>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — Vary を設定すべき場面</div>
+    <pre><span class="header-name">Vary: Accept-Encoding</span>
+  <span class="comment">いつ: 圧縮レスポンスを返す場合（ほぼ全サーバー）</span>
+  <span class="comment">理由: gzip版とBrotli版を混在させないため</span>
+
+<span class="header-name">Vary: Origin</span>
+  <span class="comment">いつ: CORSで Access-Control-Allow-Origin を動的に返す場合</span>
+  <span class="comment">理由: オリジンAの許可レスポンスがオリジンBに返されるのを防ぐ</span>
+  <span class="highlight">→ CORS API では必須！忘れるとキャッシュ汚染でCORSエラーの原因</span>
+
+<span class="highlight">⚠ 最も危険な実務ミス（頻発）:</span>
+  <span class="comment">CORS API で Access-Control-Allow-Origin を動的に返しつつ</span>
+  <span class="comment">Vary: Origin を設定しない場合:</span>
+  <span class="comment">→ CDNがオリジンAへの応答をキャッシュ</span>
+  <span class="comment">→ オリジンBからのリクエストにもそのキャッシュが返される</span>
+  <span class="comment">→ オリジンBでCORSエラー発生（本番障害）</span>
+  <span class="comment">→ しかも間欠的に発生するため原因特定が困難</span>
+
+<span class="header-name">Vary: Accept</span>
+  <span class="comment">いつ: 同一URLで HTML と JSON を返し分ける場合</span>
+
+<span class="header-name">Vary: Accept-Language</span>
+  <span class="comment">いつ: 同一URLで日本語版と英語版を返し分ける場合</span>
+
+<span class="highlight">❌ Vary: * （すべてのヘッダーで分ける）</span>
+  <span class="comment">→ 事実上「キャッシュしない」と同義。使わないこと。</span></pre>
+  </div>
+
+  <div class="note">
+    <strong>Vary とCORSエラーの関係</strong>:
+    Lab 02 の「よくある誤設定」で「Vary: Origin を忘れる」を挙げました。
+    これはCDN経由のAPIで頻発する問題です。Lab 06（CORS基礎）でも再度扱います。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/Headers/Vary" target="_blank">MDN — Vary</a></span>
+  </div>
+</div>
+
+<!-- ── 実験 3-D: Age と s-maxage ── -->
+<div class="lab-box" id="exp-3d">
+  <h3>実験 3-D: Age と s-maxage — 共有キャッシュ（CDN）の制御</h3>
+  <p>
+    <code>Age</code> はCDN/プロキシが「このレスポンスがキャッシュに入ってから何秒経過したか」を報告するヘッダーです。
+    <code>s-maxage</code> は共有キャッシュ専用の有効期間で、<code>max-age</code> を上書きします。
+  </p>
+
+  <div class="diagram">s-maxage と max-age の使い分け:
+
+  Cache-Control: public, max-age=60, s-maxage=300
+
+  ブラウザ:     max-age=60 を使用   → 60秒間キャッシュ
+  CDN/プロキシ: s-maxage=300 を使用 → 300秒間キャッシュ（max-age より長い）
+
+  なぜ分けるか？:
+  - CDNは多くのユーザーに共有されるので長めにキャッシュしたい
+  - ブラウザは個別ユーザーなので短めにして新鮮さを保ちたい
+
+Age ヘッダーの読み方:
+  Cache-Control: s-maxage=300
+  Age: 120
+
+  → CDN上で120秒経過 → 残り有効期間: 300 - 120 = 180秒</div>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — 実際のWebサイトで Age ヘッダーを観察</div>
+    <p>
+      大手サイトの静的リソースは CDN 経由で配信されており、<code>Age</code> ヘッダーが付いています。<br>
+      DevTools でいくつかのサイトを開き、静的リソース（JS/CSS/画像）の <code>Age</code> を確認してみましょう。
+    </p>
+    <button class="btn btn-accent2" id="btn-age">httpbin.orgで Age を確認</button>
+    <pre id="age-result"><span class="placeholder">← ボタンを押すと結果が表示されます</span></pre>
+  </div>
+
+  <script>
+    document.getElementById('btn-age').addEventListener('click', async () => {
+      const el = document.getElementById('age-result');
+      el.textContent = '送信中...';
+      try {
+        // httpbin.orgのレスポンス自体にAgeが付く場合がある（CDN経由の場合）
+        const res = await fetch('https://httpbin.org/response-headers?Cache-Control='
+          + encodeURIComponent('public, max-age=60, s-maxage=300')
+          + '&Age=120');
+        if (!res.ok) throw new Error('HTTPエラー: ' + res.status);
+        const age = res.headers.get('Age');
+        const cc = res.headers.get('Cache-Control') || '?';
+        el.textContent = 'レスポンスヘッダー:\n'
+          + '  Cache-Control: ' + cc + '\n'
+          + '  Age: ' + (age || '(CDN経由でない場合は付かない)') + '\n\n'
+          + '解説:\n'
+          + '  s-maxage=300: CDNは300秒間キャッシュ\n'
+          + '  max-age=60: ブラウザは60秒間キャッシュ\n'
+          + '  Age=120: CDN上で120秒経過 → 残り180秒\n\n'
+          + '実際のサイトで確認するには:\n'
+          + '  1. 大手サイト（Yahoo, Amazonなど）を開く\n'
+          + '  2. DevTools → Network → JS/CSS/画像を選択\n'
+          + '  3. Response Headers → Age を探す\n'
+          + '  → 数千秒の値が見つかるはず（CDNで長時間キャッシュ）';
+      } catch(e) { el.textContent = 'エラー: ' + e.message; }
+    });
+  </script>
+
+  <div class="note">
+    <strong>Age を見る実践テスト</strong>:
+    新しいタブで <code>https://www.yahoo.co.jp</code> 等を開き、DevTools → Network → 
+    任意の静的リソースを選択 → Response Headers で <code>Age</code> を探してみてください。
+    CDN上で数時間〜数日キャッシュされていることがわかります。<br>
+    <span style="font-size:0.78rem; color:var(--text-dim);">📖 参考: <a href="https://developer.mozilla.org/ja/docs/Web/HTTP/Headers/Age" target="_blank">MDN — Age</a></span>
+  </div>
+</div>
+
+<!-- ── 実験 3-E: OutSystems ── -->
+<div class="lab-box" id="exp-3e">
+  <h3>実験 3-E: OutSystems でキャッシュ応用ヘッダーを設定する</h3>
+  <p>Lab 02 で作成した <code>GetCached</code> メソッドを拡張し、応用的なキャッシュヘッダーを試します。</p>
+
+  <div class="step">
+    <div class="step-num">STEP 1 — GetCached メソッドを拡張</div>
+    <pre><span class="comment">// Lab 02 の GetCached メソッドの SetResponseHeader を以下に変更:</span>
+
+<span class="comment">// パターン A: stale-while-revalidate</span>
+SetResponseHeader("Cache-Control",
+  <span class="header-val">"public, max-age=5, stale-while-revalidate=30"</span>)
+
+<span class="comment">// パターン B: CDN用 s-maxage</span>
+SetResponseHeader("Cache-Control",
+  <span class="header-val">"public, max-age=10, s-maxage=60"</span>)
+
+<span class="comment">// パターン C: immutable（ハッシュ付きファイル向け）</span>
+SetResponseHeader("Cache-Control",
+  <span class="header-val">"public, max-age=31536000, immutable"</span>)
+
+<span class="comment">// パターン D: Vary 付き（コンテンツ交渉）</span>
+SetResponseHeader("Cache-Control", <span class="header-val">"public, max-age=60"</span>)
+SetResponseHeader("Vary", <span class="header-val">"Accept-Encoding, Origin"</span>)</pre>
+  </div>
+
+  <div class="step">
+    <div class="step-num">STEP 2 — 各パターンの動作確認</div>
+    <pre><span class="comment">// パターン A を設定 → Publish → ブラウザでアクセス</span>
+
+確認手順:
+  1. <span class="header-val">http://&lt;env&gt;.../GetCached?CacheSeconds=5</span> にアクセス
+  2. X-Generated-At の時刻をメモ
+  3. 5秒以内に再アクセス → <span class="highlight">(disk cache)</span> = 新鮮なキャッシュ
+  4. 5〜35秒後に再アクセス:
+     → 即座にレスポンス（古い X-Generated-At）
+     → 裏で更新され、次回アクセスで新しい X-Generated-At に
+  5. 35秒以降 → フル取得（新しい X-Generated-At）
+
+<span class="comment">// パターン D（Vary）を設定 → Publish → ブラウザでアクセス</span>
+
+確認手順:
+  DevTools → Response Headers で:
+  <span class="header-name">Vary</span>: <span class="header-val">Accept-Encoding, Origin</span>
+  が表示されることを確認</pre>
+  </div>
+
+  <div class="warn-box">
+    <strong>OutSystems PaaS での注意</strong>:
+    Personal Environment では CDN レイヤー（CloudFront等）が間に入る場合があり、
+    <code>s-maxage</code> の効果が想定と異なることがあります。
+    DevTools で実際に返ってくる <code>Cache-Control</code> と <code>Age</code> を必ず確認してください。
+  </div>
+</div>
+
+<!-- ── まとめ早見表 ── -->
+<div class="lab-box" id="summary">
+  <h3>Lab 02 + Lab 03 キャッシュ設計 完全早見表</h3>
+
+  <div class="diagram">ディレクティブ         対象         効果                              典型的な使用場面
+──────────────────────────────────────────────────────────────────────────────────────────
+max-age=N              ブラウザ     N秒間キャッシュ                    全般
+s-maxage=N             CDN/Proxy   CDN向けN秒間キャッシュ（max-age上書き）  API + CDN
+public                 全キャッシュ  CDN含めどこでもキャッシュ可         静的アセット
+private                ブラウザのみ CDNにキャッシュさせない             ユーザー固有データ
+no-cache               全キャッシュ  キャッシュ保持 + 毎回再検証        HTML, API
+no-store               全キャッシュ  一切キャッシュしない               機密情報
+immutable              全キャッシュ  max-age中は再検証すら不要          ハッシュ付き静的ファイル
+must-revalidate        全キャッシュ  期限切れ後は必ず再検証             厳格なデータ整合性
+stale-while-revalidate 全キャッシュ  stale中は古いキャッシュ返却 + 裏で更新  UX重視の静的ファイル
+stale-if-error=N       全キャッシュ  オリジン障害時にN秒間はstale返却   高可用性サイト
+
+Vary                   CDN/Proxy   指定ヘッダーでキャッシュを分離      CORS, 多言語, 圧縮
+Age                    CDN/Proxy   CDN上の経過秒数を報告              CDNのデバッグ
+
+────────────────────────────────────────────────────────────
+シナリオ別 推奨設定:
+────────────────────────────────────────────────────────────
+SPA JS/CSS（ハッシュ付き）   public, max-age=31536000, immutable
+HTMLドキュメント              no-cache
+API（ユーザー共通）          public, max-age=60, s-maxage=300, stale-while-revalidate=600
+API（ユーザー固有）          private, no-cache
+認証トークン・機密情報       no-store
+CDN配信の画像               public, max-age=86400, stale-while-revalidate=604800
+フォント                    public, max-age=31536000, immutable</div>
+</div>
+
+<!-- ── チェックリスト ── -->
+<hr>
+<h2 id="checklist">✅ Lab 03 チェックリスト</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">チェック状態はブラウザに自動保存されます。</p>
+
+<div class="check-item"><input type="checkbox" data-key="lab03-1"> <label>immutable 有無でF5リロード時のNetwork通信の違いを体感した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab03-2"> <label>immutable を使ってよい条件（ハッシュ付きファイル名）とCDN Purgeの必要性を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab03-3"> <label>stale-while-revalidate で「古いキャッシュ即返却 + バックグラウンド更新」の動作を体感した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab03-4"> <label>Vary ヘッダーがキャッシュキーを分離する仕組みを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab03-5"> <label>Vary: Origin を忘れるとCDNキャッシュ汚染でCORSエラーが発生する危険性を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab03-6"> <label>Age ヘッダーの読み方（s-maxage - Age = 残り有効期間）を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab03-7"> <label>max-age（ブラウザ用）と s-maxage（CDN用）で別々に制御できることを確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab03-8"> <label>OutSystems で stale-while-revalidate / Vary を設定して動作を確認した</label></div>
+<div class="check-item"><input type="checkbox" data-key="lab03-9"> <label>完全早見表で自分の実務に使えそうなキャッシュ設定パターンを特定した</label></div>
+
+<div style="margin-top:1rem; text-align:center;">
+  <span id="progress-text" style="font-family:'IBM Plex Mono',monospace; color:var(--accent); font-size:0.9rem;"></span>
+</div>
+
+<script>
+  const STORAGE_PREFIX = 'httplab_';
+  function updateProgress() {
+    const all = document.querySelectorAll('input[type="checkbox"][data-key]');
+    const checked = [...all].filter(cb => cb.checked).length;
+    const el = document.getElementById('progress-text');
+    if (el) el.textContent = checked + ' / ' + all.length + ' 完了';
+  }
+  document.querySelectorAll('input[type="checkbox"][data-key]').forEach(cb => {
+    const saved = localStorage.getItem(STORAGE_PREFIX + cb.dataset.key);
+    if (saved === 'true') { cb.checked = true; cb.closest('.check-item')?.classList.add('checked'); }
+    cb.addEventListener('change', () => {
+      localStorage.setItem(STORAGE_PREFIX + cb.dataset.key, cb.checked);
+      cb.closest('.check-item')?.classList.toggle('checked', cb.checked);
+      updateProgress();
+    });
+  });
+  updateProgress();
+</script>
+
+<hr>
+
+<div class="note">
+  📖 <strong>参照資料</strong>：このLabの内容は <code>http-headers-guide-v2.md</code> の 第3部 3-3「キャッシュ戦略」+ 第2部④「CDN / 静的配信サーバー」 に対応しています。より詳しい解説・ヘッダー一覧はガイドを参照してください。
+</div>
+
+<h2>📝 Lab 03 学習ノート</h2>
+<p style="font-size:0.82rem; color:var(--text-dim);">メモはブラウザに自動保存されます。</p>
+<textarea id="notes" rows="6" placeholder="気づいたこと、疑問点をメモ..."
+  style="width:100%;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:0.8rem;font-family:'Noto Sans JP',sans-serif;font-size:0.9rem;resize:vertical;margin-top:0.5rem;"></textarea>
+<script>
+  const notesEl = document.getElementById('notes');
+  const savedNotes = localStorage.getItem(STORAGE_PREFIX + 'lab03_notes');
+  if (savedNotes) notesEl.value = savedNotes;
+  notesEl.addEventListener('input', () => { localStorage.setItem(STORAGE_PREFIX + 'lab03_notes', notesEl.value); });
+</script>
+
+<div style="margin-top:2rem; display:flex; justify-content:space-between; font-size:0.82rem; color:var(--text-dim);">
+  <span>← 前回: <a href="http-header-lab-02.html"><strong>Lab 02 — キャッシュ基礎</strong></a></span>
+  <span>次回: <a href="http-header-lab-04.html"><strong>Lab 04 — Cookie基礎</strong></a>（Set-Cookie, Cookie, Path, Domain, Expires/Max-Age）→
+  <br><span style="color:var(--text-dim);font-size:0.78rem;">キャッシュの次は、ステートフルな通信の基盤である Cookie の仕組みを理解します</span></span>
+</div>
+
+</body>
+</html>
