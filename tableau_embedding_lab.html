@@ -1,0 +1,2149 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tableau Embedding API v3 — 網羅的コード Lab</title>
+<script type="module" src="https://public.tableau.com/javascripts/api/tableau.embedding.3.latest.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #ffffff;
+    --surface: #f5f7fa;
+    --surface2: #ebeef2;
+    --border: #c8cdd3;
+    --accent: #005cc5;
+    --accent2: #22863a;
+    --accent3: #6f42c1;
+    --accent4: #b08800;
+    --text: #1a1a2e;
+    --text-dim: #5c6370;
+    --code-bg: #f0f4f8;
+    --success: #22863a;
+    --error: #cb2431;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'Noto Sans JP', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  /* ── Hero ── */
+  .hero {
+    padding: 60px 40px 40px;
+    text-align: center;
+    background: linear-gradient(160deg, #f5f7fa 0%, #eef3fa 50%, #ffffff 100%);
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -120px; right: -120px;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(0,92,197,0.10) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero h1 {
+    font-size: 2.4rem;
+    font-weight: 800;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero .subtitle {
+    color: var(--text-dim);
+    font-size: 1rem;
+    margin-top: 8px;
+  }
+
+  /* ── TOC ── */
+  .toc {
+    max-width: 1100px;
+    margin: 32px auto;
+    padding: 0 24px;
+  }
+  .toc h2 {
+    font-size: 1.1rem;
+    color: var(--accent);
+    margin-bottom: 12px;
+    font-family: var(--mono);
+  }
+  .toc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 10px;
+  }
+  .toc-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--text);
+    font-size: 0.88rem;
+    transition: border-color 0.2s, transform 0.15s;
+  }
+  .toc-item:hover {
+    border-color: var(--accent);
+    transform: translateY(-1px);
+  }
+  .toc-num {
+    font-family: var(--mono);
+    font-weight: 600;
+    color: var(--accent);
+    font-size: 0.8rem;
+    min-width: 28px;
+  }
+
+  /* ── Layout ── */
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px 80px;
+  }
+
+  /* ── Lab Section ── */
+  .lab {
+    margin-top: 48px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--surface);
+  }
+  .lab-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 24px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+  .lab-num {
+    font-family: var(--mono);
+    font-weight: 600;
+    color: var(--bg);
+    background: var(--accent);
+    width: 30px; height: 30px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 6px;
+    font-size: 0.85rem;
+  }
+  .lab-header h3 {
+    font-size: 1.15rem;
+    font-weight: 600;
+  }
+  .lab-tag {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid;
+  }
+  .tag-basic { color: var(--accent); border-color: var(--accent); }
+  .tag-intermediate { color: var(--accent2); border-color: var(--accent2); }
+  .tag-advanced { color: var(--accent3); border-color: var(--accent3); }
+
+  .lab-body {
+    padding: 24px;
+  }
+  .lab-desc {
+    font-size: 0.92rem;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+    line-height: 1.8;
+  }
+  .lab-desc code {
+    font-family: var(--mono);
+    background: var(--code-bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.84rem;
+    color: var(--accent2);
+  }
+
+  /* ── Code Block ── */
+  .code-block {
+    position: relative;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin: 12px 0;
+    overflow: hidden;
+  }
+  .code-label {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    padding: 8px 16px 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .code-block pre {
+    padding: 12px 16px 14px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    line-height: 1.65;
+    color: var(--text);
+    white-space: pre;
+    tab-size: 2;
+  }
+  .code-block .copy-btn {
+    position: absolute;
+    top: 8px; right: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .copy-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* ── Syntax Highlight (manual) ── */
+  .kw { color: #d73a49; }   /* keyword */
+  .fn { color: #6f42c1; }   /* function/method */
+  .str { color: #032f62; }  /* string */
+  .cm { color: #6a737d; }   /* comment */
+  .num { color: #b08800; }  /* number */
+  .tag { color: #22863a; }  /* html tag */
+  .attr { color: #6f42c1; } /* attribute */
+  .val { color: #032f62; }  /* attribute value */
+
+  /* ── Object Model Diagram ── */
+  .diagram-box {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    line-height: 1.9;
+    overflow-x: auto;
+    white-space: pre;
+    color: var(--text-dim);
+    margin: 12px 0;
+  }
+
+  /* ── Result/Output area ── */
+  .result-area {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin: 12px 0;
+    min-height: 60px;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    color: var(--text-dim);
+  }
+  .result-area .label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+
+  /* ── Viz container ── */
+  .viz-container {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 16px 0;
+    min-height: 500px;
+    background: #fff;
+  }
+  .viz-container tableau-viz {
+    width: 100%;
+    min-height: 500px;
+  }
+
+  /* ── Buttons ── */
+  .btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0;
+  }
+  .btn {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn:active { transform: scale(0.97); }
+  .btn-accent {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+  .btn-accent:hover { opacity: 0.85; color: var(--bg); }
+
+  /* ── Callout ── */
+  .callout {
+    border-left: 3px solid var(--accent4);
+    background: rgba(251,191,36,0.06);
+    padding: 14px 18px;
+    border-radius: 0 8px 8px 0;
+    margin: 14px 0;
+    font-size: 0.88rem;
+  }
+  .callout-title {
+    font-weight: 600;
+    color: var(--accent4);
+    font-size: 0.82rem;
+    margin-bottom: 4px;
+  }
+  .callout code {
+    font-family: var(--mono);
+    background: var(--code-bg);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 0.82rem;
+  }
+
+  .callout-info {
+    border-left-color: var(--accent);
+    background: rgba(0,92,197,0.06);
+  }
+  .callout-info .callout-title { color: var(--accent); }
+
+  /* ── Separator ── */
+  .sep {
+    height: 1px;
+    background: var(--border);
+    margin: 20px 0;
+  }
+
+  /* ── Status Log ── */
+  #statusLog {
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .log-entry {
+    padding: 2px 0;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+  }
+  .log-time { color: var(--accent); }
+  .log-msg { color: var(--text-dim); }
+  .log-error { color: var(--error); }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  @media (max-width: 700px) {
+    .hero h1 { font-size: 1.6rem; }
+    .toc-grid { grid-template-columns: 1fr; }
+    .lab-body { padding: 16px; }
+    .btn-row { flex-direction: column; }
+  }
+
+  /* ═════════════════════════════════════════════════════════
+     v2 Brushup: Sidebar / info-box / verify / check-steps
+     ═════════════════════════════════════════════════════════ */
+  #sidebar {
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    width: 240px;
+    background: linear-gradient(180deg, #f5f7fa 0%, #ffffff 100%);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 14px 0 40px;
+    z-index: 50;
+    font-family: var(--sans);
+  }
+  #sidebar::-webkit-scrollbar { width: 4px; }
+  #sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  #sidebar .nav-title {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--accent);
+    padding: 6px 16px 10px;
+    letter-spacing: 0.06em;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 8px;
+  }
+  #sidebar .nav-title span { color: var(--text-dim); }
+  #sidebar .nav-section {
+    padding: 10px 16px 4px;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  #sidebar .nav-item {
+    display: block;
+    padding: 7px 16px 7px 20px;
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #sidebar .nav-item:hover {
+    background: var(--surface2);
+    color: var(--text);
+  }
+  #sidebar .nav-item.active {
+    border-left-color: var(--accent);
+    background: rgba(0, 92, 197, 0.08);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  #sidebar .nav-num {
+    font-family: var(--mono);
+    color: var(--accent2);
+    font-size: 0.72rem;
+    margin-right: 8px;
+    opacity: 0.8;
+  }
+
+  /* 本体を右にオフセット（サイドバー分） */
+  body { padding-left: 240px; }
+  .hero, .toc, .container, footer { margin-left: 0; }
+
+  /* anchor オフセット（将来のfixedヘッダ対応） */
+  .lab { scroll-margin-top: 20px; }
+
+  /* info-box: ok / info / warn / err （ダーク基調） */
+  .info-box {
+    border-radius: 8px;
+    padding: 12px 14px 12px 16px;
+    font-size: 0.88rem;
+    line-height: 1.75;
+    margin: 14px 0;
+    border-left: 3px solid;
+    background: rgba(255,255,255,0.02);
+  }
+  .info-box strong { font-weight: 700; }
+  .info-box.ok    { border-color: var(--success); background: rgba(34,134,58,0.08);  color: #154f1e; }
+  .info-box.info  { border-color: var(--accent);  background: rgba(0,92,197,0.08);   color: #003d8f; }
+  .info-box.warn  { border-color: var(--accent4); background: rgba(176,136,0,0.08);  color: #7a5c00; }
+  .info-box.err   { border-color: var(--error);   background: rgba(203,36,49,0.08);  color: #9a1320; }
+  .info-box code {
+    font-family: var(--mono);
+    background: rgba(0,0,0,0.06);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 0.82rem;
+    color: var(--accent);
+  }
+
+  /* verify: Before / After 2カラム */
+  .verify {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 14px 0;
+  }
+  .verify-col {
+    border-radius: 7px;
+    padding: 11px 14px 13px;
+    font-size: 0.84rem;
+    line-height: 1.7;
+    border: 1px solid;
+  }
+  .verify-before {
+    background: rgba(203,36,49,0.05);
+    border-color: rgba(203,36,49,0.25);
+    color: #6b1a22;
+  }
+  .verify-after {
+    background: rgba(34,134,58,0.05);
+    border-color: rgba(34,134,58,0.25);
+    color: #154f1e;
+  }
+  .verify-label {
+    font-family: var(--mono);
+    font-size: 0.64rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+    font-weight: 700;
+    opacity: 0.85;
+  }
+  .verify-before .verify-label { color: var(--error); }
+  .verify-after  .verify-label { color: var(--success); }
+
+  /* check-steps: ブラウザ実機確認手順 */
+  .check-steps {
+    background: rgba(176,136,0,0.06);
+    border: 1px solid rgba(176,136,0,0.30);
+    border-left: 3px solid var(--accent4);
+    border-radius: 7px;
+    padding: 11px 14px 11px 16px;
+    margin: 16px 0 4px;
+    font-size: 0.86rem;
+    line-height: 1.8;
+    color: #5c4400;
+  }
+  .check-steps-title {
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--accent4);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .check-steps ol { margin-left: 20px; margin-top: 2px; }
+  .check-steps li { margin-bottom: 3px; }
+  .check-steps code {
+    font-family: var(--mono);
+    background: rgba(0,0,0,0.06);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 0.8rem;
+    color: var(--accent);
+  }
+
+  /* compare-table */
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.84rem;
+    margin: 12px 0 16px;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    overflow: hidden;
+  }
+  .compare-table th {
+    background: var(--surface2);
+    padding: 8px 12px;
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border);
+  }
+  .compare-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: top;
+  }
+  .compare-table tr:last-child td { border-bottom: none; }
+  .compare-table td:first-child { font-family: var(--mono); color: var(--accent2); }
+  .compare-table .yes { color: var(--success); }
+  .compare-table .no  { color: var(--error); }
+
+  /* code-block upgrades: header + copy button */
+  .code-block-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+  }
+  .copy-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    padding: 3px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .copy-btn.copied { border-color: var(--success); color: var(--success); }
+
+  /* 🔰 beginner box */
+  .beginner-box {
+    background: rgba(111,66,193,0.06);
+    border: 1px solid rgba(111,66,193,0.25);
+    border-left: 3px solid var(--accent3);
+    border-radius: 7px;
+    padding: 11px 14px;
+    margin: 14px 0;
+    font-size: 0.86rem;
+    line-height: 1.8;
+    color: #3a1d6e;
+  }
+  .beginner-title {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    color: var(--accent3);
+    font-weight: 700;
+    margin-bottom: 5px;
+  }
+  .beginner-box pre.ascii-art {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    line-height: 1.45;
+    background: rgba(0,0,0,0.05);
+    padding: 10px 12px;
+    border-radius: 5px;
+    margin-top: 8px;
+    color: var(--text);
+    overflow-x: auto;
+  }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    body { padding-left: 0; }
+    #sidebar {
+      position: static;
+      width: 100%;
+      height: auto;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      padding: 8px 0;
+    }
+    #sidebar .nav-item { padding: 6px 14px; font-size: 0.78rem; }
+    .verify { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════ -->
+<!--  SIDEBAR NAV (v2 brushup)                           -->
+<!-- ════════════════════════════════════════════════════ -->
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// Tableau <span>API v3</span></div>
+  <div class="nav-section">基本</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>オブジェクトモデル</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>Web Component</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>JS 動的埋め込み</a>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>イベント6種</a>
+  <div class="nav-section">フィルタ・選択</div>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>カテゴリフィルタ</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>レンジ/日付</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>マーク選択</a>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>パラメータ</a>
+  <div class="nav-section">ブック・データ</div>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>シート切替</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>データ取得</a>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>エクスポート</a>
+  <div class="nav-section">Viz 制御</div>
+  <a class="nav-item" href="#lab11"><span class="nav-num">11</span>Undo/Refresh</a>
+  <a class="nav-item" href="#lab12"><span class="nav-num">12</span>カスタムビュー</a>
+  <a class="nav-item" href="#lab13"><span class="nav-num">13</span>サイズ変更</a>
+  <div class="nav-section">応用</div>
+  <a class="nav-item" href="#lab14"><span class="nav-num">14</span>フィルタ連鎖</a>
+  <a class="nav-item" href="#lab15"><span class="nav-num">15</span>エラーハンドリング</a>
+</nav>
+
+<!-- ════════════════════════════════════════════════════ -->
+<!--  HERO                                               -->
+<!-- ════════════════════════════════════════════════════ -->
+<div class="hero">
+  <h1>Tableau Embedding API v3 Lab</h1>
+  <p class="subtitle">網羅的コード例 × インタラクティブ実行環境 — Tableau Public対応</p>
+</div>
+
+<!-- ════════════════════════════════════════════════════ -->
+<!--  TABLE OF CONTENTS                                  -->
+<!-- ════════════════════════════════════════════════════ -->
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>オブジェクトモデル全体像</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>Web Component で基本埋め込み</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>JavaScript による動的埋め込み</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>イベントリスナー (6種)</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>カテゴリフィルタ操作</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>レンジフィルタ / 日付フィルタ</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>マーク選択・取得</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>パラメータ操作</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>シート切替・ダッシュボード探索</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>データ取得 (Summary / Underlying)</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">10</span>エクスポート (PDF / CSV / Image)</a>
+    <a class="toc-item" href="#lab11"><span class="toc-num">11</span>Viz 制御 (Undo / Refresh / Pause)</a>
+    <a class="toc-item" href="#lab12"><span class="toc-num">12</span>カスタムビュー</a>
+    <a class="toc-item" href="#lab13"><span class="toc-num">13</span>サイズ変更・レスポンシブ</a>
+    <a class="toc-item" href="#lab14"><span class="toc-num">14</span>複合シナリオ: フィルタ連鎖</a>
+    <a class="toc-item" href="#lab15"><span class="toc-num">15</span>エラーハンドリング・デバッグ</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ═══════════════════════════════════════════════════════
+     LAB 00 — オブジェクトモデル全体像
+     ═══════════════════════════════════════════════════════ -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>オブジェクトモデル全体像</h3>
+    <span class="lab-tag tag-basic">概念</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Embedding API v3 のオブジェクト階層を理解することが、すべての操作の出発点です。<br>
+      <code>&lt;tableau-viz&gt;</code> Web Component もしくは <code>TableauViz</code> クラスが頂点となり、
+      そこから Workbook → Sheet (Worksheet / Dashboard) → Filter / Mark / DataSource へアクセスします。
+    </p>
+
+    <div class="diagram-box"><span class="kw">TableauViz</span> (= &lt;tableau-viz&gt; 要素)
+  ├─ <span class="fn">.workbook</span> : <span class="kw">Workbook</span>
+  │    ├─ <span class="fn">.activeSheet</span>        : <span class="kw">Sheet</span> (Worksheet | Dashboard | Story)
+  │    ├─ <span class="fn">.publishedSheetsInfo</span> : <span class="kw">SheetInfo[]</span>
+  │    ├─ <span class="fn">.activateSheetAsync(name)</span>
+  │    ├─ <span class="fn">.changeParameterValueAsync(name, value)</span>
+  │    ├─ <span class="fn">.getParametersAsync()</span>
+  │    └─ <span class="fn">.getCustomViewsAsync()</span> / <span class="fn">.saveCustomViewAsync()</span>
+  │
+  ├─ <span class="kw">Worksheet</span>  (Sheet の具体型)
+  │    ├─ <span class="fn">.applyFilterAsync(field, values, updateType)</span>
+  │    ├─ <span class="fn">.applyRangeFilterAsync(field, rangeOpts, updateType)</span>
+  │    ├─ <span class="fn">.clearFilterAsync(field)</span>
+  │    ├─ <span class="fn">.getFiltersAsync()</span>
+  │    ├─ <span class="fn">.selectMarksByValueAsync(selections, updateType)</span>
+  │    ├─ <span class="fn">.getSelectedMarksAsync()</span>
+  │    ├─ <span class="fn">.getSummaryDataReaderAsync()</span>  ← 推奨
+  │    ├─ <span class="fn">.getUnderlyingTablesAsync()</span>
+  │    ├─ <span class="fn">.getUnderlyingTableDataReaderAsync(tableId)</span>
+  │    └─ <span class="fn">.getDataSourcesAsync()</span>
+  │
+  ├─ <span class="kw">Dashboard</span>  (Sheet の具体型)
+  │    ├─ <span class="fn">.worksheets</span>        : <span class="kw">Worksheet[]</span>
+  │    ├─ <span class="fn">.objects</span>            : <span class="kw">DashboardObject[]</span>
+  │    └─ <span class="fn">.getFiltersAsync()</span>
+  │
+  ├─ Viz レベルメソッド
+  │    ├─ <span class="fn">.refreshDataAsync()</span>
+  │    ├─ <span class="fn">.undoAsync()</span> / <span class="fn">.redoAsync()</span> / <span class="fn">.revertAllAsync()</span>
+  │    ├─ <span class="fn">.pauseAutomaticUpdatesAsync()</span> / <span class="fn">.resumeAutomaticUpdatesAsync()</span>
+  │    ├─ <span class="fn">.displayDialogAsync(dialogType)</span>
+  │    └─ <span class="fn">.exportPDFAsync(sheets, options)</span>
+  │
+  └─ <span class="kw">TableauEventType</span> (イベント列挙)
+       ├─ <span class="str">FirstInteractive</span>
+       ├─ <span class="str">MarkSelectionChanged</span>
+       ├─ <span class="str">FilterChanged</span>
+       ├─ <span class="str">ParameterChanged</span>
+       ├─ <span class="str">TabSwitched</span>
+       ├─ <span class="str">ToolbarStateChanged</span>
+       ├─ <span class="str">UrlActionTriggered</span>
+       └─ <span class="str">CustomViewLoaded</span> / <span class="str">CustomViewSaved</span> / <span class="str">CustomViewRemoved</span></div>
+
+    <div class="callout callout-info">
+      <div class="callout-title">💡 import について</div>
+      Embedding API v3 は ES6 Module です。<code>&lt;script type="module"&gt;</code> を使い、
+      必要なクラス・列挙型を個別に import します。Web Component（<code>&lt;tableau-viz&gt;</code>）を HTML に書くだけなら import 不要です。
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     LAB 01 — Web Component 基本埋め込み
+     ═══════════════════════════════════════════════════════ -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>Web Component で基本埋め込み</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      最もシンプルな埋め込み方法。HTML に <code>&lt;tableau-viz&gt;</code> タグを置くだけで Viz が表示されます。<br>
+      属性でツールバー位置、タブの表示/非表示、初期フィルタなどを制御できます。
+    </p>
+
+    <div class="code-block">
+      <div class="code-label">HTML</div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre><span class="cm">&lt;!-- ① ライブラリ読み込み (ES6 Module) --&gt;</span>
+<span class="tag">&lt;script</span> <span class="attr">type</span>=<span class="val">"module"</span>
+  <span class="attr">src</span>=<span class="val">"https://public.tableau.com/javascripts/api/tableau.embedding.3.latest.min.js"</span><span class="tag">&gt;&lt;/script&gt;</span>
+
+<span class="cm">&lt;!-- ② Web Component を配置 --&gt;</span>
+<span class="tag">&lt;tableau-viz</span>
+  <span class="attr">id</span>=<span class="val">"myViz"</span>
+  <span class="attr">src</span>=<span class="val">"https://public.tableau.com/views/Superstore_embedded_800x800/Overview"</span>
+  <span class="attr">toolbar</span>=<span class="val">"bottom"</span>
+  <span class="attr">hide-tabs</span>
+  <span class="attr">width</span>=<span class="val">"100%"</span>
+  <span class="attr">height</span>=<span class="val">"600"</span><span class="tag">&gt;</span>
+
+  <span class="cm">&lt;!-- ③ 初期フィルタ (オプション) --&gt;</span>
+  <span class="tag">&lt;viz-filter</span> <span class="attr">field</span>=<span class="val">"Category"</span> <span class="attr">value</span>=<span class="val">"Technology"</span><span class="tag">&gt;&lt;/viz-filter&gt;</span>
+  <span class="tag">&lt;viz-filter</span> <span class="attr">field</span>=<span class="val">"Region"</span> <span class="attr">value</span>=<span class="val">"West,East"</span><span class="tag">&gt;&lt;/viz-filter&gt;</span>
+
+  <span class="cm">&lt;!-- ④ 初期パラメータ (オプション) --&gt;</span>
+  <span class="tag">&lt;viz-parameter</span> <span class="attr">name</span>=<span class="val">"Profit Bin Size"</span> <span class="attr">value</span>=<span class="val">"200"</span><span class="tag">&gt;&lt;/viz-parameter&gt;</span>
+
+<span class="tag">&lt;/tableau-viz&gt;</span></pre>
+    </div>
+
+    <div class="callout">
+      <div class="callout-title">⚠️ 主要属性一覧</div>
+      <code>src</code> — Viz URL（必須）<br>
+      <code>toolbar</code> — <code>"top"</code> / <code>"bottom"</code> / <code>"hidden"</code><br>
+      <code>hide-tabs</code> — タブ非表示（ブール属性、値不要）<br>
+      <code>width</code> / <code>height</code> — サイズ指定<br>
+      <code>device</code> — <code>"desktop"</code> / <code>"tablet"</code> / <code>"phone"</code><br>
+      <code>touch-optimize</code> — タッチ操作最適化
+    </div>
+
+    <p class="lab-desc">↓ 実際の埋め込み結果（Superstore サンプル）</p>
+    <div class="viz-container">
+      <tableau-viz id="viz01"
+        src="https://public.tableau.com/views/Superstore_embedded_800x800/Overview"
+        toolbar="bottom"
+        hide-tabs
+        width="100%"
+        height="500">
+      </tableau-viz>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     LAB 02 — JavaScript による動的埋め込み
+     ═══════════════════════════════════════════════════════ -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>JavaScript による動的埋め込み</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      プログラムから <code>TableauViz</code> オブジェクトを生成し DOM に追加する方法です。<br>
+      条件分岐で埋め込む Viz を変えたり、ユーザー操作をトリガーに Viz を切り替えたりできます。
+    </p>
+
+    <div class="code-block">
+      <div class="code-label">JavaScript (ES Module)</div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre><span class="kw">import</span> { TableauViz, TableauEventType }
+  <span class="kw">from</span> <span class="str">'https://public.tableau.com/javascripts/api/tableau.embedding.3.latest.min.js'</span>;
+
+<span class="cm">// ① TableauViz オブジェクト生成</span>
+<span class="kw">const</span> viz = <span class="kw">new</span> <span class="fn">TableauViz</span>();
+
+<span class="cm">// ② プロパティ設定</span>
+viz.src     = <span class="str">'https://public.tableau.com/views/Superstore_embedded_800x800/Overview'</span>;
+viz.toolbar = <span class="str">'bottom'</span>;
+viz.hideTabs = <span class="kw">true</span>;
+
+<span class="cm">// ③ イベント: Viz 準備完了時</span>
+viz.<span class="fn">addEventListener</span>(TableauEventType.FirstInteractive, () => {
+  console.log(<span class="str">'Viz ready!'</span>);
+  console.log(<span class="str">'Active sheet:'</span>, viz.workbook.activeSheet.name);
+});
+
+<span class="cm">// ④ DOM に追加 → 自動的にレンダリング開始</span>
+document.getElementById(<span class="str">'vizTarget'</span>).<span class="fn">appendChild</span>(viz);</pre>
+    </div>
+
+    <div class="callout callout-info">
+      <div class="callout-title">💡 HTML属性名 vs JSプロパティ名</div>
+      HTML: <code>hide-tabs</code> (ケバブケース) → JS: <code>viz.hideTabs</code> (キャメルケース)<br>
+      HTML: <code>touch-optimize</code> → JS: <code>viz.touchOptimize</code>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-accent" onclick="lab02_embed()">▶ JSで埋め込み実行</button>
+      <button class="btn" onclick="lab02_destroy()">✕ Viz を削除</button>
+    </div>
+    <div id="viz02Target" class="viz-container" style="min-height:100px;display:flex;align-items:center;justify-content:center;">
+      <span style="color:#64748b;font-size:0.85rem;">↑ ボタンを押すと Viz が動的に埋め込まれます</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     LAB 03 — イベントリスナー
+     ═══════════════════════════════════════════════════════ -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>イベントリスナー（6種）</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Viz 内部で起きた操作を外部の JavaScript で検知できます。
+      <code>addEventListener</code> で <code>TableauEventType</code> を指定します。
+    </p>
+
+    <div class="code-block">
+      <div class="code-label">JavaScript</div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre><span class="kw">import</span> { TableauEventType }
+  <span class="kw">from</span> <span class="str">'https://public.tableau.com/javascripts/api/tableau.embedding.3.latest.min.js'</span>;
+
+<span class="kw">const</span> viz = document.getElementById(<span class="str">'myViz'</span>);
+
+<span class="cm">// ① Viz 準備完了</span>
+viz.<span class="fn">addEventListener</span>(TableauEventType.<span class="str">FirstInteractive</span>, (e) => {
+  console.log(<span class="str">'Viz is interactive'</span>);
+});
+
+<span class="cm">// ② マーク選択変更</span>
+viz.<span class="fn">addEventListener</span>(TableauEventType.<span class="str">MarkSelectionChanged</span>, <span class="kw">async</span> (e) => {
+  <span class="kw">const</span> marks = <span class="kw">await</span> e.detail.<span class="fn">getMarksAsync</span>();
+  console.log(<span class="str">`${marks.data[0].data.length} marks selected`</span>);
+});
+
+<span class="cm">// ③ フィルタ変更</span>
+viz.<span class="fn">addEventListener</span>(TableauEventType.<span class="str">FilterChanged</span>, <span class="kw">async</span> (e) => {
+  console.log(<span class="str">'Filter changed:'</span>, e.detail.fieldName);
+});
+
+<span class="cm">// ④ パラメータ変更</span>
+viz.<span class="fn">addEventListener</span>(TableauEventType.<span class="str">ParameterChanged</span>, <span class="kw">async</span> (e) => {
+  <span class="kw">const</span> param = <span class="kw">await</span> e.detail.<span class="fn">getParameterAsync</span>();
+  console.log(<span class="str">'Parameter:'</span>, param.name, <span class="str">'→'</span>, param.currentValue.value);
+});
+
+<span class="cm">// ⑤ タブ切替</span>
+viz.<span class="fn">addEventListener</span>(TableauEventType.<span class="str">TabSwitched</span>, (e) => {
+  console.log(<span class="str">'Tab switched to:'</span>, e.detail.newSheetName);
+});
+
+<span class="cm">// ⑥ ツールバー状態変更</span>
+viz.<span class="fn">addEventListener</span>(TableauEventType.<span class="str">ToolbarStateChanged</span>, (e) => {
+  console.log(<span class="str">'Undo possible:'</span>, e.detail.canUndo);
+  console.log(<span class="str">'Redo possible:'</span>, e.detail.canRedo);
+});</pre>
+    </div>
+
+    <div class="result-area">
+      <div class="label">Event Log（Lab01 の Viz を操作すると表示されます）</div>
+      <div id="statusLog"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     LAB 04 — カテゴリフィルタ操作
+     ═══════════════════════════════════════════════════════ -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>カテゴリフィルタ操作</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>applyFilterAsync()</code> でカテゴリ（離散値）フィルタを操作します。<br>
+      <code>FilterUpdateType</code> で Replace / Add / Remove / All を指定します。
+    </p>
+
+    <div class="code-block">
+      <div class="code-label">JavaScript</div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre><span class="kw">import</span> { FilterUpdateType }
+  <span class="kw">from</span> <span class="str">'https://public.tableau.com/javascripts/api/tableau.embedding.3.latest.min.js'</span>;
+
+<span class="kw">const</span> viz = document.getElementById(<span class="str">'myViz'</span>);
+<span class="kw">const</span> sheet = viz.workbook.activeSheet;
+
+<span class="cm">// ── Replace: 指定値のみに絞る ──</span>
+<span class="kw">await</span> sheet.<span class="fn">applyFilterAsync</span>(
+  <span class="str">"Category"</span>,
+  [<span class="str">"Technology"</span>],
+  FilterUpdateType.Replace
+);
+
+<span class="cm">// ── Add: 既存フィルタに値を追加 ──</span>
+<span class="kw">await</span> sheet.<span class="fn">applyFilterAsync</span>(
+  <span class="str">"Category"</span>,
+  [<span class="str">"Furniture"</span>],
+  FilterUpdateType.Add
+);
+
+<span class="cm">// ── Remove: 既存フィルタから値を除外 ──</span>
+<span class="kw">await</span> sheet.<span class="fn">applyFilterAsync</span>(
+  <span class="str">"Category"</span>,
+  [<span class="str">"Furniture"</span>],
+  FilterUpdateType.Remove
+);
+
+<span class="cm">// ── All: フィルタ全解除（全値表示） ──</span>
+<span class="kw">await</span> sheet.<span class="fn">applyFilterAsync</span>(
+  <span class="str">"Category"</span>,
+  [],
+  FilterUpdateType.All
+);
+
+<span class="cm">// ── clearFilterAsync: 特定フィルタをクリア ──</span>
+<span class="kw">await</span> sheet.<span class="fn">clearFilterAsync</span>(<span class="str">"Category"</span>);
+
+<span class="cm">// ── 現在のフィルタ一覧取得 ──</span>
+<span class="kw">const</span> filters = <span class="kw">await</span> sheet.<span class="fn">getFiltersAsync</span>();
+filters.forEach(f => {
+  console.log(f.fieldName, f.filterType, f.appliedValues);
+});</pre>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" onclick="lab04_filter('Technology')">Technology のみ</button>
+      <button class="btn" onclick="lab04_filter('Furniture')">Furniture のみ</button>
+      <button class="btn" onclick="lab04_filter('Office Supplies')">Office Supplies のみ</button>
+      <button class="btn btn-accent" onclick="lab04_clearFilter()">フィルタ解除</button>
+      <button class="btn" onclick="lab04_getFilters()">フィルタ一覧取得</button>
+    </div>
+    <div id="lab04Result" class="result-area">
+      <div class="label">Result</div>
+      <span style="color:#64748b;">ボタンを押して操作してください（Lab01 の Viz に適用されます）</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     LAB 05 — レンジフィルタ / 日付フィルタ
+     ═══════════════════════════════════════════════════════ -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>レンジフィルタ / 日付フィルタ</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      数値や日付の範囲でフィルタする場合は <code>applyRangeFilterAsync()</code> を使います。<br>
+      <code>min</code> / <code>max</code> で範囲を指定します。日付は <code>Date</code> オブジェクトを渡します。
+    </p>
+
+    <div class="code-block">
+      <div class="code-label">JavaScript</div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre><span class="kw">import</span> { FilterUpdateType }
+  <span class="kw">from</span> <span class="str">'https://public.tableau.com/javascripts/api/tableau.embedding.3.latest.min.js'</span>;
+
+<span class="kw">const</span> sheet = viz.workbook.activeSheet;
+
+<span class="cm">// ── 数値レンジフィルタ ──</span>
+<span class="kw">await</span> sheet.<span class="fn">applyRangeFilterAsync</span>(
+  <span class="str">"Profit"</span>,
+  {
+    min: <span class="num">0</span>,
+    max: <span class="num">5000</span>
+  },
+  FilterUpdateType.Replace
+);
+
+<span class="cm">// ── 日付レンジフィルタ ──</span>
+<span class="kw">await</span> sheet.<span class="fn">applyRangeFilterAsync</span>(
+  <span class="str">"Order Date"</span>,
+  {
+    min: <span class="kw">new</span> Date(<span class="str">'2022-01-01'</span>),
+    max: <span class="kw">new</span> Date(<span class="str">'2023-12-31'</span>)
+  },
+  FilterUpdateType.Replace
+);
+
+<span class="cm">// ── HTML での初期レンジフィルタ指定 ──</span>
+<span class="cm">// &lt;viz-range-filter field="Profit" min="0" max="5000"&gt;&lt;/viz-range-filter&gt;</span>
+
+<span class="cm">// ── HTML での相対日付フィルタ指定 ──</span>
+<span class="cm">// &lt;viz-relative-date-filter</span>
+<span class="cm">//   field="Order Date"</span>
+<span class="cm">//   anchor-date="2023-06-01"</span>
+<span class="cm">//   period-type="Year"</span>
+<span class="cm">//   range-type="LastN"</span>
+<span class="cm">//   range-n="2"</span>
+<span class="cm">// &gt;&lt;/viz-relative-date-filter&gt;</span></pre>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     LAB 06 — マーク選択・取得
+     ═══════════════════════════════════════════════════════ -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>マーク選択・取得</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>selectMarksByValueAsync()</code> でプログラムからマークを選択し、
+      <code>getSelectedMarksAsync()</code> で選択中のマーク情報を取得します。
+    </p>
+
+    <div class="code-block">
+      <div class="code-label">JavaScript</div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre><span class="kw">import</span> { SelectionUpdateType }
+  <span class="kw">from</span> <span class="str">'https://public.tableau.com/javascripts/api/tableau.embedding.3.latest.min.js'</span>;
+
+<span class="kw">const</span> sheet = viz.workbook.activeSheet;
+
+<span class="cm">// ── 値指定でマーク選択 ──</span>
+<span class="kw">await</span> sheet.<span class="fn">selectMarksByValueAsync</span>(
+  [{ fieldName: <span class="str">"Region"</span>, value: [<span class="str">"West"</span>] }],
+  SelectionUpdateType.Replace
+);
+
+<span class="cm">// ── 範囲指定でマーク選択 ──</span>
+<span class="kw">await</span> sheet.<span class="fn">selectMarksByValueAsync</span>(
+  [{
+    fieldName: <span class="str">"AGG(Profit)"</span>,
+    value: { min: <span class="num">10000</span>, max: Infinity }
+  }],
+  SelectionUpdateType.Replace
+);
+
+<span class="cm">// ── 選択マークの取得 ──</span>
+<span class="kw">const</span> marksResult = <span class="kw">await</span> sheet.<span class="fn">getSelectedMarksAsync</span>();
+<span class="kw">const</span> dataTable = marksResult.data[<span class="num">0</span>];
+
+<span class="cm">// 列名の取得</span>
+<span class="kw">const</span> columns = dataTable.columns.map(c => c.fieldName);
+console.log(<span class="str">'Columns:'</span>, columns);
+
+<span class="cm">// 行データの取得</span>
+dataTable.data.forEach(row => {
+  <span class="kw">const</span> values = row.map(cell => cell.formattedValue);
+  console.log(values);
+});
+
+<span class="cm">// ── 選択解除 ──</span>
+<span class="kw">await</span> sheet.<span class="fn">clearSelectedMarksAsync</span>();</pre>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" onclick="lab06_getMarks()">選択マーク取得</button>
+      <button class="btn" onclick="lab06_clearMarks()">選択解除</button>
+    </div>
+    <div id="lab06Result" class="result-area">
+      <div class="label">Selected Marks</div>
+      <span style="color:#64748b;">Viz でマークを選択してからボタンを押してください</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     LAB 07 — パラメータ操作
+     ═══════════════════════════════════════════════════════ -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>パラメータ操作</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Workbook レベルの <code>getParametersAsync()</code> でパラメータ一覧を取得し、
+      <code>changeParameterValueAsync()</code> で値を変更します。
+    </p>
+
+    <div class="code-block">
+      <div class="code-label">JavaScript</div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre><span class="kw">const</span> workbook = viz.workbook;
+
+<span class="cm">// ── パラメータ一覧取得 ──</span>
+<span class="kw">const</span> params = <span class="kw">await</span> workbook.<span class="fn">getParametersAsync</span>();
+params.forEach(p => {
+  console.log(
+    p.name,
+    <span class="str">'='</span>, p.currentValue.value,
+    <span class="str">'type:'</span>, p.dataType,
+    <span class="str">'allowable:'</span>, p.allowableValuesType
+  );
+});
+
+<span class="cm">// ── パラメータ値の変更 ──</span>
+<span class="kw">await</span> workbook.<span class="fn">changeParameterValueAsync</span>(
+  <span class="str">"Profit Bin Size"</span>,
+  <span class="num">500</span>
+);
+
+<span class="cm">// ── イベントで変更を検知 ──</span>
+viz.<span class="fn">addEventListener</span>(TableauEventType.ParameterChanged,
+  <span class="kw">async</span> (e) => {
+    <span class="kw">const</span> param = <span class="kw">await</span> e.detail.<span class="fn">getParameterAsync</span>();
+    console.log(<span class="str">`${param.name} → ${param.currentValue.value}`</span>);
+  }
+);</pre>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" onclick="lab07_getParams()">パラメータ一覧</button>
+    </div>
+    <div id="lab07Result" class="result-area">
+      <div class="label">Parameters</div>
+      <span style="color:#64748b;">ボタンを押すと Viz のパラメータが表示されます</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     LAB 08 — シート切替・ダッシュボード探索
+     ═══════════════════════════════════════════════════════ -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>シート切替・ダッシュボード探索</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>workbook.activateSheetAsync()</code> でシートを切り替え、
+      Dashboard の場合は <code>.worksheets</code> で内部ワークシートにアクセスします。
+    </p>
+
+    <div class="code-block">
+      <div class="code-label">JavaScript</div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre><span class="kw">const</span> workbook = viz.workbook;
+
+<span class="cm">// ── 公開シート一覧 ──</span>
+workbook.publishedSheetsInfo.forEach(info => {
+  console.log(info.name, <span class="str">'|'</span>, info.sheetType, <span class="str">'| hidden:'</span>, info.isHidden);
+});
+
+<span class="cm">// ── シート切替 ──</span>
+<span class="kw">const</span> newSheet = <span class="kw">await</span> workbook.<span class="fn">activateSheetAsync</span>(<span class="str">"Shipping"</span>);
+console.log(<span class="str">'Switched to:'</span>, newSheet.name, newSheet.sheetType);
+
+<span class="cm">// ── Dashboard のワークシート列挙 ──</span>
+<span class="kw">if</span> (newSheet.sheetType === <span class="str">'dashboard'</span>) {
+  newSheet.worksheets.forEach(ws => {
+    console.log(<span class="str">'  worksheet:'</span>, ws.name, ws.size);
+  });
+}
+
+<span class="cm">// ── Dashboard 内の特定ワークシートにフィルタ適用 ──</span>
+<span class="kw">const</span> targetWs = newSheet.worksheets.find(w => w.name === <span class="str">"Sales Map"</span>);
+<span class="kw">if</span> (targetWs) {
+  <span class="kw">await</span> targetWs.<span class="fn">applyFilterAsync</span>(<span class="str">"State"</span>, [<span class="str">"California"</span>], FilterUpdateType.Replace);
+}</pre>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" onclick="lab08_listSheets()">シート一覧表示</button>
+    </div>
+    <div id="lab08Result" class="result-area">
+      <div class="label">Sheets</div>
+      <span style="color:#64748b;">ボタンを押すとシート情報が表示されます</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     LAB 09 — データ取得
+     ═══════════════════════════════════════════════════════ -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>データ取得 (Summary / Underlying)</h3>
+    <span class="lab-tag tag-advanced">上級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ワークシートの集計データ（Summary）やソースデータ（Underlying）を取得します。<br>
+      <code>getSummaryDataAsync()</code> は非推奨になり、
+      <code>getSummaryDataReaderAsync()</code> が推奨されています。
+    </p>
+
+    <div class="code-block">
+      <div class="code-label">JavaScript — Summary Data</div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre><span class="kw">const</span> sheet = viz.workbook.activeSheet;
+
+<span class="cm">// ── 方法①: getSummaryDataReaderAsync (推奨, v3.4+) ──</span>
+<span class="kw">const</span> reader = <span class="kw">await</span> sheet.<span class="fn">getSummaryDataReaderAsync</span>();
+<span class="kw">const</span> dataTable = <span class="kw">await</span> reader.<span class="fn">getAllPagesAsync</span>();  <span class="cm">// 4M行以下</span>
+<span class="kw">await</span> reader.<span class="fn">releaseAsync</span>(); <span class="cm">// リソース解放</span>
+
+<span class="cm">// 列情報</span>
+console.log(<span class="str">'Columns:'</span>, dataTable.columns.map(c => c.fieldName));
+
+<span class="cm">// 先頭5行を表示</span>
+dataTable.data.slice(<span class="num">0</span>, <span class="num">5</span>).forEach(row => {
+  console.log(row.map(cell => cell.formattedValue));
+});
+
+<span class="cm">// ── 方法②: ページング（大量データ） ──</span>
+<span class="kw">const</span> reader2 = <span class="kw">await</span> sheet.<span class="fn">getSummaryDataReaderAsync</span>({ pageSize: <span class="num">1000</span> });
+<span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i < reader2.pageCount; i++) {
+  <span class="kw">const</span> page = <span class="kw">await</span> reader2.<span class="fn">getPageAsync</span>(i);
+  console.log(<span class="str">`Page ${i}: ${page.data.length} rows`</span>);
+}
+<span class="kw">await</span> reader2.<span class="fn">releaseAsync</span>();</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-label">JavaScript — Underlying (Full) Data</div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre><span class="kw">const</span> sheet = viz.workbook.activeSheet;
+
+<span class="cm">// ① 論理テーブル一覧取得</span>
+<span class="kw">const</span> tables = <span class="kw">await</span> sheet.<span class="fn">getUnderlyingTablesAsync</span>();
+console.log(<span class="str">'Tables:'</span>, tables.map(t => t.id));
+
+<span class="cm">// ② 特定テーブルのデータ取得</span>
+<span class="kw">const</span> tableReader = <span class="kw">await</span> sheet.<span class="fn">getUnderlyingTableDataReaderAsync</span>(
+  tables[<span class="num">0</span>].id,
+  { pageSize: <span class="num">500</span> }
+);
+<span class="kw">const</span> fullData = <span class="kw">await</span> tableReader.<span class="fn">getAllPagesAsync</span>();
+<span class="kw">await</span> tableReader.<span class="fn">releaseAsync</span>();
+
+console.log(<span class="str">`Underlying rows: ${fullData.data.length}`</span>);
+
+<span class="cm">// ── DataSource 経由のアクセス ──</span>
+<span class="kw">const</span> dataSources = <span class="kw">await</span> sheet.<span class="fn">getDataSourcesAsync</span>();
+<span class="kw">const</span> primary = dataSources[<span class="num">0</span>]; <span class="cm">// 先頭がプライマリ</span>
+console.log(<span class="str">'DataSource:'</span>, primary.name, primary.isExtract);
+
+<span class="cm">// 論理テーブル取得</span>
+<span class="kw">const</span> logicalTables = <span class="kw">await</span> primary.<span class="fn">getLogicalTablesAsync</span>();
+<span class="kw">const</span> dsReader = <span class="kw">await</span> primary.<span class="fn">getLogicalTableDataReaderAsync</span>(
+  logicalTables[<span class="num">0</span>].id
+);
+<span class="kw">const</span> dsData = <span class="kw">await</span> dsReader.<span class="fn">getAllPagesAsync</span>();
+<span class="kw">await</span> dsReader.<span class="fn">releaseAsync</span>();</pre>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-accent" onclick="lab09_getSummary()">Summary Data 取得</button>
+      <button class="btn" onclick="lab09_getColumns()">列情報のみ取得</button>
+    </div>
+    <div id="lab09Result" class="result-area">
+      <div class="label">Data Output</div>
+      <span style="color:#64748b;">ボタンを押すとデータが表示されます</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     LAB 10 — エクスポート
+     ═══════════════════════════════════════════════════════ -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>エクスポート (PDF / CSV / Image)</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>displayDialogAsync()</code> で Tableau 組み込みのエクスポートダイアログを表示するか、
+      <code>exportPDFAsync()</code> でプログラム的に PDF を取得します。
+    </p>
+
+    <div class="code-block">
+      <div class="code-label">JavaScript</div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre><span class="kw">import</span> {
+  TableauDialogType,
+  PrintScaling, PrintPageSize, PrintOrientation
+} <span class="kw">from</span> <span class="str">'https://public.tableau.com/javascripts/api/tableau.embedding.3.latest.min.js'</span>;
+
+<span class="cm">// ── ダイアログ経由のエクスポート ──</span>
+
+<span class="cm">// PDF ダイアログ</span>
+<span class="kw">await</span> viz.<span class="fn">displayDialogAsync</span>(TableauDialogType.ExportPDF);
+
+<span class="cm">// Image ダイアログ</span>
+<span class="kw">await</span> viz.<span class="fn">displayDialogAsync</span>(TableauDialogType.ExportImage);
+
+<span class="cm">// CSV (CrossTab) ダイアログ — 選択中のゾーンが対象</span>
+<span class="kw">await</span> viz.<span class="fn">displayDialogAsync</span>(TableauDialogType.ExportCrossTab);
+
+<span class="cm">// データダウンロード ダイアログ</span>
+<span class="kw">await</span> viz.<span class="fn">displayDialogAsync</span>(TableauDialogType.ExportData);
+
+<span class="cm">// ── プログラム的 PDF エクスポート (v3.6+) ──</span>
+<span class="kw">const</span> sheetNames = viz.workbook.publishedSheetsInfo.map(s => s.name);
+
+<span class="kw">const</span> pdfOptions = {
+  scaling:     PrintScaling.Automatic,
+  pageSize:    PrintPageSize.Letter,
+  orientation: PrintOrientation.Landscape,
+};
+
+<span class="kw">await</span> viz.<span class="fn">exportPDFAsync</span>(sheetNames, pdfOptions);</pre>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" onclick="lab10_export('ExportPDF')">PDF Export</button>
+      <button class="btn" onclick="lab10_export('ExportImage')">Image Export</button>
+      <button class="btn" onclick="lab10_export('ExportCrossTab')">CSV Export</button>
+      <button class="btn" onclick="lab10_export('ExportData')">Data Export</button>
+    </div>
+
+    <div class="callout">
+      <div class="callout-title">⚠️ Tableau Public の制限</div>
+      Tableau Public ではエクスポート機能の一部が制限される場合があります。
+      Tableau Server / Cloud 環境ではすべて利用可能です。
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     LAB 11 — Viz 制御
+     ═══════════════════════════════════════════════════════ -->
+<div class="lab" id="lab11">
+  <div class="lab-header">
+    <div class="lab-num">11</div>
+    <h3>Viz 制御 (Undo / Refresh / Pause)</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Viz オブジェクト直下のメソッドで、操作の取り消し・やり直し・データ更新・自動更新の制御ができます。
+    </p>
+
+    <div class="code-block">
+      <div class="code-label">JavaScript</div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre><span class="cm">// ── Undo / Redo / Revert ──</span>
+<span class="kw">await</span> viz.<span class="fn">undoAsync</span>();          <span class="cm">// 直前の操作を取り消し</span>
+<span class="kw">await</span> viz.<span class="fn">redoAsync</span>();          <span class="cm">// 取り消しをやり直し</span>
+<span class="kw">await</span> viz.<span class="fn">revertAllAsync</span>();     <span class="cm">// 全操作を初期状態に戻す</span>
+
+<span class="cm">// ── データ更新 ──</span>
+<span class="kw">await</span> viz.<span class="fn">refreshDataAsync</span>();   <span class="cm">// データソースを再読込</span>
+
+<span class="cm">// ── 自動更新の制御 ──</span>
+console.log(<span class="str">'Paused?'</span>, viz.automaticUpdatesArePaused);
+
+<span class="kw">await</span> viz.<span class="fn">pauseAutomaticUpdatesAsync</span>();   <span class="cm">// 一時停止</span>
+<span class="kw">await</span> viz.<span class="fn">resumeAutomaticUpdatesAsync</span>();  <span class="cm">// 再開</span>
+<span class="kw">await</span> viz.<span class="fn">toggleAutomaticUpdatesAsync</span>(); <span class="cm">// トグル</span></pre>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" onclick="lab11_action('undo')">↩ Undo</button>
+      <button class="btn" onclick="lab11_action('redo')">↪ Redo</button>
+      <button class="btn" onclick="lab11_action('revert')">⟲ Revert All</button>
+      <button class="btn" onclick="lab11_action('refresh')">⟳ Refresh Data</button>
+      <button class="btn" onclick="lab11_action('toggle')">⏸ Toggle Auto-Update</button>
+    </div>
+    <div id="lab11Result" class="result-area">
+      <div class="label">Action Result</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     LAB 12 — カスタムビュー
+     ═══════════════════════════════════════════════════════ -->
+<div class="lab" id="lab12">
+  <div class="lab-header">
+    <div class="lab-num">12</div>
+    <h3>カスタムビュー</h3>
+    <span class="lab-tag tag-advanced">上級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      カスタムビューはフィルタやパラメータの状態を保存し、後から復元できる機能です。<br>
+      Tableau Server/Cloud では完全動作しますが、Public では制限がある場合があります。
+    </p>
+
+    <div class="code-block">
+      <div class="code-label">JavaScript</div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre><span class="kw">const</span> workbook = viz.workbook;
+
+<span class="cm">// ── カスタムビュー一覧取得 ──</span>
+<span class="kw">const</span> customViews = <span class="kw">await</span> workbook.<span class="fn">getCustomViewsAsync</span>();
+customViews.forEach(cv => {
+  console.log(cv.name, <span class="str">'| default:'</span>, cv.isDefault, <span class="str">'| owner:'</span>, cv.ownerName);
+});
+
+<span class="cm">// ── カスタムビュー保存 ──</span>
+<span class="kw">await</span> workbook.<span class="fn">saveCustomViewAsync</span>(<span class="str">"My Saved View"</span>);
+
+<span class="cm">// ── カスタムビュー表示（復元） ──</span>
+<span class="kw">await</span> workbook.<span class="fn">showCustomViewAsync</span>(<span class="str">"My Saved View"</span>);
+
+<span class="cm">// ── デフォルト設定 ──</span>
+<span class="kw">await</span> workbook.<span class="fn">setActiveCustomViewAsDefaultAsync</span>();
+
+<span class="cm">// ── カスタムビュー削除 ──</span>
+<span class="kw">await</span> workbook.<span class="fn">removeCustomViewAsync</span>(<span class="str">"My Saved View"</span>);
+
+<span class="cm">// ── イベントリスナー ──</span>
+viz.<span class="fn">addEventListener</span>(TableauEventType.CustomViewLoaded, (e) => {
+  console.log(<span class="str">'Custom view loaded:'</span>, e.detail);
+});
+viz.<span class="fn">addEventListener</span>(TableauEventType.CustomViewSaved, (e) => {
+  console.log(<span class="str">'Custom view saved:'</span>, e.detail);
+});</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     LAB 13 — サイズ変更・レスポンシブ
+     ═══════════════════════════════════════════════════════ -->
+<div class="lab" id="lab13">
+  <div class="lab-header">
+    <div class="lab-num">13</div>
+    <h3>サイズ変更・レスポンシブ</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Viz のサイズは HTML 属性 / CSS / JavaScript のいずれでも制御できます。<br>
+      <code>device</code> 属性でデバイスレイアウトを切り替えられます。
+    </p>
+
+    <div class="code-block">
+      <div class="code-label">HTML + CSS</div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre><span class="cm">&lt;!-- 方法①: 属性で固定サイズ --&gt;</span>
+<span class="tag">&lt;tableau-viz</span> <span class="attr">width</span>=<span class="val">"800"</span> <span class="attr">height</span>=<span class="val">"600"</span> ...<span class="tag">&gt;&lt;/tableau-viz&gt;</span>
+
+<span class="cm">&lt;!-- 方法②: CSS で親コンテナに合わせる --&gt;</span>
+<span class="tag">&lt;style&gt;</span>
+  .viz-wrapper {
+    width: 100%;
+    max-width: 1200px;
+    aspect-ratio: 16 / 9;
+  }
+  .viz-wrapper tableau-viz {
+    width: 100%;
+    height: 100%;
+  }
+<span class="tag">&lt;/style&gt;</span>
+
+<span class="cm">&lt;!-- 方法③: device 属性 --&gt;</span>
+<span class="tag">&lt;tableau-viz</span> <span class="attr">device</span>=<span class="val">"phone"</span> ...<span class="tag">&gt;&lt;/tableau-viz&gt;</span></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-label">JavaScript — 動的リサイズ</div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre><span class="cm">// ── viz 要素のサイズを JS で変更 ──</span>
+<span class="kw">const</span> vizElement = document.getElementById(<span class="str">'myViz'</span>);
+
+<span class="cm">// ピクセル指定</span>
+vizElement.width  = <span class="num">1000</span>;
+vizElement.height = <span class="num">700</span>;
+
+<span class="cm">// デバイスレイアウト切替</span>
+vizElement.device = <span class="str">'tablet'</span>;
+
+<span class="cm">// ── レスポンシブ対応（ResizeObserver） ──</span>
+<span class="kw">const</span> observer = <span class="kw">new</span> ResizeObserver(entries => {
+  <span class="kw">for</span> (<span class="kw">const</span> entry <span class="kw">of</span> entries) {
+    <span class="kw">const</span> { width } = entry.contentRect;
+    <span class="kw">if</span> (width < <span class="num">600</span>) {
+      vizElement.device = <span class="str">'phone'</span>;
+    } <span class="kw">else if</span> (width < <span class="num">1024</span>) {
+      vizElement.device = <span class="str">'tablet'</span>;
+    } <span class="kw">else</span> {
+      vizElement.device = <span class="str">'desktop'</span>;
+    }
+  }
+});
+observer.observe(vizElement.parentElement);</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     LAB 14 — 複合シナリオ: フィルタ連鎖
+     ═══════════════════════════════════════════════════════ -->
+<div class="lab" id="lab14">
+  <div class="lab-header">
+    <div class="lab-num">14</div>
+    <h3>複合シナリオ: フィルタ連鎖</h3>
+    <span class="lab-tag tag-advanced">上級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      複数の操作を <code>async/await</code> でチェーンし、
+      「シート切替 → フィルタ → マーク選択 → データ取得」を一連の流れで実行します。
+    </p>
+
+    <div class="code-block">
+      <div class="code-label">JavaScript — 複合操作</div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre><span class="kw">async function</span> <span class="fn">compositeScenario</span>() {
+  <span class="kw">const</span> workbook = viz.workbook;
+
+  <span class="cm">// Step 1: シート切替</span>
+  <span class="kw">const</span> sheet = <span class="kw">await</span> workbook.<span class="fn">activateSheetAsync</span>(<span class="str">"Overview"</span>);
+  console.log(<span class="str">'✓ Sheet activated:'</span>, sheet.name);
+
+  <span class="cm">// Step 2: カテゴリフィルタ適用</span>
+  <span class="kw">await</span> sheet.<span class="fn">applyFilterAsync</span>(
+    <span class="str">"Category"</span>,
+    [<span class="str">"Technology"</span>, <span class="str">"Furniture"</span>],
+    FilterUpdateType.Replace
+  );
+  console.log(<span class="str">'✓ Category filter applied'</span>);
+
+  <span class="cm">// Step 3: レンジフィルタ適用</span>
+  <span class="kw">await</span> sheet.<span class="fn">applyRangeFilterAsync</span>(
+    <span class="str">"Profit"</span>,
+    { min: <span class="num">0</span>, max: <span class="num">10000</span> },
+    FilterUpdateType.Replace
+  );
+  console.log(<span class="str">'✓ Profit range filter applied'</span>);
+
+  <span class="cm">// Step 4: マーク選択</span>
+  <span class="kw">await</span> sheet.<span class="fn">selectMarksByValueAsync</span>(
+    [{ fieldName: <span class="str">"Region"</span>, value: [<span class="str">"West"</span>] }],
+    SelectionUpdateType.Replace
+  );
+  console.log(<span class="str">'✓ Marks selected'</span>);
+
+  <span class="cm">// Step 5: 選択マークのデータ取得</span>
+  <span class="kw">const</span> marks = <span class="kw">await</span> sheet.<span class="fn">getSelectedMarksAsync</span>();
+  <span class="kw">const</span> count = marks.data[<span class="num">0</span>]?.data?.length || <span class="num">0</span>;
+  console.log(<span class="str">`✓ ${count} marks retrieved`</span>);
+
+  <span class="cm">// Step 6: Summary Data 取得</span>
+  <span class="kw">const</span> reader = <span class="kw">await</span> sheet.<span class="fn">getSummaryDataReaderAsync</span>();
+  <span class="kw">const</span> data = <span class="kw">await</span> reader.<span class="fn">getAllPagesAsync</span>();
+  <span class="kw">await</span> reader.<span class="fn">releaseAsync</span>();
+  console.log(<span class="str">`✓ Summary: ${data.data.length} rows, ${data.columns.length} cols`</span>);
+
+  <span class="kw">return</span> { marks: count, rows: data.data.length };
+}</pre>
+    </div>
+
+    <div class="callout callout-info">
+      <div class="callout-title">💡 await の重要性</div>
+      各操作は非同期です。<code>await</code> を省略すると、前の操作が完了する前に次の操作が始まり、
+      予期しない動作になります。特にフィルタ→マーク選択の連鎖では必ず <code>await</code> を使いましょう。
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     LAB 15 — エラーハンドリング・デバッグ
+     ═══════════════════════════════════════════════════════ -->
+<div class="lab" id="lab15">
+  <div class="lab-header">
+    <div class="lab-num">15</div>
+    <h3>エラーハンドリング・デバッグ</h3>
+    <span class="lab-tag tag-advanced">上級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      非同期メソッドは Promise を返すため、<code>try/catch</code> でエラーを捕捉します。
+      不正な FilterUpdateType やフィールド名の間違いは実行時エラーになります。
+    </p>
+
+    <div class="code-block">
+      <div class="code-label">JavaScript — エラーハンドリング</div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre><span class="cm">// ── 基本パターン: try/catch ──</span>
+<span class="kw">async function</span> <span class="fn">safeFilter</span>(fieldName, values) {
+  <span class="kw">try</span> {
+    <span class="kw">await</span> sheet.<span class="fn">applyFilterAsync</span>(fieldName, values, FilterUpdateType.Replace);
+    console.log(<span class="str">'✓ Filter applied'</span>);
+  } <span class="kw">catch</span> (err) {
+    console.error(<span class="str">`✗ Filter error: ${err.message}`</span>);
+    <span class="cm">// よくある原因:</span>
+    <span class="cm">//   - フィールド名が存在しない</span>
+    <span class="cm">//   - Viz がまだ interactive でない</span>
+    <span class="cm">//   - FilterUpdateType が不正</span>
+  }
+}
+
+<span class="cm">// ── FirstInteractive を待ってから操作 ──</span>
+<span class="kw">function</span> <span class="fn">waitForViz</span>(vizElement) {
+  <span class="kw">return new</span> Promise((resolve) => {
+    vizElement.<span class="fn">addEventListener</span>(
+      TableauEventType.FirstInteractive,
+      () => resolve(vizElement),
+      { once: <span class="kw">true</span> }
+    );
+  });
+}
+
+<span class="cm">// 使用例</span>
+<span class="kw">const</span> readyViz = <span class="kw">await</span> <span class="fn">waitForViz</span>(document.getElementById(<span class="str">'myViz'</span>));
+<span class="kw">await</span> <span class="fn">safeFilter</span>(<span class="str">'Category'</span>, [<span class="str">'Technology'</span>]);
+
+<span class="cm">// ── デバッグ: Viz の状態確認 ──</span>
+<span class="kw">function</span> <span class="fn">debugViz</span>(viz) {
+  console.group(<span class="str">'Viz Debug Info'</span>);
+  console.log(<span class="str">'src:'</span>, viz.src);
+  console.log(<span class="str">'workbook:'</span>, viz.workbook?.name);
+  console.log(<span class="str">'activeSheet:'</span>, viz.workbook?.activeSheet?.name);
+  console.log(<span class="str">'sheetType:'</span>, viz.workbook?.activeSheet?.sheetType);
+  console.log(<span class="str">'autoUpdate paused:'</span>, viz.automaticUpdatesArePaused);
+
+  <span class="kw">const</span> sheets = viz.workbook?.publishedSheetsInfo || [];
+  console.log(<span class="str">'published sheets:'</span>, sheets.map(s => s.name));
+  console.groupEnd();
+}</pre>
+    </div>
+
+    <div class="callout">
+      <div class="callout-title">⚠️ よくあるエラーと対策</div>
+      <strong>「Cannot read properties of undefined」</strong> — Viz がまだ準備完了していません。<code>FirstInteractive</code> イベントを待ちましょう。<br>
+      <strong>「Invalid filter field」</strong> — フィールド名がワークブックに存在しません。<code>getFiltersAsync()</code> で確認してください。<br>
+      <strong>「Invalid FilterUpdateType」</strong> — 文字列リテラルではなく enum（<code>FilterUpdateType.Replace</code>）を使ってください。
+    </div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<!-- ════════════════════════════════════════════════════
+     SCRIPTS
+     ════════════════════════════════════════════════════ -->
+<script type="module">
+  import {
+    TableauViz,
+    TableauEventType,
+    TableauDialogType,
+    FilterUpdateType,
+    SelectionUpdateType
+  } from 'https://public.tableau.com/javascripts/api/tableau.embedding.3.latest.min.js';
+
+  // ── Utility: status log ──
+  function log(msg, isError = false) {
+    const el = document.getElementById('statusLog');
+    const time = new Date().toLocaleTimeString('ja-JP');
+    const cls = isError ? 'log-error' : 'log-msg';
+    el.innerHTML += `<div class="log-entry"><span class="log-time">[${time}]</span> <span class="${cls}">${msg}</span></div>`;
+    el.scrollTop = el.scrollHeight;
+  }
+
+  // ── Attach event listeners to Lab01 viz ──
+  const viz01 = document.getElementById('viz01');
+
+  viz01.addEventListener(TableauEventType.FirstInteractive, () => {
+    log('✓ FirstInteractive — Viz ready');
+    window._viz01Ready = true;
+  });
+
+  viz01.addEventListener(TableauEventType.MarkSelectionChanged, async (e) => {
+    try {
+      const marks = await e.detail.getMarksAsync();
+      const count = marks.data[0]?.data?.length || 0;
+      log(`MarkSelectionChanged — ${count} marks selected`);
+    } catch (err) { log('MarkSelectionChanged error: ' + err.message, true); }
+  });
+
+  viz01.addEventListener(TableauEventType.FilterChanged, (e) => {
+    log(`FilterChanged — field: ${e.detail.fieldName}`);
+  });
+
+  viz01.addEventListener(TableauEventType.ParameterChanged, async (e) => {
+    try {
+      const p = await e.detail.getParameterAsync();
+      log(`ParameterChanged — ${p.name} = ${p.currentValue.value}`);
+    } catch (err) { log('ParameterChanged error: ' + err.message, true); }
+  });
+
+  viz01.addEventListener(TableauEventType.TabSwitched, (e) => {
+    log(`TabSwitched — new: ${e.detail.newSheetName}`);
+  });
+
+  // ── Lab 02: JS embed ──
+  window.lab02_embed = function() {
+    const target = document.getElementById('viz02Target');
+    target.innerHTML = '';
+    const viz = new TableauViz();
+    viz.src = 'https://public.tableau.com/views/Superstore_embedded_800x800/Overview';
+    viz.toolbar = 'bottom';
+    viz.hideTabs = true;
+    viz.id = 'viz02';
+    viz.style.width = '100%';
+    viz.style.minHeight = '500px';
+    viz.addEventListener(TableauEventType.FirstInteractive, () => {
+      log('✓ Lab02 Viz embedded via JS');
+    });
+    target.appendChild(viz);
+  };
+
+  window.lab02_destroy = function() {
+    const target = document.getElementById('viz02Target');
+    target.innerHTML = '<span style="color:#64748b;font-size:0.85rem;">Viz removed. ボタンで再埋め込みできます。</span>';
+    log('Lab02 Viz removed from DOM');
+  };
+
+  // ── Lab 04: Category Filter ──
+  function getActiveSheet() {
+    if (!window._viz01Ready) { alert('Viz がまだ準備中です。少々お待ちください。'); return null; }
+    return viz01.workbook.activeSheet;
+  }
+
+  window.lab04_filter = async function(value) {
+    const sheet = getActiveSheet();
+    if (!sheet) return;
+    const out = document.getElementById('lab04Result');
+    try {
+      await sheet.applyFilterAsync("Category", [value], FilterUpdateType.Replace);
+      out.innerHTML = `<div class="label">Result</div>Category → "${value}" にフィルタ適用 ✓`;
+    } catch (err) {
+      out.innerHTML = `<div class="label">Error</div><span style="color:var(--error)">${err.message}</span>`;
+    }
+  };
+
+  window.lab04_clearFilter = async function() {
+    const sheet = getActiveSheet();
+    if (!sheet) return;
+    const out = document.getElementById('lab04Result');
+    try {
+      await sheet.clearFilterAsync("Category");
+      out.innerHTML = `<div class="label">Result</div>Category フィルタ解除 ✓`;
+    } catch (err) {
+      out.innerHTML = `<div class="label">Error</div><span style="color:var(--error)">${err.message}</span>`;
+    }
+  };
+
+  window.lab04_getFilters = async function() {
+    const sheet = getActiveSheet();
+    if (!sheet) return;
+    const out = document.getElementById('lab04Result');
+    try {
+      const filters = await sheet.getFiltersAsync();
+      let html = '<div class="label">Filters</div>';
+      if (filters.length === 0) {
+        html += '<span style="color:#64748b;">フィルタなし</span>';
+      } else {
+        filters.forEach(f => {
+          const vals = f.appliedValues?.map(v => v.value).join(', ') || '(all)';
+          html += `<div style="padding:2px 0;"><span style="color:var(--accent2);">${f.fieldName}</span> [${f.filterType}] → ${vals}</div>`;
+        });
+      }
+      out.innerHTML = html;
+    } catch (err) {
+      out.innerHTML = `<div class="label">Error</div><span style="color:var(--error)">${err.message}</span>`;
+    }
+  };
+
+  // ── Lab 06: Marks ──
+  window.lab06_getMarks = async function() {
+    const sheet = getActiveSheet();
+    if (!sheet) return;
+    const out = document.getElementById('lab06Result');
+    try {
+      const result = await sheet.getSelectedMarksAsync();
+      const dt = result.data[0];
+      if (!dt || dt.data.length === 0) {
+        out.innerHTML = '<div class="label">Selected Marks</div><span style="color:#64748b;">マークが選択されていません。Viz 上でクリックして選択してください。</span>';
+        return;
+      }
+      const cols = dt.columns.map(c => c.fieldName);
+      let html = `<div class="label">Selected Marks (${dt.data.length} rows)</div>`;
+      html += `<div style="color:var(--accent2);margin-bottom:4px;">${cols.join(' | ')}</div>`;
+      dt.data.slice(0, 10).forEach(row => {
+        html += `<div>${row.map(c => c.formattedValue).join(' | ')}</div>`;
+      });
+      if (dt.data.length > 10) html += `<div style="color:#64748b;">... 他 ${dt.data.length - 10} 行</div>`;
+      out.innerHTML = html;
+    } catch (err) {
+      out.innerHTML = `<div class="label">Error</div><span style="color:var(--error)">${err.message}</span>`;
+    }
+  };
+
+  window.lab06_clearMarks = async function() {
+    const sheet = getActiveSheet();
+    if (!sheet) return;
+    try {
+      await sheet.clearSelectedMarksAsync();
+      document.getElementById('lab06Result').innerHTML = '<div class="label">Selected Marks</div>選択解除 ✓';
+    } catch (err) { /* ignore */ }
+  };
+
+  // ── Lab 07: Parameters ──
+  window.lab07_getParams = async function() {
+    if (!window._viz01Ready) { alert('Viz がまだ準備中です。'); return; }
+    const out = document.getElementById('lab07Result');
+    try {
+      const params = await viz01.workbook.getParametersAsync();
+      if (params.length === 0) {
+        out.innerHTML = '<div class="label">Parameters</div><span style="color:#64748b;">パラメータなし</span>';
+        return;
+      }
+      let html = '<div class="label">Parameters</div>';
+      params.forEach(p => {
+        html += `<div><span style="color:var(--accent2);">${p.name}</span> = ${p.currentValue.value} (${p.dataType}, ${p.allowableValuesType})</div>`;
+      });
+      out.innerHTML = html;
+    } catch (err) {
+      out.innerHTML = `<div class="label">Error</div><span style="color:var(--error)">${err.message}</span>`;
+    }
+  };
+
+  // ── Lab 08: Sheets ──
+  window.lab08_listSheets = function() {
+    if (!window._viz01Ready) { alert('Viz がまだ準備中です。'); return; }
+    const out = document.getElementById('lab08Result');
+    try {
+      const sheets = viz01.workbook.publishedSheetsInfo;
+      let html = '<div class="label">Published Sheets</div>';
+      sheets.forEach((s, i) => {
+        const active = (s.name === viz01.workbook.activeSheet.name) ? ' ← active' : '';
+        html += `<div><span style="color:var(--accent);">[${i}]</span> <span style="color:var(--accent2);">${s.name}</span> (${s.sheetType})${active}</div>`;
+      });
+      out.innerHTML = html;
+    } catch (err) {
+      out.innerHTML = `<div class="label">Error</div><span style="color:var(--error)">${err.message}</span>`;
+    }
+  };
+
+  // ── Lab 09: Data ──
+  window.lab09_getSummary = async function() {
+    const sheet = getActiveSheet();
+    if (!sheet) return;
+    const out = document.getElementById('lab09Result');
+    out.innerHTML = '<div class="label">Data Output</div><span style="color:#64748b;">Loading...</span>';
+    try {
+      const reader = await sheet.getSummaryDataReaderAsync();
+      const dataTable = await reader.getAllPagesAsync();
+      await reader.releaseAsync();
+
+      const cols = dataTable.columns.map(c => c.fieldName);
+      let html = `<div class="label">Summary Data (${dataTable.data.length} rows × ${cols.length} cols)</div>`;
+      html += `<div style="color:var(--accent2);margin-bottom:4px;font-size:0.78rem;">${cols.join(' | ')}</div>`;
+      dataTable.data.slice(0, 8).forEach(row => {
+        html += `<div style="font-size:0.78rem;">${row.map(c => c.formattedValue).join(' | ')}</div>`;
+      });
+      if (dataTable.data.length > 8) html += `<div style="color:#64748b;">... 他 ${dataTable.data.length - 8} 行</div>`;
+      out.innerHTML = html;
+    } catch (err) {
+      out.innerHTML = `<div class="label">Error</div><span style="color:var(--error)">${err.message}</span>`;
+    }
+  };
+
+  window.lab09_getColumns = async function() {
+    const sheet = getActiveSheet();
+    if (!sheet) return;
+    const out = document.getElementById('lab09Result');
+    try {
+      const colsInfo = await sheet.getSummaryColumnsInfoAsync();
+      let html = '<div class="label">Column Info</div>';
+      colsInfo.forEach((c, i) => {
+        html += `<div><span style="color:var(--accent);">[${i}]</span> ${c.fieldName} (${c.dataType}, ${c.isReferenced ? 'ref' : 'no-ref'})</div>`;
+      });
+      out.innerHTML = html;
+    } catch (err) {
+      out.innerHTML = `<div class="label">Error</div><span style="color:var(--error)">${err.message}</span>`;
+    }
+  };
+
+  // ── Lab 10: Export ──
+  window.lab10_export = async function(type) {
+    if (!window._viz01Ready) { alert('Viz がまだ準備中です。'); return; }
+    try {
+      await viz01.displayDialogAsync(TableauDialogType[type]);
+    } catch (err) {
+      log('Export error: ' + err.message, true);
+    }
+  };
+
+  // ── Lab 11: Viz Control ──
+  window.lab11_action = async function(action) {
+    if (!window._viz01Ready) { alert('Viz がまだ準備中です。'); return; }
+    const out = document.getElementById('lab11Result');
+    try {
+      switch (action) {
+        case 'undo':    await viz01.undoAsync(); break;
+        case 'redo':    await viz01.redoAsync(); break;
+        case 'revert':  await viz01.revertAllAsync(); break;
+        case 'refresh': await viz01.refreshDataAsync(); break;
+        case 'toggle':  await viz01.toggleAutomaticUpdatesAsync(); break;
+      }
+      const paused = viz01.automaticUpdatesArePaused;
+      out.innerHTML = `<div class="label">Action Result</div>${action} 実行 ✓ | autoUpdate paused: ${paused}`;
+    } catch (err) {
+      out.innerHTML = `<div class="label">Error</div><span style="color:var(--error)">${err.message}</span>`;
+    }
+  };
+</script>
+
+<!-- Copy button logic -->
+<script>
+  function copyCode(btn) {
+    const block = btn.closest('.code-block') || btn.parentElement;
+    const pre = block.querySelector('pre');
+    if (!pre) return;
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = 'Copy';
+        btn.classList.remove('copied');
+      }, 1500);
+    });
+  }
+</script>
+
+<!-- ════════════════════════════════════════════════════
+     v2 Brushup scripts:
+       (1) ラボ別 info-box / check-steps 自動注入
+       (2) サイドバー active ハイライト (IntersectionObserver)
+       (3) コードブロックに code-block-header + copy-btn 自動付与
+     ════════════════════════════════════════════════════ -->
+<script>
+  // (1) ラボ別の「ブラウザ実機チェック」と「ポイント」定義
+  const LAB_META = {
+    lab0:  { info: {type:'info', html:'📘 <strong>オブジェクトモデルは暗記ではなく参照</strong>：この階層図を <em>公式ドキュメント代わり</em>に使い、「どの型にどのメソッドがあるか」を逆引きしてください。'},
+             check: ['このラボはコード実行なし（概念セクション）','階層図が崩れず読めるか目視','<code>.fn</code> クラスの色がアクセント色で強調されているか'] },
+    lab1:  { info: {type:'ok', html:'✅ <strong>最短パス</strong>：<code>&lt;tableau-viz src&gt;</code> を HTML に書くだけ。JSは不要。'},
+             verify: {
+               before: '<code>&lt;tableau-viz&gt;</code> 要素は <strong>空のカスタム要素</strong>。ブラウザは中身を知らず、領域だけ確保された状態。',
+               after:  'モジュール script のロード完了後、カスタム要素が<strong>自動 upgrade</strong> され、Viz iframe が内部に生成→ Tableau Public のダッシュボードが描画される。'
+             },
+             check: ['▶︎ を押して Viz 領域に Tableau Public のダッシュボードが描画されること','ツールバーが下部に表示されること','DevTools Console にエラーが出ていないこと'] },
+    lab2:  { info: {type:'info', html:'🧩 動的生成は <code>new TableauViz()</code> → プロパティ設定 → <code>appendChild</code>。順序を間違えると描画前にイベントが発火しないことがあります。'},
+             check: ['▶︎ 実行後、対象要素が空から Viz に差し替わる','ロード完了後に Viz タイトル等が表示される','Console に Viz オブジェクトが dump されている（デバッグ用 <code>console.log</code> があれば）'] },
+    lab3:  { info: {type:'warn', html:'⚠️ <strong>イベントハンドラは必ず解除</strong>：<code>addEventListener</code> で追加したら、不要になったら <code>removeEventListener</code>。SPA で重複リスナ蓄積の原因になります。'},
+             check: ['▶︎ 実行→ Viz 内でマーク選択・フィルタ変更を行うとログが1件ずつ追記される','同じ操作を2回した時、ログが2件増えること（重複リスナ無し）','FirstInteractive が初回に1度だけ発火すること'] },
+    lab4:  { info: {type:'ok', html:'✅ カテゴリフィルタは <code>applyFilterAsync(field, values[], updateType)</code>。<code>updateType</code> は <code>REPLACE</code> / <code>ADD</code> / <code>REMOVE</code> / <code>ALL</code>。'},
+             verify: {
+               before: '全カテゴリのマークが表示されている初期状態。<code>getFiltersAsync()</code> は空または初期フィルタのみ。',
+               after:  '指定した values[] のマークだけ残り、他は消える。<code>getFiltersAsync()</code> に <strong>CategoricalFilter</strong> が1件追加される。'
+             },
+             check: ['▶︎ フィルタ適用後、Viz のマーク数が変化する','同じ field にもう一度 REPLACE を当てると別の値でフィルタされる','clearFilterAsync で元に戻る'] },
+    lab5:  { info: {type:'info', html:'📅 レンジ/日付フィルタは <code>applyRangeFilterAsync</code>。<code>min</code>/<code>max</code> は Date オブジェクトまたは数値。NaN を渡すと silently 失敗するので型に注意。'},
+             check: ['▶︎ 実行でレンジ内のマークだけ表示される','min &gt; max にすると結果 0 件（エラーは出ない）','日付は ISO 文字列ではなく Date オブジェクトで渡す'] },
+    lab6:  { info: {type:'info', html:'🎯 <code>selectMarksByValueAsync</code> は配列の <em>AND</em> ではなく <em>OR</em>：同じフィールドの複数値は OR、別フィールドは AND（Tableauの仕様）。'},
+             check: ['▶︎ マーク選択後、Viz上で該当マークが強調表示される','getSelectedMarksAsync で選択中マークのデータが取れる','selection=[] で全解除'] },
+    lab7:  { info: {type:'ok', html:'⚙️ パラメータは <code>changeParameterValueAsync(name, value)</code>。型変換は自動（内部で Tableau が parse）、ただし数値パラメータに文字列 "abc" を渡すと失敗。'},
+             check: ['▶︎ 実行でパラメータコントロール（右サイドパネル）の値が変わる','パラメータに連動する計算フィールドが更新される','getParametersAsync で現在値を確認できる'] },
+    lab8:  { info: {type:'info', html:'🗂 <code>activateSheetAsync(name)</code>：Workbook.publishedSheetsInfo の name と <strong>大文字小文字・空白まで完全一致</strong>が必要。'},
+             check: ['▶︎ シートが切り替わる（Vizの中身が総入れ替え）','存在しないシート名だとエラーが出る（catchで表示確認）','Dashboard に切り替えた後 <code>.objects</code> / <code>.worksheets</code> が列挙される'] },
+    lab9:  { info: {type:'warn', html:'⚠️ 大量データでは <code>getSummaryDataReaderAsync</code> の <strong>Reader API</strong>（ページング読み）を使う。<code>getSummaryDataAsync</code>（v2互換）は非推奨。'},
+             check: ['▶︎ 実行でコンソールに列名と行データが出る','Reader の <code>getAllPagesAsync()</code> で全行、<code>getPageAsync(n)</code> でページ取得','列型（string/number/date）が適切にパースされている'] },
+    lab10: { info: {type:'ok', html:'📤 PDF/CSV/Image エクスポートは <strong>Viz メソッド</strong>（Worksheet ではなく）。モーダルが開くので popup ブロッカーに注意。'},
+             verify: {
+               before: 'エクスポート前：画面上は Viz を見ているだけの状態。ローカルにファイルは無い。',
+               after:  '<code>exportPDFAsync</code> 呼出後、ブラウザのダウンロードが開始（または Tableau 標準モーダル表示）→ ローカルに PDF/CSV/PNG が保存される。'
+             },
+             check: ['▶︎ クリックでダウンロードダイアログ（PDF/CSV）またはモーダルが開く','エクスポートされたPDFの中身が現在のビューと一致','popup ブロックされた場合は Console に警告が出る'] },
+    lab11: { info: {type:'info', html:'↩️ <code>undoAsync</code> は Viz 内のユーザ操作履歴を1段戻す。<code>revertAllAsync</code> は初期状態に戻す（全巻戻し）。'},
+             check: ['▶︎ フィルタ操作後 Undo で1段戻る','Revert で初回ロード状態まで一気に戻る','Pause 中はフィルタ連続適用しても再描画が1回にまとまる（パフォーマンス確認）'] },
+    lab12: { info: {type:'warn', html:'⚠️ カスタムビューは <strong>Tableau Server / Cloud 限定</strong>。Tableau Public ではサポート外なのでこのラボは内部動作確認のみ。'},
+             check: ['▶︎ getCustomViewsAsync で現在のビュー一覧が取れる（Public では空配列）','saveCustomViewAsync は Public では権限エラー','コード例のみ確認し、実機確認は Server/Cloud 環境で'] },
+    lab13: { info: {type:'info', html:'📐 <code>width</code>/<code>height</code> は CSS プロパティではなく <strong>tableau-viz 属性</strong>。レスポンシブは親要素に <code>100%</code> を指定し <code>device="default"</code> にする。'},
+             verify: {
+               before: '固定 800x600 の Viz：ウィンドウを縮めると Viz がはみ出す／横スクロール発生。',
+               after:  '親要素 100% × <code>device="default"</code> の Viz：ウィンドウリサイズに応じて内部レイアウト（Tableauのレイアウトコンテナ）が自動で切替わる。'
+             },
+             check: ['▶︎ サイズ変更で Viz が実寸リサイズされる（再描画発生）','ウィンドウ幅を狭めると自動フィット（device=default 時）','height を動的に変更してスクロール/クリップの挙動確認'] },
+    lab14: { info: {type:'ok', html:'🔗 <strong>フィルタ連鎖パターン</strong>：<code>FilterChanged</code> イベントで他のシートにもフィルタを伝播。await を入れないと非同期競合するので順序保証に注意。'},
+             check: ['▶︎ シート1のフィルタ変更がシート2に連動する','連打しても最後の状態に収束する（デバウンス/キューで競合なし）','ログに連鎖の順序が出力される'] },
+    lab15: { info: {type:'err', html:'🛑 <strong>全ての async API は try/catch 必須</strong>。無視するとプロミス拒否が Console に赤字で残り、ユーザ操作が無反応になります。'},
+             check: ['▶︎ 意図的に不正な field を渡すと catch ブロックで UI にエラー表示','Console に rejection が残らない（catchで握り潰し・再スローの方針を明示）','Network タブで Tableau Server への CORS エラーがあれば可視化される'] }
+  };
+
+  function tagType(type) { return 'info-box ' + (type || 'info'); }
+
+  function buildInfoBox(meta) {
+    if (!meta || !meta.info) return '';
+    return `<div class="${tagType(meta.info.type)}">${meta.info.html}</div>`;
+  }
+  function buildCheckSteps(meta) {
+    if (!meta || !meta.check || !meta.check.length) return '';
+    const lis = meta.check.map(s => `<li>${s}</li>`).join('');
+    return `<div class="check-steps">
+      <div class="check-steps-title">🔍 ブラウザ実機チェック</div>
+      <ol>${lis}</ol>
+    </div>`;
+  }
+  function buildVerify(meta) {
+    if (!meta || !meta.verify) return '';
+    const { before, after } = meta.verify;
+    return `<div class="verify">
+      <div class="verify-col verify-before"><div class="verify-label">Before ▶︎ 実行前</div>${before || ''}</div>
+      <div class="verify-col verify-after"><div class="verify-label">After ▶︎ 実行後</div>${after || ''}</div>
+    </div>`;
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // (1) 各ラボに info-box と check-steps を自動挿入
+    document.querySelectorAll('.lab').forEach(lab => {
+      const id = lab.id;
+      const meta = LAB_META[id];
+      const body = lab.querySelector('.lab-body');
+      if (!body || !meta) return;
+      const frag = document.createElement('div');
+      frag.innerHTML = buildInfoBox(meta) + buildVerify(meta) + buildCheckSteps(meta);
+      while (frag.firstChild) body.appendChild(frag.firstChild);
+    });
+
+    // (2) サイドバー active highlight (IntersectionObserver)
+    const navLinks = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+    const labMap = new Map();
+    navLinks.forEach(a => {
+      const id = a.getAttribute('href').replace('#', '');
+      const lab = document.getElementById(id);
+      if (lab) labMap.set(lab, a);
+    });
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(en => {
+        if (en.isIntersecting) {
+          const link = labMap.get(en.target);
+          if (link) {
+            navLinks.forEach(n => n.classList.remove('active'));
+            link.classList.add('active');
+            // scroll into view in sidebar if needed
+            const sb = document.getElementById('sidebar');
+            const r = link.getBoundingClientRect();
+            if (r.top < 80 || r.bottom > window.innerHeight - 20) {
+              link.scrollIntoView({ block: 'nearest' });
+            }
+          }
+        }
+      });
+    }, { rootMargin: '-30% 0px -60% 0px', threshold: 0 });
+    document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+    // (3) 既存 code-block に header + copy-btn を自動付与（まだ無い場合のみ）
+    document.querySelectorAll('.code-block').forEach((cb, i) => {
+      if (cb.querySelector('.code-block-header')) return;
+      // 既存 .code-label があれば header にラップ、無ければ "Code #N"
+      const existingLabel = cb.querySelector('.code-label');
+      const labelText = existingLabel ? existingLabel.textContent.trim() : `Code #${i + 1}`;
+      if (existingLabel) existingLabel.remove();
+      const header = document.createElement('div');
+      header.className = 'code-block-header';
+      header.innerHTML = `<span>${labelText}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+      cb.insertBefore(header, cb.firstChild);
+    });
+  });
+</script>
+
+</body>
+</html>

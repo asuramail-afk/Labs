@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Promise &amp; async/await 実機確認Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+/* Sidebar */
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+/* Hero */
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+/* TOC */
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+/* Container & Lab cards */
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+/* Code block */
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+/* Syntax token colors (GitHub light) */
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+
+/* info-box (ok/info/warn/err) */
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+/* verify Before / After */
+.verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+  line-height:1.7; border:1px solid; }
+.verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+.verify-before .verify-label { color:var(--error); }
+.verify-after  .verify-label { color:var(--success); }
+
+/* check-steps */
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+/* compare-table */
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+.compare-table .yes { color:var(--success); } .compare-table .no { color:var(--error); }
+
+/* beginner-box */
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+/* Run button & console output */
+.run-btn { display:inline-flex; align-items:center; gap:6px; margin:8px 0;
+  padding:7px 18px; border:1px solid var(--accent); border-radius:6px;
+  background:rgba(0,92,197,.06); color:var(--accent); font-family:var(--mono);
+  font-size:.8rem; font-weight:600; cursor:pointer; transition:all .15s; }
+.run-btn:hover { background:var(--accent); color:#fff; }
+.console-out { background:#1e1e2e; color:#a6e3a1; font-family:var(--mono);
+  font-size:.78rem; line-height:1.6; padding:12px 16px; border-radius:8px;
+  margin:8px 0; min-height:40px; max-height:260px; overflow-y:auto;
+  border:1px solid #313244; white-space:pre-wrap; }
+.console-out .log-time { color:#585b70; }
+.console-out .log-warn { color:#f9e2af; }
+.console-out .log-err  { color:#f38ba8; }
+
+/* Responsive */
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .verify { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+  </style>
+</head>
+<body>
+
+<!-- ===== SIDEBAR ===== -->
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// <span>Promise &amp; async/await</span></div>
+  <div class="nav-section">基本</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>Promiseの3状態</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>.then() チェーン</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>.catch() エラー伝搬</a>
+  <div class="nav-section">合成</div>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>all vs allSettled</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>race vs any</a>
+  <div class="nav-section">async/await</div>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>async/await 基本</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>逐次 vs 並列実行</a>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>実戦エラーハンドリング</a>
+</nav>
+
+<!-- ===== HERO ===== -->
+<div class="hero">
+  <h1>Promise &amp; async/await 実機確認Lab</h1>
+  <p class="subtitle">非同期処理の全パターンをブラウザで「動かして・見て・確かめる」8つのラボ</p>
+</div>
+
+<!-- ===== TOC ===== -->
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>Promiseの3状態</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>.then() チェーンと値の伝搬</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>.catch() とエラー伝搬</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>Promise.all vs allSettled</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>Promise.race vs any</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>async/await 基本構文</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>逐次 vs 並列実行パターン</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>実戦エラーハンドリング</a>
+  </div>
+</div>
+
+<!-- ===== LABS ===== -->
+<div class="container">
+
+  <!-- ==================== LAB 00 ==================== -->
+  <div class="lab" id="lab0">
+    <div class="lab-header">
+      <div class="lab-num">00</div>
+      <h3>Promiseの3状態を目で見る</h3>
+      <span class="lab-tag tag-basic">基本</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        Promiseは <code>pending</code>（未決）→ <code>fulfilled</code>（成功）または <code>rejected</code>（失敗）の一方通行。一度決まった状態は二度と変わらない。
+      </p>
+
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 Promiseの状態遷移</div>
+        Promise は「未来の値を入れる箱」。箱の蓋を開けるまで中身は分からない。
+        <pre class="ascii-art">
+         new Promise(executor)
+                │
+           ┌────▼────┐
+           │ pending  │  ← 初期状態（まだ結果なし）
+           └────┬─────┘
+       resolve()│      │reject()
+           ┌────▼────┐  ┌────▼────┐
+           │fulfilled│  │rejected │
+           │ (値あり) │  │(理由あり)│
+           └─────────┘  └─────────┘
+          ※ どちらか一方にしか遷移しない（不可逆）</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">promise-states.js</div>
+        <pre><span class="cm">// 1) pending のまま観察</span>
+<span class="kw">const</span> p1 = <span class="kw">new</span> <span class="fn">Promise</span>(() =&gt; {}); <span class="cm">// executor が何もしない</span>
+console.<span class="fn">log</span>(<span class="str">'p1:'</span>, p1); <span class="cm">// Promise {&lt;pending&gt;}</span>
+
+<span class="cm">// 2) fulfilled</span>
+<span class="kw">const</span> p2 = <span class="fn">Promise</span>.<span class="fn">resolve</span>(<span class="num">42</span>);
+console.<span class="fn">log</span>(<span class="str">'p2:'</span>, p2); <span class="cm">// Promise {&lt;fulfilled&gt;: 42}</span>
+
+<span class="cm">// 3) rejected</span>
+<span class="kw">const</span> p3 = <span class="fn">Promise</span>.<span class="fn">reject</span>(<span class="str">'oops'</span>);
+p3.<span class="fn">catch</span>(() =&gt; {}); <span class="cm">// ← unhandled rejection 防止</span>
+console.<span class="fn">log</span>(<span class="str">'p3:'</span>, p3); <span class="cm">// Promise {&lt;rejected&gt;: "oops"}</span>
+
+<span class="cm">// 4) resolve を2回呼んでも最初の値で確定</span>
+<span class="kw">const</span> p4 = <span class="kw">new</span> <span class="fn">Promise</span>(<span class="kw">resolve</span> =&gt; {
+  <span class="fn">resolve</span>(<span class="str">'first'</span>);
+  <span class="fn">resolve</span>(<span class="str">'second'</span>); <span class="cm">// 無視される</span>
+});
+p4.<span class="fn">then</span>(v =&gt; console.<span class="fn">log</span>(<span class="str">'p4 value:'</span>, v)); <span class="cm">// "first"</span></pre>
+      </div>
+
+      <button class="run-btn" onclick="runLab0()">▶ 実行して確認</button>
+      <div class="console-out" id="out0"></div>
+    </div>
+  </div>
+
+  <!-- ==================== LAB 01 ==================== -->
+  <div class="lab" id="lab1">
+    <div class="lab-header">
+      <div class="lab-num">01</div>
+      <h3>.then() チェーンと値の伝搬</h3>
+      <span class="lab-tag tag-basic">基本</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>.then()</code> は新しい Promise を返す。コールバックの戻り値が次の <code>.then()</code> の引数になる。Promise を返せばその解決を待ってから次へ進む。
+      </p>
+
+      <div class="code-block">
+        <div class="code-label">then-chain.js</div>
+        <pre><span class="fn">Promise</span>.<span class="fn">resolve</span>(<span class="num">1</span>)
+  .<span class="fn">then</span>(v =&gt; {
+    console.<span class="fn">log</span>(<span class="str">'Step1:'</span>, v);   <span class="cm">// 1</span>
+    <span class="kw">return</span> v * <span class="num">10</span>;              <span class="cm">// 普通の値を返す</span>
+  })
+  .<span class="fn">then</span>(v =&gt; {
+    console.<span class="fn">log</span>(<span class="str">'Step2:'</span>, v);   <span class="cm">// 10</span>
+    <span class="kw">return new</span> <span class="fn">Promise</span>(r =&gt;    <span class="cm">// Promiseを返す → 解決を待つ</span>
+      <span class="fn">setTimeout</span>(() =&gt; <span class="fn">r</span>(v + <span class="num">5</span>), <span class="num">500</span>)
+    );
+  })
+  .<span class="fn">then</span>(v =&gt; {
+    console.<span class="fn">log</span>(<span class="str">'Step3:'</span>, v);   <span class="cm">// 15 (500ms後)</span>
+  })
+  .<span class="fn">then</span>(v =&gt; {
+    console.<span class="fn">log</span>(<span class="str">'Step4:'</span>, v);   <span class="cm">// undefined (前が何も返さない)</span>
+  });</pre>
+      </div>
+
+      <button class="run-btn" onclick="runLab1()">▶ 実行して確認</button>
+      <div class="console-out" id="out1"></div>
+    </div>
+  </div>
+
+  <!-- ==================== LAB 02 ==================== -->
+  <div class="lab" id="lab2">
+    <div class="lab-header">
+      <div class="lab-num">02</div>
+      <h3>.catch() とエラー伝搬</h3>
+      <span class="lab-tag tag-basic">基本</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        チェーン途中でエラーが発生すると、直近の <code>.catch()</code> まで「飛ぶ」。catch 後のチェーンは正常系として続行する。
+      </p>
+
+      <div class="code-block">
+        <div class="code-label">catch-propagation.js</div>
+        <pre><span class="fn">Promise</span>.<span class="fn">resolve</span>(<span class="str">'start'</span>)
+  .<span class="fn">then</span>(v =&gt; {
+    console.<span class="fn">log</span>(<span class="str">'A:'</span>, v);
+    <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">'Boom!'</span>);
+  })
+  .<span class="fn">then</span>(v =&gt; {
+    console.<span class="fn">log</span>(<span class="str">'B: スキップされる'</span>);  <span class="cm">// ← 実行されない</span>
+  })
+  .<span class="fn">catch</span>(err =&gt; {
+    console.<span class="fn">log</span>(<span class="str">'C caught:'</span>, err.message); <span class="cm">// "Boom!"</span>
+    <span class="kw">return</span> <span class="str">'recovered'</span>;                  <span class="cm">// 正常値を返して復帰</span>
+  })
+  .<span class="fn">then</span>(v =&gt; {
+    console.<span class="fn">log</span>(<span class="str">'D:'</span>, v);  <span class="cm">// "recovered" ← catch後は正常系</span>
+  });</pre>
+      </div>
+
+      <button class="run-btn" onclick="runLab2()">▶ 実行して確認</button>
+      <div class="console-out" id="out2"></div>
+
+      <table class="compare-table">
+        <thead>
+          <tr><th>パターン</th><th>挙動</th><th>使い分け</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>.then(ok, err)</td>
+            <td>同じ .then の ok ハンドラのエラーは err で捕捉<strong>できない</strong></td>
+            <td>非推奨（可読性が低い）</td>
+          </tr>
+          <tr>
+            <td>.then(ok).catch(err)</td>
+            <td>ok のエラーも catch で捕捉<strong>できる</strong></td>
+            <td>推奨パターン</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ==================== LAB 03 ==================== -->
+  <div class="lab" id="lab3">
+    <div class="lab-header">
+      <div class="lab-num">03</div>
+      <h3>Promise.all vs Promise.allSettled</h3>
+      <span class="lab-tag tag-intermediate">合成</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        複数の Promise を並列実行し結果をまとめる2つのAPI。<code>all</code> は1つでも失敗すると即 reject、<code>allSettled</code> は全完了まで待つ。
+      </p>
+
+      <table class="compare-table">
+        <thead>
+          <tr><th>メソッド</th><th>1つ失敗したら</th><th>戻り値の形</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Promise.all</td>
+            <td>即 reject（他は無視）</td>
+            <td><code>[val1, val2, ...]</code></td>
+          </tr>
+          <tr>
+            <td>Promise.allSettled</td>
+            <td>全部待ってから結果返却</td>
+            <td><code>[{status, value/reason}, ...]</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="code-block">
+        <div class="code-label">all-vs-allSettled.js</div>
+        <pre><span class="kw">const</span> ok  = ms =&gt; <span class="kw">new</span> <span class="fn">Promise</span>(r =&gt; <span class="fn">setTimeout</span>(() =&gt; <span class="fn">r</span>(<span class="str">`OK(${ms}ms)`</span>), ms));
+<span class="kw">const</span> ng  = ms =&gt; <span class="kw">new</span> <span class="fn">Promise</span>((_, j) =&gt; <span class="fn">setTimeout</span>(() =&gt; <span class="fn">j</span>(<span class="str">`NG(${ms}ms)`</span>), ms));
+
+<span class="cm">// all: 1つ失敗で即reject</span>
+<span class="fn">Promise</span>.<span class="fn">all</span>([<span class="fn">ok</span>(<span class="num">100</span>), <span class="fn">ng</span>(<span class="num">200</span>), <span class="fn">ok</span>(<span class="num">300</span>)])
+  .<span class="fn">then</span>(v  =&gt; console.<span class="fn">log</span>(<span class="str">'all OK:'</span>, v))
+  .<span class="fn">catch</span>(e =&gt; console.<span class="fn">log</span>(<span class="str">'all NG:'</span>, e));
+
+<span class="cm">// allSettled: 全完了まで待つ</span>
+<span class="fn">Promise</span>.<span class="fn">allSettled</span>([<span class="fn">ok</span>(<span class="num">100</span>), <span class="fn">ng</span>(<span class="num">200</span>), <span class="fn">ok</span>(<span class="num">300</span>)])
+  .<span class="fn">then</span>(results =&gt; {
+    results.<span class="fn">forEach</span>((r, i) =&gt;
+      console.<span class="fn">log</span>(<span class="str">`  [${i}] ${r.status}:`</span>, r.value ?? r.reason)
+    );
+  });</pre>
+      </div>
+
+      <button class="run-btn" onclick="runLab3()">▶ 実行して確認</button>
+      <div class="console-out" id="out3"></div>
+    </div>
+  </div>
+
+  <!-- ==================== LAB 04 ==================== -->
+  <div class="lab" id="lab4">
+    <div class="lab-header">
+      <div class="lab-num">04</div>
+      <h3>Promise.race vs Promise.any</h3>
+      <span class="lab-tag tag-intermediate">合成</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>race</code> は最初に決着した結果（成功でも失敗でも）を返す。<code>any</code> は最初の<strong>成功</strong>を返す。
+      </p>
+
+      <table class="compare-table">
+        <thead>
+          <tr><th>メソッド</th><th>最初に返すもの</th><th>全失敗時</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Promise.race</td>
+            <td>最初の settled（成功 or 失敗）</td>
+            <td>最初の reject</td>
+          </tr>
+          <tr>
+            <td>Promise.any</td>
+            <td>最初の fulfilled（成功のみ）</td>
+            <td>AggregateError</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="code-block">
+        <div class="code-label">race-vs-any.js</div>
+        <pre><span class="kw">const</span> ok  = ms =&gt; <span class="kw">new</span> <span class="fn">Promise</span>(r =&gt; <span class="fn">setTimeout</span>(() =&gt; <span class="fn">r</span>(<span class="str">`OK(${ms}ms)`</span>), ms));
+<span class="kw">const</span> ng  = ms =&gt; <span class="kw">new</span> <span class="fn">Promise</span>((_, j) =&gt; <span class="fn">setTimeout</span>(() =&gt; <span class="fn">j</span>(<span class="str">`NG(${ms}ms)`</span>), ms));
+
+<span class="cm">// race: 最速=ng(50ms) → reject</span>
+<span class="fn">Promise</span>.<span class="fn">race</span>([<span class="fn">ok</span>(<span class="num">200</span>), <span class="fn">ng</span>(<span class="num">50</span>), <span class="fn">ok</span>(<span class="num">300</span>)])
+  .<span class="fn">then</span>(v  =&gt; console.<span class="fn">log</span>(<span class="str">'race OK:'</span>, v))
+  .<span class="fn">catch</span>(e =&gt; console.<span class="fn">log</span>(<span class="str">'race NG:'</span>, e));
+
+<span class="cm">// any: 失敗をスキップし最初の成功=ok(200ms)</span>
+<span class="fn">Promise</span>.<span class="fn">any</span>([<span class="fn">ng</span>(<span class="num">50</span>), <span class="fn">ok</span>(<span class="num">200</span>), <span class="fn">ng</span>(<span class="num">100</span>)])
+  .<span class="fn">then</span>(v  =&gt; console.<span class="fn">log</span>(<span class="str">'any OK:'</span>, v))
+  .<span class="fn">catch</span>(e =&gt; console.<span class="fn">log</span>(<span class="str">'any NG:'</span>, e.errors));
+
+<span class="cm">// any: 全失敗 → AggregateError</span>
+<span class="fn">Promise</span>.<span class="fn">any</span>([<span class="fn">ng</span>(<span class="num">50</span>), <span class="fn">ng</span>(<span class="num">100</span>)])
+  .<span class="fn">then</span>(v  =&gt; console.<span class="fn">log</span>(<span class="str">'any2 OK:'</span>, v))
+  .<span class="fn">catch</span>(e =&gt; console.<span class="fn">log</span>(<span class="str">'any2 NG: AggregateError'</span>, e.errors));</pre>
+      </div>
+
+      <button class="run-btn" onclick="runLab4()">▶ 実行して確認</button>
+      <div class="console-out" id="out4"></div>
+    </div>
+  </div>
+
+  <!-- ==================== LAB 05 ==================== -->
+  <div class="lab" id="lab5">
+    <div class="lab-header">
+      <div class="lab-num">05</div>
+      <h3>async/await 基本構文</h3>
+      <span class="lab-tag tag-basic">基本</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>async</code> 関数は常にPromiseを返す。<code>await</code> はPromiseの解決を待ち、値を取り出す構文糖衣。
+      </p>
+
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 then チェーンとの対応</div>
+        <pre class="ascii-art">
+<span style="color:var(--accent)">// .then() チェーン</span>          <span style="color:var(--accent2)">// async/await</span>
+fetch(url)                   async function getData() {
+  .then(r =&gt; r.json())         const r = await fetch(url);
+  .then(data =&gt; {              const data = await r.json();
+    console.log(data);          console.log(data);
+  })                          }
+  .catch(e =&gt; { ... });      // try-catch でエラー処理</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">async-await-basics.js</div>
+        <pre><span class="kw">async function</span> <span class="fn">demo</span>() {
+  console.<span class="fn">log</span>(<span class="str">'1: start'</span>);
+
+  <span class="kw">const</span> result = <span class="kw">await new</span> <span class="fn">Promise</span>(r =&gt;
+    <span class="fn">setTimeout</span>(() =&gt; <span class="fn">r</span>(<span class="str">'hello'</span>), <span class="num">300</span>)
+  );
+  console.<span class="fn">log</span>(<span class="str">'2: got'</span>, result);
+
+  <span class="cm">// async関数の戻り値は自動的にPromiseでラップ</span>
+  <span class="kw">return</span> result.<span class="fn">toUpperCase</span>();
+}
+
+console.<span class="fn">log</span>(<span class="str">'A: before call'</span>);
+<span class="fn">demo</span>().<span class="fn">then</span>(v =&gt; console.<span class="fn">log</span>(<span class="str">'3: final'</span>, v));
+console.<span class="fn">log</span>(<span class="str">'B: after call'</span>);
+<span class="cm">// 出力順: A → 1 → B → 2 → 3</span></pre>
+      </div>
+
+      <button class="run-btn" onclick="runLab5()">▶ 実行して確認</button>
+      <div class="console-out" id="out5"></div>
+    </div>
+  </div>
+
+  <!-- ==================== LAB 06 ==================== -->
+  <div class="lab" id="lab6">
+    <div class="lab-header">
+      <div class="lab-num">06</div>
+      <h3>await の逐次 vs 並列実行</h3>
+      <span class="lab-tag tag-advanced">応用</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>await</code> を直列に並べると逐次実行。<code>Promise.all</code> と組み合わせると並列実行になり、合計時間が短縮される。
+      </p>
+
+      <div class="code-block">
+        <div class="code-label">sequential-vs-parallel.js</div>
+        <pre><span class="kw">const</span> <span class="fn">wait</span> = (ms, label) =&gt;
+  <span class="kw">new</span> <span class="fn">Promise</span>(r =&gt; <span class="fn">setTimeout</span>(() =&gt; <span class="fn">r</span>(label), ms));
+
+<span class="cm">// ❌ 逐次: 300+300+300 = 約900ms</span>
+<span class="kw">async function</span> <span class="fn">sequential</span>() {
+  <span class="kw">const</span> t0 = <span class="fn">Date</span>.<span class="fn">now</span>();
+  <span class="kw">const</span> a = <span class="kw">await</span> <span class="fn">wait</span>(<span class="num">300</span>, <span class="str">'A'</span>);
+  <span class="kw">const</span> b = <span class="kw">await</span> <span class="fn">wait</span>(<span class="num">300</span>, <span class="str">'B'</span>);
+  <span class="kw">const</span> c = <span class="kw">await</span> <span class="fn">wait</span>(<span class="num">300</span>, <span class="str">'C'</span>);
+  console.<span class="fn">log</span>(<span class="str">`逐次: [${a},${b},${c}] ${Date.now()-t0}ms`</span>);
+}
+
+<span class="cm">// ✅ 並列: max(300,300,300) = 約300ms</span>
+<span class="kw">async function</span> <span class="fn">parallel</span>() {
+  <span class="kw">const</span> t0 = <span class="fn">Date</span>.<span class="fn">now</span>();
+  <span class="kw">const</span> [a, b, c] = <span class="kw">await</span> <span class="fn">Promise</span>.<span class="fn">all</span>([
+    <span class="fn">wait</span>(<span class="num">300</span>, <span class="str">'A'</span>),
+    <span class="fn">wait</span>(<span class="num">300</span>, <span class="str">'B'</span>),
+    <span class="fn">wait</span>(<span class="num">300</span>, <span class="str">'C'</span>),
+  ]);
+  console.<span class="fn">log</span>(<span class="str">`並列: [${a},${b},${c}] ${Date.now()-t0}ms`</span>);
+}
+
+<span class="fn">sequential</span>().<span class="fn">then</span>(() =&gt; <span class="fn">parallel</span>());</pre>
+      </div>
+
+      <button class="run-btn" onclick="runLab6()">▶ 実行して確認</button>
+      <div class="console-out" id="out6"></div>
+    </div>
+  </div>
+
+  <!-- ==================== LAB 07 ==================== -->
+  <div class="lab" id="lab7">
+    <div class="lab-header">
+      <div class="lab-num">07</div>
+      <h3>実戦エラーハンドリング</h3>
+      <span class="lab-tag tag-advanced">応用</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>try/catch</code> で await のエラーを捕捉。<code>finally</code> でローディング解除。並列時は <code>allSettled</code> で部分的成功を拾う実戦パターン。
+      </p>
+
+      <div class="code-block">
+        <div class="code-label">error-handling-patterns.js</div>
+        <pre><span class="cm">// パターン1: 基本 try-catch-finally</span>
+<span class="kw">async function</span> <span class="fn">fetchData</span>() {
+  <span class="kw">let</span> loading = <span class="kw">true</span>;
+  console.<span class="fn">log</span>(<span class="str">'loading:'</span>, loading);
+  <span class="kw">try</span> {
+    <span class="kw">const</span> data = <span class="kw">await</span> <span class="fn">Promise</span>.<span class="fn">reject</span>(<span class="kw">new</span> <span class="fn">Error</span>(<span class="str">'Network error'</span>));
+    console.<span class="fn">log</span>(<span class="str">'data:'</span>, data);
+  } <span class="kw">catch</span> (e) {
+    console.<span class="fn">log</span>(<span class="str">'caught:'</span>, e.message);
+  } <span class="kw">finally</span> {
+    loading = <span class="kw">false</span>;
+    console.<span class="fn">log</span>(<span class="str">'loading:'</span>, loading, <span class="str">'(cleanup done)'</span>);
+  }
+}
+
+<span class="cm">// パターン2: allSettled で部分成功を活かす</span>
+<span class="kw">async function</span> <span class="fn">multiAPI</span>() {
+  <span class="kw">const</span> results = <span class="kw">await</span> <span class="fn">Promise</span>.<span class="fn">allSettled</span>([
+    <span class="fn">Promise</span>.<span class="fn">resolve</span>({ user: <span class="str">'Tom'</span> }),
+    <span class="fn">Promise</span>.<span class="fn">reject</span>(<span class="kw">new</span> <span class="fn">Error</span>(<span class="str">'Profile API down'</span>)),
+    <span class="fn">Promise</span>.<span class="fn">resolve</span>({ prefs: { theme: <span class="str">'dark'</span> } }),
+  ]);
+  <span class="kw">const</span> ok = results.<span class="fn">filter</span>(r =&gt; r.status === <span class="str">'fulfilled'</span>);
+  <span class="kw">const</span> ng = results.<span class="fn">filter</span>(r =&gt; r.status === <span class="str">'rejected'</span>);
+  console.<span class="fn">log</span>(<span class="str">`成功: ${ok.length}, 失敗: ${ng.length}`</span>);
+  ok.<span class="fn">forEach</span>(r =&gt; console.<span class="fn">log</span>(<span class="str">'  ✅'</span>, <span class="fn">JSON</span>.<span class="fn">stringify</span>(r.value)));
+  ng.<span class="fn">forEach</span>(r =&gt; console.<span class="fn">log</span>(<span class="str">'  ❌'</span>, r.reason.message));
+}
+
+<span class="fn">fetchData</span>().<span class="fn">then</span>(() =&gt; <span class="fn">multiAPI</span>());</pre>
+      </div>
+
+      <button class="run-btn" onclick="runLab7()">▶ 実行して確認</button>
+      <div class="console-out" id="out7"></div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<!-- ===== SCRIPTS ===== -->
+<script>
+  // === Utility: virtual console output ===
+  function vLog(targetId, ...args) {
+    const el = document.getElementById(targetId);
+    const time = new Date().toLocaleTimeString('ja-JP',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit',fractionalSecondDigits:3});
+    const text = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+    el.innerHTML += `<span class="log-time">[${time}]</span> ${text}\n`;
+    el.scrollTop = el.scrollHeight;
+  }
+  function clearOut(id) { document.getElementById(id).innerHTML = ''; }
+
+  // === LAB RUNNERS ===
+  function runLab0() {
+    clearOut('out0');
+    const p1 = new Promise(() => {});
+    vLog('out0', 'p1 (pending):', 'Promise {<pending>}');
+    const p2 = Promise.resolve(42);
+    vLog('out0', 'p2 (fulfilled):', 'Promise {<fulfilled>: 42}');
+    const p3 = Promise.reject('oops');
+    p3.catch(() => {});
+    vLog('out0', 'p3 (rejected):', 'Promise {<rejected>: "oops"}');
+    const p4 = new Promise(resolve => { resolve('first'); resolve('second'); });
+    p4.then(v => vLog('out0', 'p4 value:', v));
+  }
+
+  function runLab1() {
+    clearOut('out1');
+    Promise.resolve(1)
+      .then(v => { vLog('out1', 'Step1:', v); return v * 10; })
+      .then(v => { vLog('out1', 'Step2:', v); return new Promise(r => setTimeout(() => r(v + 5), 500)); })
+      .then(v => { vLog('out1', 'Step3:', v, '(500ms後)'); })
+      .then(v => { vLog('out1', 'Step4:', v, '(undefinedが来る)'); });
+  }
+
+  function runLab2() {
+    clearOut('out2');
+    Promise.resolve('start')
+      .then(v => { vLog('out2', 'A:', v); throw new Error('Boom!'); })
+      .then(v => { vLog('out2', 'B: スキップされる'); })
+      .catch(err => { vLog('out2', 'C caught:', err.message); return 'recovered'; })
+      .then(v => { vLog('out2', 'D:', v); });
+  }
+
+  function runLab3() {
+    clearOut('out3');
+    const ok = ms => new Promise(r => setTimeout(() => r(`OK(${ms}ms)`), ms));
+    const ng = ms => new Promise((_, j) => setTimeout(() => j(`NG(${ms}ms)`), ms));
+
+    Promise.all([ok(100), ng(200), ok(300)])
+      .then(v  => vLog('out3', 'all OK:', JSON.stringify(v)))
+      .catch(e => vLog('out3', 'all NG:', e));
+
+    Promise.allSettled([ok(100), ng(200), ok(300)])
+      .then(results => {
+        vLog('out3', '--- allSettled results ---');
+        results.forEach((r, i) =>
+          vLog('out3', `  [${i}] ${r.status}:`, r.value ?? r.reason)
+        );
+      });
+  }
+
+  function runLab4() {
+    clearOut('out4');
+    const ok = ms => new Promise(r => setTimeout(() => r(`OK(${ms}ms)`), ms));
+    const ng = ms => new Promise((_, j) => setTimeout(() => j(`NG(${ms}ms)`), ms));
+
+    Promise.race([ok(200), ng(50), ok(300)])
+      .then(v  => vLog('out4', 'race OK:', v))
+      .catch(e => vLog('out4', 'race NG:', e));
+
+    Promise.any([ng(50), ok(200), ng(100)])
+      .then(v  => vLog('out4', 'any OK:', v))
+      .catch(e => vLog('out4', 'any NG: AggregateError', e.errors));
+
+    Promise.any([ng(50), ng(100)])
+      .then(v  => vLog('out4', 'any2 OK:', v))
+      .catch(e => vLog('out4', 'any2 NG: AggregateError', JSON.stringify(e.errors)));
+  }
+
+  function runLab5() {
+    clearOut('out5');
+    async function demo() {
+      vLog('out5', '1: start');
+      const result = await new Promise(r => setTimeout(() => r('hello'), 300));
+      vLog('out5', '2: got', result);
+      return result.toUpperCase();
+    }
+    vLog('out5', 'A: before call');
+    demo().then(v => vLog('out5', '3: final', v));
+    vLog('out5', 'B: after call');
+  }
+
+  function runLab6() {
+    clearOut('out6');
+    const wait = (ms, label) => new Promise(r => setTimeout(() => r(label), ms));
+
+    async function sequential() {
+      const t0 = Date.now();
+      const a = await wait(300, 'A');
+      const b = await wait(300, 'B');
+      const c = await wait(300, 'C');
+      vLog('out6', `逐次: [${a},${b},${c}] ${Date.now()-t0}ms`);
+    }
+    async function parallel() {
+      const t0 = Date.now();
+      const [a, b, c] = await Promise.all([wait(300,'A'), wait(300,'B'), wait(300,'C')]);
+      vLog('out6', `並列: [${a},${b},${c}] ${Date.now()-t0}ms`);
+    }
+    vLog('out6', '⏳ 逐次実行中...');
+    sequential().then(() => {
+      vLog('out6', '⏳ 並列実行中...');
+      return parallel();
+    }).then(() => {
+      vLog('out6', '✅ 完了 — 所要時間の差に注目！');
+    });
+  }
+
+  function runLab7() {
+    clearOut('out7');
+    async function fetchData() {
+      let loading = true;
+      vLog('out7', 'loading:', loading);
+      try {
+        const data = await Promise.reject(new Error('Network error'));
+        vLog('out7', 'data:', data);
+      } catch (e) {
+        vLog('out7', 'caught:', e.message);
+      } finally {
+        loading = false;
+        vLog('out7', 'loading:', loading, '(cleanup done)');
+      }
+    }
+    async function multiAPI() {
+      const results = await Promise.allSettled([
+        Promise.resolve({ user: 'Tom' }),
+        Promise.reject(new Error('Profile API down')),
+        Promise.resolve({ prefs: { theme: 'dark' } }),
+      ]);
+      const ok = results.filter(r => r.status === 'fulfilled');
+      const ng = results.filter(r => r.status === 'rejected');
+      vLog('out7', `成功: ${ok.length}, 失敗: ${ng.length}`);
+      ok.forEach(r => vLog('out7', '  ✅', JSON.stringify(r.value)));
+      ng.forEach(r => vLog('out7', '  ❌', r.reason.message));
+    }
+    fetchData().then(() => multiAPI());
+  }
+</script>
+
+<script>
+  // === BASE_JS: copyCode + LAB_META + auto-injection ===
+  function copyCode(btn) {
+    const block = btn.closest('.code-block') || btn.parentElement;
+    const pre = block.querySelector('pre');
+    if (!pre) return;
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    });
+  }
+
+  const LAB_META = {
+    lab0: {
+      info:  { type:'info', html:'📘 <strong>Promise の状態</strong>: <code>pending</code> → <code>fulfilled</code> or <code>rejected</code>。一度 settled になると不可逆。<code>resolve()</code> を2回呼んでも最初の値が確定値。' },
+      verify:{ before:'<code>new Promise(() =&gt; {})</code> は永遠に pending', after:'<code>Promise.resolve(42)</code> は即座に fulfilled: 42' },
+      check: ['①コンソールでp1, p2, p3の[[PromiseState]]を展開','②p4のthenが "first" のみ出力されることを確認','③p3の.catch()を外すと Unhandled Promise Rejection が出る']
+    },
+    lab1: {
+      info:  { type:'ok', html:'✅ <strong>ベストプラクティス</strong>: .then() で <strong>return</strong> を忘れると次のthenに <code>undefined</code> が渡る。必ず値を返すかPromiseを返す。' },
+      check: ['①Step3が約500ms遅延して出力されることを確認','②Step4がundefinedであることを確認','③returnを書かなかった場合の挙動を予測してから実行']
+    },
+    lab2: {
+      info:  { type:'warn', html:'⚠️ <strong>注意</strong>: <code>.then(ok, err)</code> の第2引数では、同じ .then の <code>ok</code> 内で発生したエラーを捕捉<strong>できない</strong>。<code>.then().catch()</code> を使う。' },
+      verify:{ before:'A の throw で B はスキップ', after:'C の catch で "recovered" を返し、D は正常系として実行' },
+      check: ['①Bのログが出力されないことを確認','②D の値が "recovered" であることを確認','③catch内でさらにthrowすると次のcatchまで飛ぶことを想像してみる']
+    },
+    lab3: {
+      info:  { type:'info', html:'📘 <code>Promise.all</code> は「全部成功しないと意味がない」場面（トランザクション的）、<code>allSettled</code> は「結果に関わらず全部の状態を知りたい」場面（ダッシュボード的）で使い分ける。' },
+      verify:{ before:'all: ng(200ms) の時点で即 reject', after:'allSettled: 300ms後に3件全ての status が揃う' },
+      check: ['①all が NG(200ms) で reject されるタイミングを確認','②allSettled の各要素に status / value / reason があることを確認','③ok(300ms) の結果が all では取得できないが allSettled では取得できる']
+    },
+    lab4: {
+      info:  { type:'info', html:'📘 <strong>使い分け</strong>: <code>race</code> はタイムアウト実装に、<code>any</code> は複数CDN/APIのフォールバックに最適。' },
+      check: ['①race が ng(50ms) で reject になることを確認','②any が ng をスキップして ok(200ms) で resolve することを確認','③any の全失敗時に AggregateError が発生することを確認','④AggregateError.errors に全てのreject理由が入っている']
+    },
+    lab5: {
+      info:  { type:'ok', html:'✅ <strong>実行順序の鉄則</strong>: async関数を呼んだ直後、awaitより前のコードは<strong>同期的に</strong>実行される。await で一旦制御が呼び出し元に戻る。だから出力順は <code>A → 1 → B → 2 → 3</code>。' },
+      verify:{ before:'同期コード A, 1 は即実行', after:'await 後の 2, 3 はマイクロタスクキューから実行' },
+      check: ['①出力順が A → 1 → B → 2 → 3 であることを確認','②async関数がPromiseを返すことを typeof demo() で確認','③awaitなしで呼ぶと Promise オブジェクトが返ることを確認']
+    },
+    lab6: {
+      info:  { type:'err', html:'🔴 <strong>よくある間違い</strong>: <code>await</code> を for ループ内で使うと逐次実行になり N × 待ち時間 がかかる。独立した非同期処理は <code>Promise.all</code> で並列化する。' },
+      verify:{ before:'逐次: 約900ms (300×3)', after:'並列: 約300ms (max(300,300,300))' },
+      check: ['①逐次と並列の所要時間の差（約3倍）をミリ秒で確認','②並列版の結果順序が [A,B,C] であることを確認（Promise.allは入力順を保持）','③実務でどちらを使うべきか考える：API間に依存関係があるか？']
+    },
+    lab7: {
+      info:  { type:'ok', html:'✅ <strong>実戦パターン</strong>: <code>finally</code> でローディング解除、<code>allSettled</code> + filter で部分的成功を活かす。APIが1つ落ちてもUIを壊さない堅牢な設計。' },
+      check: ['①finally が成功・失敗に関わらず実行されることを確認','②allSettled で成功2件・失敗1件が正しく分類されることを確認','③実務では loading = false を finally に書くことでUIのスピナーが確実に消えるパターンを想像する']
+    }
+  };
+
+  function infoHTML(m){ return m?.info ? `<div class="info-box ${m.info.type||'info'}">${m.info.html}</div>` : ''; }
+  function verifyHTML(m){ if (!m?.verify) return '';
+    const {before, after} = m.verify;
+    return `<div class="verify">
+      <div class="verify-col verify-before"><div class="verify-label">Before ▶︎ 実行前</div>${before||''}</div>
+      <div class="verify-col verify-after"><div class="verify-label">After ▶︎ 実行後</div>${after||''}</div>
+    </div>`; }
+  function checkHTML(m){ if (!m?.check?.length) return '';
+    return `<div class="check-steps">
+      <div class="check-steps-title">🔍 ブラウザ実機チェック</div>
+      <ol>${m.check.map(s=>`<li>${s}</li>`).join('')}</ol>
+    </div>`; }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // (1) 各ラボに info + verify + check を自動挿入
+    document.querySelectorAll('.lab').forEach(lab => {
+      const meta = LAB_META[lab.id]; const body = lab.querySelector('.lab-body');
+      if (!body || !meta) return;
+      const frag = document.createElement('div');
+      frag.innerHTML = infoHTML(meta) + verifyHTML(meta) + checkHTML(meta);
+      while (frag.firstChild) body.appendChild(frag.firstChild);
+    });
+
+    // (2) サイドバー active ハイライト
+    const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+    const map = new Map();
+    links.forEach(a => { const el = document.getElementById(a.getAttribute('href').slice(1)); if (el) map.set(el, a); });
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting) { const l = map.get(e.target);
+        if (l) { links.forEach(n=>n.classList.remove('active')); l.classList.add('active'); } }
+    }), { rootMargin:'-30% 0px -60% 0px' });
+    document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+    // (3) 既存 .code-block に header + Copy を自動付与
+    document.querySelectorAll('.code-block').forEach((cb, i) => {
+      if (cb.querySelector('.code-block-header')) return;
+      const existing = cb.querySelector('.code-label');
+      const labelText = existing ? existing.textContent.trim() : `Code #${i+1}`;
+      if (existing) existing.remove();
+      const header = document.createElement('div');
+      header.className = 'code-block-header';
+      header.innerHTML = `<span>${labelText}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+      cb.insertBefore(header, cb.firstChild);
+    });
+  });
+</script>
+
+</body>
+</html>
