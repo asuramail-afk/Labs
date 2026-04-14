@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JavaScript class = シンタックスシュガー 実機確認Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+/* Sidebar */
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+/* Hero */
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+/* TOC */
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+/* Container & Lab cards */
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+/* Code block */
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+/* Syntax token colors */
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+
+/* info-box */
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+/* verify Before / After */
+.verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+  line-height:1.7; border:1px solid; }
+.verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+.verify-before .verify-label { color:var(--error); }
+.verify-after  .verify-label { color:var(--success); }
+
+/* check-steps */
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+/* compare-table */
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+.compare-table .yes { color:var(--success); } .compare-table .no { color:var(--error); }
+
+/* beginner-box */
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+/* Run button & output */
+.run-btn { display:inline-flex; align-items:center; gap:6px; margin:8px 0;
+  padding:7px 16px; background:var(--accent); color:#fff; border:none;
+  border-radius:6px; font-family:var(--mono); font-size:.8rem; cursor:pointer;
+  transition:background .15s; }
+.run-btn:hover { background:#004ea8; }
+.run-output { background:#1e1e2e; color:#a6e3a1; font-family:var(--mono);
+  font-size:.8rem; line-height:1.6; padding:12px 16px; border-radius:8px;
+  margin:10px 0; white-space:pre-wrap; min-height:40px; border:1px solid #333; }
+
+/* Responsive */
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .verify { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+  </style>
+</head>
+<body>
+
+<!-- ===== Sidebar ===== -->
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// class = Sugar <span>Lab</span></div>
+  <div class="nav-section">基本</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>typeofで正体を暴く</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>プロトタイプ比較</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>メソッド格納場所</a>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>継承チェーン比較</a>
+  <div class="nav-section">応用</div>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>classの厳格モード</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>列挙可能性の違い</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>new強制とhoisting</a>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>デスクリプタで比較</a>
+  <div class="nav-section">まとめ</div>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>総合比較テーブル</a>
+</nav>
+
+<!-- ===== Hero ===== -->
+<div class="hero">
+  <h1>JavaScript class = シンタックスシュガー 実機確認Lab</h1>
+  <p class="subtitle">class構文の正体をコンソールで暴く — プロトタイプベースは変わらない</p>
+</div>
+
+<!-- ===== TOC ===== -->
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>typeofで正体を暴く</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>プロトタイプチェーン比較</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>メソッド格納場所の確認</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>継承チェーンの等価性</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>classの厳格モード制約</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>列挙可能性の違い</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>new強制とhoisting</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>デスクリプタで徹底比較</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>総合比較テーブル</a>
+  </div>
+</div>
+
+<!-- ===== Labs ===== -->
+<div class="container">
+
+  <!-- Lab 00 -->
+  <div class="lab" id="lab0">
+    <div class="lab-header">
+      <div class="lab-num">00</div>
+      <h3>typeof で class の正体を暴く</h3>
+      <span class="lab-tag tag-basic">基本</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>class</code> 宣言の結果を <code>typeof</code> で調べると <code>"function"</code> が返る。
+        classは新しいプリミティブ型ではなく、関数そのもの。
+      </p>
+
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 シンタックスシュガーとは？</div>
+        既存の機能を「書きやすくする」ための構文上の甘い味付け。
+        裏側で動く仕組み（プロトタイプベース）は変わらない。
+<pre class="ascii-art">
+  class Animal { ... }
+        ↓  コンパイル時に内部変換
+  function Animal() { ... }   ← 結局これ
+  Animal.prototype.method = ...
+</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">typeof 確認</div>
+        <pre><span class="cm">// --- コンストラクタ関数 ---</span>
+<span class="kw">function</span> <span class="fn">DogFunc</span>(<span class="attr">name</span>) {
+  <span class="kw">this</span>.name = name;
+}
+
+<span class="cm">// --- class構文 ---</span>
+<span class="kw">class</span> <span class="fn">DogClass</span> {
+  <span class="fn">constructor</span>(<span class="attr">name</span>) {
+    <span class="kw">this</span>.name = name;
+  }
+}
+
+console.log(<span class="kw">typeof</span> DogFunc);   <span class="cm">// "function"</span>
+console.log(<span class="kw">typeof</span> DogClass);  <span class="cm">// "function"  ← 同じ！</span>
+console.log(DogClass <span class="kw">instanceof</span> Function); <span class="cm">// true</span></pre>
+      </div>
+      <button class="run-btn" onclick="runLab0()">▶ 実行して確認</button>
+      <div class="run-output" id="out0"></div>
+    </div>
+  </div>
+
+  <!-- Lab 01 -->
+  <div class="lab" id="lab1">
+    <div class="lab-header">
+      <div class="lab-num">01</div>
+      <h3>プロトタイプチェーンの比較</h3>
+      <span class="lab-tag tag-basic">基本</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        コンストラクタ関数で作ったインスタンスも、class で作ったインスタンスも、
+        <code>__proto__</code> は <code>Constructor.prototype</code> を指す。内部構造は同一。
+      </p>
+
+      <div class="code-block">
+        <div class="code-label">プロトタイプ参照の一致確認</div>
+        <pre><span class="kw">function</span> <span class="fn">CatFunc</span>(<span class="attr">n</span>) { <span class="kw">this</span>.name = n; }
+CatFunc.prototype.<span class="fn">speak</span> = <span class="kw">function</span>() { <span class="kw">return</span> <span class="str">`${this.name}: meow`</span>; };
+
+<span class="kw">class</span> <span class="fn">CatClass</span> {
+  <span class="fn">constructor</span>(<span class="attr">n</span>) { <span class="kw">this</span>.name = n; }
+  <span class="fn">speak</span>() { <span class="kw">return</span> <span class="str">`${this.name}: meow`</span>; }
+}
+
+<span class="kw">const</span> f = <span class="kw">new</span> CatFunc(<span class="str">'Tama'</span>);
+<span class="kw">const</span> c = <span class="kw">new</span> CatClass(<span class="str">'Mike'</span>);
+
+console.log(Object.getPrototypeOf(f) === CatFunc.prototype);  <span class="cm">// true</span>
+console.log(Object.getPrototypeOf(c) === CatClass.prototype); <span class="cm">// true</span>
+console.log(f.speak()); <span class="cm">// "Tama: meow"</span>
+console.log(c.speak()); <span class="cm">// "Mike: meow"</span></pre>
+      </div>
+      <button class="run-btn" onclick="runLab1()">▶ 実行して確認</button>
+      <div class="run-output" id="out1"></div>
+    </div>
+  </div>
+
+  <!-- Lab 02 -->
+  <div class="lab" id="lab2">
+    <div class="lab-header">
+      <div class="lab-num">02</div>
+      <h3>メソッド格納場所の確認</h3>
+      <span class="lab-tag tag-basic">基本</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        class内で定義したメソッドはインスタンス自身ではなく <code>prototype</code> に格納される。
+        これはコンストラクタ関数で <code>.prototype.method = ...</code> と書くのと同じ。
+      </p>
+
+      <div class="code-block">
+        <div class="code-label">hasOwnProperty で格納場所を確認</div>
+        <pre><span class="kw">class</span> <span class="fn">Bird</span> {
+  <span class="fn">constructor</span>(<span class="attr">name</span>) { <span class="kw">this</span>.name = name; }
+  <span class="fn">fly</span>() { <span class="kw">return</span> <span class="str">`${this.name} is flying`</span>; }
+}
+
+<span class="kw">const</span> b = <span class="kw">new</span> Bird(<span class="str">'Sparrow'</span>);
+
+<span class="cm">// name はインスタンス自身のプロパティ</span>
+console.log(b.hasOwnProperty(<span class="str">'name'</span>));  <span class="cm">// true</span>
+
+<span class="cm">// fly() は prototype 上に存在</span>
+console.log(b.hasOwnProperty(<span class="str">'fly'</span>));   <span class="cm">// false</span>
+console.log(Bird.prototype.hasOwnProperty(<span class="str">'fly'</span>)); <span class="cm">// true</span>
+
+<span class="cm">// インスタンスの fly と prototype の fly は同じ参照</span>
+console.log(b.fly === Bird.prototype.fly); <span class="cm">// true</span></pre>
+      </div>
+      <button class="run-btn" onclick="runLab2()">▶ 実行して確認</button>
+      <div class="run-output" id="out2"></div>
+    </div>
+  </div>
+
+  <!-- Lab 03 -->
+  <div class="lab" id="lab3">
+    <div class="lab-header">
+      <div class="lab-num">03</div>
+      <h3>継承チェーンの等価性</h3>
+      <span class="lab-tag tag-intermediate">応用</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>extends</code> による継承と、<code>Object.create()</code> を使ったプロトタイプ手動チェーンは同じ結果を生む。
+      </p>
+
+      <div class="code-block">
+        <div class="code-label">2方式の継承を比較</div>
+        <pre><span class="cm">// === プロトタイプ手動継承 ===</span>
+<span class="kw">function</span> <span class="fn">AnimalF</span>(<span class="attr">name</span>) { <span class="kw">this</span>.name = name; }
+AnimalF.prototype.<span class="fn">speak</span> = <span class="kw">function</span>() { <span class="kw">return</span> <span class="str">`${this.name} speaks`</span>; };
+
+<span class="kw">function</span> <span class="fn">DogF</span>(<span class="attr">name</span>, <span class="attr">breed</span>) {
+  AnimalF.call(<span class="kw">this</span>, name);  <span class="cm">// super() 相当</span>
+  <span class="kw">this</span>.breed = breed;
+}
+DogF.prototype = Object.create(AnimalF.prototype);
+DogF.prototype.constructor = DogF;
+
+<span class="cm">// === class 構文 ===</span>
+<span class="kw">class</span> <span class="fn">AnimalC</span> {
+  <span class="fn">constructor</span>(<span class="attr">name</span>) { <span class="kw">this</span>.name = name; }
+  <span class="fn">speak</span>() { <span class="kw">return</span> <span class="str">`${this.name} speaks`</span>; }
+}
+<span class="kw">class</span> <span class="fn">DogC</span> <span class="kw">extends</span> <span class="fn">AnimalC</span> {
+  <span class="fn">constructor</span>(<span class="attr">name</span>, <span class="attr">breed</span>) { <span class="kw">super</span>(name); <span class="kw">this</span>.breed = breed; }
+}
+
+<span class="kw">const</span> d1 = <span class="kw">new</span> DogF(<span class="str">'Pochi'</span>, <span class="str">'Shiba'</span>);
+<span class="kw">const</span> d2 = <span class="kw">new</span> DogC(<span class="str">'Hachi'</span>, <span class="str">'Akita'</span>);
+
+console.log(d1 <span class="kw">instanceof</span> AnimalF); <span class="cm">// true</span>
+console.log(d2 <span class="kw">instanceof</span> AnimalC); <span class="cm">// true</span>
+console.log(d1.speak()); <span class="cm">// "Pochi speaks"</span>
+console.log(d2.speak()); <span class="cm">// "Hachi speaks"</span></pre>
+      </div>
+      <button class="run-btn" onclick="runLab3()">▶ 実行して確認</button>
+      <div class="run-output" id="out3"></div>
+    </div>
+  </div>
+
+  <!-- Lab 04 -->
+  <div class="lab" id="lab4">
+    <div class="lab-header">
+      <div class="lab-num">04</div>
+      <h3>class の厳格モード制約</h3>
+      <span class="lab-tag tag-intermediate">応用</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        classは「ただの関数」だが、安全性を高める追加制約がある。
+        class本体は自動的に <code>strict mode</code> で実行される。
+        これは「シンタックスシュガー＋α」の「＋α」部分。
+      </p>
+
+      <div class="code-block">
+        <div class="code-label">strict mode 確認</div>
+        <pre><span class="kw">class</span> <span class="fn">StrictTest</span> {
+  <span class="fn">checkStrict</span>() {
+    <span class="cm">// strict mode では this が undefined になるケースがある</span>
+    <span class="kw">return</span> (<span class="kw">function</span>() { <span class="kw">return</span> <span class="kw">typeof</span> <span class="kw">this</span>; })();
+  }
+}
+
+<span class="kw">function</span> <span class="fn">NonStrictTest</span>() {}
+NonStrictTest.prototype.<span class="fn">checkStrict</span> = <span class="kw">function</span>() {
+  <span class="kw">return</span> (<span class="kw">function</span>() { <span class="kw">return</span> <span class="kw">typeof</span> <span class="kw">this</span>; })();
+};
+
+<span class="kw">const</span> cs = <span class="kw">new</span> StrictTest();
+<span class="kw">const</span> ns = <span class="kw">new</span> NonStrictTest();
+
+console.log(cs.checkStrict()); <span class="cm">// "undefined" (strict mode)</span>
+console.log(ns.checkStrict()); <span class="cm">// "object"   (sloppy mode → this=window)</span></pre>
+      </div>
+      <button class="run-btn" onclick="runLab4()">▶ 実行して確認</button>
+      <div class="run-output" id="out4"></div>
+    </div>
+  </div>
+
+  <!-- Lab 05 -->
+  <div class="lab" id="lab5">
+    <div class="lab-header">
+      <div class="lab-num">05</div>
+      <h3>列挙可能性（enumerable）の違い</h3>
+      <span class="lab-tag tag-intermediate">応用</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        classで定義したメソッドは <code>enumerable: false</code>。
+        コンストラクタ関数で <code>prototype</code> に直接代入すると <code>enumerable: true</code>。
+        <code>for...in</code> の結果が変わる。
+      </p>
+
+      <div class="code-block">
+        <div class="code-label">enumerable の比較</div>
+        <pre><span class="kw">function</span> <span class="fn">FuncVer</span>() {}
+FuncVer.prototype.<span class="fn">greet</span> = <span class="kw">function</span>() {};
+
+<span class="kw">class</span> <span class="fn">ClassVer</span> {
+  <span class="fn">greet</span>() {}
+}
+
+<span class="kw">const</span> descF = Object.getOwnPropertyDescriptor(FuncVer.prototype, <span class="str">'greet'</span>);
+<span class="kw">const</span> descC = Object.getOwnPropertyDescriptor(ClassVer.prototype, <span class="str">'greet'</span>);
+
+console.log(<span class="str">'Func enumerable:'</span>, descF.enumerable);  <span class="cm">// true</span>
+console.log(<span class="str">'Class enumerable:'</span>, descC.enumerable); <span class="cm">// false</span>
+
+<span class="cm">// for...in での違い</span>
+<span class="kw">const</span> fObj = <span class="kw">new</span> FuncVer();
+<span class="kw">const</span> cObj = <span class="kw">new</span> ClassVer();
+<span class="kw">const</span> fKeys = [], cKeys = [];
+<span class="kw">for</span> (<span class="kw">let</span> k <span class="kw">in</span> fObj) fKeys.push(k);
+<span class="kw">for</span> (<span class="kw">let</span> k <span class="kw">in</span> cObj) cKeys.push(k);
+console.log(<span class="str">'Func for...in keys:'</span>, fKeys); <span class="cm">// ["greet"]</span>
+console.log(<span class="str">'Class for...in keys:'</span>, cKeys); <span class="cm">// []</span></pre>
+      </div>
+      <button class="run-btn" onclick="runLab5()">▶ 実行して確認</button>
+      <div class="run-output" id="out5"></div>
+    </div>
+  </div>
+
+  <!-- Lab 06 -->
+  <div class="lab" id="lab6">
+    <div class="lab-header">
+      <div class="lab-num">06</div>
+      <h3>new 強制と hoisting の違い</h3>
+      <span class="lab-tag tag-advanced">上級</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        コンストラクタ関数は <code>new</code> なしで呼べてしまう（バグの温床）。
+        classは <code>new</code> なしだとエラー。また、class宣言はhoistingされない。
+      </p>
+
+      <div class="code-block">
+        <div class="code-label">new 強制確認</div>
+        <pre><span class="kw">function</span> <span class="fn">OldStyle</span>(<span class="attr">val</span>) { <span class="kw">this</span>.val = val; }
+
+<span class="cm">// new なしで呼ぶと this === window → グローバル汚染</span>
+<span class="cm">// (strict mode以外)</span>
+<span class="kw">try</span> {
+  <span class="kw">const</span> a = OldStyle(<span class="num">42</span>);
+  console.log(<span class="str">'OldStyle without new:'</span>, a);  <span class="cm">// undefined</span>
+} <span class="kw">catch</span>(e) {
+  console.log(<span class="str">'Error:'</span>, e.message);
+}
+
+<span class="kw">class</span> <span class="fn">NewStyle</span> {
+  <span class="fn">constructor</span>(<span class="attr">val</span>) { <span class="kw">this</span>.val = val; }
+}
+
+<span class="kw">try</span> {
+  <span class="kw">const</span> b = NewStyle(<span class="num">42</span>); <span class="cm">// ← TypeError!</span>
+} <span class="kw">catch</span>(e) {
+  console.log(<span class="str">'Class without new:'</span>, e.message);
+}</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">hoisting 確認</div>
+        <pre><span class="cm">// 関数宣言は hoisting される</span>
+console.log(<span class="kw">typeof</span> HoistedFunc); <span class="cm">// "function"</span>
+<span class="kw">function</span> <span class="fn">HoistedFunc</span>() {}
+
+<span class="cm">// class 宣言は hoisting されない（TDZ）</span>
+<span class="kw">try</span> {
+  console.log(<span class="kw">typeof</span> HoistedClass);
+} <span class="kw">catch</span>(e) {
+  console.log(<span class="str">'Class TDZ:'</span>, e.message);
+}
+<span class="kw">class</span> <span class="fn">HoistedClass</span> {}</pre>
+      </div>
+      <button class="run-btn" onclick="runLab6()">▶ 実行して確認</button>
+      <div class="run-output" id="out6"></div>
+    </div>
+  </div>
+
+  <!-- Lab 07 -->
+  <div class="lab" id="lab7">
+    <div class="lab-header">
+      <div class="lab-num">07</div>
+      <h3>デスクリプタで徹底比較</h3>
+      <span class="lab-tag tag-advanced">上級</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>Object.getOwnPropertyDescriptors()</code> で prototype の全プロパティを比較し、
+        classとコンストラクタ関数の内部的な差分を一覧する。
+      </p>
+
+      <div class="code-block">
+        <div class="code-label">デスクリプタ全出力</div>
+        <pre><span class="kw">function</span> <span class="fn">FnAnimal</span>(<span class="attr">name</span>) { <span class="kw">this</span>.name = name; }
+FnAnimal.prototype.<span class="fn">eat</span> = <span class="kw">function</span>() {};
+FnAnimal.prototype.<span class="fn">sleep</span> = <span class="kw">function</span>() {};
+
+<span class="kw">class</span> <span class="fn">ClAnimal</span> {
+  <span class="fn">constructor</span>(<span class="attr">name</span>) { <span class="kw">this</span>.name = name; }
+  <span class="fn">eat</span>() {}
+  <span class="fn">sleep</span>() {}
+}
+
+<span class="kw">const</span> fnDesc = Object.getOwnPropertyDescriptors(FnAnimal.prototype);
+<span class="kw">const</span> clDesc = Object.getOwnPropertyDescriptors(ClAnimal.prototype);
+
+<span class="cm">// 各メソッドの writable / enumerable / configurable を比較</span>
+<span class="kw">for</span> (<span class="kw">const</span> key <span class="kw">of</span> [<span class="str">'eat'</span>, <span class="str">'sleep'</span>]) {
+  console.log(<span class="str">`--- ${key} ---`</span>);
+  console.log(<span class="str">'Func:'</span>, JSON.stringify({
+    w: fnDesc[key].writable,
+    e: fnDesc[key].enumerable,
+    c: fnDesc[key].configurable
+  }));
+  console.log(<span class="str">'Class:'</span>, JSON.stringify({
+    w: clDesc[key].writable,
+    e: clDesc[key].enumerable,
+    c: clDesc[key].configurable
+  }));
+}</pre>
+      </div>
+      <button class="run-btn" onclick="runLab7()">▶ 実行して確認</button>
+      <div class="run-output" id="out7"></div>
+    </div>
+  </div>
+
+  <!-- Lab 08 -->
+  <div class="lab" id="lab8">
+    <div class="lab-header">
+      <div class="lab-num">08</div>
+      <h3>総合比較テーブル</h3>
+      <span class="lab-tag tag-basic">まとめ</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        ここまでの各ラボで確認した「同じ部分」と「classで追加された安全機能（+α）」を一覧にまとめる。
+      </p>
+
+      <table class="compare-table">
+        <thead>
+          <tr><th>観点</th><th>コンストラクタ関数</th><th>class構文</th><th>同一？</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>typeof</td>
+            <td><code>"function"</code></td>
+            <td><code>"function"</code></td>
+            <td class="yes">✅ 同一</td>
+          </tr>
+          <tr>
+            <td>prototype チェーン</td>
+            <td>手動で構築</td>
+            <td>extends で自動構築</td>
+            <td class="yes">✅ 同一構造</td>
+          </tr>
+          <tr>
+            <td>メソッド格納場所</td>
+            <td>.prototype 上</td>
+            <td>.prototype 上</td>
+            <td class="yes">✅ 同一</td>
+          </tr>
+          <tr>
+            <td>instanceof</td>
+            <td>正常動作</td>
+            <td>正常動作</td>
+            <td class="yes">✅ 同一</td>
+          </tr>
+          <tr>
+            <td>strict mode</td>
+            <td>明示しないと sloppy</td>
+            <td>自動で strict</td>
+            <td class="no">❌ classが厳格</td>
+          </tr>
+          <tr>
+            <td>メソッドの enumerable</td>
+            <td>true</td>
+            <td>false</td>
+            <td class="no">❌ classが安全</td>
+          </tr>
+          <tr>
+            <td>new なし呼び出し</td>
+            <td>許可（バグの温床）</td>
+            <td>TypeError</td>
+            <td class="no">❌ classが安全</td>
+          </tr>
+          <tr>
+            <td>hoisting</td>
+            <td>あり（関数宣言時）</td>
+            <td>なし（TDZ）</td>
+            <td class="no">❌ classが厳格</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="info-box info">
+        📘 <strong>結論</strong>: classはプロトタイプベースの仕組みそのもの（シンタックスシュガー）に、
+        strict mode・non-enumerable・new強制・TDZ という<strong>安全ガードレール</strong>を追加したもの。
+        「シンタックスシュガー＋α」と表現するのが最も正確。
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<!-- ===== Scripts ===== -->
+<script>
+  // ===== Lab実行関数 =====
+
+  function log(id, ...args) {
+    const el = document.getElementById(id);
+    el.textContent += args.map(a =>
+      typeof a === 'object' ? JSON.stringify(a) : String(a)
+    ).join(' ') + '\n';
+  }
+
+  function clearOut(id) {
+    document.getElementById(id).textContent = '';
+  }
+
+  function runLab0() {
+    clearOut('out0');
+    function DogFunc(name) { this.name = name; }
+    class DogClass { constructor(name) { this.name = name; } }
+
+    log('out0', 'typeof DogFunc:', typeof DogFunc);
+    log('out0', 'typeof DogClass:', typeof DogClass);
+    log('out0', 'DogClass instanceof Function:', DogClass instanceof Function);
+    log('out0', '');
+    log('out0', '→ どちらも "function"。classは関数の別記法にすぎない。');
+  }
+
+  function runLab1() {
+    clearOut('out1');
+    function CatFunc(n) { this.name = n; }
+    CatFunc.prototype.speak = function() { return `${this.name}: meow`; };
+
+    class CatClass {
+      constructor(n) { this.name = n; }
+      speak() { return `${this.name}: meow`; }
+    }
+
+    const f = new CatFunc('Tama');
+    const c = new CatClass('Mike');
+
+    log('out1', 'Func __proto__ === Func.prototype:', Object.getPrototypeOf(f) === CatFunc.prototype);
+    log('out1', 'Class __proto__ === Class.prototype:', Object.getPrototypeOf(c) === CatClass.prototype);
+    log('out1', 'f.speak():', f.speak());
+    log('out1', 'c.speak():', c.speak());
+    log('out1', '');
+    log('out1', '→ プロトタイプチェーンの構造は完全に同じ。');
+  }
+
+  function runLab2() {
+    clearOut('out2');
+    class Bird {
+      constructor(name) { this.name = name; }
+      fly() { return `${this.name} is flying`; }
+    }
+    const b = new Bird('Sparrow');
+
+    log('out2', 'b.hasOwnProperty("name"):', b.hasOwnProperty('name'));
+    log('out2', 'b.hasOwnProperty("fly"):', b.hasOwnProperty('fly'));
+    log('out2', 'Bird.prototype.hasOwnProperty("fly"):', Bird.prototype.hasOwnProperty('fly'));
+    log('out2', 'b.fly === Bird.prototype.fly:', b.fly === Bird.prototype.fly);
+    log('out2', '');
+    log('out2', '→ メソッドはインスタンスではなく prototype 上。従来と同じ。');
+  }
+
+  function runLab3() {
+    clearOut('out3');
+    function AnimalF(name) { this.name = name; }
+    AnimalF.prototype.speak = function() { return `${this.name} speaks`; };
+    function DogF(name, breed) { AnimalF.call(this, name); this.breed = breed; }
+    DogF.prototype = Object.create(AnimalF.prototype);
+    DogF.prototype.constructor = DogF;
+
+    class AnimalC {
+      constructor(name) { this.name = name; }
+      speak() { return `${this.name} speaks`; }
+    }
+    class DogC extends AnimalC {
+      constructor(name, breed) { super(name); this.breed = breed; }
+    }
+
+    const d1 = new DogF('Pochi', 'Shiba');
+    const d2 = new DogC('Hachi', 'Akita');
+
+    log('out3', 'd1 instanceof AnimalF:', d1 instanceof AnimalF);
+    log('out3', 'd2 instanceof AnimalC:', d2 instanceof AnimalC);
+    log('out3', 'd1.speak():', d1.speak());
+    log('out3', 'd2.speak():', d2.speak());
+    log('out3', '');
+    log('out3', '→ 継承チェーンの構造も結果も同一。extends は Object.create() の糖衣構文。');
+  }
+
+  function runLab4() {
+    clearOut('out4');
+    class StrictTest {
+      checkStrict() {
+        return (function() { return typeof this; })();
+      }
+    }
+
+    function NonStrictTest() {}
+    NonStrictTest.prototype.checkStrict = function() {
+      return (function() { return typeof this; })();
+    };
+
+    const cs = new StrictTest();
+    const ns = new NonStrictTest();
+
+    log('out4', 'Class内 (strict):', cs.checkStrict());
+    log('out4', 'Func内 (sloppy):', ns.checkStrict());
+    log('out4', '');
+    log('out4', '→ class本体は自動strict。これが「+α」の安全機能。');
+  }
+
+  function runLab5() {
+    clearOut('out5');
+    function FuncVer() {}
+    FuncVer.prototype.greet = function() {};
+
+    class ClassVer {
+      greet() {}
+    }
+
+    const descF = Object.getOwnPropertyDescriptor(FuncVer.prototype, 'greet');
+    const descC = Object.getOwnPropertyDescriptor(ClassVer.prototype, 'greet');
+
+    log('out5', 'Func greet enumerable:', descF.enumerable);
+    log('out5', 'Class greet enumerable:', descC.enumerable);
+
+    const fObj = new FuncVer();
+    const cObj = new ClassVer();
+    const fKeys = [], cKeys = [];
+    for (let k in fObj) fKeys.push(k);
+    for (let k in cObj) cKeys.push(k);
+    log('out5', 'Func for...in keys:', JSON.stringify(fKeys));
+    log('out5', 'Class for...in keys:', JSON.stringify(cKeys));
+    log('out5', '');
+    log('out5', '→ classメソッドはenumerable:false。for...inに出ない安全設計。');
+  }
+
+  function runLab6() {
+    clearOut('out6');
+
+    function OldStyle(val) { this.val = val; }
+    try {
+      const a = OldStyle(42);
+      log('out6', 'OldStyle without new: 戻り値 =', a, '(undefined, thisがwindowに漏れた)');
+    } catch(e) {
+      log('out6', 'Error:', e.message);
+    }
+
+    class NewStyle {
+      constructor(val) { this.val = val; }
+    }
+    try {
+      const b = NewStyle(42);
+    } catch(e) {
+      log('out6', 'Class without new: TypeError!', e.message);
+    }
+
+    log('out6', '');
+
+    // hoisting
+    log('out6', 'typeof HoistedFunc (宣言前):', typeof HoistedFunc2);
+    function HoistedFunc2() {}
+
+    try {
+      // classのTDZは同一スコープ内の宣言前参照で発生
+      // ここでは eval で擬似的に再現
+      eval('(function() { try { typeof HoistedClass2; } catch(e) { throw e; } class HoistedClass2 {} })()');
+      log('out6', 'Class hoisting: TDZエラー発生せず（この実行パスは到達しない）');
+    } catch(e) {
+      log('out6', 'Class TDZ:', e.message);
+    }
+    log('out6', '');
+    log('out6', '→ classはnew必須 & hoistingなし。安全ガードレール。');
+  }
+
+  function runLab7() {
+    clearOut('out7');
+    function FnAnimal(name) { this.name = name; }
+    FnAnimal.prototype.eat = function() {};
+    FnAnimal.prototype.sleep = function() {};
+
+    class ClAnimal {
+      constructor(name) { this.name = name; }
+      eat() {}
+      sleep() {}
+    }
+
+    const fnDesc = Object.getOwnPropertyDescriptors(FnAnimal.prototype);
+    const clDesc = Object.getOwnPropertyDescriptors(ClAnimal.prototype);
+
+    for (const key of ['eat', 'sleep']) {
+      log('out7', `--- ${key} ---`);
+      log('out7', '  Func:', JSON.stringify({ w: fnDesc[key].writable, e: fnDesc[key].enumerable, c: fnDesc[key].configurable }));
+      log('out7', '  Class:', JSON.stringify({ w: clDesc[key].writable, e: clDesc[key].enumerable, c: clDesc[key].configurable }));
+    }
+    log('out7', '');
+    log('out7', '→ writable/configurable は同じ。enumerable だけが異なる。');
+    log('out7', '  classメソッドは for...in に現れない（安全設計）。');
+  }
+
+  // ===== Copy & Sidebar logic =====
+  function copyCode(btn) {
+    const block = btn.closest('.code-block') || btn.parentElement;
+    const pre = block.querySelector('pre');
+    if (!pre) return;
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    });
+  }
+
+  const LAB_META = {
+    lab0: {
+      info:  { type:'info', html:'📘 <strong>核心</strong>: <code>typeof class === "function"</code>。classは新しい型ではなく、関数の別記法。' },
+      check: [
+        '① コンソールに <code>typeof DogClass</code> と直接入力して <code>"function"</code> を確認',
+        '② <code>DogClass.prototype</code> を展開してconstructorプロパティを確認',
+        '③ <code>DogClass.prototype.constructor === DogClass</code> が <code>true</code> であることを確認'
+      ]
+    },
+    lab1: {
+      info:  { type:'ok', html:'✅ <strong>同一構造</strong>: インスタンスの <code>__proto__</code> はどちらも <code>Constructor.prototype</code> を指す。' },
+      check: [
+        '① コンソールで <code>Object.getPrototypeOf(f)</code> を展開して speak メソッドを確認',
+        '② <code>Object.getPrototypeOf(c)</code> も同様に展開して比較',
+        '③ 両方の speak() が正しく動作することを確認'
+      ]
+    },
+    lab2: {
+      info:  { type:'info', html:'📘 <strong>メモリ効率</strong>: メソッドが prototype 上に1つだけ存在し、全インスタンスで共有される。classでもこの仕組みは変わらない。' },
+      check: [
+        '① <code>b</code> をコンソールで展開 → name のみがインスタンス直下にあること',
+        '② <code>[[Prototype]]</code> を展開 → fly() が見えること',
+        '③ <code>b.fly === Bird.prototype.fly</code> が <code>true</code> であること'
+      ]
+    },
+    lab3: {
+      info:  { type:'ok', html:'✅ <strong>等価</strong>: <code>extends/super</code> は <code>Object.create()</code> + <code>.call()</code> と同じチェーンを構築する。' },
+      verify:{ before:'手動継承: <code>Object.create()</code> + <code>Parent.call(this)</code> + <code>constructor</code> 修正の3ステップ', after:'class構文: <code>extends</code> + <code>super()</code> の2キーワードで完了' },
+      check: [
+        '① 両方のインスタンスで <code>instanceof</code> が <code>true</code> であること',
+        '② <code>d1.speak()</code> と <code>d2.speak()</code> が正常に親メソッドを呼べること',
+        '③ コンソールでプロトタイプチェーンを掘り下げて構造が同じか確認'
+      ]
+    },
+    lab4: {
+      info:  { type:'warn', html:'⚠️ <strong>+α機能</strong>: classは自動strict mode。内部の無名関数で <code>this</code> が <code>undefined</code> になる（sloppy modeでは <code>window</code>）。' },
+      check: [
+        '① 実行結果で class側が <code>"undefined"</code>、func側が <code>"object"</code> になること',
+        '② class内部で <code>"use strict"</code> を明示しなくても strict であることを確認',
+        '③ コンストラクタ関数側に <code>"use strict"</code> を追加すると同じ挙動になることを試す'
+      ]
+    },
+    lab5: {
+      info:  { type:'warn', html:'⚠️ <strong>+α機能</strong>: classメソッドは <code>enumerable: false</code>。<code>for...in</code> でメソッドが出てこない安全設計。' },
+      verify:{ before:'Func: <code>for...in</code> で <code>["greet"]</code> が出る', after:'Class: <code>for...in</code> で <code>[]</code>（空配列）' },
+      check: [
+        '① <code>descF.enumerable</code> が <code>true</code>、<code>descC.enumerable</code> が <code>false</code> であること',
+        '② <code>for...in</code> の結果の違いを確認',
+        '③ <code>Object.keys()</code> も同様にメソッドが出ないことを追加確認'
+      ]
+    },
+    lab6: {
+      info:  { type:'err', html:'🚫 <strong>+α機能</strong>: classは <code>new</code> なしで呼ぶと <code>TypeError</code>。また宣言前に参照すると TDZ（Temporal Dead Zone）エラー。' },
+      check: [
+        '① コンストラクタ関数を <code>new</code> なしで呼んでも エラーにならないことを確認',
+        '② classを <code>new</code> なしで呼ぶと <code>TypeError</code> が発生すること',
+        '③ class宣言より前に typeof で参照して TDZ エラーを確認'
+      ]
+    },
+    lab7: {
+      info:  { type:'info', html:'📘 <strong>結論</strong>: <code>writable</code> と <code>configurable</code> は同じ。唯一 <code>enumerable</code> だけが異なる。classは「見えないメソッド」を作る。' },
+      check: [
+        '① eat / sleep の writable が両方 <code>true</code> であること',
+        '② eat / sleep の configurable が両方 <code>true</code> であること',
+        '③ enumerable だけが Func=<code>true</code> / Class=<code>false</code> と異なること',
+        '④ コンソールで <code>Object.getOwnPropertyDescriptors(ClAnimal.prototype)</code> を直接実行して全貌を確認'
+      ]
+    },
+    lab8: {
+      info:  { type:'ok', html:'✅ <strong>最終結論</strong>: classはプロトタイプベースのシンタックスシュガー＋安全ガードレール（strict / non-enumerable / new強制 / TDZ）。内部の仕組みは変わっていない。' },
+      check: [
+        '① 表の「同一」行がLab 00〜03の結果と一致することを確認',
+        '② 表の「異なる」行がLab 04〜07の結果と一致することを確認',
+        '③ 「シンタックスシュガー＋α」という表現の意味を説明できるか自問'
+      ]
+    }
+  };
+
+  function infoHTML(m){ return m?.info ? `<div class="info-box ${m.info.type||'info'}">${m.info.html}</div>` : ''; }
+  function verifyHTML(m){ if (!m?.verify) return '';
+    const {before, after} = m.verify;
+    return `<div class="verify">
+      <div class="verify-col verify-before"><div class="verify-label">Before ▶︎ 従来の書き方</div>${before||''}</div>
+      <div class="verify-col verify-after"><div class="verify-label">After ▶︎ class構文</div>${after||''}</div>
+    </div>`; }
+  function checkHTML(m){ if (!m?.check?.length) return '';
+    return `<div class="check-steps">
+      <div class="check-steps-title">🔍 ブラウザ実機チェック</div>
+      <ol>${m.check.map(s=>`<li>${s}</li>`).join('')}</ol>
+    </div>`; }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // 各ラボに info + verify + check を自動挿入
+    document.querySelectorAll('.lab').forEach(lab => {
+      const meta = LAB_META[lab.id]; const body = lab.querySelector('.lab-body');
+      if (!body || !meta) return;
+      const frag = document.createElement('div');
+      frag.innerHTML = infoHTML(meta) + verifyHTML(meta) + checkHTML(meta);
+      while (frag.firstChild) body.appendChild(frag.firstChild);
+    });
+
+    // サイドバー active ハイライト
+    const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+    const map = new Map();
+    links.forEach(a => { const el = document.getElementById(a.getAttribute('href').slice(1)); if (el) map.set(el, a); });
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting) { const l = map.get(e.target);
+        if (l) { links.forEach(n=>n.classList.remove('active')); l.classList.add('active'); } }
+    }), { rootMargin:'-30% 0px -60% 0px' });
+    document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+    // 既存 .code-block に header + Copy を自動付与
+    document.querySelectorAll('.code-block').forEach((cb, i) => {
+      if (cb.querySelector('.code-block-header')) return;
+      const existing = cb.querySelector('.code-label');
+      const labelText = existing ? existing.textContent.trim() : `Code #${i+1}`;
+      if (existing) existing.remove();
+      const header = document.createElement('div');
+      header.className = 'code-block-header';
+      header.innerHTML = `<span>${labelText}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+      cb.insertBefore(header, cb.firstChild);
+    });
+  });
+</script>
+</body>
+</html>

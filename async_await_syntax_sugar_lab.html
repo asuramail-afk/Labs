@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>async/await シンタックスシュガー確認Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+/* Sidebar */
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+/* Hero */
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+/* TOC */
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+/* Container & Lab cards */
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+/* Code block */
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+/* Syntax token colors */
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+
+/* info-box */
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+/* verify Before / After */
+.verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+  line-height:1.7; border:1px solid; }
+.verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+.verify-before .verify-label { color:var(--error); }
+.verify-after  .verify-label { color:var(--success); }
+
+/* check-steps */
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+/* compare-table */
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+.compare-table .yes { color:var(--success); } .compare-table .no { color:var(--error); }
+
+/* beginner-box */
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+/* Run button & console */
+.run-btn { display:inline-flex; align-items:center; gap:6px; padding:8px 18px;
+  background:var(--accent); color:#fff; border:none; border-radius:6px;
+  font-family:var(--mono); font-size:.82rem; cursor:pointer; transition:background .15s; margin:8px 0; }
+.run-btn:hover { background:#004999; }
+.run-btn::before { content:'▶'; font-size:.7rem; }
+.console-output { background:#1e1e2e; color:#cdd6f4; border-radius:8px;
+  padding:12px 16px; font-family:var(--mono); font-size:.78rem; line-height:1.7;
+  margin:10px 0; min-height:60px; max-height:300px; overflow-y:auto; white-space:pre-wrap; }
+.console-output .log-time { color:#89b4fa; }
+.console-output .log-ok { color:#a6e3a1; }
+.console-output .log-warn { color:#f9e2af; }
+.console-output .log-err { color:#f38ba8; }
+.console-output .log-dim { color:#6c7086; }
+
+/* side-by-side code */
+.code-pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:12px 0; }
+@media (max-width:900px) {
+  .code-pair { grid-template-columns:1fr; }
+}
+.code-pair-label { font-family:var(--mono); font-size:.7rem; letter-spacing:.08em;
+  color:var(--text-dim); margin-bottom:4px; text-transform:uppercase; }
+.code-pair-label.promise { color:var(--accent4); }
+.code-pair-label.async { color:var(--accent3); }
+
+/* Responsive */
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .verify { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+  </style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// async/await Lab</div>
+  <div class="nav-section">基礎確認</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>async関数の戻り値はPromise</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>awaitはthen()の書き換え</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>逐次処理の等価変換</a>
+  <div class="nav-section">実証実験</div>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>try/catchとcatch()の同一性</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>並列実行 Promise.all</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>戻り値のPromiseチェーン</a>
+  <div class="nav-section">深堀り</div>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>Babelトランスパイル結果</a>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>マイクロタスクの実行順</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>async無しでawait相当を実装</a>
+</nav>
+
+<div class="hero">
+  <h1>async/await シンタックスシュガー確認Lab</h1>
+  <p class="subtitle">「async/awaitは本当にPromiseの糖衣構文なのか？」をコードで証明する9本のLab</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>async関数の戻り値はPromise</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>awaitはthen()の書き換え</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>逐次処理の等価変換</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>try/catchとcatch()の同一性</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>並列実行 Promise.all</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>戻り値のPromiseチェーン</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>Babelトランスパイル結果</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>マイクロタスクの実行順</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>async無しでawait相当を実装</a>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ==================== Lab 00 ==================== -->
+  <div class="lab" id="lab0">
+    <div class="lab-header">
+      <div class="lab-num">00</div>
+      <h3>async関数の戻り値はPromise</h3>
+      <span class="lab-tag tag-basic">基本</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>async function</code> は常に <code>Promise</code> を返す。
+        <code>return 42</code> と書いても <code>Promise.resolve(42)</code> と同じ。
+        まずこの事実を <code>instanceof</code> で確認する。
+      </p>
+
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 シンタックスシュガーとは？</div>
+        「構文糖衣」＝ 機能は同じだが、読み書きしやすくした省略記法。<br>
+        async/await は Promise を「同期コード風に」書ける糖衣構文。内部では Promise そのもの。
+        <pre class="ascii-art">
+  async/await          Promise.then()
+  ┌──────────┐         ┌──────────────┐
+  │ 見た目が  │  ===    │ 実際に動く   │
+  │ 同期的    │  変換   │ 非同期処理   │
+  └──────────┘         └──────────────┘
+        </pre>
+      </div>
+
+      <div class="code-pair">
+        <div>
+          <div class="code-pair-label async">async/await版</div>
+          <div class="code-block">
+            <pre><span class="kw">async function</span> <span class="fn">greet</span>() {
+  <span class="kw">return</span> <span class="str">"Hello"</span>;
+}
+
+<span class="kw">const</span> result = <span class="fn">greet</span>();
+console.<span class="fn">log</span>(result <span class="kw">instanceof</span> Promise); <span class="cm">// true</span>
+console.<span class="fn">log</span>(result);  <span class="cm">// Promise {&lt;fulfilled&gt;: "Hello"}</span></pre>
+          </div>
+        </div>
+        <div>
+          <div class="code-pair-label promise">Promise版（等価）</div>
+          <div class="code-block">
+            <pre><span class="kw">function</span> <span class="fn">greetP</span>() {
+  <span class="kw">return</span> Promise.<span class="fn">resolve</span>(<span class="str">"Hello"</span>);
+}
+
+<span class="kw">const</span> resultP = <span class="fn">greetP</span>();
+console.<span class="fn">log</span>(resultP <span class="kw">instanceof</span> Promise); <span class="cm">// true</span>
+console.<span class="fn">log</span>(resultP); <span class="cm">// Promise {&lt;fulfilled&gt;: "Hello"}</span></pre>
+          </div>
+        </div>
+      </div>
+
+      <button class="run-btn" onclick="runLab0()">実行して確認</button>
+      <div class="console-output" id="console0"></div>
+    </div>
+  </div>
+
+  <!-- ==================== Lab 01 ==================== -->
+  <div class="lab" id="lab1">
+    <div class="lab-header">
+      <div class="lab-num">01</div>
+      <h3>awaitはthen()の書き換え</h3>
+      <span class="lab-tag tag-basic">基本</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>await expr</code> は <code>expr.then(result =&gt; ...)</code> と同じ。
+        両方を実行して出力が一致することを確認する。
+      </p>
+
+      <div class="code-pair">
+        <div>
+          <div class="code-pair-label async">async/await版</div>
+          <div class="code-block">
+            <pre><span class="kw">async function</span> <span class="fn">fetchData</span>() {
+  <span class="kw">const</span> data = <span class="kw">await</span> Promise.<span class="fn">resolve</span>(<span class="num">100</span>);
+  console.<span class="fn">log</span>(<span class="str">"[await]"</span>, data);
+}
+<span class="fn">fetchData</span>();</pre>
+          </div>
+        </div>
+        <div>
+          <div class="code-pair-label promise">Promise版（等価）</div>
+          <div class="code-block">
+            <pre><span class="kw">function</span> <span class="fn">fetchDataP</span>() {
+  <span class="kw">return</span> Promise.<span class="fn">resolve</span>(<span class="num">100</span>)
+    .<span class="fn">then</span>(data =&gt; {
+      console.<span class="fn">log</span>(<span class="str">"[then]"</span>, data);
+    });
+}
+<span class="fn">fetchDataP</span>();</pre>
+          </div>
+        </div>
+      </div>
+
+      <button class="run-btn" onclick="runLab1()">実行して確認</button>
+      <div class="console-output" id="console1"></div>
+    </div>
+  </div>
+
+  <!-- ==================== Lab 02 ==================== -->
+  <div class="lab" id="lab2">
+    <div class="lab-header">
+      <div class="lab-num">02</div>
+      <h3>逐次処理の等価変換</h3>
+      <span class="lab-tag tag-basic">基本</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        複数の <code>await</code> を連続で書く ＝ <code>.then().then()</code> のチェーン。
+        各ステップの実行順序と値の受け渡しが同一であることを確認する。
+      </p>
+
+      <div class="code-pair">
+        <div>
+          <div class="code-pair-label async">async/await版</div>
+          <div class="code-block">
+            <pre><span class="kw">async function</span> <span class="fn">pipeline</span>() {
+  <span class="kw">const</span> a = <span class="kw">await</span> Promise.<span class="fn">resolve</span>(<span class="num">1</span>);
+  <span class="kw">const</span> b = <span class="kw">await</span> Promise.<span class="fn">resolve</span>(a + <span class="num">10</span>);
+  <span class="kw">const</span> c = <span class="kw">await</span> Promise.<span class="fn">resolve</span>(b * <span class="num">2</span>);
+  <span class="kw">return</span> c; <span class="cm">// 22</span>
+}</pre>
+          </div>
+        </div>
+        <div>
+          <div class="code-pair-label promise">Promise版（等価）</div>
+          <div class="code-block">
+            <pre><span class="kw">function</span> <span class="fn">pipelineP</span>() {
+  <span class="kw">return</span> Promise.<span class="fn">resolve</span>(<span class="num">1</span>)
+    .<span class="fn">then</span>(a =&gt; Promise.<span class="fn">resolve</span>(a + <span class="num">10</span>))
+    .<span class="fn">then</span>(b =&gt; Promise.<span class="fn">resolve</span>(b * <span class="num">2</span>))
+    .<span class="fn">then</span>(c =&gt; c); <span class="cm">// 22</span>
+}</pre>
+          </div>
+        </div>
+      </div>
+
+      <button class="run-btn" onclick="runLab2()">実行して確認</button>
+      <div class="console-output" id="console2"></div>
+    </div>
+  </div>
+
+  <!-- ==================== Lab 03 ==================== -->
+  <div class="lab" id="lab3">
+    <div class="lab-header">
+      <div class="lab-num">03</div>
+      <h3>try/catchとcatch()の同一性</h3>
+      <span class="lab-tag tag-intermediate">中級</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        async関数内の <code>try/catch</code> は <code>.catch()</code> に変換される。
+        同じエラーを両方式でキャッチし、エラーメッセージが一致することを確認する。
+      </p>
+
+      <div class="code-pair">
+        <div>
+          <div class="code-pair-label async">async/await版</div>
+          <div class="code-block">
+            <pre><span class="kw">async function</span> <span class="fn">risky</span>() {
+  <span class="kw">try</span> {
+    <span class="kw">await</span> Promise.<span class="fn">reject</span>(
+      <span class="kw">new</span> <span class="fn">Error</span>(<span class="str">"Boom!"</span>)
+    );
+  } <span class="kw">catch</span> (e) {
+    <span class="kw">return</span> e.message;
+  }
+}</pre>
+          </div>
+        </div>
+        <div>
+          <div class="code-pair-label promise">Promise版（等価）</div>
+          <div class="code-block">
+            <pre><span class="kw">function</span> <span class="fn">riskyP</span>() {
+  <span class="kw">return</span> Promise.<span class="fn">reject</span>(
+    <span class="kw">new</span> <span class="fn">Error</span>(<span class="str">"Boom!"</span>)
+  ).<span class="fn">catch</span>(e =&gt; {
+    <span class="kw">return</span> e.message;
+  });
+}</pre>
+          </div>
+        </div>
+      </div>
+
+      <button class="run-btn" onclick="runLab3()">実行して確認</button>
+      <div class="console-output" id="console3"></div>
+    </div>
+  </div>
+
+  <!-- ==================== Lab 04 ==================== -->
+  <div class="lab" id="lab4">
+    <div class="lab-header">
+      <div class="lab-num">04</div>
+      <h3>並列実行 Promise.all</h3>
+      <span class="lab-tag tag-intermediate">中級</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>await</code> を連続で書くと逐次実行になる。
+        並列にするには <code>Promise.all</code> を使う必要があり、ここは糖衣構文ではカバーしきれない領域。
+        逐次 vs 並列の実行時間差を計測する。
+      </p>
+
+      <div class="code-pair">
+        <div>
+          <div class="code-pair-label" style="color:var(--error)">❌ 逐次（遅い）</div>
+          <div class="code-block">
+            <pre><span class="kw">async function</span> <span class="fn">sequential</span>() {
+  <span class="kw">const</span> a = <span class="kw">await</span> <span class="fn">delay</span>(<span class="num">500</span>);
+  <span class="kw">const</span> b = <span class="kw">await</span> <span class="fn">delay</span>(<span class="num">500</span>);
+  <span class="kw">return</span> [a, b]; <span class="cm">// ~1000ms</span>
+}</pre>
+          </div>
+        </div>
+        <div>
+          <div class="code-pair-label" style="color:var(--success)">✅ 並列（速い）</div>
+          <div class="code-block">
+            <pre><span class="kw">async function</span> <span class="fn">parallel</span>() {
+  <span class="kw">const</span> [a, b] = <span class="kw">await</span> Promise.<span class="fn">all</span>([
+    <span class="fn">delay</span>(<span class="num">500</span>),
+    <span class="fn">delay</span>(<span class="num">500</span>)
+  ]);
+  <span class="kw">return</span> [a, b]; <span class="cm">// ~500ms</span>
+}</pre>
+          </div>
+        </div>
+      </div>
+
+      <button class="run-btn" onclick="runLab4()">実行して確認（約1.5秒）</button>
+      <div class="console-output" id="console4"></div>
+    </div>
+  </div>
+
+  <!-- ==================== Lab 05 ==================== -->
+  <div class="lab" id="lab5">
+    <div class="lab-header">
+      <div class="lab-num">05</div>
+      <h3>戻り値のPromiseチェーン</h3>
+      <span class="lab-tag tag-intermediate">中級</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        async関数の戻り値に対して <code>.then()</code> を繋げられる。
+        これは async 関数が Promise を返す証拠であり、Promise チェーンとの相互運用性を示す。
+      </p>
+
+      <div class="code-block">
+        <div class="code-label">async 戻り値に .then() を接続</div>
+        <pre><span class="kw">async function</span> <span class="fn">getNum</span>() {
+  <span class="kw">return</span> <span class="num">5</span>;
+}
+
+<span class="cm">// async関数の戻り値 = Promise なので .then() が使える</span>
+<span class="fn">getNum</span>()
+  .<span class="fn">then</span>(n =&gt; n * <span class="num">3</span>)
+  .<span class="fn">then</span>(n =&gt; n + <span class="num">1</span>)
+  .<span class="fn">then</span>(n =&gt; console.<span class="fn">log</span>(<span class="str">"結果:"</span>, n)); <span class="cm">// 16</span>
+
+<span class="cm">// 逆に .then() チェーンを await で受けることもできる</span>
+<span class="kw">async function</span> <span class="fn">mixed</span>() {
+  <span class="kw">const</span> val = <span class="kw">await</span> Promise.<span class="fn">resolve</span>(<span class="num">5</span>)
+    .<span class="fn">then</span>(n =&gt; n * <span class="num">3</span>)
+    .<span class="fn">then</span>(n =&gt; n + <span class="num">1</span>);
+  console.<span class="fn">log</span>(<span class="str">"mixed結果:"</span>, val); <span class="cm">// 16</span>
+}</pre>
+      </div>
+
+      <button class="run-btn" onclick="runLab5()">実行して確認</button>
+      <div class="console-output" id="console5"></div>
+    </div>
+  </div>
+
+  <!-- ==================== Lab 06 ==================== -->
+  <div class="lab" id="lab6">
+    <div class="lab-header">
+      <div class="lab-num">06</div>
+      <h3>Babelトランスパイル結果</h3>
+      <span class="lab-tag tag-advanced">上級</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        Babelは <code>async/await</code> をトランスパイルすると Generator + Promise に変換する。
+        この変換結果は「async/awaitが本質的にPromiseである」最も直接的な証拠。
+      </p>
+
+      <div class="code-pair">
+        <div>
+          <div class="code-pair-label async">変換前 (ES2017)</div>
+          <div class="code-block">
+            <pre><span class="kw">async function</span> <span class="fn">fetchUser</span>(id) {
+  <span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">`/api/users/${id}`</span>);
+  <span class="kw">const</span> user = <span class="kw">await</span> res.<span class="fn">json</span>();
+  <span class="kw">return</span> user.name;
+}</pre>
+          </div>
+        </div>
+        <div>
+          <div class="code-pair-label promise">変換後 (ES5 相当・簡略版)</div>
+          <div class="code-block">
+            <pre><span class="kw">function</span> <span class="fn">fetchUser</span>(id) {
+  <span class="kw">return</span> <span class="fn">_asyncToGenerator</span>(
+    <span class="kw">function*</span> () {
+      <span class="kw">const</span> res = <span class="kw">yield</span> <span class="fn">fetch</span>(
+        <span class="str">`/api/users/${id}`</span>
+      );
+      <span class="kw">const</span> user = <span class="kw">yield</span> res.<span class="fn">json</span>();
+      <span class="kw">return</span> user.name;
+    }
+  )();
+}
+
+<span class="cm">// _asyncToGenerator は Generator を
+// Promise チェーンに変換するヘルパー</span></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 _asyncToGenerator の中身（概念）</div>
+        <pre class="ascii-art">
+  async function f() {        function f() {
+    const a = await p1;  →      return new Promise((resolve, reject) =&gt; {
+    const b = await p2;            p1.then(a =&gt; {
+    return b;                        p2.then(b =&gt; {
+  }                                    resolve(b);
+                                     }).catch(reject);
+                                   }).catch(reject);
+                                 });
+                               }
+        </pre>
+        await ごとに .then() のネストが1段深くなる。<br>
+        async/await はこの「ネスト地獄」を平坦に書くための糖衣構文。
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== Lab 07 ==================== -->
+  <div class="lab" id="lab7">
+    <div class="lab-header">
+      <div class="lab-num">07</div>
+      <h3>マイクロタスクの実行順</h3>
+      <span class="lab-tag tag-advanced">上級</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>await</code> と <code>.then()</code> は同じマイクロタスクキューを使う。
+        両者を混在させた時の実行順序が同一であることを観察する。
+      </p>
+
+      <div class="code-block">
+        <div class="code-label">実行順序テスト</div>
+        <pre><span class="cm">// テストA: async/await</span>
+<span class="kw">async function</span> <span class="fn">testA</span>() {
+  console.<span class="fn">log</span>(<span class="str">"A1: 関数開始"</span>);
+  <span class="kw">await</span> Promise.<span class="fn">resolve</span>();
+  console.<span class="fn">log</span>(<span class="str">"A2: await後"</span>);
+}
+
+<span class="cm">// テストB: Promise.then (等価)</span>
+<span class="kw">function</span> <span class="fn">testB</span>() {
+  console.<span class="fn">log</span>(<span class="str">"B1: 関数開始"</span>);
+  <span class="kw">return</span> Promise.<span class="fn">resolve</span>().<span class="fn">then</span>(() =&gt; {
+    console.<span class="fn">log</span>(<span class="str">"B2: then後"</span>);
+  });
+}
+
+console.<span class="fn">log</span>(<span class="str">"1: 開始"</span>);
+<span class="fn">testA</span>();
+console.<span class="fn">log</span>(<span class="str">"2: testA呼出後"</span>);
+<span class="fn">testB</span>();
+console.<span class="fn">log</span>(<span class="str">"3: testB呼出後"</span>);
+<span class="cm">// 出力順: 1 → A1 → 2 → B1 → 3 → A2 → B2</span></pre>
+      </div>
+
+      <button class="run-btn" onclick="runLab7()">実行して確認</button>
+      <div class="console-output" id="console7"></div>
+    </div>
+  </div>
+
+  <!-- ==================== Lab 08 ==================== -->
+  <div class="lab" id="lab8">
+    <div class="lab-header">
+      <div class="lab-num">08</div>
+      <h3>async無しでawait相当を実装</h3>
+      <span class="lab-tag tag-advanced">上級</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>async/await</code> を一切使わず、同じ処理を <code>Promise</code> だけで書き直す。
+        「完全に同じ動作になる」ことが「糖衣構文である」最終的な証明。
+      </p>
+
+      <div class="code-pair">
+        <div>
+          <div class="code-pair-label async">async/await版</div>
+          <div class="code-block">
+            <pre><span class="kw">async function</span> <span class="fn">workflow</span>() {
+  <span class="kw">try</span> {
+    <span class="kw">const</span> userId = <span class="kw">await</span> <span class="fn">getUser</span>();
+    <span class="kw">const</span> posts = <span class="kw">await</span> <span class="fn">getPosts</span>(userId);
+    <span class="kw">const</span> first = posts[<span class="num">0</span>];
+    <span class="kw">const</span> comments = <span class="kw">await</span> <span class="fn">getComments</span>(first);
+    <span class="kw">return</span> { userId, first, comments };
+  } <span class="kw">catch</span> (e) {
+    <span class="kw">return</span> { error: e.message };
+  }
+}</pre>
+          </div>
+        </div>
+        <div>
+          <div class="code-pair-label promise">Promise版（完全等価）</div>
+          <div class="code-block">
+            <pre><span class="kw">function</span> <span class="fn">workflowP</span>() {
+  <span class="kw">return</span> <span class="fn">getUser</span>()
+    .<span class="fn">then</span>(userId =&gt; {
+      <span class="kw">return</span> <span class="fn">getPosts</span>(userId)
+        .<span class="fn">then</span>(posts =&gt; {
+          <span class="kw">const</span> first = posts[<span class="num">0</span>];
+          <span class="kw">return</span> <span class="fn">getComments</span>(first)
+            .<span class="fn">then</span>(comments =&gt;
+              ({ userId, first, comments })
+            );
+        });
+    })
+    .<span class="fn">catch</span>(e =&gt;
+      ({ error: e.message })
+    );
+}</pre>
+          </div>
+        </div>
+      </div>
+
+      <table class="compare-table">
+        <tr>
+          <th>観点</th><th>async/await</th><th>Promise.then</th>
+        </tr>
+        <tr>
+          <td>可読性</td>
+          <td class="yes">✅ 同期コード風</td>
+          <td class="no">❌ ネストが深い</td>
+        </tr>
+        <tr>
+          <td>エラー処理</td>
+          <td class="yes">✅ try/catch</td>
+          <td>⚠️ .catch() の位置注意</td>
+        </tr>
+        <tr>
+          <td>デバッグ</td>
+          <td class="yes">✅ スタックトレース明確</td>
+          <td class="no">❌ 匿名関数の連鎖</td>
+        </tr>
+        <tr>
+          <td>実行結果</td>
+          <td colspan="2" style="text-align:center; color:var(--accent); font-weight:600;">完全に同一</td>
+        </tr>
+      </table>
+
+      <button class="run-btn" onclick="runLab8()">実行して確認</button>
+      <div class="console-output" id="console8"></div>
+    </div>
+  </div>
+
+</div><!-- /.container -->
+
+<script>
+  // ===== Utility =====
+  function clog(targetId, msg, cls = '') {
+    const el = document.getElementById(targetId);
+    const time = new Date().toLocaleTimeString('ja-JP', { hour12: false, hour:'2-digit', minute:'2-digit', second:'2-digit', fractionalSecondDigits:3 });
+    const span = document.createElement('span');
+    span.innerHTML = `<span class="log-time">[${time}]</span> <span class="${cls}">${msg}</span>\n`;
+    el.appendChild(span);
+    el.scrollTop = el.scrollHeight;
+  }
+  function clearConsole(id) { document.getElementById(id).innerHTML = ''; }
+
+  // ===== Lab 00 =====
+  function runLab0() {
+    clearConsole('console0');
+    async function greet() { return "Hello"; }
+    function greetP() { return Promise.resolve("Hello"); }
+
+    const r1 = greet();
+    const r2 = greetP();
+    clog('console0', `greet() instanceof Promise → ${r1 instanceof Promise}`, 'log-ok');
+    clog('console0', `greetP() instanceof Promise → ${r2 instanceof Promise}`, 'log-ok');
+    clog('console0', `typeof greet() → ${typeof r1}`, '');
+    clog('console0', `typeof greetP() → ${typeof r2}`, '');
+
+    Promise.all([r1, r2]).then(([v1, v2]) => {
+      clog('console0', `greet() resolved → "${v1}"`, 'log-ok');
+      clog('console0', `greetP() resolved → "${v2}"`, 'log-ok');
+      clog('console0', `両者一致: ${v1 === v2}`, v1 === v2 ? 'log-ok' : 'log-err');
+      clog('console0', '─── 結論: async function の return は Promise.resolve() と等価 ───', 'log-dim');
+    });
+  }
+
+  // ===== Lab 01 =====
+  function runLab1() {
+    clearConsole('console1');
+    const results = [];
+
+    async function fetchData() {
+      const data = await Promise.resolve(100);
+      results.push({ label: '[await]', value: data });
+      clog('console1', `[await] data = ${data}`, 'log-ok');
+    }
+    function fetchDataP() {
+      return Promise.resolve(100).then(data => {
+        results.push({ label: '[then]', value: data });
+        clog('console1', `[then]  data = ${data}`, 'log-ok');
+      });
+    }
+
+    Promise.all([fetchData(), fetchDataP()]).then(() => {
+      const match = results[0].value === results[1].value;
+      clog('console1', `値の一致: ${match}`, match ? 'log-ok' : 'log-err');
+      clog('console1', '─── 結論: await expr === expr.then(result => ...) ───', 'log-dim');
+    });
+  }
+
+  // ===== Lab 02 =====
+  function runLab2() {
+    clearConsole('console2');
+    async function pipeline() {
+      const a = await Promise.resolve(1);
+      clog('console2', `[await] step1: a = ${a}`, '');
+      const b = await Promise.resolve(a + 10);
+      clog('console2', `[await] step2: b = ${b}`, '');
+      const c = await Promise.resolve(b * 2);
+      clog('console2', `[await] step3: c = ${c}`, 'log-ok');
+      return c;
+    }
+    function pipelineP() {
+      return Promise.resolve(1)
+        .then(a => { clog('console2', `[then]  step1: a = ${a}`, ''); return Promise.resolve(a + 10); })
+        .then(b => { clog('console2', `[then]  step2: b = ${b}`, ''); return Promise.resolve(b * 2); })
+        .then(c => { clog('console2', `[then]  step3: c = ${c}`, 'log-ok'); return c; });
+    }
+
+    pipeline().then(r1 => {
+      pipelineP().then(r2 => {
+        clog('console2', `async版: ${r1}, Promise版: ${r2}, 一致: ${r1 === r2}`, r1 === r2 ? 'log-ok' : 'log-err');
+        clog('console2', '─── 結論: 逐次 await = .then().then() チェーン ───', 'log-dim');
+      });
+    });
+  }
+
+  // ===== Lab 03 =====
+  function runLab3() {
+    clearConsole('console3');
+    async function risky() {
+      try {
+        await Promise.reject(new Error("Boom!"));
+      } catch (e) {
+        clog('console3', `[try/catch] caught: "${e.message}"`, 'log-warn');
+        return e.message;
+      }
+    }
+    function riskyP() {
+      return Promise.reject(new Error("Boom!")).catch(e => {
+        clog('console3', `[.catch()] caught: "${e.message}"`, 'log-warn');
+        return e.message;
+      });
+    }
+
+    Promise.all([risky(), riskyP()]).then(([r1, r2]) => {
+      clog('console3', `try/catch結果: "${r1}"`, '');
+      clog('console3', `.catch()結果: "${r2}"`, '');
+      clog('console3', `一致: ${r1 === r2}`, r1 === r2 ? 'log-ok' : 'log-err');
+      clog('console3', '─── 結論: try/catch === .catch() ───', 'log-dim');
+    });
+  }
+
+  // ===== Lab 04 =====
+  function runLab4() {
+    clearConsole('console4');
+    function delay(ms) { return new Promise(r => setTimeout(() => r(ms), ms)); }
+
+    clog('console4', '逐次実行を開始...', 'log-warn');
+    const t0 = performance.now();
+
+    (async () => {
+      const a = await delay(500);
+      const b = await delay(500);
+      const seqTime = Math.round(performance.now() - t0);
+      clog('console4', `逐次完了: [${a}, ${b}] → ${seqTime}ms`, 'log-err');
+
+      clog('console4', '並列実行を開始...', 'log-warn');
+      const t1 = performance.now();
+      const [c, d] = await Promise.all([delay(500), delay(500)]);
+      const parTime = Math.round(performance.now() - t1);
+      clog('console4', `並列完了: [${c}, ${d}] → ${parTime}ms`, 'log-ok');
+
+      clog('console4', `速度差: 逐次 ${seqTime}ms vs 並列 ${parTime}ms`, '');
+      clog('console4', '─── 結論: await連続=逐次。並列にはPromise.allが必要 ───', 'log-dim');
+    })();
+  }
+
+  // ===== Lab 05 =====
+  function runLab5() {
+    clearConsole('console5');
+
+    async function getNum() { return 5; }
+
+    // async戻り値に .then() を繋げる
+    getNum()
+      .then(n => n * 3)
+      .then(n => n + 1)
+      .then(n => {
+        clog('console5', `getNum().then(n=>n*3).then(n=>n+1) = ${n}`, 'log-ok');
+      });
+
+    // .then() チェーンを await で受ける
+    (async () => {
+      const val = await Promise.resolve(5)
+        .then(n => n * 3)
+        .then(n => n + 1);
+      clog('console5', `await Promise.resolve(5).then(n=>n*3).then(n=>n+1) = ${val}`, 'log-ok');
+      clog('console5', '─── 結論: async戻り値はPromiseなので.then()と相互運用可能 ───', 'log-dim');
+    })();
+  }
+
+  // ===== Lab 07 =====
+  function runLab7() {
+    clearConsole('console7');
+    const order = [];
+
+    async function testA() {
+      order.push('A1'); clog('console7', 'A1: 関数開始（同期部分）', '');
+      await Promise.resolve();
+      order.push('A2'); clog('console7', 'A2: await後（マイクロタスク）', 'log-ok');
+    }
+    function testB() {
+      order.push('B1'); clog('console7', 'B1: 関数開始（同期部分）', '');
+      return Promise.resolve().then(() => {
+        order.push('B2'); clog('console7', 'B2: then後（マイクロタスク）', 'log-ok');
+      });
+    }
+
+    order.push('1'); clog('console7', '1: 開始', '');
+    const pA = testA();
+    order.push('2'); clog('console7', '2: testA呼出後（同期）', '');
+    const pB = testB();
+    order.push('3'); clog('console7', '3: testB呼出後（同期）', '');
+
+    Promise.all([pA, pB]).then(() => {
+      clog('console7', `実行順: ${order.join(' → ')}`, 'log-warn');
+      clog('console7', '─── 結論: await も .then() も同じマイクロタスクキュー ───', 'log-dim');
+    });
+  }
+
+  // ===== Lab 08 =====
+  function runLab8() {
+    clearConsole('console8');
+
+    // Mock API functions
+    function getUser() { return Promise.resolve(42); }
+    function getPosts(userId) { return Promise.resolve([{id:1, title:"Post A"}, {id:2, title:"Post B"}]); }
+    function getComments(post) { return Promise.resolve(["Nice!", "Great post!"]); }
+
+    // async/await版
+    async function workflow() {
+      try {
+        const userId = await getUser();
+        const posts = await getPosts(userId);
+        const first = posts[0];
+        const comments = await getComments(first);
+        return { userId, first, comments };
+      } catch (e) {
+        return { error: e.message };
+      }
+    }
+
+    // Promise版
+    function workflowP() {
+      return getUser()
+        .then(userId => {
+          return getPosts(userId)
+            .then(posts => {
+              const first = posts[0];
+              return getComments(first)
+                .then(comments => ({ userId, first, comments }));
+            });
+        })
+        .catch(e => ({ error: e.message }));
+    }
+
+    Promise.all([workflow(), workflowP()]).then(([r1, r2]) => {
+      clog('console8', `[async/await] userId=${r1.userId}, post="${r1.first.title}", comments=[${r1.comments}]`, 'log-ok');
+      clog('console8', `[Promise]     userId=${r2.userId}, post="${r2.first.title}", comments=[${r2.comments}]`, 'log-ok');
+
+      const match = JSON.stringify(r1) === JSON.stringify(r2);
+      clog('console8', `結果完全一致: ${match}`, match ? 'log-ok' : 'log-err');
+      clog('console8', '─── 最終結論: async/await は Promise の糖衣構文（シンタックスシュガー）である ───', 'log-dim');
+    });
+  }
+
+  // ===== Copy code & Sidebar =====
+  function copyCode(btn) {
+    const block = btn.closest('.code-block') || btn.parentElement;
+    const pre = block.querySelector('pre');
+    if (!pre) return;
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    });
+  }
+
+  const LAB_META = {
+    lab0: {
+      info: { type:'info', html:'📘 <strong>核心</strong>: <code>async function</code> は必ず Promise を返す。<code>return 値</code> は <code>Promise.resolve(値)</code> と等価。' },
+      check: ['① コンソールで <code>instanceof Promise</code> が <code>true</code> を確認','② <code>typeof</code> が <code>object</code>（Promiseオブジェクト）であることを確認','③ resolved値が両方 <code>"Hello"</code> で一致することを確認']
+    },
+    lab1: {
+      info: { type:'info', html:'📘 <code>await</code> は「Promiseの解決値を取り出す」演算子。<code>.then(callback)</code> の callback 引数と同じ値が得られる。' },
+      check: ['① 両方とも <code>100</code> が出力されることを確認','② <code>値の一致: true</code> が表示されることを確認','③ 実行タイミングが両方ともマイクロタスクであることを確認']
+    },
+    lab2: {
+      info: { type:'ok', html:'✅ <strong>パターン</strong>: 複数の <code>await</code> の連続 = <code>.then().then()</code> のチェーン。値が順番に受け渡されることが一致の証拠。' },
+      check: ['① step1→step2→step3 の順序が両方で同一であることを確認','② 最終値が両方とも <code>22</code> であることを確認','③ 中間値 (1 → 11 → 22) の計算過程が一致することを確認']
+    },
+    lab3: {
+      info: { type:'warn', html:'⚠️ <strong>注意</strong>: <code>.catch()</code> の位置でキャッチ範囲が変わる。<code>try/catch</code> はスコープが明確で安全。' },
+      verify: { before:'Promise.reject で例外発生', after:'▶︎ 両方式とも <code>"Boom!"</code> をキャッチし、同じ値を返す' },
+      check: ['① 両方のエラーメッセージが <code>"Boom!"</code> で一致','② Unhandled Rejection がコンソールに出ていないことを確認','③ <code>一致: true</code> が表示されることを確認']
+    },
+    lab4: {
+      info: { type:'err', html:'🚫 <strong>罠</strong>: <code>await A; await B;</code> は逐次実行（A完了後にB開始）。並列にするには <code>Promise.all([A, B])</code> が必須。これは糖衣構文がカバーしない領域。' },
+      check: ['① 逐次が約1000ms、並列が約500msであることを確認','② 速度差が約2倍であることを確認','③ 結果値 [500, 500] は両方とも同一であることを確認']
+    },
+    lab5: {
+      info: { type:'ok', html:'✅ async関数の戻り値はPromiseなので、<code>.then()</code> で後続処理を繋げられる。逆に <code>.then()</code> チェーンを <code>await</code> で受けることもできる。' },
+      check: ['① 両方の結果が <code>16</code>（5×3+1）であることを確認','② async → .then() と Promise → await の相互運用を確認']
+    },
+    lab6: {
+      info: { type:'info', html:'📘 <strong>Babelの証明</strong>: トランスパイラは <code>async/await</code> を Generator + Promise に機械的に変換する。変換後も動作が同一であることが「糖衣構文」の定義そのもの。' },
+      check: ['① Babel REPL (<a href="https://babeljs.io/repl" target="_blank" style="color:var(--accent)">babeljs.io/repl</a>) で実際にコードを貼って変換結果を確認','② <code>_asyncToGenerator</code> ヘルパーが生成されていることを確認','③ <code>yield</code> が <code>await</code> に対応していることを確認']
+    },
+    lab7: {
+      info: { type:'warn', html:'⚠️ <code>await</code> 以降のコードはマイクロタスクとして遅延実行される。これは <code>.then()</code> のコールバックと全く同じタイミング。' },
+      check: ['① 実行順が <code>1 → A1 → 2 → B1 → 3 → A2 → B2</code> であることを確認','② 同期コード (1,A1,2,B1,3) が先に全て実行されることを確認','③ マイクロタスク (A2,B2) が同期コード完了後に実行されることを確認']
+    },
+    lab8: {
+      info: { type:'ok', html:'✅ <strong>最終証明</strong>: async/awaitを一切使わず、Promiseだけで完全に同じ動作を再現できた。機能的に等価 ＝ 糖衣構文の定義を満たす。' },
+      verify: { before:'async/await版: 直感的で読みやすい', after:'▶︎ Promise版: ネストが深いが結果は完全に同一' },
+      check: ['① 両方の出力が完全一致することを確認','② userId, post, comments の各値が同一であることを確認','③ <code>JSON.stringify</code> 比較で <code>true</code> が返ることを確認']
+    }
+  };
+
+  function infoHTML(m){ return m?.info ? `<div class="info-box ${m.info.type||'info'}">${m.info.html}</div>` : ''; }
+  function verifyHTML(m){ if (!m?.verify) return '';
+    const {before, after} = m.verify;
+    return `<div class="verify">
+      <div class="verify-col verify-before"><div class="verify-label">Before ▶︎ 実行前</div>${before||''}</div>
+      <div class="verify-col verify-after"><div class="verify-label">After ▶︎ 実行後</div>${after||''}</div>
+    </div>`; }
+  function checkHTML(m){ if (!m?.check?.length) return '';
+    return `<div class="check-steps">
+      <div class="check-steps-title">🔍 ブラウザ実機チェック</div>
+      <ol>${m.check.map(s=>`<li>${s}</li>`).join('')}</ol>
+    </div>`; }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // 各ラボに info + verify + check を自動挿入
+    document.querySelectorAll('.lab').forEach(lab => {
+      const meta = LAB_META[lab.id]; const body = lab.querySelector('.lab-body');
+      if (!body || !meta) return;
+      const frag = document.createElement('div');
+      frag.innerHTML = infoHTML(meta) + verifyHTML(meta) + checkHTML(meta);
+      while (frag.firstChild) body.appendChild(frag.firstChild);
+    });
+
+    // サイドバー active ハイライト
+    const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+    const map = new Map();
+    links.forEach(a => { const el = document.getElementById(a.getAttribute('href').slice(1)); if (el) map.set(el, a); });
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting) { const l = map.get(e.target);
+        if (l) { links.forEach(n=>n.classList.remove('active')); l.classList.add('active'); } }
+    }), { rootMargin:'-30% 0px -60% 0px' });
+    document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+    // 既存 .code-block に header + Copy を自動付与
+    document.querySelectorAll('.code-block').forEach((cb, i) => {
+      if (cb.querySelector('.code-block-header')) return;
+      const existing = cb.querySelector('.code-label');
+      const labelText = existing ? existing.textContent.trim() : `Code #${i+1}`;
+      if (existing) existing.remove();
+      const header = document.createElement('div');
+      header.className = 'code-block-header';
+      header.innerHTML = `<span>${labelText}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+      cb.insertBefore(header, cb.firstChild);
+    });
+  });
+</script>
+
+</body>
+</html>

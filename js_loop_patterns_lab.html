@@ -1,0 +1,1489 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JavaScript ループ処理 完全Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+/* Sidebar */
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+/* Hero */
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+/* TOC */
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+/* Container & Lab cards */
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+/* Code block */
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+/* Run button & console output */
+.run-btn { display:inline-flex; align-items:center; gap:6px;
+  background:var(--accent); color:#fff; border:none; font-family:var(--mono);
+  font-size:.78rem; padding:7px 16px; border-radius:6px; cursor:pointer;
+  transition:background .15s; margin:8px 0 4px; }
+.run-btn:hover { background:#004aa0; }
+.run-btn::before { content:'▶'; font-size:.7rem; }
+.console-output { background:#1e1e2e; color:#a6e3a1; font-family:var(--mono);
+  font-size:.78rem; line-height:1.7; padding:12px 16px; border-radius:8px;
+  margin:8px 0 4px; max-height:260px; overflow-y:auto; min-height:36px;
+  border:1px solid #313244; white-space:pre-wrap; word-break:break-all; }
+.console-output:empty::before { content:'// ▶ ボタンを押すと結果が表示されます';
+  color:#585b70; font-style:italic; }
+.console-output .log-line { color:#a6e3a1; }
+.console-output .log-warn { color:#f9e2af; }
+.console-output .log-error { color:#f38ba8; }
+.console-output .log-sep { color:#585b70; }
+
+/* Syntax token colors (GitHub light) */
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+
+/* info-box */
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+/* verify Before / After */
+.verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+  line-height:1.7; border:1px solid; }
+.verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+.verify-before .verify-label { color:var(--error); }
+.verify-after  .verify-label { color:var(--success); }
+
+/* check-steps */
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+/* compare-table */
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+.compare-table .yes { color:var(--success); font-weight:600; }
+.compare-table .no { color:var(--error); font-weight:600; }
+
+/* beginner-box */
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+/* Responsive */
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .verify { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+  </style>
+</head>
+<body>
+
+<!-- ==================== SIDEBAR ==================== -->
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// JS Loop Lab</div>
+  <div class="nav-section">基本ループ</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>for 文（カウンタ型）</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>while 文</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>do...while 文</a>
+  <div class="nav-section">オブジェクト / 配列</div>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>for...in（プロパティ列挙）</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>for...of（イテラブル）</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>forEach（配列メソッド）</a>
+  <div class="nav-section">配列メソッド系</div>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>map（変換）</a>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>filter（抽出）</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>reduce（集約）</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>some / every（判定）</a>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>find / findIndex（検索）</a>
+  <a class="nav-item" href="#lab11"><span class="nav-num">11</span>flatMap（展開＋変換）</a>
+  <div class="nav-section">応用パターン</div>
+  <a class="nav-item" href="#lab12"><span class="nav-num">12</span>entries / keys / values</a>
+  <a class="nav-item" href="#lab13"><span class="nav-num">13</span>Map / Set の反復</a>
+  <a class="nav-item" href="#lab14"><span class="nav-num">14</span>ジェネレータと for...of</a>
+  <a class="nav-item" href="#lab15"><span class="nav-num">15</span>for await...of（非同期）</a>
+  <a class="nav-item" href="#lab16"><span class="nav-num">16</span>再帰によるループ代替</a>
+  <div class="nav-section">まとめ</div>
+  <a class="nav-item" href="#lab17"><span class="nav-num">17</span>全パターン比較表</a>
+</nav>
+
+<!-- ==================== HERO ==================== -->
+<div class="hero">
+  <h1>JavaScript ループ処理 完全Lab</h1>
+  <p class="subtitle">for / while / for...in / for...of / forEach / map / reduce ― 全18パターンを実行して違いを体感する</p>
+</div>
+
+<!-- ==================== TOC ==================== -->
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>for 文（カウンタ型）</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>while 文</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>do...while 文</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>for...in（プロパティ列挙）</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>for...of（イテラブル）</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>forEach（配列メソッド）</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>map（変換）</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>filter（抽出）</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>reduce（集約）</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>some / every（判定）</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">10</span>find / findIndex（検索）</a>
+    <a class="toc-item" href="#lab11"><span class="toc-num">11</span>flatMap（展開＋変換）</a>
+    <a class="toc-item" href="#lab12"><span class="toc-num">12</span>entries / keys / values</a>
+    <a class="toc-item" href="#lab13"><span class="toc-num">13</span>Map / Set の反復</a>
+    <a class="toc-item" href="#lab14"><span class="toc-num">14</span>ジェネレータと for...of</a>
+    <a class="toc-item" href="#lab15"><span class="toc-num">15</span>for await...of（非同期）</a>
+    <a class="toc-item" href="#lab16"><span class="toc-num">16</span>再帰によるループ代替</a>
+    <a class="toc-item" href="#lab17"><span class="toc-num">17</span>全パターン比較表</a>
+  </div>
+</div>
+
+<!-- ==================== LABS ==================== -->
+<div class="container">
+
+<!-- ===== LAB 00 : for 文 ===== -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>for 文（カウンタ型）</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      最も基本的なループ。<code>初期化; 条件; 更新</code> の3式で制御する。
+      <code>break</code> / <code>continue</code> / ラベル付きジャンプがすべて使える。
+    </p>
+    <div class="code-block">
+      <div class="code-label">JavaScript</div>
+      <pre><span class="cm">// 基本: 0〜4 を出力</span>
+<span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i &lt; <span class="num">5</span>; i++) {
+  console.log(<span class="str">`i = ${i}`</span>);
+}
+
+<span class="cm">// 逆順ループ</span>
+<span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">4</span>; i &gt;= <span class="num">0</span>; i--) {
+  console.log(<span class="str">`逆順: ${i}`</span>);
+}
+
+<span class="cm">// break でループ脱出</span>
+<span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i &lt; <span class="num">10</span>; i++) {
+  <span class="kw">if</span> (i === <span class="num">3</span>) <span class="kw">break</span>;
+  console.log(<span class="str">`break前: ${i}`</span>);
+}
+
+<span class="cm">// continue で偶数スキップ</span>
+<span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i &lt; <span class="num">6</span>; i++) {
+  <span class="kw">if</span> (i % <span class="num">2</span> === <span class="num">0</span>) <span class="kw">continue</span>;
+  console.log(<span class="str">`奇数のみ: ${i}`</span>);
+}</pre>
+    </div>
+    <button class="run-btn" onclick="runLab('lab0')">実行</button>
+    <div class="console-output" id="out-lab0"></div>
+  </div>
+</div>
+
+<!-- ===== LAB 01 : while 文 ===== -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>while 文</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      条件が <code>true</code> の間ループし続ける。条件が最初から偽なら1度も実行されない。
+      カウンタ更新を忘れると<strong>無限ループ</strong>になるので要注意。
+    </p>
+    <div class="code-block">
+      <div class="code-label">JavaScript</div>
+      <pre><span class="kw">let</span> count = <span class="num">0</span>;
+<span class="kw">while</span> (count &lt; <span class="num">5</span>) {
+  console.log(<span class="str">`count = ${count}`</span>);
+  count++;
+}
+
+<span class="cm">// 条件が最初から偽 → 実行されない</span>
+<span class="kw">let</span> x = <span class="num">10</span>;
+<span class="kw">while</span> (x &lt; <span class="num">5</span>) {
+  console.log(<span class="str">'これは出力されない'</span>);
+  x++;
+}
+console.log(<span class="str">`while終了後 x = ${x}`</span>);</pre>
+    </div>
+    <button class="run-btn" onclick="runLab('lab1')">実行</button>
+    <div class="console-output" id="out-lab1"></div>
+  </div>
+</div>
+
+<!-- ===== LAB 02 : do...while ===== -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>do...while 文</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>while</code> と異なり、<strong>最低1回は必ず実行</strong>される。条件判定がループ末尾にある後判定ループ。
+    </p>
+    <div class="code-block">
+      <div class="code-label">JavaScript</div>
+      <pre><span class="cm">// 条件が偽でも1回は実行される</span>
+<span class="kw">let</span> n = <span class="num">10</span>;
+<span class="kw">do</span> {
+  console.log(<span class="str">`do...while: n = ${n}`</span>);
+  n++;
+} <span class="kw">while</span> (n &lt; <span class="num">5</span>);
+
+console.log(<span class="str">`→ 最終 n = ${n} (1回だけ実行された)`</span>);
+
+<span class="cm">// 通常の繰返し</span>
+<span class="kw">let</span> m = <span class="num">0</span>;
+<span class="kw">do</span> {
+  console.log(<span class="str">`ループ中: m = ${m}`</span>);
+  m++;
+} <span class="kw">while</span> (m &lt; <span class="num">3</span>);</pre>
+    </div>
+    <button class="run-btn" onclick="runLab('lab2')">実行</button>
+    <div class="console-output" id="out-lab2"></div>
+  </div>
+</div>
+
+<!-- ===== LAB 03 : for...in ===== -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>for...in（プロパティ列挙）</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      オブジェクトの<strong>列挙可能なプロパティ名（キー）</strong>を反復する。
+      プロトタイプチェーン上のプロパティも列挙されるため、<code>hasOwnProperty</code> でのガードが推奨。
+      配列には使わないのがベストプラクティス（インデックスが文字列で返り、順序が保証されない場合がある）。
+    </p>
+    <div class="code-block">
+      <div class="code-label">JavaScript</div>
+      <pre><span class="kw">const</span> user = { name: <span class="str">'Tom'</span>, age: <span class="num">40</span>, city: <span class="str">'Osaka'</span> };
+
+<span class="cm">// キーを列挙</span>
+<span class="kw">for</span> (<span class="kw">const</span> key <span class="kw">in</span> user) {
+  console.log(<span class="str">`${key}: ${user[key]}`</span>);
+}
+
+<span class="cm">// ⚠ 配列に for...in → インデックスが「文字列」</span>
+<span class="kw">const</span> arr = [<span class="str">'a'</span>, <span class="str">'b'</span>, <span class="str">'c'</span>];
+<span class="kw">for</span> (<span class="kw">const</span> idx <span class="kw">in</span> arr) {
+  console.log(<span class="str">`idx="${idx}" (型: ${typeof idx})`</span>);
+}
+
+<span class="cm">// hasOwnProperty でプロトタイプ除外</span>
+<span class="kw">function</span> <span class="fn">Animal</span>(name) { <span class="kw">this</span>.name = name; }
+Animal.prototype.legs = <span class="num">4</span>;
+<span class="kw">const</span> dog = <span class="kw">new</span> <span class="fn">Animal</span>(<span class="str">'Pochi'</span>);
+
+<span class="kw">for</span> (<span class="kw">const</span> key <span class="kw">in</span> dog) {
+  <span class="kw">const</span> own = dog.hasOwnProperty(key) ? <span class="str">'own'</span> : <span class="str">'prototype'</span>;
+  console.log(<span class="str">`${key} = ${dog[key]} [${own}]`</span>);
+}</pre>
+    </div>
+    <button class="run-btn" onclick="runLab('lab3')">実行</button>
+    <div class="console-output" id="out-lab3"></div>
+  </div>
+</div>
+
+<!-- ===== LAB 04 : for...of ===== -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>for...of（イテラブル反復）</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>Symbol.iterator</code> を持つイテラブル（配列、文字列、Map、Set、NodeList 等）の<strong>値</strong>を反復。
+      <code>for...in</code> と違い、キーではなく値が返る。<code>break</code> / <code>continue</code> が使える。
+    </p>
+    <div class="code-block">
+      <div class="code-label">JavaScript</div>
+      <pre><span class="cm">// 配列の値を反復</span>
+<span class="kw">const</span> fruits = [<span class="str">'🍎'</span>, <span class="str">'🍌'</span>, <span class="str">'🍇'</span>];
+<span class="kw">for</span> (<span class="kw">const</span> fruit <span class="kw">of</span> fruits) {
+  console.log(fruit);
+}
+
+<span class="cm">// 文字列の文字を反復（サロゲートペア安全）</span>
+<span class="kw">for</span> (<span class="kw">const</span> ch <span class="kw">of</span> <span class="str">'大阪🏯'</span>) {
+  console.log(ch);
+}
+
+<span class="cm">// break で途中脱出</span>
+<span class="kw">for</span> (<span class="kw">const</span> n <span class="kw">of</span> [<span class="num">10</span>, <span class="num">20</span>, <span class="num">30</span>, <span class="num">40</span>]) {
+  <span class="kw">if</span> (n &gt; <span class="num">25</span>) <span class="kw">break</span>;
+  console.log(<span class="str">`値: ${n}`</span>);
+}
+
+<span class="cm">// ⚠ 普通のオブジェクトは iterable ではない → エラー</span>
+<span class="cm">// for (const v of {a:1}) {} // TypeError!</span>
+console.log(<span class="str">'※ 普通のオブジェクトは for...of 不可（TypeError）'</span>);</pre>
+    </div>
+    <button class="run-btn" onclick="runLab('lab4')">実行</button>
+    <div class="console-output" id="out-lab4"></div>
+  </div>
+</div>
+
+<!-- ===== LAB 05 : forEach ===== -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>forEach（配列メソッド）</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>Array.prototype.forEach</code> はコールバック関数を各要素に適用する。
+      <strong>break / continue は使えない</strong>。<code>return</code> は現在の反復をスキップするだけ（ループ全体は止まらない）。
+      戻り値は常に <code>undefined</code>。
+    </p>
+    <div class="code-block">
+      <div class="code-label">JavaScript</div>
+      <pre><span class="kw">const</span> colors = [<span class="str">'red'</span>, <span class="str">'green'</span>, <span class="str">'blue'</span>];
+
+<span class="cm">// 基本: (要素, インデックス, 配列本体)</span>
+colors.<span class="fn">forEach</span>((color, i, arr) =&gt; {
+  console.log(<span class="str">`[${i}] ${color}  (配列長: ${arr.length})`</span>);
+});
+
+<span class="cm">// return は continue 相当（ループは止まらない）</span>
+[<span class="num">1</span>,<span class="num">2</span>,<span class="num">3</span>,<span class="num">4</span>,<span class="num">5</span>].<span class="fn">forEach</span>(n =&gt; {
+  <span class="kw">if</span> (n === <span class="num">3</span>) <span class="kw">return</span>; <span class="cm">// 3 だけスキップ</span>
+  console.log(<span class="str">`n = ${n}`</span>);
+});
+
+<span class="cm">// ⚠ break は使えない（構文エラー）</span>
+console.log(<span class="str">'※ forEach 内で break は SyntaxError'</span>);
+
+<span class="cm">// 戻り値は undefined</span>
+<span class="kw">const</span> result = [<span class="num">1</span>,<span class="num">2</span>].<span class="fn">forEach</span>(x =&gt; x * <span class="num">2</span>);
+console.log(<span class="str">`forEach戻り値: ${result}`</span>);</pre>
+    </div>
+    <button class="run-btn" onclick="runLab('lab5')">実行</button>
+    <div class="console-output" id="out-lab5"></div>
+  </div>
+</div>
+
+<!-- ===== LAB 06 : map ===== -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>map（変換して新配列を返す）</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      各要素にコールバックを適用し、<strong>戻り値で新しい配列を生成</strong>する。
+      元の配列は変更しない（非破壊）。<code>forEach</code> との最大の違いは「戻り値がある」こと。
+    </p>
+    <div class="code-block">
+      <div class="code-label">JavaScript</div>
+      <pre><span class="kw">const</span> nums = [<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>, <span class="num">4</span>];
+
+<span class="cm">// 2倍にした新配列</span>
+<span class="kw">const</span> doubled = nums.<span class="fn">map</span>(n =&gt; n * <span class="num">2</span>);
+console.log(<span class="str">'元配列:'</span>, nums);
+console.log(<span class="str">'map結果:'</span>, doubled);
+
+<span class="cm">// オブジェクト配列の変換</span>
+<span class="kw">const</span> users = [
+  { name: <span class="str">'Alice'</span>, score: <span class="num">80</span> },
+  { name: <span class="str">'Bob'</span>,   score: <span class="num">95</span> },
+];
+<span class="kw">const</span> names = users.<span class="fn">map</span>(u =&gt; u.name);
+console.log(<span class="str">'名前だけ抽出:'</span>, names);
+
+<span class="cm">// インデックスも使える</span>
+<span class="kw">const</span> indexed = [<span class="str">'a'</span>,<span class="str">'b'</span>,<span class="str">'c'</span>].<span class="fn">map</span>((v, i) =&gt; <span class="str">`${i}:${v}`</span>);
+console.log(indexed);</pre>
+    </div>
+    <button class="run-btn" onclick="runLab('lab6')">実行</button>
+    <div class="console-output" id="out-lab6"></div>
+  </div>
+</div>
+
+<!-- ===== LAB 07 : filter ===== -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>filter（条件で抽出）</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      コールバックが <code>true</code> を返す要素だけを集めた<strong>新しい配列</strong>を返す。
+      元の配列は変更されない。条件に合う要素がなければ空配列 <code>[]</code>。
+    </p>
+    <div class="code-block">
+      <div class="code-label">JavaScript</div>
+      <pre><span class="kw">const</span> scores = [<span class="num">45</span>, <span class="num">82</span>, <span class="num">73</span>, <span class="num">91</span>, <span class="num">58</span>, <span class="num">66</span>];
+
+<span class="cm">// 70以上を抽出</span>
+<span class="kw">const</span> passed = scores.<span class="fn">filter</span>(s =&gt; s &gt;= <span class="num">70</span>);
+console.log(<span class="str">'合格者:'</span>, passed);
+
+<span class="cm">// 条件不一致 → 空配列</span>
+<span class="kw">const</span> perfect = scores.<span class="fn">filter</span>(s =&gt; s === <span class="num">100</span>);
+console.log(<span class="str">'満点者:'</span>, perfect);
+
+<span class="cm">// falsy 除去テクニック</span>
+<span class="kw">const</span> mixed = [<span class="num">0</span>, <span class="str">''</span>, <span class="kw">null</span>, <span class="str">'hello'</span>, <span class="kw">undefined</span>, <span class="num">42</span>, <span class="kw">false</span>];
+<span class="kw">const</span> truthy = mixed.<span class="fn">filter</span>(Boolean);
+console.log(<span class="str">'truthy のみ:'</span>, truthy);</pre>
+    </div>
+    <button class="run-btn" onclick="runLab('lab7')">実行</button>
+    <div class="console-output" id="out-lab7"></div>
+  </div>
+</div>
+
+<!-- ===== LAB 08 : reduce ===== -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>reduce（集約・畳み込み）</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      配列を<strong>単一の値に集約</strong>する。アキュムレータ（累積値）と現在の要素を受け取り、最終結果を返す。
+      初期値を省略すると先頭要素が初期値になるが、空配列で TypeError が出るため<strong>常に初期値を渡す</strong>のが安全。
+    </p>
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 reduce のデータフロー</div>
+      <pre class="ascii-art">
+  初期値: 0
+    ↓
+  [10, 20, 30]
+    │
+    ├─ acc=0,  cur=10  → return 10
+    ├─ acc=10, cur=20  → return 30
+    └─ acc=30, cur=30  → return 60  ← 最終結果
+      </pre>
+    </div>
+    <div class="code-block">
+      <div class="code-label">JavaScript</div>
+      <pre><span class="cm">// 合計</span>
+<span class="kw">const</span> sum = [<span class="num">10</span>, <span class="num">20</span>, <span class="num">30</span>].<span class="fn">reduce</span>((acc, cur) =&gt; {
+  console.log(<span class="str">`  acc=${acc}, cur=${cur}`</span>);
+  <span class="kw">return</span> acc + cur;
+}, <span class="num">0</span>);
+console.log(<span class="str">`合計: ${sum}`</span>);
+
+<span class="cm">// オブジェクトへの集約（グルーピング）</span>
+<span class="kw">const</span> items = [<span class="str">'apple'</span>,<span class="str">'banana'</span>,<span class="str">'apple'</span>,<span class="str">'cherry'</span>,<span class="str">'banana'</span>,<span class="str">'apple'</span>];
+<span class="kw">const</span> counts = items.<span class="fn">reduce</span>((obj, item) =&gt; {
+  obj[item] = (obj[item] || <span class="num">0</span>) + <span class="num">1</span>;
+  <span class="kw">return</span> obj;
+}, {});
+console.log(<span class="str">'出現回数:'</span>, JSON.stringify(counts));
+
+<span class="cm">// 最大値</span>
+<span class="kw">const</span> max = [<span class="num">3</span>,<span class="num">7</span>,<span class="num">1</span>,<span class="num">9</span>,<span class="num">4</span>].<span class="fn">reduce</span>((a, b) =&gt; a &gt; b ? a : b);
+console.log(<span class="str">`最大値: ${max}`</span>);</pre>
+    </div>
+    <button class="run-btn" onclick="runLab('lab8')">実行</button>
+    <div class="console-output" id="out-lab8"></div>
+  </div>
+</div>
+
+<!-- ===== LAB 09 : some / every ===== -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>some / every（存在・全称判定）</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>some</code>: 1つでも条件を満たせば <code>true</code>（短絡評価で即停止）。
+      <code>every</code>: 全要素が条件を満たせば <code>true</code>（1つでも偽で即停止）。
+    </p>
+    <div class="code-block">
+      <div class="code-label">JavaScript</div>
+      <pre><span class="kw">const</span> ages = [<span class="num">15</span>, <span class="num">22</span>, <span class="num">17</span>, <span class="num">30</span>];
+
+<span class="cm">// some: 1人でも成人がいるか？</span>
+<span class="kw">const</span> hasAdult = ages.<span class="fn">some</span>(a =&gt; {
+  console.log(<span class="str">`  some チェック: ${a}`</span>);
+  <span class="kw">return</span> a &gt;= <span class="num">18</span>;
+});
+console.log(<span class="str">`成人がいる: ${hasAdult}`</span>);
+
+<span class="cm">// every: 全員が成人か？</span>
+<span class="kw">const</span> allAdult = ages.<span class="fn">every</span>(a =&gt; {
+  console.log(<span class="str">`  every チェック: ${a}`</span>);
+  <span class="kw">return</span> a &gt;= <span class="num">18</span>;
+});
+console.log(<span class="str">`全員成人: ${allAdult}`</span>);
+
+<span class="cm">// 空配列の挙動</span>
+console.log(<span class="str">`空.some:  ${[].<span class="fn">some</span>(() =&gt; <span class="kw">true</span>)}`</span>);  <span class="cm">// false</span>
+console.log(<span class="str">`空.every: ${[].<span class="fn">every</span>(() =&gt; <span class="kw">false</span>)}`</span>); <span class="cm">// true（空真）</span></pre>
+    </div>
+    <button class="run-btn" onclick="runLab('lab9')">実行</button>
+    <div class="console-output" id="out-lab9"></div>
+  </div>
+</div>
+
+<!-- ===== LAB 10 : find / findIndex ===== -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>find / findIndex（最初の一致を検索）</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>find</code>: 条件を満たす<strong>最初の要素</strong>を返す（なければ <code>undefined</code>）。
+      <code>findIndex</code>: 条件を満たす<strong>最初のインデックス</strong>を返す（なければ <code>-1</code>）。
+    </p>
+    <div class="code-block">
+      <div class="code-label">JavaScript</div>
+      <pre><span class="kw">const</span> products = [
+  { id: <span class="num">1</span>, name: <span class="str">'ペン'</span>,    price: <span class="num">100</span> },
+  { id: <span class="num">2</span>, name: <span class="str">'ノート'</span>,  price: <span class="num">250</span> },
+  { id: <span class="num">3</span>, name: <span class="str">'消しゴム'</span>, price: <span class="num">80</span>  },
+];
+
+<span class="cm">// find: 最初に200円以上の商品</span>
+<span class="kw">const</span> found = products.<span class="fn">find</span>(p =&gt; p.price &gt;= <span class="num">200</span>);
+console.log(<span class="str">'find:'</span>, found);
+
+<span class="cm">// findIndex: インデックスを取得</span>
+<span class="kw">const</span> idx = products.<span class="fn">findIndex</span>(p =&gt; p.name === <span class="str">'消しゴム'</span>);
+console.log(<span class="str">`findIndex: ${idx}`</span>);
+
+<span class="cm">// 見つからない場合</span>
+<span class="kw">const</span> notFound = products.<span class="fn">find</span>(p =&gt; p.price &gt; <span class="num">1000</span>);
+console.log(<span class="str">`見つからない: ${notFound}`</span>); <span class="cm">// undefined</span>
+
+<span class="cm">// findLast / findLastIndex（ES2023）</span>
+<span class="kw">const</span> nums = [<span class="num">1</span>,<span class="num">2</span>,<span class="num">3</span>,<span class="num">4</span>,<span class="num">5</span>];
+<span class="kw">const</span> lastEven = nums.<span class="fn">findLast</span>(n =&gt; n % <span class="num">2</span> === <span class="num">0</span>);
+console.log(<span class="str">`findLast (偶数): ${lastEven}`</span>);</pre>
+    </div>
+    <button class="run-btn" onclick="runLab('lab10')">実行</button>
+    <div class="console-output" id="out-lab10"></div>
+  </div>
+</div>
+
+<!-- ===== LAB 11 : flatMap ===== -->
+<div class="lab" id="lab11">
+  <div class="lab-header">
+    <div class="lab-num">11</div>
+    <h3>flatMap（展開＋変換）</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>map</code> + <code>flat(1)</code> を1ステップで行う。
+      各要素から配列を返すと結果を1段階フラットにする。要素の除去（空配列を返す）にも使える。
+    </p>
+    <div class="code-block">
+      <div class="code-label">JavaScript</div>
+      <pre><span class="cm">// 文を単語に分割して1次元化</span>
+<span class="kw">const</span> sentences = [<span class="str">'hello world'</span>, <span class="str">'foo bar baz'</span>];
+<span class="kw">const</span> words = sentences.<span class="fn">flatMap</span>(s =&gt; s.split(<span class="str">' '</span>));
+console.log(words);
+
+<span class="cm">// 要素の除去（偶数だけ残す）</span>
+<span class="kw">const</span> nums = [<span class="num">1</span>,<span class="num">2</span>,<span class="num">3</span>,<span class="num">4</span>,<span class="num">5</span>];
+<span class="kw">const</span> evens = nums.<span class="fn">flatMap</span>(n =&gt; n % <span class="num">2</span> === <span class="num">0</span> ? [n] : []);
+console.log(<span class="str">'偶数のみ:'</span>, evens);
+
+<span class="cm">// 1対多の展開</span>
+<span class="kw">const</span> data = [{ tag: <span class="str">'a'</span>, vals: [<span class="num">1</span>,<span class="num">2</span>] }, { tag: <span class="str">'b'</span>, vals: [<span class="num">3</span>] }];
+<span class="kw">const</span> flat = data.<span class="fn">flatMap</span>(d =&gt; d.vals.map(v =&gt; ({ tag: d.tag, val: v })));
+console.log(JSON.stringify(flat));</pre>
+    </div>
+    <button class="run-btn" onclick="runLab('lab11')">実行</button>
+    <div class="console-output" id="out-lab11"></div>
+  </div>
+</div>
+
+<!-- ===== LAB 12 : entries / keys / values ===== -->
+<div class="lab" id="lab12">
+  <div class="lab-header">
+    <div class="lab-num">12</div>
+    <h3>entries / keys / values</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      配列・オブジェクトの <code>entries()</code>, <code>keys()</code>, <code>values()</code> で
+      イテレータを取得し、<code>for...of</code> と組み合わせる。
+      オブジェクトには <code>Object.entries()</code> 等の静的メソッドを使う。
+    </p>
+    <div class="code-block">
+      <div class="code-label">JavaScript</div>
+      <pre><span class="cm">// 配列の entries()</span>
+<span class="kw">const</span> arr = [<span class="str">'🍎'</span>, <span class="str">'🍌'</span>, <span class="str">'🍇'</span>];
+<span class="kw">for</span> (<span class="kw">const</span> [i, v] <span class="kw">of</span> arr.<span class="fn">entries</span>()) {
+  console.log(<span class="str">`[${i}] ${v}`</span>);
+}
+
+<span class="cm">// オブジェクトの Object.entries()</span>
+<span class="kw">const</span> config = { host: <span class="str">'localhost'</span>, port: <span class="num">3000</span>, debug: <span class="kw">true</span> };
+<span class="kw">for</span> (<span class="kw">const</span> [key, val] <span class="kw">of</span> Object.<span class="fn">entries</span>(config)) {
+  console.log(<span class="str">`${key} → ${val}`</span>);
+}
+
+<span class="cm">// Object.keys / Object.values</span>
+console.log(<span class="str">'keys:'</span>, Object.<span class="fn">keys</span>(config));
+console.log(<span class="str">'values:'</span>, Object.<span class="fn">values</span>(config));</pre>
+    </div>
+    <button class="run-btn" onclick="runLab('lab12')">実行</button>
+    <div class="console-output" id="out-lab12"></div>
+  </div>
+</div>
+
+<!-- ===== LAB 13 : Map / Set ===== -->
+<div class="lab" id="lab13">
+  <div class="lab-header">
+    <div class="lab-num">13</div>
+    <h3>Map / Set の反復</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>Map</code> と <code>Set</code> はイテラブルなので <code>for...of</code> と <code>forEach</code> の両方が使える。
+      <code>Map</code> の <code>for...of</code> では <code>[key, value]</code> の分割代入が便利。
+    </p>
+    <div class="code-block">
+      <div class="code-label">JavaScript</div>
+      <pre><span class="cm">// Map の反復</span>
+<span class="kw">const</span> map = <span class="kw">new</span> <span class="fn">Map</span>([
+  [<span class="str">'name'</span>, <span class="str">'Tom'</span>],
+  [<span class="str">'lang'</span>, <span class="str">'JavaScript'</span>],
+  [<span class="str">'city'</span>, <span class="str">'Osaka'</span>],
+]);
+
+<span class="kw">for</span> (<span class="kw">const</span> [k, v] <span class="kw">of</span> map) {
+  console.log(<span class="str">`Map: ${k} = ${v}`</span>);
+}
+
+map.<span class="fn">forEach</span>((val, key) =&gt; {
+  console.log(<span class="str">`Map.forEach: ${key} → ${val}`</span>);
+});
+
+<span class="cm">// Set の反復</span>
+<span class="kw">const</span> set = <span class="kw">new</span> <span class="fn">Set</span>([<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>, <span class="num">2</span>, <span class="num">1</span>]);
+console.log(<span class="str">`Set サイズ: ${set.size}`</span>);
+<span class="kw">for</span> (<span class="kw">const</span> v <span class="kw">of</span> set) {
+  console.log(<span class="str">`Set: ${v}`</span>);
+}</pre>
+    </div>
+    <button class="run-btn" onclick="runLab('lab13')">実行</button>
+    <div class="console-output" id="out-lab13"></div>
+  </div>
+</div>
+
+<!-- ===== LAB 14 : ジェネレータ ===== -->
+<div class="lab" id="lab14">
+  <div class="lab-header">
+    <div class="lab-num">14</div>
+    <h3>ジェネレータと for...of</h3>
+    <span class="lab-tag tag-advanced">上級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>function*</code> で定義するジェネレータは <code>yield</code> で値を逐次返すイテラブル。
+      <code>for...of</code> で消費でき、無限シーケンスも安全に扱える（消費側で <code>break</code> する）。
+    </p>
+    <div class="code-block">
+      <div class="code-label">JavaScript</div>
+      <pre><span class="cm">// 有限ジェネレータ</span>
+<span class="kw">function*</span> <span class="fn">range</span>(start, end) {
+  <span class="kw">for</span> (<span class="kw">let</span> i = start; i &lt; end; i++) {
+    <span class="kw">yield</span> i;
+  }
+}
+
+<span class="kw">for</span> (<span class="kw">const</span> n <span class="kw">of</span> <span class="fn">range</span>(<span class="num">3</span>, <span class="num">7</span>)) {
+  console.log(<span class="str">`range: ${n}`</span>);
+}
+
+<span class="cm">// 無限ジェネレータ（break で安全に停止）</span>
+<span class="kw">function*</span> <span class="fn">fibonacci</span>() {
+  <span class="kw">let</span> a = <span class="num">0</span>, b = <span class="num">1</span>;
+  <span class="kw">while</span> (<span class="kw">true</span>) {
+    <span class="kw">yield</span> a;
+    [a, b] = [b, a + b];
+  }
+}
+
+<span class="kw">let</span> count = <span class="num">0</span>;
+<span class="kw">for</span> (<span class="kw">const</span> fib <span class="kw">of</span> <span class="fn">fibonacci</span>()) {
+  <span class="kw">if</span> (count++ &gt;= <span class="num">10</span>) <span class="kw">break</span>; <span class="cm">// 安全に停止</span>
+  console.log(<span class="str">`fib[${count-1}] = ${fib}`</span>);
+}
+
+<span class="cm">// スプレッドで配列化（有限のみ！）</span>
+<span class="kw">const</span> arr = [...<span class="fn">range</span>(<span class="num">0</span>, <span class="num">5</span>)];
+console.log(<span class="str">'スプレッド:'</span>, arr);</pre>
+    </div>
+    <button class="run-btn" onclick="runLab('lab14')">実行</button>
+    <div class="console-output" id="out-lab14"></div>
+  </div>
+</div>
+
+<!-- ===== LAB 15 : for await...of ===== -->
+<div class="lab" id="lab15">
+  <div class="lab-header">
+    <div class="lab-num">15</div>
+    <h3>for await...of（非同期イテレータ）</h3>
+    <span class="lab-tag tag-advanced">上級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>async function*</code> で作る非同期ジェネレータや、Promiseの配列を
+      <code>for await...of</code> で順次消費する。API のページング処理等で活躍。
+    </p>
+    <div class="code-block">
+      <div class="code-label">JavaScript</div>
+      <pre><span class="cm">// 非同期ジェネレータ</span>
+<span class="kw">async function*</span> <span class="fn">asyncRange</span>(start, end) {
+  <span class="kw">for</span> (<span class="kw">let</span> i = start; i &lt; end; i++) {
+    <span class="kw">await</span> <span class="kw">new</span> <span class="fn">Promise</span>(r =&gt; <span class="fn">setTimeout</span>(r, <span class="num">100</span>));
+    <span class="kw">yield</span> i;
+  }
+}
+
+(<span class="kw">async</span> () =&gt; {
+  <span class="kw">for await</span> (<span class="kw">const</span> n <span class="kw">of</span> <span class="fn">asyncRange</span>(<span class="num">0</span>, <span class="num">4</span>)) {
+    console.log(<span class="str">`async: ${n}`</span>);
+  }
+
+  <span class="cm">// Promise配列を for await...of で逐次処理</span>
+  <span class="kw">const</span> promises = [
+    <span class="fn">Promise</span>.resolve(<span class="str">'A'</span>),
+    <span class="fn">Promise</span>.resolve(<span class="str">'B'</span>),
+    <span class="fn">Promise</span>.resolve(<span class="str">'C'</span>),
+  ];
+  <span class="kw">for await</span> (<span class="kw">const</span> val <span class="kw">of</span> promises) {
+    console.log(<span class="str">`Promise値: ${val}`</span>);
+  }
+  console.log(<span class="str">'非同期処理完了'</span>);
+})();</pre>
+    </div>
+    <button class="run-btn" onclick="runLab('lab15')">実行</button>
+    <div class="console-output" id="out-lab15"></div>
+  </div>
+</div>
+
+<!-- ===== LAB 16 : 再帰 ===== -->
+<div class="lab" id="lab16">
+  <div class="lab-header">
+    <div class="lab-num">16</div>
+    <h3>再帰によるループ代替</h3>
+    <span class="lab-tag tag-advanced">上級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ループの代わりに関数が自分自身を呼ぶパターン。ツリー走査やネスト構造の処理で必須。
+      <strong>終了条件（ベースケース）</strong>を必ず定義しないとスタックオーバーフローになる。
+    </p>
+    <div class="code-block">
+      <div class="code-label">JavaScript</div>
+      <pre><span class="cm">// 階乗（n!）</span>
+<span class="kw">function</span> <span class="fn">factorial</span>(n) {
+  <span class="kw">if</span> (n &lt;= <span class="num">1</span>) <span class="kw">return</span> <span class="num">1</span>; <span class="cm">// ベースケース</span>
+  <span class="kw">return</span> n * <span class="fn">factorial</span>(n - <span class="num">1</span>);
+}
+console.log(<span class="str">`5! = ${<span class="fn">factorial</span>(<span class="num">5</span>)}`</span>);
+
+<span class="cm">// ネストオブジェクトのフラット化</span>
+<span class="kw">function</span> <span class="fn">flattenObj</span>(obj, prefix = <span class="str">''</span>) {
+  <span class="kw">const</span> result = {};
+  <span class="kw">for</span> (<span class="kw">const</span> [k, v] <span class="kw">of</span> Object.<span class="fn">entries</span>(obj)) {
+    <span class="kw">const</span> key = prefix ? <span class="str">`${prefix}.${k}`</span> : k;
+    <span class="kw">if</span> (v &amp;&amp; <span class="kw">typeof</span> v === <span class="str">'object'</span> &amp;&amp; !Array.isArray(v)) {
+      Object.<span class="fn">assign</span>(result, <span class="fn">flattenObj</span>(v, key));
+    } <span class="kw">else</span> {
+      result[key] = v;
+    }
+  }
+  <span class="kw">return</span> result;
+}
+
+<span class="kw">const</span> nested = { a: { b: { c: <span class="num">1</span> }, d: <span class="num">2</span> }, e: <span class="num">3</span> };
+console.log(JSON.stringify(<span class="fn">flattenObj</span>(nested)));
+
+<span class="cm">// 木構造の走査</span>
+<span class="kw">const</span> tree = {
+  name: <span class="str">'root'</span>,
+  children: [
+    { name: <span class="str">'A'</span>, children: [{ name: <span class="str">'A1'</span>, children: [] }] },
+    { name: <span class="str">'B'</span>, children: [] },
+  ]
+};
+<span class="kw">function</span> <span class="fn">walk</span>(node, depth = <span class="num">0</span>) {
+  console.log(<span class="str">`${'  '.repeat(depth)}└ ${node.name}`</span>);
+  node.children.<span class="fn">forEach</span>(c =&gt; <span class="fn">walk</span>(c, depth + <span class="num">1</span>));
+}
+<span class="fn">walk</span>(tree);</pre>
+    </div>
+    <button class="run-btn" onclick="runLab('lab16')">実行</button>
+    <div class="console-output" id="out-lab16"></div>
+  </div>
+</div>
+
+<!-- ===== LAB 17 : 全パターン比較表 ===== -->
+<div class="lab" id="lab17">
+  <div class="lab-header">
+    <div class="lab-num">17</div>
+    <h3>全パターン比較表</h3>
+    <span class="lab-tag tag-basic">まとめ</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      全ループ手法の特徴を一覧で比較。使い分けの判断基準にどうぞ。
+    </p>
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>構文</th>
+          <th>対象</th>
+          <th>返すもの</th>
+          <th>break</th>
+          <th>continue</th>
+          <th>戻り値</th>
+          <th>主な用途</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>for</td>
+          <td>何でも（手動制御）</td>
+          <td>—</td>
+          <td class="yes">✓</td>
+          <td class="yes">✓</td>
+          <td>なし</td>
+          <td>カウンタ制御、インデックス操作</td>
+        </tr>
+        <tr>
+          <td>while</td>
+          <td>何でも（条件制御）</td>
+          <td>—</td>
+          <td class="yes">✓</td>
+          <td class="yes">✓</td>
+          <td>なし</td>
+          <td>回数不定の繰返し</td>
+        </tr>
+        <tr>
+          <td>do...while</td>
+          <td>何でも（後判定）</td>
+          <td>—</td>
+          <td class="yes">✓</td>
+          <td class="yes">✓</td>
+          <td>なし</td>
+          <td>最低1回の実行保証</td>
+        </tr>
+        <tr>
+          <td>for...in</td>
+          <td>オブジェクト</td>
+          <td>キー（文字列）</td>
+          <td class="yes">✓</td>
+          <td class="yes">✓</td>
+          <td>なし</td>
+          <td>プロパティ列挙</td>
+        </tr>
+        <tr>
+          <td>for...of</td>
+          <td>イテラブル</td>
+          <td>値</td>
+          <td class="yes">✓</td>
+          <td class="yes">✓</td>
+          <td>なし</td>
+          <td>配列/Map/Set/文字列の値反復</td>
+        </tr>
+        <tr>
+          <td>forEach</td>
+          <td>配列/Map/Set</td>
+          <td>値, index, 元配列</td>
+          <td class="no">✗</td>
+          <td class="no">✗</td>
+          <td>undefined</td>
+          <td>副作用ベースの処理</td>
+        </tr>
+        <tr>
+          <td>map</td>
+          <td>配列</td>
+          <td>値, index, 元配列</td>
+          <td class="no">✗</td>
+          <td class="no">✗</td>
+          <td>新配列</td>
+          <td>変換（1対1）</td>
+        </tr>
+        <tr>
+          <td>filter</td>
+          <td>配列</td>
+          <td>値, index, 元配列</td>
+          <td class="no">✗</td>
+          <td class="no">✗</td>
+          <td>新配列</td>
+          <td>条件抽出</td>
+        </tr>
+        <tr>
+          <td>reduce</td>
+          <td>配列</td>
+          <td>acc, cur, index</td>
+          <td class="no">✗</td>
+          <td class="no">✗</td>
+          <td>任意の値</td>
+          <td>集約・畳み込み</td>
+        </tr>
+        <tr>
+          <td>some</td>
+          <td>配列</td>
+          <td>値, index, 元配列</td>
+          <td>短絡停止</td>
+          <td class="no">✗</td>
+          <td>boolean</td>
+          <td>存在判定（1つでもtrue）</td>
+        </tr>
+        <tr>
+          <td>every</td>
+          <td>配列</td>
+          <td>値, index, 元配列</td>
+          <td>短絡停止</td>
+          <td class="no">✗</td>
+          <td>boolean</td>
+          <td>全称判定（全てtrue）</td>
+        </tr>
+        <tr>
+          <td>find</td>
+          <td>配列</td>
+          <td>値, index, 元配列</td>
+          <td>短絡停止</td>
+          <td class="no">✗</td>
+          <td>要素 or undefined</td>
+          <td>最初の一致を取得</td>
+        </tr>
+        <tr>
+          <td>flatMap</td>
+          <td>配列</td>
+          <td>値, index, 元配列</td>
+          <td class="no">✗</td>
+          <td class="no">✗</td>
+          <td>新配列（1段flat）</td>
+          <td>展開＋変換・要素除去</td>
+        </tr>
+        <tr>
+          <td>for await...of</td>
+          <td>非同期イテラブル</td>
+          <td>Promiseの解決値</td>
+          <td class="yes">✓</td>
+          <td class="yes">✓</td>
+          <td>なし</td>
+          <td>非同期ストリーム</td>
+        </tr>
+        <tr>
+          <td>再帰</td>
+          <td>何でも</td>
+          <td>—</td>
+          <td>return</td>
+          <td>—</td>
+          <td>任意</td>
+          <td>ツリー走査・ネスト構造</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 どれを使うか迷ったら</div>
+      <pre class="ascii-art">
+  配列を変換したい？        → map
+  配列を絞りたい？          → filter
+  配列を1つの値にしたい？   → reduce
+  条件に合うものを探したい？ → find
+  1つでも/全部 を判定？     → some / every
+  副作用だけ？(何も返さない) → forEach
+  途中で止めたい？          → for...of or for
+  オブジェクトのキーが欲しい？→ for...in or Object.keys
+  非同期を順次処理？        → for await...of
+  ネスト構造の走査？        → 再帰
+      </pre>
+    </div>
+  </div>
+</div>
+
+</div><!-- /.container -->
+
+<!-- ==================== SCRIPTS ==================== -->
+<script>
+  // ===== Lab 実行エンジン =====
+  const labCode = {
+    lab0: function(log) {
+      for (let i = 0; i < 5; i++) log(`i = ${i}`);
+      for (let i = 4; i >= 0; i--) log(`逆順: ${i}`);
+      for (let i = 0; i < 10; i++) { if (i === 3) break; log(`break前: ${i}`); }
+      for (let i = 0; i < 6; i++) { if (i % 2 === 0) continue; log(`奇数のみ: ${i}`); }
+    },
+    lab1: function(log) {
+      let count = 0;
+      while (count < 5) { log(`count = ${count}`); count++; }
+      let x = 10;
+      while (x < 5) { log('これは出力されない'); x++; }
+      log(`while終了後 x = ${x}`);
+    },
+    lab2: function(log) {
+      let n = 10;
+      do { log(`do...while: n = ${n}`); n++; } while (n < 5);
+      log(`→ 最終 n = ${n} (1回だけ実行された)`);
+      let m = 0;
+      do { log(`ループ中: m = ${m}`); m++; } while (m < 3);
+    },
+    lab3: function(log) {
+      const user = { name: 'Tom', age: 40, city: 'Osaka' };
+      for (const key in user) log(`${key}: ${user[key]}`);
+      const arr = ['a', 'b', 'c'];
+      for (const idx in arr) log(`idx="${idx}" (型: ${typeof idx})`);
+      function Animal(name) { this.name = name; }
+      Animal.prototype.legs = 4;
+      const dog = new Animal('Pochi');
+      for (const key in dog) {
+        const own = dog.hasOwnProperty(key) ? 'own' : 'prototype';
+        log(`${key} = ${dog[key]} [${own}]`);
+      }
+    },
+    lab4: function(log) {
+      const fruits = ['🍎', '🍌', '🍇'];
+      for (const fruit of fruits) log(fruit);
+      for (const ch of '大阪🏯') log(ch);
+      for (const n of [10, 20, 30, 40]) { if (n > 25) break; log(`値: ${n}`); }
+      log('※ 普通のオブジェクトは for...of 不可（TypeError）');
+    },
+    lab5: function(log) {
+      const colors = ['red', 'green', 'blue'];
+      colors.forEach((color, i, arr) => log(`[${i}] ${color}  (配列長: ${arr.length})`));
+      [1,2,3,4,5].forEach(n => { if (n === 3) return; log(`n = ${n}`); });
+      log('※ forEach 内で break は SyntaxError');
+      const result = [1,2].forEach(x => x * 2);
+      log(`forEach戻り値: ${result}`);
+    },
+    lab6: function(log) {
+      const nums = [1, 2, 3, 4];
+      const doubled = nums.map(n => n * 2);
+      log('元配列: ' + JSON.stringify(nums));
+      log('map結果: ' + JSON.stringify(doubled));
+      const users = [{ name: 'Alice', score: 80 }, { name: 'Bob', score: 95 }];
+      const names = users.map(u => u.name);
+      log('名前だけ抽出: ' + JSON.stringify(names));
+      const indexed = ['a','b','c'].map((v, i) => `${i}:${v}`);
+      log(JSON.stringify(indexed));
+    },
+    lab7: function(log) {
+      const scores = [45, 82, 73, 91, 58, 66];
+      const passed = scores.filter(s => s >= 70);
+      log('合格者: ' + JSON.stringify(passed));
+      const perfect = scores.filter(s => s === 100);
+      log('満点者: ' + JSON.stringify(perfect));
+      const mixed = [0, '', null, 'hello', undefined, 42, false];
+      const truthy = mixed.filter(Boolean);
+      log('truthy のみ: ' + JSON.stringify(truthy));
+    },
+    lab8: function(log) {
+      const sum = [10, 20, 30].reduce((acc, cur) => {
+        log(`  acc=${acc}, cur=${cur}`);
+        return acc + cur;
+      }, 0);
+      log(`合計: ${sum}`);
+      const items = ['apple','banana','apple','cherry','banana','apple'];
+      const counts = items.reduce((obj, item) => { obj[item] = (obj[item] || 0) + 1; return obj; }, {});
+      log('出現回数: ' + JSON.stringify(counts));
+      const max = [3,7,1,9,4].reduce((a, b) => a > b ? a : b);
+      log(`最大値: ${max}`);
+    },
+    lab9: function(log) {
+      const ages = [15, 22, 17, 30];
+      const hasAdult = ages.some(a => { log(`  some チェック: ${a}`); return a >= 18; });
+      log(`成人がいる: ${hasAdult}`);
+      const allAdult = ages.every(a => { log(`  every チェック: ${a}`); return a >= 18; });
+      log(`全員成人: ${allAdult}`);
+      log(`空.some:  ${[].some(() => true)}`);
+      log(`空.every: ${[].every(() => false)}`);
+    },
+    lab10: function(log) {
+      const products = [
+        { id: 1, name: 'ペン', price: 100 },
+        { id: 2, name: 'ノート', price: 250 },
+        { id: 3, name: '消しゴム', price: 80 },
+      ];
+      const found = products.find(p => p.price >= 200);
+      log('find: ' + JSON.stringify(found));
+      const idx = products.findIndex(p => p.name === '消しゴム');
+      log(`findIndex: ${idx}`);
+      const notFound = products.find(p => p.price > 1000);
+      log(`見つからない: ${notFound}`);
+      const nums = [1,2,3,4,5];
+      const lastEven = nums.findLast(n => n % 2 === 0);
+      log(`findLast (偶数): ${lastEven}`);
+    },
+    lab11: function(log) {
+      const sentences = ['hello world', 'foo bar baz'];
+      const words = sentences.flatMap(s => s.split(' '));
+      log(JSON.stringify(words));
+      const nums = [1,2,3,4,5];
+      const evens = nums.flatMap(n => n % 2 === 0 ? [n] : []);
+      log('偶数のみ: ' + JSON.stringify(evens));
+      const data = [{ tag: 'a', vals: [1,2] }, { tag: 'b', vals: [3] }];
+      const flat = data.flatMap(d => d.vals.map(v => ({ tag: d.tag, val: v })));
+      log(JSON.stringify(flat));
+    },
+    lab12: function(log) {
+      const arr = ['🍎', '🍌', '🍇'];
+      for (const [i, v] of arr.entries()) log(`[${i}] ${v}`);
+      const config = { host: 'localhost', port: 3000, debug: true };
+      for (const [key, val] of Object.entries(config)) log(`${key} → ${val}`);
+      log('keys: ' + JSON.stringify(Object.keys(config)));
+      log('values: ' + JSON.stringify(Object.values(config)));
+    },
+    lab13: function(log) {
+      const map = new Map([['name','Tom'],['lang','JavaScript'],['city','Osaka']]);
+      for (const [k, v] of map) log(`Map: ${k} = ${v}`);
+      map.forEach((val, key) => log(`Map.forEach: ${key} → ${val}`));
+      const set = new Set([1, 2, 3, 2, 1]);
+      log(`Set サイズ: ${set.size}`);
+      for (const v of set) log(`Set: ${v}`);
+    },
+    lab14: function(log) {
+      function* range(start, end) { for (let i = start; i < end; i++) yield i; }
+      for (const n of range(3, 7)) log(`range: ${n}`);
+      function* fibonacci() { let a = 0, b = 1; while (true) { yield a; [a, b] = [b, a + b]; } }
+      let count = 0;
+      for (const fib of fibonacci()) { if (count++ >= 10) break; log(`fib[${count-1}] = ${fib}`); }
+      const arr = [...range(0, 5)];
+      log('スプレッド: ' + JSON.stringify(arr));
+    },
+    lab15: async function(log) {
+      async function* asyncRange(start, end) {
+        for (let i = start; i < end; i++) {
+          await new Promise(r => setTimeout(r, 100));
+          yield i;
+        }
+      }
+      for await (const n of asyncRange(0, 4)) log(`async: ${n}`);
+      const promises = [Promise.resolve('A'), Promise.resolve('B'), Promise.resolve('C')];
+      for await (const val of promises) log(`Promise値: ${val}`);
+      log('非同期処理完了');
+    },
+    lab16: function(log) {
+      function factorial(n) { if (n <= 1) return 1; return n * factorial(n - 1); }
+      log(`5! = ${factorial(5)}`);
+      function flattenObj(obj, prefix = '') {
+        const result = {};
+        for (const [k, v] of Object.entries(obj)) {
+          const key = prefix ? `${prefix}.${k}` : k;
+          if (v && typeof v === 'object' && !Array.isArray(v)) {
+            Object.assign(result, flattenObj(v, key));
+          } else { result[key] = v; }
+        }
+        return result;
+      }
+      const nested = { a: { b: { c: 1 }, d: 2 }, e: 3 };
+      log(JSON.stringify(flattenObj(nested)));
+      const tree = {
+        name: 'root',
+        children: [
+          { name: 'A', children: [{ name: 'A1', children: [] }] },
+          { name: 'B', children: [] },
+        ]
+      };
+      function walk(node, depth = 0) {
+        log(`${'  '.repeat(depth)}└ ${node.name}`);
+        node.children.forEach(c => walk(c, depth + 1));
+      }
+      walk(tree);
+    },
+  };
+
+  function runLab(labId) {
+    const out = document.getElementById('out-' + labId);
+    out.innerHTML = '';
+    const log = (msg) => {
+      const line = document.createElement('div');
+      line.className = 'log-line';
+      line.textContent = String(msg);
+      out.appendChild(line);
+    };
+    try {
+      const result = labCode[labId](log);
+      if (result && typeof result.then === 'function') {
+        result.catch(e => {
+          const line = document.createElement('div');
+          line.className = 'log-error';
+          line.textContent = `Error: ${e.message}`;
+          out.appendChild(line);
+        });
+      }
+    } catch (e) {
+      const line = document.createElement('div');
+      line.className = 'log-error';
+      line.textContent = `Error: ${e.message}`;
+      out.appendChild(line);
+    }
+  }
+
+  // ===== Copy Code =====
+  function copyCode(btn) {
+    const block = btn.closest('.code-block') || btn.parentElement;
+    const pre = block.querySelector('pre');
+    if (!pre) return;
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    });
+  }
+
+  // ===== LAB_META =====
+  const LAB_META = {
+    lab0: {
+      info: { type:'info', html:'📘 <strong>for 文</strong>は <code>初期化; 条件; 更新</code> の3式構造。C言語から受け継がれた最も基本的なループ。' },
+      check: ['① 0〜4 が順番に出力されるか', '② 逆順 4〜0 が正しく出力されるか', '③ break で 0,1,2 だけ出力され 3以降がないか', '④ continue で奇数(1,3,5)だけ出力されるか']
+    },
+    lab1: {
+      info: { type:'warn', html:'⚠ <strong>while 文</strong>はカウンタ更新を忘れると<strong>無限ループ</strong>になる。条件が最初から偽なら1度も実行されない。' },
+      verify: { before:'x = 10（条件 x &lt; 5 が偽）', after:'ループ内は実行されず x = 10 のまま' },
+      check: ['① count が 0〜4 まで出力されるか', '② 条件が偽の while は実行されないか', '③ while終了後の x の値が 10 か']
+    },
+    lab2: {
+      info: { type:'info', html:'📘 <strong>do...while</strong> は後判定。<code>while</code> との違いは「最低1回実行される」こと。入力バリデーションの再試行パターンで活用。' },
+      verify: { before:'n = 10（条件 n &lt; 5 が偽）', after:'1回だけ実行され n = 11 になる' },
+      check: ['① n=10 で条件が偽でも1回実行されるか', '② 通常ループ (m=0,1,2) が正しく回るか']
+    },
+    lab3: {
+      info: { type:'err', html:'🚫 <strong>for...in を配列に使うのは避ける</strong>。インデックスが文字列になり、プロトタイプのプロパティも列挙される。配列には <code>for...of</code> か <code>forEach</code> を使うこと。' },
+      check: ['① オブジェクトの全キーが列挙されるか', '② 配列のインデックスが「文字列」型で出力されるか（typeof idx = "string"）', '③ hasOwnProperty で own / prototype が正しく判定されるか', '④ prototype の legs=4 が列挙されるか']
+    },
+    lab4: {
+      info: { type:'ok', html:'✅ <strong>for...of</strong> は ES2015 で追加された推奨構文。配列の値を直接取得でき、<code>break</code>/<code>continue</code> も使える。文字列ではサロゲートペアも正しく扱える。' },
+      check: ['① 果物の絵文字が1つずつ出力されるか', '② "大阪🏯" が「大」「阪」「🏯」の3文字に分割されるか（サロゲートペア安全）', '③ break で 10, 20 だけ出力され 30以降がないか']
+    },
+    lab5: {
+      info: { type:'warn', html:'⚠ <code>forEach</code> は <code>break</code> 不可。途中停止が必要なら <code>for...of</code> か <code>some</code> を使う。戻り値は常に <code>undefined</code>。' },
+      check: ['① コールバックに (要素, index, 配列) が渡されるか', '② return で n=3 だけスキップされ、他は出力されるか', '③ forEach の戻り値が undefined か']
+    },
+    lab6: {
+      info: { type:'ok', html:'✅ <code>map</code> は元配列を<strong>変更せず</strong>新しい配列を返す。<code>forEach</code> との最大の違い。関数型プログラミングの基本。' },
+      check: ['① 元配列 [1,2,3,4] が変わらず、map結果が [2,4,6,8] か', '② オブジェクト配列から名前だけ抽出できているか', '③ インデックス付きの変換が正しいか']
+    },
+    lab7: {
+      info: { type:'info', html:'📘 <code>filter</code> は条件に合致する要素だけの新配列を返す。<code>Boolean</code> を渡すと falsy 値を一括除去できるテクニックが有名。' },
+      check: ['① 70以上のスコアだけ抽出されているか', '② 条件不一致で空配列 [] が返るか', '③ falsy 除去で "hello" と 42 だけ残るか']
+    },
+    lab8: {
+      info: { type:'warn', html:'⚠ <code>reduce</code> は強力だが複雑。<strong>初期値を省略すると空配列で TypeError</strong>。常に第2引数で初期値を渡すのが安全。' },
+      check: ['① acc と cur の変遷が正しくログ出力されるか', '② 出現回数カウントが apple:3, banana:2, cherry:1 か', '③ 最大値が 9 か']
+    },
+    lab9: {
+      info: { type:'info', html:'📘 <code>some</code>/<code>every</code> は<strong>短絡評価</strong>する。some は最初の true で停止、every は最初の false で停止。空配列では some→false、every→true（空真）。' },
+      check: ['① some が 22 で true を見つけて停止するか（15→22 の2回チェック）', '② every が 15 で false を見つけて停止するか（15 の1回チェック）', '③ 空配列の挙動を確認（some=false, every=true）']
+    },
+    lab10: {
+      info: { type:'info', html:'📘 <code>find</code> は最初の一致要素を返し、<code>findIndex</code> はそのインデックスを返す。ES2023 の <code>findLast</code>/<code>findLastIndex</code> は末尾から検索。' },
+      check: ['① find で price≥200 の最初の商品（ノート）が返るか', '② findIndex で "消しゴム" のインデックスが 2 か', '③ 見つからない場合 undefined が返るか', '④ findLast で最後の偶数 4 が返るか']
+    },
+    lab11: {
+      info: { type:'info', html:'📘 <code>flatMap</code> = <code>map</code> + <code>flat(1)</code>。各要素から配列を返し、1段フラットにする。空配列を返せば要素除去にも使える。' },
+      check: ['① 文が単語に分割されて1次元配列になるか', '② 偶数のみの抽出が正しいか', '③ 1対多展開でオブジェクト配列が正しく生成されるか']
+    },
+    lab12: {
+      info: { type:'info', html:'📘 配列には <code>.entries()</code> インスタンスメソッド、オブジェクトには <code>Object.entries()</code> 静的メソッドを使う。両者は別物。' },
+      check: ['① 配列の entries で [index, value] ペアが取れるか', '② Object.entries でオブジェクトの [key, value] が取れるか', '③ Object.keys / Object.values の結果を確認']
+    },
+    lab13: {
+      info: { type:'ok', html:'✅ <code>Map</code> と <code>Set</code> はイテラブル。<code>for...of</code> と <code>forEach</code> の両方が使える。Map の forEach は <code>(value, key)</code> の順序に注意。' },
+      check: ['① Map の for...of で [key, value] が取れるか', '② Map.forEach のコールバック引数順が (value, key) か', '③ Set で重複が除去されサイズが 3 か']
+    },
+    lab14: {
+      info: { type:'warn', html:'⚠ 無限ジェネレータを <code>[...gen()]</code> でスプレッドすると<strong>無限ループ</strong>になる。無限ジェネレータは必ず <code>break</code> 付き <code>for...of</code> で消費すること。' },
+      check: ['① range(3,7) で 3,4,5,6 が出力されるか', '② fibonacci が 10項で正しく停止するか', '③ スプレッドで有限ジェネレータが配列化されるか']
+    },
+    lab15: {
+      info: { type:'info', html:'📘 <code>for await...of</code> は <code>async</code> 関数内でのみ使用可能。非同期ジェネレータや ReadableStream の消費に使う。' },
+      check: ['① 非同期ジェネレータで 0〜3 が約100ms間隔で出力されるか', '② Promise配列が順次解決されるか', '③ 「非同期処理完了」が最後に出力されるか']
+    },
+    lab16: {
+      info: { type:'err', html:'🚫 再帰には必ず<strong>ベースケース（終了条件）</strong>を定義すること。なければ <code>Maximum call stack size exceeded</code> でクラッシュする。深い再帰にはスタックオーバーフローのリスクがある。' },
+      check: ['① 5! = 120 が正しいか', '② ネストオブジェクトが {"a.b.c":1,"a.d":2,"e":3} にフラット化されるか', '③ ツリー走査でインデント付きの木構造が表示されるか']
+    },
+    lab17: {
+      info: { type:'ok', html:'✅ この比較表を手元に置いておけば、場面に応じた最適なループ構文をすぐに選べます。迷ったら🔰フローチャートを参照。' },
+      check: ['① 各行の break/continue 可否が正しいか確認', '② forEach が break 不可であることを認識', '③ some/every の「短絡停止」と forEach の「途中停止不可」の違いを理解']
+    },
+  };
+
+  // ===== 自動注入 =====
+  function infoHTML(m){ return m?.info ? `<div class="info-box ${m.info.type||'info'}">${m.info.html}</div>` : ''; }
+  function verifyHTML(m){ if (!m?.verify) return '';
+    const {before, after} = m.verify;
+    return `<div class="verify">
+      <div class="verify-col verify-before"><div class="verify-label">Before ▶︎ 実行前</div>${before||''}</div>
+      <div class="verify-col verify-after"><div class="verify-label">After ▶︎ 実行後</div>${after||''}</div>
+    </div>`; }
+  function checkHTML(m){ if (!m?.check?.length) return '';
+    return `<div class="check-steps">
+      <div class="check-steps-title">🔍 ブラウザ実機チェック</div>
+      <ol>${m.check.map(s=>`<li>${s}</li>`).join('')}</ol>
+    </div>`; }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // (1) 各ラボに info + verify + check を自動挿入
+    document.querySelectorAll('.lab').forEach(lab => {
+      const meta = LAB_META[lab.id]; const body = lab.querySelector('.lab-body');
+      if (!body || !meta) return;
+      const frag = document.createElement('div');
+      frag.innerHTML = infoHTML(meta) + verifyHTML(meta) + checkHTML(meta);
+      while (frag.firstChild) body.appendChild(frag.firstChild);
+    });
+
+    // (2) サイドバー active ハイライト
+    const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+    const map = new Map();
+    links.forEach(a => { const el = document.getElementById(a.getAttribute('href').slice(1)); if (el) map.set(el, a); });
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting) { const l = map.get(e.target);
+        if (l) { links.forEach(n=>n.classList.remove('active')); l.classList.add('active'); } }
+    }), { rootMargin:'-30% 0px -60% 0px' });
+    document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+    // (3) 既存 .code-block に header + Copy を自動付与
+    document.querySelectorAll('.code-block').forEach((cb, i) => {
+      if (cb.querySelector('.code-block-header')) return;
+      const existing = cb.querySelector('.code-label');
+      const labelText = existing ? existing.textContent.trim() : `Code #${i+1}`;
+      if (existing) existing.remove();
+      const header = document.createElement('div');
+      header.className = 'code-block-header';
+      header.innerHTML = `<span>${labelText}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+      cb.insertBefore(header, cb.firstChild);
+    });
+  });
+</script>
+</body>
+</html>
