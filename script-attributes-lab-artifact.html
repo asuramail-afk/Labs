@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>script 属性 実機確認ラボ</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&family=Noto+Sans+JP:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#ffffff;--surface:#f5f7fa;--surface2:#ebeef2;--border:#c8cdd3;
+    --accent:#005cc5;--accent2:#22863a;--accent3:#6f42c1;--accent4:#b08800;
+    --text:#1a1a2e;--text-dim:#5c6370;--code:#005cc5;
+    --mono:'IBM Plex Mono',monospace;--sans:'Noto Sans JP',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.7;min-height:100vh}
+  header{padding:20px 24px 14px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:100}
+  header h1{font-family:var(--mono);font-size:1rem;color:var(--accent);letter-spacing:.05em}
+  header h1 span{color:var(--text-dim)}
+  header p{font-size:11px;color:var(--text-dim);margin-top:3px}
+  .layout{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 63px)}
+  nav{background:var(--surface);border-right:1px solid var(--border);padding:12px 0;position:sticky;top:63px;height:calc(100vh - 63px);overflow-y:auto}
+  nav::-webkit-scrollbar{width:3px}
+  nav::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+  .nav-section{padding:6px 14px 2px;font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:.12em;text-transform:uppercase;margin-top:6px}
+  .nav-item{display:block;padding:7px 14px;cursor:pointer;border-left:2px solid transparent;transition:all .15s;font-size:12px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .nav-item:hover{background:var(--surface2);color:var(--text)}
+  .nav-item.active{border-left-color:var(--accent);background:rgba(0,92,197,.06);color:var(--accent);font-weight:700}
+  .nav-item code{font-family:var(--mono);font-size:11px;background:rgba(0,0,0,.05);padding:1px 5px;border-radius:3px}
+  main{padding:24px;overflow-x:hidden}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:22px;margin-bottom:22px;transition:border-color .2s}
+  .card:hover{border-color:var(--accent)}
+  .card-header{display:flex;align-items:flex-start;gap:12px;margin-bottom:16px}
+  .attr-badge{font-family:var(--mono);font-size:13px;font-weight:700;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;color:var(--accent);white-space:nowrap;flex-shrink:0}
+  .card-meta{flex:1}
+  .card-meta h2{font-size:15px;font-weight:700;color:var(--text)}
+  .card-meta p{font-size:12px;color:var(--text-dim);margin-top:2px}
+  .tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+  .tag{font-size:9px;font-family:var(--mono);padding:2px 6px;border-radius:99px;border:1px solid}
+  .tag-timing{border-color:var(--accent2);color:var(--accent2);background:rgba(34,134,58,.08)}
+  .tag-security{border-color:var(--accent3);color:var(--accent3);background:rgba(111,66,193,.08)}
+  .tag-compat{border-color:var(--accent4);color:var(--accent4);background:rgba(176,136,0,.08)}
+  .tag-meta{border-color:var(--text-dim);color:var(--text-dim);background:rgba(92,99,112,.08)}
+  .tag-perf{border-color:var(--accent);color:var(--accent);background:rgba(0,92,197,.08)}
+  .section-label{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:7px}
+  .explanation{font-size:13px;line-height:1.8;color:var(--text);margin-bottom:16px}
+  .explanation strong{color:var(--accent)}
+  .diagram{background:#f0f4f8;border:1px solid var(--border);border-radius:7px;padding:14px 16px;font-family:var(--mono);font-size:11.5px;line-height:1.6;color:#24292e;white-space:pre;overflow-x:auto;margin-bottom:16px}
+  .code-block{background:#f0f4f8;border:1px solid var(--border);border-radius:7px;overflow:hidden;margin-bottom:16px}
+  .code-block-header{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;background:var(--surface2);border-bottom:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--text-dim)}
+  .copy-btn{background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:4px;cursor:pointer;transition:all .15s}
+  .copy-btn:hover,.copy-btn.copied{border-color:var(--accent);color:var(--accent)}
+  pre.code{padding:14px;font-size:12px;line-height:1.65;overflow-x:auto}
+  .kw{color:#d73a49}.attr{color:#22863a}.val{color:#032f62}.cmt{color:#6a737d}.tag-hl{color:#005cc5}.str{color:#032f62}
+  .demo-area{background:#f0f4f8;border:1px solid var(--border);border-radius:7px;padding:16px;margin-bottom:12px}
+  .demo-area .section-label{margin-bottom:8px}
+  .btn{font-family:var(--mono);font-size:12px;padding:6px 14px;border-radius:6px;border:none;cursor:pointer;transition:all .15s;margin-right:6px;margin-bottom:6px}
+  .btn-primary{background:var(--accent);color:#fff;font-weight:700}
+  .btn-primary:hover{background:#0047a3}
+  .btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+  .btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+  .log-output{background:#f0f4f8;border:1px solid var(--border);border-radius:6px;padding:10px;font-family:var(--mono);font-size:11px;line-height:1.6;min-height:54px;max-height:160px;overflow-y:auto;color:var(--text);margin-top:8px;white-space:pre-wrap;word-break:break-all}
+  .log-output::-webkit-scrollbar{width:3px}
+  .log-output::-webkit-scrollbar-thumb{background:var(--border)}
+  .log-ts{color:var(--text-dim);margin-right:5px}
+  .log-ok{color:var(--accent)}.log-warn{color:var(--accent4)}.log-err{color:var(--accent3)}.log-info{color:var(--accent2)}
+  .timeline{display:flex;flex-direction:column;gap:3px;margin-bottom:12px}
+  .tl-row{display:grid;grid-template-columns:82px 1fr;gap:10px;align-items:center;min-height:26px}
+  .tl-label{font-family:var(--mono);font-size:10px;color:var(--text-dim);text-align:right}
+  .tl-bar{height:18px;border-radius:3px;display:flex;align-items:center;padding:0 7px;font-family:var(--mono);font-size:9px;font-weight:700}
+  .tl-parse{background:rgba(34,134,58,.18);color:var(--accent2);border-left:3px solid var(--accent2)}
+  .tl-fetch{background:rgba(0,92,197,.15);color:var(--accent);border-left:3px solid var(--accent)}
+  .tl-exec{background:rgba(111,66,193,.15);color:var(--accent3);border-left:3px solid var(--accent3)}
+  .tl-block{background:rgba(176,136,0,.12);color:var(--accent4);border-left:3px solid var(--accent4)}
+  .compare-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px}
+  .compare-table th{background:var(--surface2);padding:7px 10px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--text-dim);border-bottom:1px solid var(--border);white-space:nowrap}
+  .compare-table td{padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:top}
+  .compare-table tr:last-child td{border-bottom:none}
+  .compare-table td:first-child{font-family:var(--mono);color:var(--accent);font-size:11px}
+  .yes{color:var(--accent)}.no{color:var(--accent3)}.na{color:var(--text-dim)}
+  .info-box{border-radius:6px;padding:10px 12px;font-size:12.5px;margin-bottom:12px;border-left:3px solid;line-height:1.7}
+  .info-box.warn{background:rgba(176,136,0,.07);border-color:var(--accent4);color:#7a5c00}
+  .info-box.info{background:rgba(34,134,58,.07);border-color:var(--accent2);color:#196127}
+  .info-box.ok{background:rgba(0,92,197,.07);border-color:var(--accent);color:#003d8f}
+  .info-box.err{background:rgba(203,36,49,.07);border-color:#cb2431;color:#9a1320}
+  .support-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .support-chip{font-family:var(--mono);font-size:10px;padding:2px 8px;border-radius:99px;border:1px solid var(--border);color:var(--text-dim)}
+  .support-chip.supported{border-color:var(--accent);color:var(--accent);background:rgba(0,92,197,.07)}
+  .anchor{scroll-margin-top:80px}
+  hr{border:none;border-top:1px solid var(--border);margin:18px 0}
+  /* ===== Before/After 検証 ===== */
+  .verify{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+  @media(max-width:600px){.verify{grid-template-columns:1fr}}
+  .verify-col{border-radius:6px;padding:10px 14px;font-size:12px;line-height:1.7}
+  .verify-before{background:rgba(203,36,49,.06);border:1px solid rgba(203,36,49,.2);color:#6b1a22}
+  .verify-after{background:rgba(34,134,58,.06);border:1px solid rgba(34,134,58,.2);color:#154f1e}
+  .verify-label{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;font-weight:700}
+  .verify-before .verify-label{color:#cb2431}
+  .verify-after .verify-label{color:var(--accent2)}
+  @media(max-width:700px){
+    .layout{grid-template-columns:1fr}
+    nav{position:static;height:auto;display:flex;flex-wrap:wrap;padding:6px;border-right:none;border-bottom:1px solid var(--border)}
+    .nav-section{display:none}
+    .nav-item{padding:4px 8px;font-size:11px;border-left:none;border-bottom:2px solid transparent}
+    .nav-item.active{border-bottom-color:var(--accent);border-left-color:transparent}
+    main{padding:14px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span>&lt;</span>script<span>&gt;</span> 属性 実機確認ラボ</h1>
+  <p>各属性の挙動・利用シーン・必要性をインタラクティブに確認できます</p>
+</header>
+
+<div class="layout">
+<nav id="sidebar">
+  <div class="nav-section">ロード制御</div>
+  <div class="nav-item active" onclick="goTo('sec-sync',this)">通常（同期）</div>
+  <div class="nav-item" onclick="goTo('sec-defer',this)"><code>defer</code></div>
+  <div class="nav-item" onclick="goTo('sec-async',this)"><code>async</code></div>
+  <div class="nav-item" onclick="goTo('sec-compare',this)">3方式比較</div>
+  <div class="nav-section">モジュール</div>
+  <div class="nav-item" onclick="goTo('sec-module',this)"><code>type="module"</code></div>
+  <div class="nav-item" onclick="goTo('sec-nomodule',this)"><code>nomodule</code></div>
+  <div class="nav-section">セキュリティ</div>
+  <div class="nav-item" onclick="goTo('sec-integrity',this)"><code>integrity</code></div>
+  <div class="nav-item" onclick="goTo('sec-crossorigin',this)"><code>crossorigin</code></div>
+  <div class="nav-section">制御・メタ</div>
+  <div class="nav-item" onclick="goTo('sec-nonce',this)"><code>nonce</code></div>
+  <div class="nav-item" onclick="goTo('sec-fetchpriority',this)"><code>fetchpriority</code></div>
+  <div class="nav-item" onclick="goTo('sec-referrerpolicy',this)"><code>referrerpolicy</code></div>
+  <div class="nav-item" onclick="goTo('sec-charset',this)"><code>charset</code></div>
+  <div class="nav-item" onclick="goTo('sec-language',this)"><code>language / type</code></div>
+</nav>
+
+<main>
+
+<!-- ═══ 通常スクリプト ═══ -->
+<div class="card anchor" id="sec-sync">
+  <div class="card-header">
+    <div class="attr-badge">&lt;script src="..."&gt;</div>
+    <div class="card-meta">
+      <h2>通常スクリプト（属性なし）</h2>
+      <p>ブロッキングロードの基本動作を理解する</p>
+      <div class="tags"><span class="tag tag-timing">TIMING</span><span class="tag tag-perf">BLOCKING</span></div>
+    </div>
+  </div>
+  <div class="section-label">▍ 動作原理</div>
+  <div class="explanation">HTMLパーサーがこの行に到達した瞬間、<strong>パースを完全停止</strong>してスクリプトをフェッチ→実行します。実行完了後にパースが再開されます。これが「レンダリングブロッキング」の正体です。</div>
+  <div class="diagram">HTML Parser:
+├─ &lt;head&gt; 処理中 ...
+│    └─ &lt;script src="app.js"&gt; ← ここで止まる!
+│         ├─ [Network] app.js フェッチ開始
+│         ├─ [Network] app.js フェッチ完了
+│         └─ [JS Engine] app.js 実行 ← DOMはまだ半分
+│
+└─ &lt;/head&gt; 以降のHTMLパースを再開</div>
+  <div class="code-block">
+    <div class="code-block-header"><span>HTML</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre class="code"><span class="cmt">&lt;!-- ❌ &lt;head&gt; 内はNG: DOMが未完成の状態で実行される --&gt;</span>
+<span class="tag-hl">&lt;head&gt;</span>
+  <span class="tag-hl">&lt;script</span> <span class="attr">src</span>=<span class="val">"heavy-lib.js"</span><span class="tag-hl">&gt;&lt;/script&gt;</span>  <span class="cmt">&lt;!-- ブロック! --&gt;</span>
+<span class="tag-hl">&lt;/head&gt;</span>
+
+<span class="cmt">&lt;!-- ✅ 従来の回避策: &lt;/body&gt; 直前 --&gt;</span>
+<span class="tag-hl">&lt;body&gt;</span>
+  <span class="cmt">&lt;!-- ... コンテンツ ... --&gt;</span>
+  <span class="tag-hl">&lt;script</span> <span class="attr">src</span>=<span class="val">"app.js"</span><span class="tag-hl">&gt;&lt;/script&gt;</span>  <span class="cmt">&lt;!-- DOM完成後 --&gt;</span>
+<span class="tag-hl">&lt;/body&gt;</span></pre>
+  </div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: スクリプト実行タイミング確認</div>
+    <button class="btn btn-primary" onclick="demoSync()">▶ 同期スクリプト挙動を確認</button>
+    <button class="btn btn-secondary" onclick="clearLog('log-sync')">クリア</button>
+    <div class="log-output" id="log-sync">ボタンを押してください...</div>
+  </div>
+  <div class="section-label">▍ 動作確認手順（Before / After）</div>
+  <div class="verify">
+    <div class="verify-col verify-before">
+      <div class="verify-label">⬛ Before（デモ実行前）</div>
+      DevTools → Performance タブを開く（または Network タブ）<br>
+      ページリロード時に "Blocking Time" が発生することを確認<br>
+      <code>&lt;head&gt;</code> 内に同期 script タグがある = 描画ブロック中
+    </div>
+    <div class="verify-col verify-after">
+      <div class="verify-label">✅ After（ボタン実行後）</div>
+      ログに「DOMが未完成」のメッセージが表示される<br>
+      document.readyState が "loading" のまま実行されることを確認<br>
+      → <code>defer</code> または <code>&lt;/body&gt;</code> 前に移動して比較しよう
+    </div>
+  </div>
+  <div class="info-box warn">⚠️ <strong>なぜ &lt;/body&gt; 前に置く慣習があったか：</strong>同期スクリプトでも DOM 完成後に実行させるための苦肉の策。現在は <code>defer</code> を使うのが正解。</div>
+</div>
+
+<!-- ═══ defer ═══ -->
+<div class="card anchor" id="sec-defer">
+  <div class="card-header">
+    <div class="attr-badge">defer</div>
+    <div class="card-meta">
+      <h2>defer 属性</h2>
+      <p>HTMLパースと並行フェッチ → DOM完成後・順序保証あり実行</p>
+      <div class="tags"><span class="tag tag-timing">TIMING</span><span class="tag tag-perf">PERFORMANCE</span></div>
+    </div>
+  </div>
+  <div class="section-label">▍ 動作タイムライン</div>
+  <div class="timeline">
+    <div class="tl-row"><div class="tl-label">HTMLパース</div><div class="tl-bar tl-parse" style="width:100%">━━━━━━━━━━━━━━ (止まらない)</div></div>
+    <div class="tl-row"><div class="tl-label">フェッチ</div><div class="tl-bar tl-fetch" style="width:60%;margin-left:8px">並行ダウンロード</div></div>
+    <div class="tl-row"><div class="tl-label">実行</div><div class="tl-bar tl-exec" style="width:22%;margin-left:70px">DCL直前に実行</div></div>
+  </div>
+  <div class="explanation">フェッチはパースと<strong>並行実行</strong>されるためブロックしません。実行は<strong>DOM構築完了後、DOMContentLoadedイベントの直前</strong>に行われます。複数の defer スクリプトは<strong>記述順が保証</strong>されます（async と最大の違い）。</div>
+  <div class="code-block">
+    <div class="code-block-header"><span>HTML — defer の正しい使い方</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre class="code"><span class="tag-hl">&lt;head&gt;</span>
+  <span class="cmt">&lt;!-- ✅ head 内に書いてOK。DOMを待ってくれる --&gt;</span>
+  <span class="tag-hl">&lt;script</span> <span class="attr">src</span>=<span class="val">"lib.js"</span>  <span class="attr">defer</span><span class="tag-hl">&gt;&lt;/script&gt;</span>  <span class="cmt">&lt;!-- 先に実行 --&gt;</span>
+  <span class="tag-hl">&lt;script</span> <span class="attr">src</span>=<span class="val">"app.js"</span>  <span class="attr">defer</span><span class="tag-hl">&gt;&lt;/script&gt;</span>  <span class="cmt">&lt;!-- 後に実行（順序保証） --&gt;</span>
+<span class="tag-hl">&lt;/head&gt;</span>
+
+<span class="cmt">&lt;!-- インラインスクリプトには defer は効かない --&gt;</span>
+<span class="tag-hl">&lt;script</span> <span class="attr">defer</span><span class="tag-hl">&gt;</span><span class="cmt">/* 無視される */</span><span class="tag-hl">&lt;/script&gt;</span></pre>
+  </div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: defer の実行順序シミュレーション</div>
+    <button class="btn btn-primary" onclick="demoDefer()">▶ defer 実行順序を確認</button>
+    <button class="btn btn-secondary" onclick="clearLog('log-defer')">クリア</button>
+    <div class="log-output" id="log-defer">ボタンを押してください...</div>
+  </div>
+  <div class="section-label">▍ 動作確認手順（Before / After）</div>
+  <div class="verify">
+    <div class="verify-col verify-before">
+      <div class="verify-label">⬛ Before（defer なし）</div>
+      通常の <code>&lt;script src="..."&gt;</code> の場合<br>
+      ログに「DOMContentLoaded 前に実行」と表示される<br>
+      <code>document.body</code> が null になる場合がある
+    </div>
+    <div class="verify-col verify-after">
+      <div class="verify-label">✅ After（defer あり）</div>
+      ログで「DOM構築完了後」「DOMContentLoaded直前」の順を確認<br>
+      <code>document.readyState === "interactive"</code> で実行される<br>
+      複数 defer スクリプトは必ず記述順で実行される
+    </div>
+  </div>
+  <div class="info-box ok">✅ <strong>利用シーン：</strong>DOMを操作するアプリスクリプトのほぼすべて。jQueryプラグイン、フレームワークのバンドル、DOM readyを必要とするライブラリ。現代的HTMLの「デフォルト推奨」。</div>
+</div>
+
+<!-- ═══ async ═══ -->
+<div class="card anchor" id="sec-async">
+  <div class="card-header">
+    <div class="attr-badge">async</div>
+    <div class="card-meta">
+      <h2>async 属性</h2>
+      <p>並行フェッチ → ダウンロード完了次第すぐ実行（順序不定）</p>
+      <div class="tags"><span class="tag tag-timing">TIMING</span><span class="tag tag-perf">PERFORMANCE</span></div>
+    </div>
+  </div>
+  <div class="section-label">▍ 動作タイムライン</div>
+  <div class="timeline">
+    <div class="tl-row"><div class="tl-label">HTMLパース</div><div style="display:flex;gap:2px;width:100%"><div class="tl-bar tl-parse" style="width:55%">━━━━━</div><div class="tl-bar tl-block" style="width:14%;font-size:9px">BLOCK</div><div class="tl-bar tl-parse" style="width:28%">━━━━</div></div></div>
+    <div class="tl-row"><div class="tl-label">フェッチ</div><div class="tl-bar tl-fetch" style="width:50%;margin-left:6px">並行ダウンロード</div></div>
+    <div class="tl-row"><div class="tl-label">実行</div><div class="tl-bar tl-exec" style="width:16%;margin-left:52px">即実行!</div></div>
+  </div>
+  <div class="explanation">フェッチは並行ですが、<strong>ダウンロード完了時点でHTMLパースを中断して即実行</strong>します。DOMの完成を待たないため、DOM操作コードをここに置くのは危険。複数の async スクリプトは<strong>ネットワーク速度次第で順序が変わります</strong>。</div>
+  <div class="code-block">
+    <div class="code-block-header"><span>HTML — async の使いどころ</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre class="code"><span class="cmt">&lt;!-- ✅ 独立動作するスクリプトに最適 --&gt;</span>
+<span class="tag-hl">&lt;script</span> <span class="attr">src</span>=<span class="val">"analytics.js"</span>  <span class="attr">async</span><span class="tag-hl">&gt;&lt;/script&gt;</span>
+<span class="tag-hl">&lt;script</span> <span class="attr">src</span>=<span class="val">"chat-widget.js"</span> <span class="attr">async</span><span class="tag-hl">&gt;&lt;/script&gt;</span>
+
+<span class="cmt">&lt;!-- ❌ 依存関係のあるスクリプトには危険 --&gt;</span>
+<span class="tag-hl">&lt;script</span> <span class="attr">src</span>=<span class="val">"jquery.js"</span>    <span class="attr">async</span><span class="tag-hl">&gt;&lt;/script&gt;</span>
+<span class="tag-hl">&lt;script</span> <span class="attr">src</span>=<span class="val">"jquery-ui.js"</span> <span class="attr">async</span><span class="tag-hl">&gt;&lt;/script&gt;</span>
+<span class="cmt">&lt;!-- jquery-ui が先に実行される可能性あり! --&gt;</span></pre>
+  </div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: async の実行順序シミュレーション</div>
+    <button class="btn btn-primary" onclick="demoAsync()">▶ async 実行順序を確認</button>
+    <button class="btn btn-secondary" onclick="clearLog('log-async')">クリア</button>
+    <div class="log-output" id="log-async">ボタンを押してください...</div>
+  </div>
+  <div class="section-label">▍ 動作確認手順（Before / After）</div>
+  <div class="verify">
+    <div class="verify-col verify-before">
+      <div class="verify-label">⬛ Before（async なし）</div>
+      通常スクリプトの場合 → ログで「ブロッキング」表示<br>
+      Network タブ: 1本ずつ順番にダウンロード
+    </div>
+    <div class="verify-col verify-after">
+      <div class="verify-label">✅ After（async あり）</div>
+      ログで「実行順序がランダム」になることを確認<br>
+      Network タブ: 複数スクリプトが<strong>並列</strong>ダウンロードされる<br>
+      ⚠ DOMContentLoaded の前後どちらで実行されるか不定
+    </div>
+  </div>
+  <div class="info-box info">💡 <strong>使いどころ：</strong>Google Analytics, GTM, Intercom, Hotjar, 広告タグなど、ページの他のコードに依存せず独立して動作する<strong>サードパーティスクリプト</strong>が最適用途。</div>
+</div>
+
+<!-- ═══ 3方式比較 ═══ -->
+<div class="card anchor" id="sec-compare">
+  <div class="card-header">
+    <div class="attr-badge">比較</div>
+    <div class="card-meta">
+      <h2>通常 / defer / async 完全比較</h2>
+      <p>3つのロード方式を一覧で整理する</p>
+      <div class="tags"><span class="tag tag-timing">TIMING</span></div>
+    </div>
+  </div>
+  <table class="compare-table">
+    <thead><tr><th>方式</th><th>パースブロック?</th><th>実行タイミング</th><th>実行順序</th><th>DOMアクセス</th><th>主な用途</th></tr></thead>
+    <tbody>
+      <tr><td>&lt;script&gt;</td><td><span class="no">✗ ブロック</span></td><td>フェッチ完了直後</td><td><span class="yes">✓ 保証</span></td><td><span class="no">✗ 危険</span></td><td>レガシー/インライン</td></tr>
+      <tr><td>defer</td><td><span class="yes">✓ しない</span></td><td>DOM完成後・DCL直前</td><td><span class="yes">✓ 保証</span></td><td><span class="yes">✓ 安全</span></td><td>アプリJS・ほぼ全て</td></tr>
+      <tr><td>async</td><td><span class="yes">✓ しない*</span></td><td>DL完了次第</td><td><span class="no">✗ 不定</span></td><td><span class="no">✗ 危険</span></td><td>独立サードパーティ</td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:11px;color:var(--text-dim);margin-bottom:12px">* async は実行時にブロックが発生しますが、フェッチ中はブロックしません</p>
+  <div class="diagram">【通常】 ─ Parse ─┬─ Fetch ─┬─ Exec ─┬─ Parse(再開) ─
+                    └─────────┘
+                  ↑ここで止まる
+
+【defer】 ─ Parse ──────────────────────────┬─ Exec ─
+                ├─── Fetch ─────┤             ↑DCL直前
+                (並行)
+
+【async】 ─ Parse ────────┬──────────── Parse(再開) ─
+                ├─ Fetch ─┤Exec
+                          ↑DL完了次第</div>
+</div>
+
+<!-- ═══ type="module" ═══ -->
+<div class="card anchor" id="sec-module">
+  <div class="card-header">
+    <div class="attr-badge">type="module"</div>
+    <div class="card-meta">
+      <h2>type="module" 属性</h2>
+      <p>ES Modules を有効化。スコープ・strict mode・defer デフォルト</p>
+      <div class="tags"><span class="tag tag-timing">TIMING</span><span class="tag tag-compat">MODULE</span><span class="tag tag-perf">SCOPE</span></div>
+    </div>
+  </div>
+  <div class="explanation"><code>type="module"</code> を指定すると、スクリプトが <strong>ES Module として解釈</strong>されます。主な効果は4つ：<br>① <strong>import/export 構文が使える</strong><br>② <strong>自動的に defer と同じ挙動</strong>（DOM完成後実行）<br>③ <strong>スコープがモジュールスコープ</strong>（グローバル汚染なし）<br>④ <strong>自動的に strict mode</strong>が有効になる</div>
+  <div class="code-block">
+    <div class="code-block-header"><span>HTML + JavaScript</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre class="code"><span class="cmt">&lt;!-- ✅ モダンなアプリの標準スタイル --&gt;</span>
+<span class="tag-hl">&lt;script</span> <span class="attr">type</span>=<span class="val">"module"</span><span class="tag-hl">&gt;</span>
+  <span class="kw">import</span> { greet } <span class="kw">from</span> <span class="str">'./utils.js'</span>  <span class="cmt">// ✅ OK</span>
+  greet(<span class="str">'World'</span>)
+  <span class="cmt">// このスコープの変数はグローバルに漏れない</span>
+  <span class="kw">const</span> secret = <span class="str">'モジュールスコープ内'</span>
+<span class="tag-hl">&lt;/script&gt;</span>
+
+<span class="cmt">&lt;!-- 同一URLのモジュールは何度importしても1回だけ実行 --&gt;</span>
+<span class="tag-hl">&lt;script</span> <span class="attr">type</span>=<span class="val">"module"</span> <span class="attr">src</span>=<span class="val">"app.mjs"</span><span class="tag-hl">&gt;&lt;/script&gt;</span>
+<span class="tag-hl">&lt;script</span> <span class="attr">type</span>=<span class="val">"module"</span> <span class="attr">src</span>=<span class="val">"app.mjs"</span><span class="tag-hl">&gt;&lt;/script&gt;</span>
+<span class="cmt">&lt;!-- 上: app.mjs は1回のみ実行される --&gt;</span></pre>
+  </div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: モジュールスコープ確認</div>
+    <button class="btn btn-primary" onclick="demoModule()">▶ モジュールスコープをテスト</button>
+    <button class="btn btn-secondary" onclick="clearLog('log-module')">クリア</button>
+    <div class="log-output" id="log-module">ボタンを押してください...</div>
+  </div>
+  <div class="info-box warn">⚠️ <strong>注意点：</strong>ローカルファイル（<code>file://</code>）ではCORSエラーになります。HTTPサーバー経由で確認してください。また、モジュールは常に <code>crossorigin</code> が要求されます。</div>
+</div>
+
+<!-- ═══ nomodule ═══ -->
+<div class="card anchor" id="sec-nomodule">
+  <div class="card-header">
+    <div class="attr-badge">nomodule</div>
+    <div class="card-meta">
+      <h2>nomodule 属性</h2>
+      <p>古いブラウザ向けフォールバック（Differential Serving）</p>
+      <div class="tags"><span class="tag tag-compat">COMPATIBILITY</span></div>
+    </div>
+  </div>
+  <div class="explanation"><code>nomodule</code> を付けたスクリプトは、<strong>ES Modules をサポートするブラウザでは無視</strong>されます。<code>type="module"</code> と組み合わせることで、ブラウザの能力に応じて<strong>異なるバンドルを配信</strong>できます（Differential Serving）。</div>
+  <div class="code-block">
+    <div class="code-block-header"><span>Differential Serving パターン</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre class="code"><span class="cmt">&lt;!-- モダンブラウザ: ES2020+, 小さいバンドル --&gt;</span>
+<span class="tag-hl">&lt;script</span> <span class="attr">type</span>=<span class="val">"module"</span> <span class="attr">src</span>=<span class="val">"app.modern.js"</span><span class="tag-hl">&gt;&lt;/script&gt;</span>
+
+<span class="cmt">&lt;!-- 古いブラウザ: ES5, polyfill入り大きいバンドル --&gt;</span>
+<span class="tag-hl">&lt;script</span> <span class="attr">nomodule</span> <span class="attr">src</span>=<span class="val">"app.legacy.js"</span><span class="tag-hl">&gt;&lt;/script&gt;</span>
+
+<span class="cmt">&lt;!--
+  Chrome/Firefox/Safari: app.modern.js のみ実行
+  IE11:                  app.legacy.js のみ実行
+--&gt;</span></pre>
+  </div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: このブラウザのモジュールサポート確認</div>
+    <button class="btn btn-primary" onclick="demoNomodule()">▶ モジュールサポートを確認</button>
+    <div class="log-output" id="log-nomodule">ボタンを押してください...</div>
+  </div>
+  <div class="info-box info">💡 <strong>現在の位置づけ：</strong>IE11 のサポート終了（2022年）以降、実際にpolyfillバンドルが必要なケースは激減。Vite/webpack などのバンドラーが自動で対応。</div>
+</div>
+
+<!-- ═══ integrity ═══ -->
+<div class="card anchor" id="sec-integrity">
+  <div class="card-header">
+    <div class="attr-badge">integrity</div>
+    <div class="card-meta">
+      <h2>integrity 属性（SRI）</h2>
+      <p>Subresource Integrity — CDNファイル改ざん検出</p>
+      <div class="tags"><span class="tag tag-security">SECURITY</span></div>
+    </div>
+  </div>
+  <div class="explanation">CDNから配信されるスクリプトが<strong>改ざん・差し替えされていないか</strong>をハッシュ値で検証します。ブラウザはスクリプトを受信後、指定ハッシュと照合し、一致しなければ<strong>実行を拒否</strong>します。CDNのサーバーが侵害されてもXSS攻撃を防げます。</div>
+  <div class="diagram">配信サーバー                    ブラウザ
+┌─────────────┐              ┌──────────────────────────┐
+│  CDN Server │──（転送）──▶ │ 受信: jquery.min.js      │
+│  jquery.min │              │ SHA-384 計算              │
+│  .js        │              │   一致 → 実行 ✅          │
+└─────────────┘              │   不一致 → ブロック ✗    │
+                             └──────────────────────────┘</div>
+  <div class="code-block">
+    <div class="code-block-header"><span>SRI ハッシュ付き script タグ</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre class="code"><span class="tag-hl">&lt;script</span>
+  <span class="attr">src</span>=<span class="val">"https://cdn.example.com/jquery-3.7.1.min.js"</span>
+  <span class="attr">integrity</span>=<span class="val">"sha384-1H217gwSVyLSIfaLxHbE7..."</span>
+  <span class="attr">crossorigin</span>=<span class="val">"anonymous"</span>
+<span class="tag-hl">&gt;&lt;/script&gt;</span>
+
+<span class="cmt">&lt;!-- ハッシュ生成 (CLI) --&gt;</span>
+<span class="cmt"># cat app.js | openssl dgst -sha384 -binary | openssl base64 -A</span>
+<span class="cmt"># または: https://www.srihash.org/</span></pre>
+  </div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: SRI ハッシュ計算シミュレーター（Web Crypto API）</div>
+    <input type="text" id="sri-input" value="console.log('hello world')"
+      style="width:100%;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:12px;margin-bottom:8px">
+    <button class="btn btn-primary" onclick="calcSRI()">▶ SHA-384 ハッシュを計算</button>
+    <div class="log-output" id="log-sri">テキストを入力してボタンを押してください...</div>
+  </div>
+  <div class="section-label">▍ 動作確認手順（Before / After）</div>
+  <div class="verify">
+    <div class="verify-col verify-before">
+      <div class="verify-label">⬛ Before（integrity なし）</div>
+      CDNのスクリプトが正常にロードされる（ハッシュ検証なし）<br>
+      CDNが改ざんされた場合、悪意あるコードがそのまま実行される
+    </div>
+    <div class="verify-col verify-after">
+      <div class="verify-label">✅ After（integrity あり）</div>
+      ハッシュ値が一致 → 正常にロード ✓<br>
+      ハッシュ値が不一致 → Network タブに "blocked" 表示<br>
+      コンソールに "Subresource Integrity check failed" エラー
+    </div>
+  </div>
+  <div class="info-box err">⚠️ <strong>crossorigin 必須：</strong>integrity を使う場合は必ず <code>crossorigin="anonymous"</code> も指定。ないとブラウザはSRI検証をスキップします。</div>
+</div>
+
+<!-- ═══ crossorigin ═══ -->
+<div class="card anchor" id="sec-crossorigin">
+  <div class="card-header">
+    <div class="attr-badge">crossorigin</div>
+    <div class="card-meta">
+      <h2>crossorigin 属性</h2>
+      <p>CORSリクエストモードと認証情報の送信制御</p>
+      <div class="tags"><span class="tag tag-security">SECURITY</span></div>
+    </div>
+  </div>
+  <div class="explanation">外部スクリプト取得時のCORSリクエスト送信方法を制御します。<code>"anonymous"</code>はクッキー等を送らず、<code>"use-credentials"</code>は認証情報付きで送ります。<strong>SRI と組み合わせて必須</strong>のほか、エラーの詳細情報（スタックトレース）を得るためにも必要です。</div>
+  <table class="compare-table">
+    <thead><tr><th>値</th><th>Cookieを送る?</th><th>サーバー要件</th><th>用途</th></tr></thead>
+    <tbody>
+      <tr><td>（省略）</td><td><span class="no">送らない</span></td><td>CORS不要</td><td>通常のCDN（onerror詳細なし）</td></tr>
+      <tr><td>anonymous</td><td><span class="no">送らない</span></td><td>ACAO: * 必要</td><td>SRI / エラー詳細取得 / CDN</td></tr>
+      <tr><td>use-credentials</td><td><span class="yes">送る</span></td><td>明示的CORS設定必要</td><td>認証付きAPI・社内CDN</td></tr>
+    </tbody>
+  </table>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: crossorigin なし vs あり のエラー情報比較</div>
+    <button class="btn btn-primary" onclick="demoCrossorigin()">▶ エラー情報の違いを確認</button>
+    <button class="btn btn-secondary" onclick="clearLog('log-crossorigin')">クリア</button>
+    <div class="log-output" id="log-crossorigin">ボタンを押してください...</div>
+  </div>
+  <div class="section-label">▍ 動作確認手順（Before / After）</div>
+  <div class="verify">
+    <div class="verify-col verify-before">
+      <div class="verify-label">⬛ Before（crossorigin なし）</div>
+      外部スクリプトのエラーが "Script error." のみ表示される<br>
+      スタックトレースが取得できない（セキュリティ制限）<br>
+      SRI (integrity) の検証がスキップされる
+    </div>
+    <div class="verify-col verify-after">
+      <div class="verify-label">✅ After（crossorigin あり）</div>
+      ログに詳細なエラーメッセージとスタックトレースが表示される<br>
+      SRI の integrity 検証が有効になる<br>
+      Network タブ: Request Headers に "Origin" が含まれる
+    </div>
+  </div>
+</div>
+
+<!-- ═══ nonce ═══ -->
+<div class="card anchor" id="sec-nonce">
+  <div class="card-header">
+    <div class="attr-badge">nonce</div>
+    <div class="card-meta">
+      <h2>nonce 属性</h2>
+      <p>Content Security Policy（CSP）でのインラインスクリプト許可</p>
+      <div class="tags"><span class="tag tag-security">SECURITY</span></div>
+    </div>
+  </div>
+  <div class="explanation"><strong>Content Security Policy (CSP)</strong> を有効にすると、インラインスクリプトは原則実行禁止になります。<code>nonce</code> はサーバーが毎リクエストごとにランダム生成する<strong>一時的なトークン</strong>で、これが一致するスクリプトだけCSPを通過して実行を許可されます。</div>
+  <div class="diagram">リクエストごとに nonce 生成:
+
+サーバー → ランダムnonce生成: "abc123xyz"
+         → HTTPレスポンスヘッダ:
+             Content-Security-Policy: script-src 'nonce-abc123xyz'
+         → HTMLに埋め込み:
+             &lt;script nonce="abc123xyz"&gt;...&lt;/script&gt;
+
+XSS: &lt;script&gt;悪意のあるコード&lt;/script&gt; を注入
+     → nonce が一致しない → ブラウザが実行を拒否 ✗</div>
+  <div class="code-block">
+    <div class="code-block-header"><span>Node.js サーバー例</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre class="code"><span class="cmt">// サーバー側: nonce 生成</span>
+<span class="kw">const</span> nonce = crypto.randomBytes(<span class="str">16</span>).toString(<span class="str">'base64'</span>)
+
+res.setHeader(<span class="str">'Content-Security-Policy'</span>,
+  <span class="str">`script-src 'nonce-${nonce}' 'strict-dynamic'`</span>)
+
+<span class="cmt">// HTML テンプレートに埋め込み</span>
+<span class="cmt">// &lt;script nonce="${nonce}"&gt;</span>
+<span class="cmt">//   // このインラインスクリプトは許可される</span>
+<span class="cmt">// &lt;/script&gt;</span></pre>
+  </div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: nonce シミュレーション</div>
+    <button class="btn btn-primary" onclick="demoNonce()">▶ nonce 生成とCSP検証をシミュレート</button>
+    <button class="btn btn-secondary" onclick="clearLog('log-nonce')">クリア</button>
+    <div class="log-output" id="log-nonce">ボタンを押してください...</div>
+  </div>
+  <div class="section-label">▍ 動作確認手順（Before / After）</div>
+  <div class="verify">
+    <div class="verify-col verify-before">
+      <div class="verify-label">⬛ Before（nonce なし・CSP設定時）</div>
+      コンソールに "Refused to execute inline script because it violates the following Content Security Policy directive" が表示<br>
+      インラインスクリプトがブロックされて動かない
+    </div>
+    <div class="verify-col verify-after">
+      <div class="verify-label">✅ After（正しい nonce 付き）</div>
+      ログで「nonce 生成 → 検証一致 → 実行許可」の流れを確認<br>
+      サーバーから毎回異なる nonce が返ることを確認<br>
+      同じ nonce を2回使うと2回目はブロックされる
+    </div>
+  </div>
+  <div class="info-box warn">⚠️ <strong>重要：</strong>nonce は<strong>リクエストごとにランダム生成</strong>が必須。静的なnonce・使い回しは完全に無意味です。</div>
+</div>
+
+<!-- ═══ fetchpriority ═══ -->
+<div class="card anchor" id="sec-fetchpriority">
+  <div class="card-header">
+    <div class="attr-badge">fetchpriority</div>
+    <div class="card-meta">
+      <h2>fetchpriority 属性</h2>
+      <p>Priority Hints — ブラウザへのフェッチ優先度ヒント</p>
+      <div class="tags"><span class="tag tag-perf">PERFORMANCE</span></div>
+    </div>
+  </div>
+  <div class="support-row">
+    <span class="support-chip supported">✓ Chrome 101+</span>
+    <span class="support-chip supported">✓ Edge 101+</span>
+    <span class="support-chip supported">✓ Safari 17.2+</span>
+    <span class="support-chip supported">✓ Firefox 132+</span>
+  </div>
+  <div class="explanation">ブラウザの自動リソース優先度判断に対して<strong>ヒントを提供</strong>します。Core Web Vitals（LCP など）の最適化に有効。<code>"high"</code> / <code>"low"</code> / <code>"auto"</code>（デフォルト）の3値。</div>
+  <div class="code-block">
+    <div class="code-block-header"><span>fetchpriority の使い方</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre class="code"><span class="cmt">&lt;!-- ✅ LCPに必要なクリティカルスクリプト --&gt;</span>
+<span class="tag-hl">&lt;script</span> <span class="attr">src</span>=<span class="val">"critical.js"</span> <span class="attr">fetchpriority</span>=<span class="val">"high"</span><span class="tag-hl">&gt;&lt;/script&gt;</span>
+
+<span class="cmt">&lt;!-- ✅ 低優先度スクリプト（分析、広告など） --&gt;</span>
+<span class="tag-hl">&lt;script</span> <span class="attr">src</span>=<span class="val">"analytics.js"</span>
+        <span class="attr">async</span> <span class="attr">fetchpriority</span>=<span class="val">"low"</span><span class="tag-hl">&gt;&lt;/script&gt;</span></pre>
+  </div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: fetchpriority サポート確認</div>
+    <button class="btn btn-primary" onclick="demoFetchPriority()">▶ このブラウザの対応状況を確認</button>
+    <div class="log-output" id="log-fetchpriority">ボタンを押してください...</div>
+  </div>
+  <div class="section-label">▍ 動作確認手順（Before / After）</div>
+  <div class="verify">
+    <div class="verify-col verify-before">
+      <div class="verify-label">⬛ Before（fetchpriority なし）</div>
+      ブラウザが自動判断した優先度でダウンロード<br>
+      Network タブ: Priority 列が "Medium" など中間値
+    </div>
+    <div class="verify-col verify-after">
+      <div class="verify-label">✅ After（fetchpriority 指定後）</div>
+      <code>fetchpriority="high"</code> → Priority: "High" または "Highest"<br>
+      <code>fetchpriority="low"</code> → Priority: "Low" または "Lowest"<br>
+      Network タブで Priority 列を確認（列ヘッダ右クリックで表示）
+    </div>
+  </div>
+</div>
+
+<!-- ═══ referrerpolicy ═══ -->
+<div class="card anchor" id="sec-referrerpolicy">
+  <div class="card-header">
+    <div class="attr-badge">referrerpolicy</div>
+    <div class="card-meta">
+      <h2>referrerpolicy 属性</h2>
+      <p>スクリプトフェッチ時の Referer ヘッダ送信制御</p>
+      <div class="tags"><span class="tag tag-security">SECURITY</span><span class="tag tag-meta">META</span></div>
+    </div>
+  </div>
+  <div class="explanation">スクリプトをフェッチする際に送信される <code>Referer</code> ヘッダの内容を制御します。<strong>プライバシー保護</strong>や、機密性の高いURLをサードパーティに漏らさないために使います。</div>
+  <table class="compare-table">
+    <thead><tr><th>値</th><th>送信内容</th><th>用途</th></tr></thead>
+    <tbody>
+      <tr><td>no-referrer</td><td>送らない</td><td>最大プライバシー</td></tr>
+      <tr><td>origin</td><td>オリジンのみ（パスなし）</td><td>URLを隠したい</td></tr>
+      <tr><td>strict-origin-when-cross-origin</td><td>同一オリジン全部、クロスはオリジンのみ</td><td>現代的デフォルト</td></tr>
+      <tr><td>unsafe-url</td><td>常に完全URL</td><td>非推奨</td></tr>
+    </tbody>
+  </table>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: Referer 送信内容シミュレーション</div>
+    <button class="btn btn-primary" onclick="demoReferrer()">▶ 各ポリシーの送信内容を確認</button>
+    <button class="btn btn-secondary" onclick="clearLog('log-referrer')">クリア</button>
+    <div class="log-output" id="log-referrer">ボタンを押してください...</div>
+  </div>
+  <div class="section-label">▍ 動作確認手順（Before / After）</div>
+  <div class="verify">
+    <div class="verify-col verify-before">
+      <div class="verify-label">⬛ Before（referrerpolicy なし）</div>
+      デフォルト: <code>strict-origin-when-cross-origin</code><br>
+      クロスオリジンのスクリプトへ: オリジン部分のみ送信<br>
+      Network タブ → Request Headers → Referer を確認
+    </div>
+    <div class="verify-col verify-after">
+      <div class="verify-label">✅ After（ポリシー指定後）</div>
+      ログで各ポリシーごとの Referer 送信内容を確認<br>
+      <code>no-referrer</code> → Referer ヘッダが完全に消える<br>
+      <code>unsafe-url</code> → フルURLがそのまま送られる（⚠危険）
+    </div>
+  </div>
+</div>
+
+<!-- ═══ charset ═══ -->
+<div class="card anchor" id="sec-charset">
+  <div class="card-header">
+    <div class="attr-badge">charset</div>
+    <div class="card-meta">
+      <h2>charset 属性</h2>
+      <p>文字エンコーディング指定（現代では非推奨）</p>
+      <div class="tags"><span class="tag tag-meta">DEPRECATED</span><span class="tag tag-compat">LEGACY</span></div>
+    </div>
+  </div>
+  <div class="explanation">外部スクリプトの文字エンコーディングを指定する属性です。HTML5では<strong>事実上非推奨</strong>。現代のブラウザとサーバーはHTTPヘッダやBOMを使ってエンコーディングを決定します。</div>
+  <div class="code-block">
+    <div class="code-block-header"><span>charset の歴史的用法 → 現代の正解</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre class="code"><span class="cmt">&lt;!-- 古い書き方（HTML4時代） --&gt;</span>
+<span class="tag-hl">&lt;script</span> <span class="attr">src</span>=<span class="val">"app.js"</span> <span class="attr">charset</span>=<span class="val">"UTF-8"</span><span class="tag-hl">&gt;&lt;/script&gt;</span>
+
+<span class="cmt">&lt;!-- ✅ 現代: HTTPヘッダで設定 --&gt;</span>
+<span class="cmt">#   Content-Type: application/javascript; charset=UTF-8</span>
+<span class="cmt">&lt;!-- charset属性は不要 --&gt;</span>
+<span class="tag-hl">&lt;script</span> <span class="attr">src</span>=<span class="val">"app.js"</span><span class="tag-hl">&gt;&lt;/script&gt;</span></pre>
+  </div>
+  <div class="info-box warn">⚠️ HTML5 仕様では、<code>charset</code> 属性の値は常に <code>UTF-8</code> でなければならないと規定されています。サーバーのレスポンスヘッダが charset に優先します。</div>
+</div>
+
+<!-- ═══ language / type ═══ -->
+<div class="card anchor" id="sec-language">
+  <div class="card-header">
+    <div class="attr-badge">language / type</div>
+    <div class="card-meta">
+      <h2>language 属性（廃止）と type の変遷</h2>
+      <p>スクリプト言語指定の歴史と現在の正しい使い方</p>
+      <div class="tags"><span class="tag tag-meta">DEPRECATED</span><span class="tag tag-compat">LEGACY</span></div>
+    </div>
+  </div>
+  <div class="explanation"><code>language="JavaScript"</code> は <strong>HTML4時代の廃止属性</strong>。<code>type="text/javascript"</code> も HTML5では不要（デフォルトがJavaScript）。現在 <code>type</code> を指定すべきケースは <code>"module"</code> のみです。</div>
+  <div class="diagram">type 属性の意味の変遷:
+
+HTML4時代:
+  &lt;script language="javascript"&gt;  ← 廃止
+  &lt;script type="text/javascript"&gt; ← 当時は必要
+
+HTML5以降:
+  &lt;script&gt;                        ← type省略でOK (デフォルトJS)
+  &lt;script type="text/javascript"&gt; ← 動くが不要
+  &lt;script type="module"&gt;          ← ES Modules有効化 (現代)
+
+特殊用途 (type を別用途に使う):
+  &lt;script type="application/json"&gt;  ← JSON埋め込み (実行されない)
+  &lt;script type="text/template"&gt;     ← テンプレート格納 (実行されない)</div>
+  <div class="code-block">
+    <div class="code-block-header"><span>type 属性の正しい使い方まとめ</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre class="code"><span class="cmt">&lt;!-- ❌ 廃止: language属性 --&gt;</span>
+<span class="tag-hl">&lt;script</span> <span class="attr">language</span>=<span class="val">"javascript"</span><span class="tag-hl">&gt;</span>...<span class="tag-hl">&lt;/script&gt;</span>
+
+<span class="cmt">&lt;!-- △ 不要: type="text/javascript" は省略可 --&gt;</span>
+<span class="tag-hl">&lt;script</span> <span class="attr">type</span>=<span class="val">"text/javascript"</span><span class="tag-hl">&gt;</span>...<span class="tag-hl">&lt;/script&gt;</span>
+
+<span class="cmt">&lt;!-- ✅ 現代の標準 --&gt;</span>
+<span class="tag-hl">&lt;script&gt;</span>...<span class="tag-hl">&lt;/script&gt;</span>
+
+<span class="cmt">&lt;!-- ✅ ESM: type="module" のみ明示が必要 --&gt;</span>
+<span class="tag-hl">&lt;script</span> <span class="attr">type</span>=<span class="val">"module"</span><span class="tag-hl">&gt;</span>...<span class="tag-hl">&lt;/script&gt;</span>
+
+<span class="cmt">&lt;!-- ✅ JSON埋め込み（実行されないデータ格納） --&gt;</span>
+<span class="tag-hl">&lt;script</span> <span class="attr">type</span>=<span class="val">"application/json"</span> <span class="attr">id</span>=<span class="val">"config"</span><span class="tag-hl">&gt;</span>
+  {"apiUrl": "https://api.example.com", "version": 2}
+<span class="tag-hl">&lt;/script&gt;</span></pre>
+  </div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: type="application/json" データ格納パターン</div>
+    <button class="btn btn-primary" onclick="demoTypeJson()">▶ JSON埋め込みデータを読み取る</button>
+    <div class="log-output" id="log-type">ボタンを押してください...</div>
+    <script type="application/json" id="demo-config">{"siteName":"Script Lab","version":"1.0","features":["defer","async","SRI","CSP","modules"]}</script>
+  </div>
+</div>
+
+</main>
+</div>
+
+<script>
+// ── ユーティリティ ──────────────────────────────────────
+function ts() {
+  return `<span class="log-ts">[${new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',second:'2-digit',fractionalSecondDigits:2})}]</span>`;
+}
+function log(id, msg, type='ok') {
+  const el = document.getElementById(id);
+  const cls = {ok:'log-ok',warn:'log-warn',err:'log-err',info:'log-info'}[type]||'log-ok';
+  el.innerHTML += `${ts()} <span class="${cls}">${msg}</span>\n`;
+  el.scrollTop = el.scrollHeight;
+}
+function clearLog(id) { document.getElementById(id).innerHTML = ''; }
+function copyCode(btn) {
+  const code = btn.closest('.code-block').querySelector('pre.code').innerText;
+  navigator.clipboard.writeText(code).then(() => {
+    btn.textContent = 'copied!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+function goTo(id, el) {
+  document.getElementById(id).scrollIntoView({behavior:'smooth'});
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// スクロール連動ナビ
+const SEC_IDS = ['sec-sync','sec-defer','sec-async','sec-compare','sec-module','sec-nomodule','sec-integrity','sec-crossorigin','sec-nonce','sec-fetchpriority','sec-referrerpolicy','sec-charset','sec-language'];
+window.addEventListener('scroll', () => {
+  let cur = SEC_IDS[0];
+  SEC_IDS.forEach(id => { const el=document.getElementById(id); if(el&&el.getBoundingClientRect().top<110) cur=id; });
+  document.querySelectorAll('.nav-item').forEach((n,i) => n.classList.toggle('active', SEC_IDS[i]===cur));
+}, {passive:true});
+
+// ── デモ関数 ────────────────────────────────────────────
+function demoSync() {
+  clearLog('log-sync');
+  log('log-sync','デモ開始','info');
+  log('log-sync',`document.readyState = "${document.readyState}"`,'ok');
+  log('log-sync',`document.body が存在する: ${!!document.body}`,'ok');
+  setTimeout(()=>{
+    log('log-sync','--- &lt;head&gt;内で同期実行した場合のシミュレーション ---','info');
+    log('log-sync','document.getElementById("未作成のDIV"): null になる','err');
+    log('log-sync','→ DOMがまだ存在しないため（ブロッキングの弊害）','warn');
+    log('log-sync','--- &lt;/body&gt;前 または defer の場合 ---','info');
+    log('log-sync','DOM完成後なのですべての要素にアクセス可能 ✓','ok');
+    log('log-sync',`document.querySelectorAll(".card").length = ${document.querySelectorAll('.card').length}`,'ok');
+  },80);
+}
+
+function demoDefer() {
+  clearLog('log-defer');
+  log('log-defer','defer の実行順序シミュレーション','info');
+  log('log-defer','HTMLパース開始 → スクリプト並行フェッチ中...','info');
+  ['lib.js (120KB)','plugin.js (45KB)','app.js (80KB)'].forEach(s => log('log-defer',`[fetch 開始] ${s}`,'info'));
+  setTimeout(()=>log('log-defer','[fetch 完了] plugin.js (最速DL完了 → でも待機中!)','warn'),160);
+  setTimeout(()=>log('log-defer','[fetch 完了] app.js','warn'),210);
+  setTimeout(()=>log('log-defer','[fetch 完了] lib.js','warn'),320);
+  setTimeout(()=>{
+    log('log-defer','--- DOM構築完了 (DOMContentLoaded直前) ---','info');
+    log('log-defer','[実行] lib.js ← 記述順1番目','ok');
+    log('log-defer','[実行] plugin.js ← 記述順2番目','ok');
+    log('log-defer','[実行] app.js ← 記述順3番目','ok');
+    log('log-defer','DOMContentLoaded イベント発火','info');
+    log('log-defer','✓ 順序保証 + DOMアクセス安全 + ブロッキングなし','ok');
+  },420);
+}
+
+function demoAsync() {
+  clearLog('log-async');
+  log('log-async','async の実行順序シミュレーション','info');
+  log('log-async','HTMLパース開始 → スクリプト並行フェッチ中...','info');
+  ['analytics.js (120KB)','chat.js (45KB)','metrics.js (80KB)'].forEach(s => log('log-async',`[fetch 開始] ${s}`,'info'));
+  setTimeout(()=>{log('log-async','[fetch 完了] chat.js → パース中断して即実行!','err'); log('log-async','[実行] chat.js ← 記述2番目なのに最初に実行','ok');},160);
+  setTimeout(()=>{log('log-async','[fetch 完了] metrics.js → 即実行!','err'); log('log-async','[実行] metrics.js ← 記述3番目なのに2番目に実行','ok');},260);
+  setTimeout(()=>{
+    log('log-async','[fetch 完了] analytics.js → 即実行!','err');
+    log('log-async','[実行] analytics.js ← 記述1番目なのに最後に実行','ok');
+    log('log-async','⚠️ 実行順序: chat → metrics → analytics (記述順と逆!)','warn');
+    log('log-async','→ 相互依存がある場合は危険。独立スクリプトのみに使うこと','warn');
+  },360);
+}
+
+function demoModule() {
+  clearLog('log-module');
+  log('log-module','モジュールスコープのテスト','info');
+  window.normalVar = 'グローバルスコープの変数';
+  log('log-module','--- 通常スクリプトのスコープ ---','info');
+  log('log-module','var x = "test" → window.x にアクセス可能','warn');
+  log('log-module',`window.normalVar = "${window.normalVar}"`,'ok');
+  log('log-module','--- type="module" のスコープ ---','info');
+  log('log-module','const y = "秘密" → window.y はundefined','ok');
+  log('log-module',`window.moduleVar = "${window.moduleVar}"  ← undefined ✓`,'ok');
+  log('log-module','→ モジュール内の変数はグローバルに漏れない ✓','ok');
+  log('log-module','--- strict mode ---','info');
+  const isStrict = (function(){ return !this; })();
+  log('log-module',`現在環境のstrict mode: ${isStrict}`,'info');
+  log('log-module','type="module" は自動的に strict mode が有効になる ✓','ok');
+  log('log-module','--- 重複ロードテスト ---','info');
+  log('log-module','同じURLのモジュールを2回importしても1回のみ実行される ✓','ok');
+}
+
+function demoNomodule() {
+  const el = document.getElementById('log-nomodule');
+  el.innerHTML = '';
+  const add = (msg,cls) => { el.innerHTML += `${ts()} <span class="${cls}">${msg}</span>\n`; };
+  const supported = 'noModule' in HTMLScriptElement.prototype;
+  add('ブラウザのES Modules サポート確認中...','log-info');
+  if (supported) {
+    add('✓ このブラウザはES Modules をサポートしています','log-ok');
+    add('→ type="module" スクリプトが実行される','log-ok');
+    add('→ nomodule スクリプトは無視される ✓','log-ok');
+    add('→ レガシーpolyfillバンドルをダウンロードしない!','log-ok');
+  } else {
+    add('✗ このブラウザはES Modules を未サポート','log-err');
+    add('→ type="module" スクリプトは無視される','log-warn');
+    add('→ nomodule スクリプトが実行される','log-warn');
+  }
+  add('','log-ok');
+  add(`UserAgent: ${navigator.userAgent.substring(0,80)}...`,'log-info');
+}
+
+async function calcSRI() {
+  clearLog('log-sri');
+  const input = document.getElementById('sri-input').value;
+  log('log-sri',`入力: "${input}"`,'info');
+  log('log-sri','Web Crypto API で SHA-384 計算中...','info');
+  try {
+    const data = new TextEncoder().encode(input);
+    const hash = await crypto.subtle.digest('SHA-384', data);
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(hash)));
+    log('log-sri',`SHA-384 (base64): ${base64}`,'ok');
+    log('log-sri','','ok');
+    log('log-sri','→ HTMLに貼り付ける形式:','info');
+    log('log-sri',`integrity="sha384-${base64}"`,'ok');
+    log('log-sri','','ok');
+    log('log-sri','実ファイルのハッシュ生成 (CLI):','info');
+    log('log-sri','openssl dgst -sha384 -binary app.js | openssl base64 -A','info');
+  } catch(e) { log('log-sri','エラー: '+e.message,'err'); }
+}
+
+function demoCrossorigin() {
+  clearLog('log-crossorigin');
+  log('log-crossorigin','crossorigin 属性によるエラー情報の違い','info');
+  log('log-crossorigin','--- crossorigin なし（クロスオリジンスクリプト） ---','info');
+  log('log-crossorigin','window.onerror が受け取るメッセージ:','warn');
+  log('log-crossorigin','"Script error." (詳細なし)','err');
+  log('log-crossorigin','行番号: 0, ファイル: "", スタック: null','err');
+  log('log-crossorigin','→ セキュリティ上の理由でブラウザが詳細を隠す','warn');
+  log('log-crossorigin','','ok');
+  log('log-crossorigin','--- crossorigin="anonymous" あり ---','info');
+  log('log-crossorigin','window.onerror が受け取るメッセージ:','ok');
+  log('log-crossorigin','"TypeError: Cannot read properties of undefined"','ok');
+  log('log-crossorigin','行番号: 42, ファイル: "https://cdn.example.com/app.js"','ok');
+  log('log-crossorigin','スタック: at myFunc (app.js:42:10)','ok');
+  log('log-crossorigin','→ 詳細なデバッグ情報が取得できる ✓','ok');
+  log('log-crossorigin','','ok');
+  log('log-crossorigin','同一オリジンエラーデモ（実際に実行）:','info');
+  try { (undefined).test; } catch(e) {
+    log('log-crossorigin',`同一オリジンエラー捕捉: ${e.message}`,'ok');
+    log('log-crossorigin',`スタック取得可能: ${e.stack ? '✓' : '✗'}`,'ok');
+  }
+}
+
+function demoNonce() {
+  clearLog('log-nonce');
+  const nonce = btoa(crypto.getRandomValues(new Uint8Array(12)).join(''));
+  log('log-nonce','サーバーサイドでnonce生成シミュレーション','info');
+  log('log-nonce',`生成されたnonce: "${nonce}"`,'ok');
+  log('log-nonce','','ok');
+  log('log-nonce','HTTPレスポンスヘッダ:','info');
+  log('log-nonce',`Content-Security-Policy: script-src 'nonce-${nonce}'`,'ok');
+  log('log-nonce','','ok');
+  log('log-nonce','HTMLに埋め込まれた正規スクリプト:','info');
+  log('log-nonce',`&lt;script nonce="${nonce}"&gt; ← CSP通過 ✓`,'ok');
+  log('log-nonce','','ok');
+  log('log-nonce','XSS攻撃者が注入したスクリプト:','info');
+  log('log-nonce','&lt;script&gt;document.cookie="stolen"&lt;/script&gt;','err');
+  log('log-nonce','→ nonce が一致しないのでCSPがブロック ✗','err');
+  log('log-nonce','','ok');
+  const nonce2 = btoa(crypto.getRandomValues(new Uint8Array(12)).join(''));
+  log('log-nonce','次のリクエストのnonce（毎回異なる）:','info');
+  log('log-nonce',`"${nonce2}" ← 前回と完全に異なる ✓`,'ok');
+}
+
+function demoFetchPriority() {
+  const el = document.getElementById('log-fetchpriority');
+  el.innerHTML='';
+  const add=(msg,cls)=>{el.innerHTML+=`${ts()} <span class="${cls}">${msg}</span>\n`;};
+  const testEl = document.createElement('script');
+  const supported = 'fetchPriority' in testEl || 'fetchpriority' in testEl;
+  add('fetchpriority 属性のサポート確認','log-info');
+  add(`このブラウザ: ${supported ? '✓ 対応' : '✗ 未対応（ヒントは無視される）'}`, supported?'log-ok':'log-warn');
+  add('','log-ok');
+  add('Priority Hints の使いどころ:','log-info');
+  add('high  → クリティカルJS, LCPに必要なスクリプト','log-ok');
+  add('low   → analytics, A/Bテスト, チャットウィジェット','log-ok');
+  add('auto  → ブラウザに任せる（デフォルト）','log-ok');
+  add('','log-ok');
+  add('Core Web Vitals への影響:','log-info');
+  add('LCP改善: critical.js に fetchpriority="high"','log-ok');
+  add('INP改善: 非クリティカルJSに fetchpriority="low" + async','log-ok');
+}
+
+function demoReferrer() {
+  clearLog('log-referrer');
+  const url = window.location.href;
+  const origin = window.location.origin;
+  log('log-referrer',`現在のページURL: ${url}`,'info');
+  log('log-referrer',`現在のオリジン: ${origin}`,'info');
+  log('log-referrer','','ok');
+  const policies = [
+    {name:'no-referrer',           ref:'（送信しない）',  desc:'最大プライバシー'},
+    {name:'origin',                ref:origin+'/',       desc:'パスなし'},
+    {name:'strict-origin-when-cross-origin', ref:'クロスオリジン→ origin のみ', desc:'現代的デフォルト'},
+    {name:'no-referrer-when-downgrade', ref:url,        desc:'HTTPS→HTTPで削除'},
+    {name:'unsafe-url',            ref:url,              desc:'常に完全URL（非推奨）'},
+  ];
+  log('log-referrer','サードパーティCDNへのリクエスト時に送るReferer:','info');
+  policies.forEach(p => {
+    log('log-referrer',`[${p.name}]`,'info');
+    log('log-referrer',`  Referer: ${p.ref}  (${p.desc})`,'ok');
+  });
+  log('log-referrer','','ok');
+  log('log-referrer','推奨: サードパーティには no-referrer または origin を使う','ok');
+}
+
+function demoTypeJson() {
+  const el = document.getElementById('log-type');
+  el.innerHTML='';
+  const add=(msg,cls)=>{el.innerHTML+=`${ts()} <span class="${cls}">${msg}</span>\n`;};
+  add('type="application/json" データ取得デモ','log-info');
+  add('','log-ok');
+  const scriptEl = document.getElementById('demo-config');
+  if (scriptEl) {
+    add('&lt;script type="application/json" id="demo-config"&gt; を発見','log-ok');
+    add('このscriptタグはJSとして実行されない ✓','log-ok');
+    add('','log-ok');
+    try {
+      const data = JSON.parse(scriptEl.textContent);
+      add('JSON.parse(scriptEl.textContent) でデータ取得:','log-info');
+      add(`  siteName: "${data.siteName}"`,'log-ok');
+      add(`  version: "${data.version}"`,'log-ok');
+      add(`  features: [${data.features.map(f=>`"${f}"`).join(', ')}]`,'log-ok');
+      add('','log-ok');
+      add('用途: サーバーサイドのデータをJSへ安全に渡すパターン ✓','log-ok');
+      add('例: Next.js の __NEXT_DATA__ スクリプト','log-info');
+    } catch(e) { add('パースエラー: '+e.message,'log-err'); }
+  } else { add('script#demo-config が見つかりません','log-err'); }
+}
+</script>
+</body>
+</html>

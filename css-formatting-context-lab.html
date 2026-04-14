@@ -1,0 +1,2157 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSS Formatting Context 実機確認ラボ</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&family=Noto+Sans+JP:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#ffffff;--surface:#f5f7fa;--surface2:#ebeef2;--border:#c8cdd3;
+    --accent:#005cc5;--accent2:#22863a;--accent3:#6f42c1;--accent4:#b08800;
+    --text:#1a1a2e;--text-dim:#5c6370;--code:#005cc5;
+    --mono:'IBM Plex Mono',monospace;--sans:'Noto Sans JP',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.7;min-height:100vh}
+  header{padding:20px 24px 14px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:100}
+  header h1{font-family:var(--mono);font-size:1rem;color:var(--accent);letter-spacing:.05em}
+  header h1 span{color:var(--text-dim)}
+  header p{font-size:11px;color:var(--text-dim);margin-top:3px}
+  .layout{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 63px)}
+  nav{background:var(--surface);border-right:1px solid var(--border);padding:12px 0;position:sticky;top:63px;height:calc(100vh - 63px);overflow-y:auto}
+  nav::-webkit-scrollbar{width:3px}
+  nav::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+  .nav-section{padding:6px 14px 2px;font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:.12em;text-transform:uppercase;margin-top:6px}
+  .nav-item{display:block;padding:7px 14px;cursor:pointer;border-left:2px solid transparent;transition:all .15s;font-size:12px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .nav-item:hover{background:var(--surface2);color:var(--text)}
+  .nav-item.active{border-left-color:var(--accent);background:rgba(0,92,197,.06);color:var(--accent);font-weight:700}
+  .nav-item code{font-family:var(--mono);font-size:11px;background:rgba(0,0,0,.05);padding:1px 5px;border-radius:3px}
+  main{padding:24px;overflow-x:hidden}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:22px;margin-bottom:22px;transition:border-color .2s;content-visibility:auto;contain-intrinsic-size:auto 400px}
+  .card:hover{border-color:var(--accent)}
+  .card-header{display:flex;align-items:flex-start;gap:12px;margin-bottom:16px}
+  .attr-badge{font-family:var(--mono);font-size:13px;font-weight:700;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;color:var(--accent);white-space:nowrap;flex-shrink:0}
+  .card-meta{flex:1}
+  .card-meta h2{font-size:15px;font-weight:700;color:var(--text)}
+  .card-meta p{font-size:12px;color:var(--text-dim);margin-top:2px}
+  .tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+  .tag{font-size:9px;font-family:var(--mono);padding:2px 6px;border-radius:99px;border:1px solid}
+  .tag-layout{border-color:var(--accent);color:var(--accent);background:rgba(0,92,197,.08)}
+  .tag-margin{border-color:var(--accent3);color:var(--accent3);background:rgba(111,66,193,.08)}
+  .tag-float{border-color:var(--accent2);color:var(--accent2);background:rgba(34,134,58,.08)}
+  .tag-flex{border-color:var(--accent4);color:var(--accent4);background:rgba(176,136,0,.08)}
+  .tag-grid{border-color:#e36209;color:#e36209;background:rgba(227,98,9,.08)}
+  .tag-text{border-color:var(--text-dim);color:var(--text-dim);background:rgba(92,99,112,.08)}
+  .tag-table{border-color:#cb2431;color:#cb2431;background:rgba(203,36,49,.08)}
+  .section-label{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:7px}
+  .explanation{font-size:13px;line-height:1.8;color:var(--text);margin-bottom:16px}
+  .explanation strong{color:var(--accent)}
+  .code-block{background:#f0f4f8;border:1px solid var(--border);border-radius:7px;overflow:hidden;margin-bottom:16px}
+  .code-block-header{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;background:var(--surface2);border-bottom:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--text-dim)}
+  .copy-btn{background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:4px;cursor:pointer;transition:all .15s}
+  .copy-btn:hover,.copy-btn.copied{border-color:var(--accent);color:var(--accent)}
+  pre.code{padding:14px;font-size:12px;line-height:1.65;overflow-x:auto;margin:0}
+  .kw{color:#d73a49}.prop{color:#22863a}.val{color:#032f62}.cmt{color:#6a737d}.sel{color:#005cc5}
+  .demo-area{background:#f0f4f8;border:1px solid var(--border);border-radius:7px;padding:16px;margin-bottom:12px}
+  .demo-area .section-label{margin-bottom:8px}
+  .btn{font-family:var(--mono);font-size:12px;padding:6px 14px;border-radius:6px;border:none;cursor:pointer;transition:all .15s;margin-right:6px;margin-bottom:6px}
+  .btn-primary{background:var(--accent);color:#fff;font-weight:700}
+  .btn-primary:hover{background:#0047a3}
+  .btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+  .btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+  .btn-toggle{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+  .btn-toggle.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .compare-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px}
+  .compare-table th{background:var(--surface2);padding:7px 10px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--text-dim);border-bottom:1px solid var(--border);white-space:nowrap}
+  .compare-table td{padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:top}
+  .compare-table tr:last-child td{border-bottom:none}
+  .compare-table td:first-child{font-family:var(--mono);color:var(--accent);font-size:11px}
+  .yes{color:var(--accent2)}.no{color:#cb2431}.na{color:var(--text-dim)}
+  .info-box{border-radius:6px;padding:10px 12px;font-size:12.5px;margin-bottom:12px;border-left:3px solid;line-height:1.7}
+  .info-box.warn{background:rgba(176,136,0,.07);border-color:var(--accent4);color:#7a5c00}
+  .info-box.info{background:rgba(34,134,58,.07);border-color:var(--accent2);color:#196127}
+  .info-box.ok{background:rgba(0,92,197,.07);border-color:var(--accent);color:#003d8f}
+  .info-box.err{background:rgba(203,36,49,.07);border-color:#cb2431;color:#9a1320}
+  .verify{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+  @media(max-width:600px){.verify{grid-template-columns:1fr}}
+  .verify-col{border-radius:6px;padding:10px 14px;font-size:12px;line-height:1.7}
+  .verify-before{background:rgba(203,36,49,.06);border:1px solid rgba(203,36,49,.2);color:#6b1a22}
+  .verify-after{background:rgba(34,134,58,.06);border:1px solid rgba(34,134,58,.2);color:#154f1e}
+  .verify-label{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;font-weight:700}
+  .verify-before .verify-label{color:#cb2431}
+  .verify-after .verify-label{color:var(--accent2)}
+  .anchor{scroll-margin-top:80px}
+  hr{border:none;border-top:1px solid var(--border);margin:18px 0}
+  .check-steps{background:rgba(176,136,0,.06);border:1px solid rgba(176,136,0,.3);border-left:3px solid var(--accent4);border-radius:6px;padding:10px 14px;margin-top:8px;font-size:12px;line-height:1.8;color:#5c4400}
+  .check-steps-title{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--accent4);margin-bottom:5px}
+  .check-steps ol{margin-left:18px;margin-top:4px}
+  .check-steps li{margin-bottom:2px}
+
+  /* ===== Live Demo Panels ===== */
+  .live-panel{border:2px dashed var(--border);border-radius:8px;padding:16px;margin-bottom:12px;position:relative;background:var(--bg);min-height:60px;transition:all .3s}
+  .live-panel.highlighted{border-color:var(--accent);background:rgba(0,92,197,.03)}
+  .live-label{position:absolute;top:-10px;left:12px;background:var(--bg);padding:0 6px;font-family:var(--mono);font-size:10px;color:var(--text-dim)}
+  .box-a{background:#dbeafe;border:2px solid #3b82f6;padding:12px 16px;font-family:var(--mono);font-size:12px;color:#1e40af;border-radius:4px}
+  .box-b{background:#dcfce7;border:2px solid #22c55e;padding:12px 16px;font-family:var(--mono);font-size:12px;color:#166534;border-radius:4px}
+  .box-c{background:#fef3c7;border:2px solid #f59e0b;padding:12px 16px;font-family:var(--mono);font-size:12px;color:#92400e;border-radius:4px}
+  .box-d{background:#fce7f3;border:2px solid #ec4899;padding:12px 16px;font-family:var(--mono);font-size:12px;color:#9d174d;border-radius:4px}
+  .box-parent{background:rgba(99,102,241,.08);border:2px solid #6366f1;padding:16px;font-family:var(--mono);font-size:11px;color:#4338ca;border-radius:6px;position:relative}
+  .box-parent>.parent-label{position:absolute;top:4px;left:8px;font-size:9px;color:#6366f1;letter-spacing:.05em}
+  .float-l{float:left;width:120px;height:60px;margin-right:12px;margin-bottom:4px}
+  .float-r{float:right;width:120px;height:60px;margin-left:12px;margin-bottom:4px}
+  .measure{font-family:var(--mono);font-size:11px;color:var(--accent3);margin-top:6px}
+  .devtools-step{display:flex;gap:10px;margin-bottom:10px;font-size:12px;line-height:1.6;align-items:flex-start}
+  .devtools-num{min-width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
+
+  @media(max-width:700px){
+    .layout{grid-template-columns:1fr}
+    nav{position:static;height:auto;display:flex;flex-wrap:wrap;padding:6px;border-right:none;border-bottom:1px solid var(--border)}
+    .nav-section{display:none}
+    .nav-item{padding:4px 8px;font-size:11px;border-left:none;border-bottom:2px solid transparent}
+    .nav-item.active{border-bottom-color:var(--accent);border-left-color:transparent}
+    main{padding:14px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span>{</span> Formatting Context <span>}</span> 実機確認ラボ</h1>
+  <p>BFC / IFC / FFC / GFC / TFC / Ruby / Multicol — すべての生成条件と効果をブラウザ実機で目視確認</p>
+</header>
+
+<div class="layout">
+<nav id="sidebar">
+  <div class="nav-section">Block</div>
+  <div class="nav-item active" onclick="goTo('sec-bfc-overview',this)">BFC 概要</div>
+  <div class="nav-item" onclick="goTo('sec-bfc-gen',this)">BFC 生成条件一覧</div>
+  <div class="nav-item" onclick="goTo('sec-bfc-float',this)">効果① フロート包含</div>
+  <div class="nav-item" onclick="goTo('sec-bfc-margin',this)">効果② マージン折畳</div>
+  <div class="nav-item" onclick="goTo('sec-bfc-exclude',this)">効果③ フロート排除</div>
+  <div class="nav-section">Inline</div>
+  <div class="nav-item" onclick="goTo('sec-ifc',this)">IFC 概要</div>
+  <div class="nav-item" onclick="goTo('sec-ifc-line',this)">Line Box 確認</div>
+  <div class="nav-item" onclick="goTo('sec-ifc-valign',this)">vertical-align</div>
+  <div class="nav-item" onclick="goTo('sec-ifc-textalign',this)">効果① text-align</div>
+  <div class="nav-item" onclick="goTo('sec-ifc-lineheight',this)">効果② line-height</div>
+  <div class="nav-section">Flex</div>
+  <div class="nav-item" onclick="goTo('sec-ffc',this)">FFC 概要</div>
+  <div class="nav-item" onclick="goTo('sec-ffc-axis',this)">主軸・交差軸</div>
+  <div class="nav-item" onclick="goTo('sec-ffc-grow',this)">flex-grow/shrink</div>
+  <div class="nav-item" onclick="goTo('sec-ffc-wrap',this)">効果: flex-wrap</div>
+  <div class="nav-section">Grid</div>
+  <div class="nav-item" onclick="goTo('sec-gfc',this)">GFC 概要</div>
+  <div class="nav-item" onclick="goTo('sec-gfc-track',this)">トラック確認</div>
+  <div class="nav-item" onclick="goTo('sec-gfc-area',this)">エリア配置</div>
+  <div class="nav-item" onclick="goTo('sec-gfc-auto',this)">効果: 自動配置</div>
+  <div class="nav-section">Table / Ruby / Multicol</div>
+  <div class="nav-item" onclick="goTo('sec-tfc',this)">Table FC</div>
+  <div class="nav-item" onclick="goTo('sec-ruby',this)">Ruby FC</div>
+  <div class="nav-item" onclick="goTo('sec-multicol',this)">Multicol FC</div>
+  <div class="nav-section">横断比較</div>
+  <div class="nav-item" onclick="goTo('sec-compare',this)">全FC比較表</div>
+  <div class="nav-item" onclick="goTo('sec-devtools',this)">DevTools判別法</div>
+</nav>
+
+<main>
+
+<!-- ═══════════════════════════════════════════ -->
+<!--  BFC 概要                                   -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="card anchor" id="sec-bfc-overview">
+  <div class="card-header">
+    <div class="attr-badge">BFC</div>
+    <div class="card-meta">
+      <h2>Block Formatting Context — 概要</h2>
+      <p>ブロックレベル要素の縦方向配置・マージン折りたたみ・フロート包含を制御する独立領域</p>
+      <div class="tags"><span class="tag tag-layout">LAYOUT</span><span class="tag tag-margin">MARGIN</span><span class="tag tag-float">FLOAT</span></div>
+    </div>
+  </div>
+  <div class="section-label">▍ BFCとは何か</div>
+  <div class="explanation">BFCは<strong>独立したレイアウト領域</strong>です。BFC内部のレイアウトは外部に影響を与えず、外部のレイアウトもBFC内部に影響を与えません。<br>比喩で言えば「壁のある部屋」——壁がなければマージンもフロートも隣の部屋に漏れますが、BFCという壁を立てると内部で完結します。</div>
+  <div class="explanation">BFCの<strong>3大効果</strong>は：<br>① 内部のフロート要素を高さに含める（フロート包含）<br>② 外部とのマージン折りたたみを遮断する<br>③ 隣接フロート要素と重ならない</div>
+  <div class="info-box ok">✅ <strong>最重要キーワード：</strong>CSSレイアウトの謎のバグの大半はBFCで説明できます。「高さが0になる」「マージンが消える」「要素が重なる」→ まずBFCを疑いましょう。</div>
+</div>
+
+<!-- ═══ BFC 生成条件一覧 ═══ -->
+<div class="card anchor" id="sec-bfc-gen">
+  <div class="card-header">
+    <div class="attr-badge">BFC 生成</div>
+    <div class="card-meta">
+      <h2>BFC 生成条件 完全一覧</h2>
+      <p>以下のいずれかの条件を満たすと、その要素は新しいBFCを確立する</p>
+      <div class="tags"><span class="tag tag-layout">LAYOUT</span></div>
+    </div>
+  </div>
+  <table class="compare-table">
+    <thead><tr><th>条件</th><th>CSS</th><th>補足</th></tr></thead>
+    <tbody>
+      <tr><td>ルート要素</td><td>&lt;html&gt;</td><td>ページ全体の最初のBFC</td></tr>
+      <tr><td>flow-root</td><td><code>display: flow-root</code></td><td class="yes">✅ BFC専用。副作用なし。推奨</td></tr>
+      <tr><td>overflow</td><td><code>overflow: hidden | auto | scroll</code></td><td>visible / clip 以外すべて</td></tr>
+      <tr><td>float</td><td><code>float: left | right</code></td><td>フロート自身がBFCになる</td></tr>
+      <tr><td>absolute/fixed</td><td><code>position: absolute | fixed</code></td><td>通常フローから外れる</td></tr>
+      <tr><td>inline-block</td><td><code>display: inline-block</code></td><td>インライン配置かつBFC</td></tr>
+      <tr><td>table-cell</td><td><code>display: table-cell</code></td><td>各セルが独立BFC</td></tr>
+      <tr><td>table-caption</td><td><code>display: table-caption</code></td><td>テーブルキャプション</td></tr>
+      <tr><td>flex item</td><td>flex コンテナの直接の子</td><td>各アイテムが独立BFC</td></tr>
+      <tr><td>grid item</td><td>grid コンテナの直接の子</td><td>各アイテムが独立BFC</td></tr>
+      <tr><td>contain</td><td><code>contain: layout | content | paint</code></td><td>パフォーマンス最適化用</td></tr>
+      <tr><td>multicol</td><td><code>column-count | column-width ≠ auto</code></td><td>段組コンテナ</td></tr>
+    </tbody>
+  </table>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: 各生成条件でBFCが確立されることを確認</div>
+    <p style="font-size:12px;color:var(--text-dim);margin-bottom:10px">各ボタンを押すと、親要素にそのCSSが適用され、フロート子要素を包含するか（＝BFCが生成されたか）を目視確認できます。</p>
+    <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px">
+      <button class="btn btn-primary" onclick="demoBfcGen('none')">リセット（BFCなし）</button>
+      <button class="btn btn-secondary" onclick="demoBfcGen('flow-root')">flow-root</button>
+      <button class="btn btn-secondary" onclick="demoBfcGen('overflow-hidden')">overflow:hidden</button>
+      <button class="btn btn-secondary" onclick="demoBfcGen('overflow-auto')">overflow:auto</button>
+      <button class="btn btn-secondary" onclick="demoBfcGen('inline-block')">inline-block</button>
+      <button class="btn btn-secondary" onclick="demoBfcGen('float-left')">float:left</button>
+      <button class="btn btn-secondary" onclick="demoBfcGen('position-absolute')">position:absolute</button>
+      <button class="btn btn-secondary" onclick="demoBfcGen('contain-layout')">contain:layout</button>
+    </div>
+    <div class="live-panel" id="bfc-gen-panel">
+      <div class="live-label" id="bfc-gen-label">parent — BFCなし</div>
+      <div id="bfc-gen-parent" style="border:2px solid #6366f1;padding:8px;background:rgba(99,102,241,.06);border-radius:6px;">
+        <span class="parent-label" style="font-size:9px;color:#6366f1">parent</span>
+        <div class="box-a float-l" style="height:80px;">float:left の子 (80px)</div>
+        <p style="font-size:12px;margin:0">テキスト。親の高さがフロート子を含むかどうかを確認してください。</p>
+      </div>
+      <div class="measure" id="bfc-gen-measure"></div>
+    </div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>まず「リセット（BFCなし）」ボタンを押す → 親の枠線が潰れて1本線になり、青い float 子が親からはみ出しているのを確認する</li>
+        <li>「flow-root」ボタンを押す → 親の枠線が float 子の高さまで広がることを確認する（これが BFC による float 包含）</li>
+        <li>「overflow:hidden」「inline-block」など他のボタンも順に試す → どれも同様に float を包含することを確認する</li>
+        <li>リセットに戻し「float:left」や「position:absolute」ボタンを押す → 親自身が BFC になるため float 子が包含される（ただし親のレイアウトも変化する）</li>
+      </ol>
+      <strong>見るポイント：</strong>親の背景色が float 子を囲んで高さが増えていれば BFC が確立されている証拠。
+    </div>
+  </div>
+  <div class="section-label">▍ DevTools 確認手順</div>
+  <div class="devtools-step"><div class="devtools-num">1</div><div>親要素を右クリック → 検証（Inspect）</div></div>
+  <div class="devtools-step"><div class="devtools-num">2</div><div>Computed タブで <code>display</code>、<code>overflow</code>、<code>float</code>、<code>position</code> を確認</div></div>
+  <div class="devtools-step"><div class="devtools-num">3</div><div>Box model で親の高さを確認。フロート子の高さを含んでいれば BFC が生成されている</div></div>
+  <div class="info-box info">💡 <strong>現代のベストプラクティス：</strong><code>display: flow-root</code> が最も意図が明確で副作用がありません。<code>overflow: hidden</code> は内容がはみ出した時にクリッピングされる副作用があります。</div>
+</div>
+
+<!-- ═══ BFC 効果① フロート包含 ═══ -->
+<div class="card anchor" id="sec-bfc-float">
+  <div class="card-header">
+    <div class="attr-badge">BFC 効果①</div>
+    <div class="card-meta">
+      <h2>フロート包含（Containing Floats）</h2>
+      <p>BFCがないと親の高さが0になる「高さ潰れ」問題</p>
+      <div class="tags"><span class="tag tag-float">FLOAT</span><span class="tag tag-layout">LAYOUT</span></div>
+    </div>
+  </div>
+  <div class="explanation">フロート要素は<strong>通常フローから外れる</strong>ため、親要素の高さ計算に含まれません。子が全てフロートの場合、親の高さが0になります。BFCを確立すると、親は内部のフロートを高さに含めるようになります。</div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: フロート包含 Before / After</div>
+    <button class="btn btn-toggle" id="btn-float-contain" onclick="toggleFloatContain()">BFC OFF — display: flow-root を適用</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px">
+      <div>
+        <div class="live-panel">
+          <div class="live-label">BFC なし</div>
+          <div style="border:2px solid #ef4444;padding:8px;background:rgba(239,68,68,.05);border-radius:4px" id="float-no-bfc">
+            <div class="box-a float-l">float:left</div>
+            <div class="box-b float-r">float:right</div>
+          </div>
+          <div class="measure" id="float-no-measure"></div>
+        </div>
+      </div>
+      <div>
+        <div class="live-panel">
+          <div class="live-label">BFC あり</div>
+          <div style="border:2px solid #22c55e;padding:8px;background:rgba(34,197,94,.05);border-radius:4px" id="float-bfc">
+            <div class="box-a float-l">float:left</div>
+            <div class="box-b float-r">float:right</div>
+          </div>
+          <div class="measure" id="float-yes-measure"></div>
+        </div>
+      </div>
+    </div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>左（BFCなし）の赤い枠を見る → 枠線が細い1本線になっており、float 子が枠の外にはみ出している（「高さ潰れ」）</li>
+        <li>右（BFCあり）の緑の枠を見る → 枠線が float 子の高さを含んで広がっている</li>
+        <li>ボタンをクリックして ON/OFF を切り替える → 左右どちらの高さが変化するかを確認する</li>
+        <li>各枠の下の数値（height の測定値）を読む → BFCなしは 0px 付近、BFCありは float 子の高さ以上になっているはず</li>
+      </ol>
+      <strong>見るポイント：</strong>枠線が float 子を「囲めているか」が BFC 有無の判断基準。
+    </div>
+  </div>
+  <div class="verify">
+    <div class="verify-col verify-before">
+      <div class="verify-label">⬛ Before（BFCなし）</div>
+      親のボーダーが潰れて1本線に見える<br>
+      DevTools Box model: height = 0 または padding 分だけ<br>
+      フロート子が親の外にはみ出す
+    </div>
+    <div class="verify-col verify-after">
+      <div class="verify-label">✅ After（BFCあり）</div>
+      親のボーダーがフロート子を囲む<br>
+      DevTools Box model: height にフロート子の高さが含まれる<br>
+      <code>display: flow-root</code> を Styles に追加して確認
+    </div>
+  </div>
+</div>
+
+<!-- ═══ BFC 効果② マージン折りたたみ ═══ -->
+<div class="card anchor" id="sec-bfc-margin">
+  <div class="card-header">
+    <div class="attr-badge">BFC 効果②</div>
+    <div class="card-meta">
+      <h2>マージン折りたたみ遮断</h2>
+      <p>隣接ブロック・親子間のマージン折りたたみをBFCで防止する</p>
+      <div class="tags"><span class="tag tag-margin">MARGIN</span><span class="tag tag-layout">LAYOUT</span></div>
+    </div>
+  </div>
+  <div class="explanation"><strong>マージン折りたたみ</strong>とは、隣接するブロック要素の上下マージンが合算されず、大きい方だけが適用される現象です。<br>パターンは2つ：<br>① <strong>隣接兄弟間</strong>：上要素のmargin-bottomと下要素のmargin-topが折りたたまれる<br>② <strong>親子間</strong>：親にborder/paddingがなく、子のmargin-topが親の外に「突き抜ける」</div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: 隣接兄弟間のマージン折りたたみ</div>
+    <button class="btn btn-toggle" id="btn-margin-sibling" onclick="toggleMarginSibling()">BFC OFF — 各要素を flow-root で包む</button>
+    <div class="live-panel" style="margin-top:10px" id="margin-sibling-panel">
+      <div class="live-label">隣接ブロック</div>
+      <div id="margin-sibling-container">
+        <div class="box-a" style="margin-bottom:30px">Box A (margin-bottom: 30px)</div>
+        <div class="box-b" style="margin-top:20px">Box B (margin-top: 20px)</div>
+      </div>
+      <div class="measure" id="margin-sibling-measure"></div>
+    </div>
+    <div class="info-box warn">⚠️ 折りたたみ発生時の間隔 = max(30, 20) = <strong>30px</strong>。BFCで遮断すると 30 + 20 = <strong>50px</strong> になる。DevTools でBox間のピクセル数を測定して確認。</div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>ボタンをクリックして「BFC ON」にする前に、Box A と Box B の間隔を目視する → 30px（大きい方だけ）に見える</li>
+        <li>ボタンをクリックして ON にする → 間隔が広がる（30px + 20px = 50px）ことを確認する</li>
+        <li>下の measure 表示で「間隔: ○○px」の数字が 30 から 50 に変わることを確認する</li>
+      </ol>
+      <strong>見るポイント：</strong>OFF（折りたたみあり）→ 間隔 30px、ON（BFCで遮断）→ 間隔 50px。
+    </div>
+  </div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: 親子間のマージン突き抜け</div>
+    <button class="btn btn-toggle" id="btn-margin-parent" onclick="toggleMarginParent()">BFC OFF — 親に flow-root を適用</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px">
+      <div class="live-panel">
+        <div class="live-label">BFC なし（突き抜ける）</div>
+        <div id="margin-parent-no" style="outline:2px solid #ef4444;background:rgba(239,68,68,.05);border-radius:4px;">
+          <div class="box-a" style="margin-top:30px">child (margin-top: 30px)</div>
+        </div>
+        <div class="measure" id="margin-parent-no-m"></div>
+      </div>
+      <div class="live-panel">
+        <div class="live-label">BFC あり（収まる）</div>
+        <div id="margin-parent-yes" style="outline:2px solid #22c55e;background:rgba(34,197,94,.05);border-radius:4px;">
+          <div class="box-b" style="margin-top:30px">child (margin-top: 30px)</div>
+        </div>
+        <div class="measure" id="margin-parent-yes-m"></div>
+      </div>
+    </div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>左（BFCなし）の赤い枠を見る → 子要素の margin-top:30px が枠の外（上）に飛び出して枠全体が下にずれている</li>
+        <li>右（BFCあり）の緑の枠を見る → 子要素の margin-top が枠の内側に収まり、枠の上端が親の上端と同じ位置にある</li>
+        <li>ボタンをクリックして ON/OFF を切り替える → 左側の枠の上位置が変化し、ON のとき突き抜けが解消されることを確認する</li>
+      </ol>
+      <strong>見るポイント：</strong>親の枠の上端と、子の上端の位置関係。BFCなしは親ごと下にずれる。
+    </div>
+  </div>
+  <div class="verify">
+    <div class="verify-col verify-before">
+      <div class="verify-label">⬛ Before（BFCなし）</div>
+      隣接兄弟: 間隔が30px（max値のみ）<br>
+      親子: 子のmarginが親の外に漏れる。<br>
+      親をInspect → Box model: margin 領域に子のマージンが表示される
+    </div>
+    <div class="verify-col verify-after">
+      <div class="verify-label">✅ After（BFCあり）</div>
+      隣接兄弟: 間隔が50px（合計値）に広がる<br>
+      親子: 子のmarginが親の内側に留まる<br>
+      親の Box model の padding 直下にマージン空間が見える
+    </div>
+  </div>
+</div>
+
+<!-- ═══ BFC 効果③ フロート排除 ═══ -->
+<div class="card anchor" id="sec-bfc-exclude">
+  <div class="card-header">
+    <div class="attr-badge">BFC 効果③</div>
+    <div class="card-meta">
+      <h2>フロート排除（BFC要素はフロートと重ならない）</h2>
+      <p>BFC要素はフロートの横に並び、フロートの下に回り込まない</p>
+      <div class="tags"><span class="tag tag-float">FLOAT</span><span class="tag tag-layout">LAYOUT</span></div>
+    </div>
+  </div>
+  <div class="explanation">通常のブロック要素はフロート要素の下に潜り込みます（テキストだけが回り込む）。BFCを確立した要素は<strong>フロートの横に並び、重ならない</strong>ため、フロートベースの2カラムレイアウトが可能になります。</div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: フロート排除</div>
+    <button class="btn btn-toggle" id="btn-float-excl" onclick="toggleFloatExclude()">BFC OFF — メインにflow-rootを適用</button>
+    <div class="live-panel" style="margin-top:10px">
+      <div class="live-label">フロート + コンテンツ</div>
+      <div style="overflow:hidden">
+        <div class="box-a float-l" style="width:150px;height:100px">サイドバー<br>(float:left)</div>
+        <div id="float-excl-main" class="box-b" style="min-height:100px">
+          メインコンテンツ。BFCなしだとフロートの下に潜り込み、テキストだけが回り込みます。BFCありだとフロートの横に独立して配置され、重なりません。この違いをDevToolsのBox modelで確認してください。
+        </div>
+      </div>
+    </div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>初期状態（BFCなし）でメインコンテンツのテキストがサイドバーの右側に回り込んでいるのを確認する</li>
+        <li>ボタンをクリックして ON（BFCあり）にする → メインコンテンツがサイドバーの横に独立した矩形で並ぶことを確認する</li>
+        <li>ON/OFF を切り替えながらメインコンテンツの左端の位置を確認する → OFF ではサイドバーの下（左端から）、ON ではサイドバーの右側（サイドバー幅分右から）になる</li>
+      </ol>
+      <strong>見るポイント：</strong>メインコンテンツの「ボックス全体」の左端位置。BFCなし → サイドバーの後ろに潜り込む、BFCあり → サイドバーの横に独立。
+    </div>
+  </div>
+  <div class="verify">
+    <div class="verify-col verify-before">
+      <div class="verify-label">⬛ Before（BFCなし）</div>
+      メインのBox modelがフロートの下に潜り込む<br>
+      テキストだけがフロートを避けて回り込む<br>
+      メインの width = 親の 100%（フロート下に潜る）
+    </div>
+    <div class="verify-col verify-after">
+      <div class="verify-label">✅ After（BFCあり）</div>
+      メインがフロートの横に独立して配置される<br>
+      メインの width = 親幅 - フロート幅 - margin<br>
+      重なりがなく、2カラムレイアウトが実現
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!--  IFC                                        -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="card anchor" id="sec-ifc">
+  <div class="card-header">
+    <div class="attr-badge">IFC</div>
+    <div class="card-meta">
+      <h2>Inline Formatting Context — 概要</h2>
+      <p>テキスト・インライン要素の横方向配置と行ボックス生成を制御</p>
+      <div class="tags"><span class="tag tag-text">TEXT</span><span class="tag tag-layout">LAYOUT</span></div>
+    </div>
+  </div>
+  <div class="section-label">▍ 生成条件</div>
+  <div class="explanation">ブロックコンテナが<strong>インラインレベルの子要素のみ</strong>を持つとき、自動的にIFCが生成されます。テキストノード、<code>&lt;span&gt;</code>、<code>&lt;a&gt;</code>、<code>&lt;em&gt;</code>、<code>&lt;img&gt;</code>（インライン）などだけの場合です。<br>ブロック要素（<code>&lt;div&gt;</code>、<code>&lt;p&gt;</code>）が1つでも混ざると、IFCは分断されます。</div>
+  <div class="section-label">▍ IFCの効果</div>
+  <table class="compare-table">
+    <thead><tr><th>効果</th><th>説明</th><th>制御CSS</th></tr></thead>
+    <tbody>
+      <tr><td>行ボックス生成</td><td>インライン要素が横に並びLine Boxが生成される</td><td>—</td></tr>
+      <tr><td>水平配置</td><td>行ボックス内の水平位置を制御</td><td><code>text-align</code></td></tr>
+      <tr><td>垂直配置</td><td>行ボックス内の垂直位置を制御</td><td><code>vertical-align</code></td></tr>
+      <tr><td>行高さ</td><td>行ボックスの高さを決定</td><td><code>line-height</code></td></tr>
+      <tr><td>縦margin無効</td><td>インライン要素の上下marginは行高さに影響しない</td><td>—</td></tr>
+      <tr><td>縦padding透過</td><td>上下paddingは視覚的に描画されるが行高さに影響しない</td><td>—</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══ IFC Line Box ═══ -->
+<div class="card anchor" id="sec-ifc-line">
+  <div class="card-header">
+    <div class="attr-badge">IFC Line Box</div>
+    <div class="card-meta">
+      <h2>Line Box（行ボックス）の確認</h2>
+      <p>インライン要素の上下margin/paddingが行高さに影響しないことを実機確認</p>
+      <div class="tags"><span class="tag tag-text">TEXT</span></div>
+    </div>
+  </div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: インライン要素の上下margin/padding</div>
+    <button class="btn btn-toggle" id="btn-ifc-pad" onclick="toggleIfcPad()">padding OFF — span にpadding 20pxを適用</button>
+    <div class="live-panel" style="margin-top:10px;line-height:2">
+      <div class="live-label">IFC（テキスト + インライン要素）</div>
+      <p style="font-size:13px">これは通常のテキストです。<span id="ifc-span" style="background:#dbeafe;border:1px solid #3b82f6;color:#1e40af;font-family:var(--mono);font-size:12px">この span は inline 要素</span> です。上下の padding を付けても行ボックスの高さは変わりません。ここは後続テキスト。<span style="background:#dcfce7;border:1px solid #22c55e;color:#166534;margin:20px;font-family:var(--mono);font-size:12px">margin:20px の span</span> 左右marginは効くが上下は無効。</p>
+    </div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>ボタンをクリックして「padding ON」にする → 青い span の背景色が上下に広がるのを確認する</li>
+        <li>テキストの行間（行と行の間のスペース）が変化していないことを確認する → padding が増えても行間は同じ</li>
+        <li>「緑の span（margin:20px）」を見る → 左右には空きができているが、上下の行間は変わっていないことを確認する</li>
+      </ol>
+      <strong>見るポイント：</strong>span の背景・ボーダーが広がっても、行の高さ（行と行の間隔）が全く変わらない点。インライン要素の上下 padding/margin は行ボックスの高さに効かない。
+    </div>
+  </div>
+  <div class="verify">
+    <div class="verify-col verify-before">
+      <div class="verify-label">⬛ Before（padding なし）</div>
+      span はテキストと同じ行高さに収まる<br>
+      DevTools: span の Box model で margin/padding を確認
+    </div>
+    <div class="verify-col verify-after">
+      <div class="verify-label">✅ After（padding 20px）</div>
+      span の背景色領域は上下に広がる（視覚的に描画される）<br>
+      しかし行間は変わらない → 行ボックスの高さに影響しない<br>
+      前後の行テキストと重なって見えることを確認
+    </div>
+  </div>
+</div>
+
+<!-- ═══ IFC vertical-align ═══ -->
+<div class="card anchor" id="sec-ifc-valign">
+  <div class="card-header">
+    <div class="attr-badge">vertical-align</div>
+    <div class="card-meta">
+      <h2>vertical-align の効果確認</h2>
+      <p>IFC内のインライン要素の垂直配置を実機で比較</p>
+      <div class="tags"><span class="tag tag-text">TEXT</span></div>
+    </div>
+  </div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: vertical-align の各値</div>
+    <div class="live-panel">
+      <div class="live-label">vertical-align 比較</div>
+      <p style="font-size:20px;line-height:3;border-bottom:1px dashed var(--border)">
+        ベース
+        <span style="vertical-align:baseline;background:#dbeafe;border:1px solid #3b82f6;padding:2px 6px;font-size:12px;font-family:var(--mono)">baseline</span>
+        <span style="vertical-align:top;background:#dcfce7;border:1px solid #22c55e;padding:2px 6px;font-size:12px;font-family:var(--mono)">top</span>
+        <span style="vertical-align:middle;background:#fef3c7;border:1px solid #f59e0b;padding:2px 6px;font-size:12px;font-family:var(--mono)">middle</span>
+        <span style="vertical-align:bottom;background:#fce7f3;border:1px solid #ec4899;padding:2px 6px;font-size:12px;font-family:var(--mono)">bottom</span>
+        <span style="vertical-align:super;background:#e0e7ff;border:1px solid #6366f1;padding:2px 6px;font-size:12px;font-family:var(--mono)">super</span>
+        <span style="vertical-align:sub;background:#ede9fe;border:1px solid #8b5cf6;padding:2px 6px;font-size:12px;font-family:var(--mono)">sub</span>
+      </p>
+    </div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>「ベース」の文字の下線（ベースライン）を基準として、各 span の縦位置を比較する</li>
+        <li><strong>baseline（青）</strong>→「ベース」と同じ高さの下端に揃っている</li>
+        <li><strong>top（緑）</strong>→ 行ボックスの一番上に揃っている（最も高い位置）</li>
+        <li><strong>middle（黄）</strong>→ 行ボックスの中央付近に揃っている</li>
+        <li><strong>bottom（ピンク）</strong>→ 行ボックスの一番下に揃っている</li>
+        <li><strong>super（青紫）</strong>→ ベースラインより少し上（上付き文字の位置）</li>
+        <li><strong>sub（紫）</strong>→ ベースラインより少し下（下付き文字の位置）</li>
+      </ol>
+      <strong>見るポイント：</strong>「ベース」の文字との上下位置の違いを1つずつ追っていく。baseline だけが「ベース」と同じ下端の高さに揃う。
+    </div>
+  </div>
+  <div class="info-box warn">⚠️ <strong>注意：</strong><code>vertical-align</code> は IFC 内のインライン要素にのみ有効です。ブロック要素の垂直中央揃えには Flexbox の <code>align-items: center</code> を使いましょう。</div>
+</div>
+
+<!-- ═══ IFC 効果① text-align ═══ -->
+<div class="card anchor" id="sec-ifc-textalign">
+  <div class="card-header">
+    <div class="attr-badge">IFC 効果①</div>
+    <div class="card-meta">
+      <h2>text-align — 水平配置</h2>
+      <p>IFC内の行ボックスにおけるインラインコンテンツの水平方向配置</p>
+      <div class="tags"><span class="tag tag-text">TEXT</span></div>
+    </div>
+  </div>
+  <div class="explanation"><strong>text-align</strong> は親ブロックコンテナに指定し、IFC内の各行ボックスのインラインコンテンツを水平方向にどう配置するかを制御します。<br>インライン要素（span, a, em）やテキストノードはすべて同じ行ボックスに並ぶため、text-align はそれら全体に一括で効果を与えます。<br><strong>注意：</strong>ブロック要素（div, p）自体の左右位置は text-align では制御できません（margin: auto を使う）。</div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: text-align の各値</div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="btn btn-secondary" onclick="setTextAlign('left')">left</button>
+      <button class="btn btn-secondary" onclick="setTextAlign('center')">center</button>
+      <button class="btn btn-secondary" onclick="setTextAlign('right')">right</button>
+      <button class="btn btn-secondary" onclick="setTextAlign('justify')">justify</button>
+    </div>
+    <div class="live-panel">
+      <div class="live-label" id="ta-label">text-align: left</div>
+      <div id="ta-container" style="text-align:left;border:2px solid #6366f1;padding:16px;border-radius:6px;background:rgba(99,102,241,.05);font-size:14px;line-height:1.8">
+        CSSフォーマッティングコンテキストは、ブラウザがHTML要素をどのように配置するかを決定するルールの集合です。IFCではインライン要素が行ボックスに沿って水平方向に並びます。<span style="background:#dbeafe;border:1px solid #3b82f6;padding:2px 6px;border-radius:3px;font-family:var(--mono);font-size:12px">inline span</span> も同じ行ボックスに配置され、text-align の影響を受けます。
+      </div>
+    </div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>「left」ボタン → テキストの各行が左端から始まることを確認する</li>
+        <li>「center」ボタン → テキストの各行が中央揃えになることを確認する</li>
+        <li>「right」ボタン → テキストの各行が右端から始まることを確認する</li>
+        <li>「justify」ボタン → 最終行以外が左右両端にぴったり揃うことを確認する（最終行は left と同様）</li>
+      </ol>
+      <strong>見るポイント：</strong>各行の左端・右端がコンテナに揃っているか。justify は「最終行だけは揃わない」点が特徴。
+    </div>
+  </div>
+  <div class="verify">
+    <div class="verify-col verify-before">
+      <div class="verify-label">⬛ left / right / center</div>
+      行ボックスの各行が指定端または中央に揃う<br>
+      各行が独立して揃えられる（最終行も同様）<br>
+      DevTools: Elements で親要素を選択 → Computed: text-align を確認
+    </div>
+    <div class="verify-col verify-after">
+      <div class="verify-label">✅ justify の特徴</div>
+      最終行以外は両端揃え（単語間隔が行ごとに均等化）<br>
+      最終行は left と同じ挙動（text-align-last で制御可能）<br>
+      日本語テキストでは文字間隔も均等化される
+    </div>
+  </div>
+  <div class="info-box ok">✅ <strong>DevTools確認：</strong>右クリック → 検証 → 親コンテナを選択 → Computed タブで <code>text-align</code> の計算値を確認。変更すると各行の揃え位置が即座に変化します。</div>
+</div>
+
+<!-- ═══ IFC 効果② line-height ═══ -->
+<div class="card anchor" id="sec-ifc-lineheight">
+  <div class="card-header">
+    <div class="attr-badge">IFC 効果②</div>
+    <div class="card-meta">
+      <h2>line-height — 行ボックスの高さと half-leading</h2>
+      <p>line-heightが行ボックスの高さを決定し、上下にhalf-leadingが追加される仕組み</p>
+      <div class="tags"><span class="tag tag-text">TEXT</span></div>
+    </div>
+  </div>
+  <div class="explanation"><strong>line-height</strong> はIFCの行ボックスの高さを決定します。<br><code>行ボックス高さ = line-height</code>（数値指定の場合は <code>line-height × font-size</code>）<br><code>half-leading = (line-height − font-size) ÷ 2</code> として行ボックスの上下に均等配分されます。<br>インライン要素の上下 margin・padding は行ボックス高さに影響しない（IFC Line Box の挙動）のに対し、<strong>line-height は行ボックスそのものを変える</strong>点が重要な違いです。</div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: line-height スライダー（font-size: 16px 固定）</div>
+    <div style="margin-bottom:10px">
+      <label style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">line-height = <span id="lh-val">1.5</span>（行ボックス高さ: <span id="lh-px">24px</span> / half-leading: 上下各 <span id="lh-hl">4px</span>）</label>
+      <input type="range" min="0.8" max="3.0" step="0.1" value="1.5" style="width:100%;margin-top:6px" oninput="setLineHeight(this.value)" id="lh-slider">
+    </div>
+    <div class="live-panel">
+      <div class="live-label" id="lh-label">line-height: 1.5 / 要素の実測高さ: — px</div>
+      <div id="lh-container" style="line-height:1.5;border:2px solid #6366f1;padding:8px;border-radius:6px;background:rgba(99,102,241,.05);font-size:16px">
+        <span style="background:#dbeafe;outline:1px solid #3b82f6">1行目: テキスト Inline Text Abc gy</span><br>
+        <span style="background:#dcfce7;outline:1px solid #22c55e">2行目: テキスト Inline Text Abc gy</span><br>
+        <span style="background:#fef3c7;outline:1px solid #f59e0b">3行目: テキスト Inline Text Abc gy</span>
+      </div>
+    </div>
+    <div class="measure" id="lh-measure"></div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>スライダーを左端（0.8）にドラッグする → 行と行が詰まってほぼ重なる状態を確認する</li>
+        <li>スライダーを右端（3.0）にドラッグする → 行間が大きく広がることを確認する</li>
+        <li>スライダーを動かしながら、各行の<strong>背景色の高さ（= font-size の高さ）は変化しない</strong>のに行間だけが変化することを確認する</li>
+        <li>スライダー上部の「行ボックス高さ」と「half-leading」の数字が連動して変わることを確認する</li>
+      </ol>
+      <strong>見るポイント：</strong>背景色（文字の実際の高さ）は一定なのに、その上下の空白（half-leading）だけが増減する。line-height は「行間」でなく「行ボックス全体の高さ」を決める。
+    </div>
+  </div>
+  <div class="info-box warn">⚠️ <strong>half-leading の可視化：</strong>スライダーを動かすと行間が変わりますが、各行の<strong>背景色の高さ</strong>（= font-size 相当）は変わりません。行間の空白がhalf-leadingです。DevToolsでspan要素を選択するとBox modelに高さ（line-height分）が表示されます。</div>
+  <div class="verify">
+    <div class="verify-col verify-before">
+      <div class="verify-label">⬛ line-height = 1.0（half-leading ≈ 0）</div>
+      行ボックス高さ = 16px（font-sizeと同値）<br>
+      half-leading = 0px → 行間なし<br>
+      アセンダー・ディセンダーが重なる可能性あり
+    </div>
+    <div class="verify-col verify-after">
+      <div class="verify-label">✅ line-height = 2.0（half-leading = 8px）</div>
+      行ボックス高さ = 32px（font-size × 2）<br>
+      上下各 8px の half-leading が追加される<br>
+      DevTools: コンテナの高さが伸びることを確認
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!--  FFC                                        -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="card anchor" id="sec-ffc">
+  <div class="card-header">
+    <div class="attr-badge">FFC</div>
+    <div class="card-meta">
+      <h2>Flex Formatting Context — 概要</h2>
+      <p>display: flex / inline-flex で生成。主軸・交差軸の2軸レイアウト</p>
+      <div class="tags"><span class="tag tag-flex">FLEX</span><span class="tag tag-layout">LAYOUT</span></div>
+    </div>
+  </div>
+  <div class="section-label">▍ 生成条件</div>
+  <div class="explanation"><code>display: flex</code> または <code>display: inline-flex</code> を指定した要素がFlexコンテナとなり、FFCを確立します。</div>
+  <div class="section-label">▍ FFCの効果</div>
+  <table class="compare-table">
+    <thead><tr><th>効果</th><th>説明</th></tr></thead>
+    <tbody>
+      <tr><td>flex item化</td><td>直接の子要素が自動的にflex itemになる</td></tr>
+      <tr><td>float無効化</td><td>flex item の <code>float</code>, <code>clear</code> は無視される</td></tr>
+      <tr><td>BFC確立</td><td>各flex itemは独自のBFCを確立する</td></tr>
+      <tr><td>マージン折畳なし</td><td>flex item間のマージン折りたたみは発生しない</td></tr>
+      <tr><td>2軸制御</td><td>主軸（justify-content）と交差軸（align-items）の独立制御</td></tr>
+      <tr><td>サイズ配分</td><td>flex-grow / flex-shrink / flex-basis でサイズを柔軟に配分</td></tr>
+    </tbody>
+  </table>
+  <div class="code-block">
+    <div class="code-block-header"><span>CSS — FFC の生成</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre class="code"><span class="sel">.container</span> {
+  <span class="prop">display</span>: <span class="val">flex</span>;           <span class="cmt">/* FFC を確立 */</span>
+  <span class="prop">flex-direction</span>: <span class="val">row</span>;    <span class="cmt">/* 主軸: 横方向（デフォルト） */</span>
+  <span class="prop">justify-content</span>: <span class="val">center</span>; <span class="cmt">/* 主軸方向の配置 */</span>
+  <span class="prop">align-items</span>: <span class="val">center</span>;     <span class="cmt">/* 交差軸方向の配置 */</span>
+  <span class="prop">gap</span>: <span class="val">16px</span>;               <span class="cmt">/* アイテム間の余白 */</span>
+}
+<span class="cmt">/* 子要素は自動的にflex itemになる */</span>
+<span class="cmt">/* float: left は無視される */</span></pre>
+  </div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: floatがFFC内で無効化されることを確認</div>
+    <button class="btn btn-toggle" id="btn-ffc-float" onclick="toggleFfcFloat()">display: block — display: flex に切替</button>
+    <div class="live-panel" style="margin-top:10px">
+      <div class="live-label" id="ffc-float-label">display: block</div>
+      <div id="ffc-float-container" style="border:2px solid #6366f1;padding:12px;border-radius:6px;background:rgba(99,102,241,.05)">
+        <div class="box-a" style="float:left;width:auto;height:auto">float:left 指定済</div>
+        <div class="box-b" style="float:right;width:auto;height:auto">float:right 指定済</div>
+        <div class="box-c" style="width:auto;height:auto">float なし</div>
+      </div>
+    </div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>初期状態（display:block）で「float:left 指定済」が左端に、「float:right 指定済」が右端に浮いていることを確認する</li>
+        <li>ボタンをクリックして display:flex に切り替える → 全ての要素が横並びになり、float が無視されて通常の flex item として扱われることを確認する</li>
+        <li>block に戻して、3つ目の「float なし」要素がfloatした2つの要素の隙間に収まっているのを確認する（blockではfloatが有効）</li>
+      </ol>
+      <strong>見るポイント：</strong>flex に切り替えると float の浮き動作がなくなり、3要素が等間隔で横並びになる。
+    </div>
+  </div>
+    <div class="demo-area">
+      <div class="section-label">▍ 実機デモ ①: flex item化 — block↔flex 切替で子要素がflex itemになることを確認</div>
+      <button class="btn btn-toggle" id="btn-ffc-itemize" onclick="toggleFfcItemize()">① flex item化を試す（block → flex）</button>
+      <div class="live-panel" style="margin-top:10px">
+        <div class="live-label" id="ffc-item-label">display: block（通常ブロック）</div>
+        <div id="ffc-item-container" style="border:2px solid #6366f1;padding:12px;border-radius:6px;background:rgba(99,102,241,.05)">
+          <div class="box-a" style="width:auto;height:auto;margin-bottom:8px;padding:10px">子要素 A（blockのまま縦並び）</div>
+          <div class="box-b" style="width:auto;height:auto;margin-bottom:8px;padding:10px">子要素 B</div>
+          <div class="box-c" style="width:auto;height:auto;padding:10px">子要素 C</div>
+        </div>
+      </div>
+      <div class="check-steps">
+        <div class="check-steps-title">📋 確認手順</div>
+        <ol>
+          <li>初期状態（display:block）で子要素 A・B・C が縦に1列に並んでいることを確認する</li>
+          <li>ボタンをクリックして flex に切り替える → 子要素が横並び（横方向の flex item）になることを確認する</li>
+          <li>block に戻して縦並びに戻ることを確認する</li>
+        </ol>
+        <strong>見るポイント：</strong>block → 縦並び、flex → 横並び。親が display:flex になるだけで子が自動的に flex item になる。
+      </div>
+    </div>
+    <div class="demo-area">
+      <div class="section-label">▍ 実機デモ ③: BFC確立 — float の影響範囲を BFCなし vs BFCあり で対比</div>
+      <div class="live-panel">
+        <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
+
+          <!-- ❌ BFCなし（通常 block）-->
+          <div style="flex:1;min-width:220px">
+            <div class="live-label" style="color:var(--red)">❌ BFCなし（通常 block）— float が横断する</div>
+            <div style="border:2px solid #ef4444;padding:10px;border-radius:6px;background:rgba(239,68,68,.04);overflow:hidden">
+              <!-- Item A: display:block、BFCなし → 高さが折りたたまれfloatが溢れる -->
+              <div style="background:#fee2e2;border:1px solid #fca5a5;padding:8px;margin-bottom:0;border-radius:4px 4px 0 0;font-size:11px;font-family:var(--mono);color:#991b1b">
+                Item A（display: block）
+                <div style="float:left;background:#dc2626;color:#fff;padding:4px 8px;margin:4px 4px 0 0;border-radius:3px;font-size:10px;height:56px;line-height:1.5">float<br>left<br>56px</div>
+                <div style="float:left;background:#dc2626;color:#fff;padding:4px 8px;margin:4px 0 0 0;border-radius:3px;font-size:10px;height:56px;line-height:1.5">float<br>left<br>56px</div>
+                <!-- A 自身は float を含まず高さが折りたたまれる（clearfix なし）-->
+              </div>
+              <!-- Item B: Aのfloatが侵入してテキストが回り込む -->
+              <div style="background:#dcfce7;border:1px solid #86efac;border-radius:0 0 4px 4px;padding:8px;font-size:11px;font-family:var(--mono);color:#166534">
+                Item B（display: block）<br>
+                ← Aのfloatが侵入！テキストがfloatを避けて回り込んでしまう。Item Aとの境界はここだが、赤いfloatはこのスペースを占有している。
+              </div>
+            </div>
+            <div style="margin-top:5px;font-size:11px;color:var(--red);font-family:var(--mono)">
+              ▲ Item A の高さが折りたたまれ、赤い float が Item B のエリアに溢れ出す
+            </div>
+          </div>
+
+          <!-- ✅ BFCあり（flex item）-->
+          <div style="flex:1;min-width:220px">
+            <div class="live-label" style="color:var(--accent2)">✅ BFCあり（flex item）— float が閉じ込められる</div>
+            <div style="display:flex;gap:8px;border:2px solid #6366f1;padding:10px;border-radius:6px;background:rgba(99,102,241,.05)">
+              <div class="box-a" style="flex:1;height:auto;min-height:80px;padding:10px;overflow:hidden">
+                Item A（BFC確立）<br>
+                <div style="float:left;background:#1d4ed8;color:#fff;padding:4px 8px;margin:4px 4px 0 0;border-radius:3px;font-size:11px;font-family:var(--mono)">float: left</div>
+                <div style="float:left;background:#1d4ed8;color:#fff;padding:4px 8px;margin:4px 0 0 0;border-radius:3px;font-size:11px;font-family:var(--mono)">float: left</div>
+              </div>
+              <div class="box-b" style="flex:1;height:auto;min-height:80px;padding:10px">Item B — Aのfloatの影響を受けない（独立BFC）</div>
+            </div>
+            <div style="margin-top:5px;font-size:11px;color:var(--accent2);font-family:var(--mono)">
+              ▲ 青い float は Item A の BFC 内に閉じ込められ、Item B は完全に独立
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <div class="info-box info" style="margin-top:8px">
+        💡 <strong>BFCなし（左）</strong>：Item A は <code>display:block</code> だけでは BFC を持たないため、float children を高さに含められず「高さ折りたたみ」が起きます。float は親の BFC（外側コンテナ）に帰属したまま下へ溢れ、Item B のエリアに侵入してテキストが回り込みます（横断）。<br>
+        <strong>BFCあり（右）</strong>：flex item は独立した BFC を確立するため、Item A 内の float は Item A に閉じ込められます。Item A の高さも float を含めて正しく確保され、Item B への影響はゼロです。
+      </div>
+      <div class="check-steps">
+        <div class="check-steps-title">📋 確認手順</div>
+        <ol>
+          <li>左パネルを見る → 赤い「Item A」の高さが潰れ、赤いfloatボックスが「Item B」の緑エリアにはみ出していることを確認する（これが「横断」）</li>
+          <li>右パネルを見る → 青い「Item A」の高さが float を含んで正しく確保されており、「Item B」が独立した領域を持つことを確認する</li>
+          <li>左の「Item B」のテキストがfloatボックスの右側に回り込んでいる（避けている）ことを確認する</li>
+          <li>右の「Item B」のテキストが何も回り込まず、矩形の範囲内に収まっていることを確認する</li>
+        </ol>
+        <strong>見るポイント：</strong>「Item A の底」と「赤いfloatの底」の位置を比較する。BFCなしでは Item A の底がfloatの上端付近にあり、floatがItem Bに侵入している。
+      </div>
+    </div>
+    <div class="demo-area">
+      <div class="section-label">▍ 実機デモ ④: マージン折畳なし — block↔flex 切替でマージン合計を比較</div>
+      <button class="btn btn-toggle" id="btn-ffc-margin" onclick="toggleFfcMargin()">④ マージン折畳なしを試す（block → flex）</button>
+      <div class="live-panel" style="margin-top:10px">
+        <div class="live-label" id="ffc-margin-label">display: block（margin-bottom:24px + margin-top:24px = 折りたたみで24px）</div>
+        <div id="ffc-margin-container" style="border:2px solid #6366f1;padding:12px;border-radius:6px;background:rgba(99,102,241,.05)">
+          <div class="box-a" id="ffc-margin-a" style="width:auto;height:auto;margin-bottom:24px;padding:10px">A: margin-bottom: 24px</div>
+          <div class="box-b" id="ffc-margin-b" style="width:auto;height:auto;margin-top:24px;padding:10px">B: margin-top: 24px</div>
+        </div>
+        <div id="ffc-margin-measure" style="margin-top:6px;font-family:var(--mono);font-size:11px;color:var(--text-dim)">ボタンを押してブロック↔フレックスを切り替えてください</div>
+      </div>
+      <div class="check-steps">
+        <div class="check-steps-title">📋 確認手順</div>
+        <ol>
+          <li>初期状態（display:block）で A と B の間隔を目視する → margin-bottom:24px + margin-top:24px のはずだが、折りたたまれて 24px にしか見えない</li>
+          <li>ボタンをクリックして flex に切り替える → A と B の間隔が広がる（24 + 24 = 48px）ことを確認する</li>
+          <li>下の measure 表示で「間隔: ○○px」が 24px から 48px に変わることを確認する</li>
+        </ol>
+        <strong>見るポイント：</strong>block → 折りたたまれて 24px、flex → 合計の 48px。数字の変化を measure で確認するとわかりやすい。
+      </div>
+    </div>
+  <div class="info-box ok">✅ <strong>DevTools確認：</strong>Elements パネルの要素名横に <code style="background:rgba(0,92,197,.1);padding:1px 4px;border-radius:3px">flex</code> バッジが表示される。クリックするとflex overlayが表示される。</div>
+</div>
+
+<!-- ═══ FFC 主軸・交差軸 ═══ -->
+<div class="card anchor" id="sec-ffc-axis">
+  <div class="card-header">
+    <div class="attr-badge">FFC 軸</div>
+    <div class="card-meta">
+      <h2>主軸・交差軸の確認</h2>
+      <p>flex-direction, justify-content, align-items の効果を実機確認</p>
+      <div class="tags"><span class="tag tag-flex">FLEX</span></div>
+    </div>
+  </div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: flex-direction 切替</div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="btn btn-secondary" onclick="setFlexDir('row')">row</button>
+      <button class="btn btn-secondary" onclick="setFlexDir('row-reverse')">row-reverse</button>
+      <button class="btn btn-secondary" onclick="setFlexDir('column')">column</button>
+      <button class="btn btn-secondary" onclick="setFlexDir('column-reverse')">column-reverse</button>
+    </div>
+    <div class="section-label" style="margin-top:8px">justify-content:</div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="btn btn-secondary" onclick="setFlexJC('flex-start')">flex-start</button>
+      <button class="btn btn-secondary" onclick="setFlexJC('center')">center</button>
+      <button class="btn btn-secondary" onclick="setFlexJC('flex-end')">flex-end</button>
+      <button class="btn btn-secondary" onclick="setFlexJC('space-between')">space-between</button>
+      <button class="btn btn-secondary" onclick="setFlexJC('space-around')">space-around</button>
+      <button class="btn btn-secondary" onclick="setFlexJC('space-evenly')">space-evenly</button>
+    </div>
+    <div class="section-label" style="margin-top:8px">align-items:</div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="btn btn-secondary" onclick="setFlexAI('stretch')">stretch</button>
+      <button class="btn btn-secondary" onclick="setFlexAI('flex-start')">flex-start</button>
+      <button class="btn btn-secondary" onclick="setFlexAI('center')">center</button>
+      <button class="btn btn-secondary" onclick="setFlexAI('flex-end')">flex-end</button>
+      <button class="btn btn-secondary" onclick="setFlexAI('baseline')">baseline</button>
+    </div>
+    <div class="live-panel">
+      <div class="live-label" id="flex-axis-label">row / flex-start / stretch</div>
+      <div id="flex-axis-container" style="display:flex;border:2px solid #6366f1;padding:12px;border-radius:6px;background:rgba(99,102,241,.05);min-height:150px;gap:8px">
+        <div class="box-a" style="padding:8px 16px;width:auto;height:auto">A<br>tall</div>
+        <div class="box-b" style="padding:8px 16px;width:auto;height:auto">B</div>
+        <div class="box-c" style="padding:8px 16px;width:auto;height:auto;font-size:18px">C big</div>
+      </div>
+    </div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>「row」→「column」と押す → 横並びが縦並びに変わる。「row-reverse」「column-reverse」では並ぶ順番が逆になることを確認する</li>
+        <li>「row」に戻し、justify-content のボタンを押す → A・B・C が横方向（主軸）にどう並ぶか変わる。<strong>space-between</strong>は両端に寄せて等間隔、<strong>center</strong>は中央まとめ</li>
+        <li>align-items のボタンを押す → A（tall 2行）と C（big 大きい文字）で高さが違うため縦方向の揃えの違いがわかりやすい。<strong>stretch</strong>では全員が同じ高さまで伸び、<strong>flex-start</strong>では上端揃え</li>
+        <li>「column」で justify-content を試す → 今度は縦方向に働くことを確認する</li>
+      </ol>
+      <strong>見るポイント：</strong>justify-content は「主軸方向（row なら横）」、align-items は「交差軸方向（row なら縦）」に効く。direction が変わると効く方向も入れ替わる。
+    </div>
+  </div>
+</div>
+
+<!-- ═══ FFC flex-grow/shrink ═══ -->
+<div class="card anchor" id="sec-ffc-grow">
+  <div class="card-header">
+    <div class="attr-badge">flex-grow</div>
+    <div class="card-meta">
+      <h2>flex-grow / flex-shrink の確認</h2>
+      <p>余白の分配比率をスライダーで調整して実機確認</p>
+      <div class="tags"><span class="tag tag-flex">FLEX</span></div>
+    </div>
+  </div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: flex-grow スライダー</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">
+      <div>
+        <label style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">A: flex-grow = <span id="fg-a-val">1</span></label>
+        <input type="range" min="0" max="5" value="1" style="width:100%" oninput="updateFlexGrow();" id="fg-a">
+      </div>
+      <div>
+        <label style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">B: flex-grow = <span id="fg-b-val">1</span></label>
+        <input type="range" min="0" max="5" value="1" style="width:100%" oninput="updateFlexGrow();" id="fg-b">
+      </div>
+      <div>
+        <label style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">C: flex-grow = <span id="fg-c-val">1</span></label>
+        <input type="range" min="0" max="5" value="1" style="width:100%" oninput="updateFlexGrow();" id="fg-c">
+      </div>
+    </div>
+    <div class="live-panel">
+      <div class="live-label" id="fg-label">flex-grow: 1 / 1 / 1</div>
+      <div style="display:flex;gap:8px;border:2px solid #6366f1;padding:8px;border-radius:6px;background:rgba(99,102,241,.05)">
+        <div class="box-a" id="fg-box-a" style="flex-grow:1;padding:12px;text-align:center;width:auto;height:auto">A</div>
+        <div class="box-b" id="fg-box-b" style="flex-grow:1;padding:12px;text-align:center;width:auto;height:auto">B</div>
+        <div class="box-c" id="fg-box-c" style="flex-grow:1;padding:12px;text-align:center;width:auto;height:auto">C</div>
+      </div>
+    </div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>初期状態（A=1・B=1・C=1）で A・B・C が均等な幅に並んでいることを確認する</li>
+        <li>A のスライダーだけを「3」に上げる → A の幅が他より大きくなることを確認する（余白を A:B:C = 3:1:1 で分ける）</li>
+        <li>B のスライダーを「0」にする → B が最小サイズになり余白を取らなくなることを確認する</li>
+        <li>全スライダーを同じ数字にする → 再び均等幅になることを確認する</li>
+      </ol>
+      <strong>見るポイント：</strong>数字の比率が「余白をどれだけ取るか」の比率。0 のボックスは余白を取らず flex-basis 分のみのサイズになる。
+    </div>
+  </div>
+  <div class="info-box info">💡 <strong>DevTools確認：</strong>Layout パネル → Flexbox セクションでコンテナ一覧。flex overlay上で各アイテムの実際のサイズが表示される。</div>
+</div>
+
+<!-- ═══ FFC 効果: flex-wrap ═══ -->
+<div class="card anchor" id="sec-ffc-wrap">
+  <div class="card-header">
+    <div class="attr-badge">FFC 効果</div>
+    <div class="card-meta">
+      <h2>flex-wrap — 折り返し制御と align-content</h2>
+      <p>アイテムが1行に収まらない場合の折り返し動作と複数行配置を確認</p>
+      <div class="tags"><span class="tag tag-flex">FLEX</span></div>
+    </div>
+  </div>
+  <div class="explanation">FFCでは <strong>flex-wrap</strong> でアイテムが1行（1列）に収まらない場合の挙動を制御します。<br><code>nowrap</code>（デフォルト）: 縮小してでも1行に押し込む（flex-shrinkが効く）<br><code>wrap</code>: 収まらないアイテムを次行に折り返す<br>折り返しが発生する場合、<strong>align-content</strong>（1行にしか効かない align-items とは別）で複数行全体の交差軸配置を制御します。</div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: flex-wrap 切替</div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="btn btn-secondary" onclick="setFlexWrap('nowrap')">nowrap（デフォルト）</button>
+      <button class="btn btn-secondary" onclick="setFlexWrap('wrap')">wrap</button>
+      <button class="btn btn-secondary" onclick="setFlexWrap('wrap-reverse')">wrap-reverse</button>
+    </div>
+    <div class="section-label" style="margin-top:8px">align-content（wrap時に有効 / 複数行全体の交差軸配置）:</div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="btn btn-secondary" onclick="setFlexAC('flex-start')">flex-start</button>
+      <button class="btn btn-secondary" onclick="setFlexAC('center')">center</button>
+      <button class="btn btn-secondary" onclick="setFlexAC('flex-end')">flex-end</button>
+      <button class="btn btn-secondary" onclick="setFlexAC('space-between')">space-between</button>
+      <button class="btn btn-secondary" onclick="setFlexAC('stretch')">stretch</button>
+    </div>
+    <div class="live-panel">
+      <div class="live-label" id="fwrap-label">flex-wrap: nowrap / align-content: flex-start</div>
+      <div id="fwrap-container" style="display:flex;flex-wrap:nowrap;align-content:flex-start;gap:8px;border:2px solid #6366f1;padding:12px;border-radius:6px;background:rgba(99,102,241,.05);min-height:160px">
+        <div class="box-a" style="min-width:110px;padding:12px;width:auto;height:auto;flex-shrink:1;text-align:center">Item 1</div>
+        <div class="box-b" style="min-width:110px;padding:12px;width:auto;height:auto;flex-shrink:1;text-align:center">Item 2</div>
+        <div class="box-c" style="min-width:110px;padding:12px;width:auto;height:auto;flex-shrink:1;text-align:center">Item 3</div>
+        <div class="box-d" style="min-width:110px;padding:12px;width:auto;height:auto;flex-shrink:1;text-align:center">Item 4</div>
+        <div class="box-a" style="min-width:110px;padding:12px;width:auto;height:auto;flex-shrink:1;text-align:center">Item 5</div>
+      </div>
+    </div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>初期状態（nowrap）で 5 つのアイテムが1行に詰め込まれて縮んでいることを確認する</li>
+        <li>「wrap」ボタンを押す → 収まらないアイテムが次の行に折り返されることを確認する（2行になる）</li>
+        <li>「wrap-reverse」を押す → 折り返した行が下ではなく上に現れることを確認する</li>
+        <li>「wrap」の状態で align-content のボタンを押す → 複数行全体が縦方向にどう並ぶか変わる。<strong>flex-end</strong>では下詰め、<strong>space-between</strong>では行間が広がることを確認する</li>
+        <li>「nowrap」に戻して align-content を押す → 1行のときは align-content が効かない（変化しない）ことを確認する</li>
+      </ol>
+      <strong>見るポイント：</strong>nowrap → 1行に押し込んで縮む、wrap → 行が増える。align-content は wrap 時のみ意味を持つ。
+    </div>
+  </div>
+  <div class="verify">
+    <div class="verify-col verify-before">
+      <div class="verify-label">⬛ nowrap（デフォルト）</div>
+      全アイテムが1行に強制配置<br>
+      各アイテムがflex-shrinkにより縮小<br>
+      align-content は1行のみのため効果なし
+    </div>
+    <div class="verify-col verify-after">
+      <div class="verify-label">✅ wrap + align-content</div>
+      収まらないアイテムが次の行に折り返す<br>
+      align-content で複数行全体の配置を制御<br>
+      wrap-reverse は折り返し方向を逆にする
+    </div>
+  </div>
+  <div class="info-box ok">✅ <strong>align-items vs align-content：</strong><code>align-items</code> は各行内での個々のアイテムの交差軸配置。<code>align-content</code> は複数行全体をコンテナ内でどう配置するかを制御。wrap時のみ align-content が意味を持ちます。</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!--  GFC                                        -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="card anchor" id="sec-gfc">
+  <div class="card-header">
+    <div class="attr-badge">GFC</div>
+    <div class="card-meta">
+      <h2>Grid Formatting Context — 概要</h2>
+      <p>display: grid / inline-grid で生成。行・列の2次元レイアウト</p>
+      <div class="tags"><span class="tag tag-grid">GRID</span><span class="tag tag-layout">LAYOUT</span></div>
+    </div>
+  </div>
+  <div class="section-label">▍ 生成条件</div>
+  <div class="explanation"><code>display: grid</code> または <code>display: inline-grid</code> を指定した要素がGridコンテナとなり、GFCを確立します。</div>
+  <div class="section-label">▍ GFCの効果</div>
+  <table class="compare-table">
+    <thead><tr><th>効果</th><th>説明</th></tr></thead>
+    <tbody>
+      <tr><td>grid item化</td><td>直接の子要素が自動的にgrid itemになる</td></tr>
+      <tr><td>float無効化</td><td>grid item の <code>float</code> は無視される</td></tr>
+      <tr><td>BFC確立</td><td>各grid itemは独自のBFCを確立する</td></tr>
+      <tr><td>マージン折畳なし</td><td>grid item間のマージン折りたたみは発生しない</td></tr>
+      <tr><td>2次元制御</td><td>行（row）と列（column）を同時に制御</td></tr>
+      <tr><td>明示/暗黙トラック</td><td>grid-template-* が明示的、grid-auto-* が暗黙的</td></tr>
+      <tr><td>エリア配置</td><td>grid-area でセルをまたぐ配置が可能</td></tr>
+    </tbody>
+  </table>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ ①: grid item化 — block↔grid 切替で子要素がgrid itemになることを確認</div>
+    <button class="btn btn-toggle" id="btn-gfc-itemize" onclick="toggleGfcItemize()">display: block → display: grid に切替</button>
+    <div class="live-panel" style="margin-top:10px">
+      <div class="live-label" id="gfc-item-label">display: block（通常ブロック・縦積み）</div>
+      <div id="gfc-item-container" style="border:2px solid #6366f1;padding:12px;border-radius:6px;background:rgba(99,102,241,.05)">
+        <div class="box-a" style="width:auto;height:auto;margin-bottom:8px;padding:10px;text-align:center">子要素 A</div>
+        <div class="box-b" style="width:auto;height:auto;margin-bottom:8px;padding:10px;text-align:center">子要素 B</div>
+        <div class="box-c" style="width:auto;height:auto;padding:10px;text-align:center">子要素 C</div>
+      </div>
+    </div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>初期状態（display:block）で A・B・C が縦に並んでいることを確認する</li>
+        <li>ボタンをクリックして grid に切り替える → 3列の格子状に並ぶことを確認する</li>
+        <li>block に戻して縦並びに戻ることを確認する</li>
+      </ol>
+      <strong>見るポイント：</strong>block → 1列縦並び、grid → 複数列の格子配置。FFC と違い行・列の2次元で管理される。
+    </div>
+  </div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ ②: float無効化 — block↔grid 切替でfloatが無視されることを確認</div>
+    <button class="btn btn-toggle" id="btn-gfc-float" onclick="toggleGfcFloat()">display: block → display: grid に切替</button>
+    <div class="live-panel" style="margin-top:10px">
+      <div class="live-label" id="gfc-float-label">display: block（floatが効いている）</div>
+      <div id="gfc-float-container" style="border:2px solid #6366f1;padding:12px;border-radius:6px;background:rgba(99,102,241,.05);min-height:80px">
+        <div class="box-a" style="float:left;width:auto;height:auto;padding:10px">float: left 指定済</div>
+        <div class="box-b" style="float:right;width:auto;height:auto;padding:10px">float: right 指定済</div>
+        <div class="box-c" style="width:auto;height:auto;padding:10px">float なし</div>
+      </div>
+    </div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>初期状態（display:block）で A が左寄り・B が右寄りに float していることを確認する</li>
+        <li>ボタンをクリックして grid に切り替える → A・B・C が grid item として並び float が無視されることを確認する</li>
+        <li>block に戻して float レイアウトに戻ることを確認する</li>
+      </ol>
+      <strong>見るポイント：</strong>grid item になると <code>float: left/right</code> の指定が残っていても無視される。DevTools Computed タブで <code>float</code> の値を確認してみよう。
+    </div>
+  </div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ ③: BFC確立 — grid item内のfloatが隣itemに影響しないことを確認</div>
+    <div class="live-panel">
+      <div class="live-label">display: grid — 各itemが独立BFCを確立</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;border:2px solid #6366f1;padding:12px;border-radius:6px;background:rgba(99,102,241,.05)">
+        <div class="box-a" style="min-height:80px;padding:10px;overflow:hidden;width:auto;height:auto">
+          Item A（BFC内）<br>
+          <div style="float:left;background:#1d4ed8;color:#fff;padding:4px 8px;margin:4px 4px 0 0;border-radius:3px;font-size:11px;font-family:var(--mono)">float: left</div>
+          <div style="float:left;background:#1d4ed8;color:#fff;padding:4px 8px;margin:4px 0 0 0;border-radius:3px;font-size:11px;font-family:var(--mono)">float: left</div>
+        </div>
+        <div class="box-b" style="min-height:80px;padding:10px;width:auto;height:auto">Item B — Aのfloatの影響を受けない（独立BFC）</div>
+      </div>
+    </div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>Item A の中に float:left 要素が2つ並んでいることを確認する</li>
+        <li>Item B に float 要素が侵入していないことを目視確認する</li>
+        <li>DevTools で Item A を選択 → Computed タブで <code>display: block</code>（grid item）を確認する</li>
+      </ol>
+      <strong>見るポイント：</strong>grid item は独立した BFC を確立するため、A 内の float が B に影響しない。BFC がない通常 block と対比して考えよう。
+    </div>
+  </div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ ④: マージン折畳なし — block↔grid 切替でマージン合計を比較</div>
+    <button class="btn btn-toggle" id="btn-gfc-margin" onclick="toggleGfcMargin()">display: block → display: grid に切替</button>
+    <div class="live-panel" style="margin-top:10px">
+      <div class="live-label" id="gfc-margin-label">display: block（margin 折りたたみあり）</div>
+      <div id="gfc-margin-container" style="border:2px solid #6366f1;padding:12px;border-radius:6px;background:rgba(99,102,241,.05)">
+        <div class="box-a" id="gfc-margin-a" style="width:auto;height:auto;margin-bottom:24px;padding:10px">A: margin-bottom: 24px</div>
+        <div class="box-b" id="gfc-margin-b" style="width:auto;height:auto;margin-top:24px;padding:10px">B: margin-top: 24px</div>
+      </div>
+      <div id="gfc-margin-measure" style="margin-top:6px;font-family:var(--mono);font-size:11px;color:var(--text-dim)">ボタンを押してblock↔gridを切り替えてください</div>
+    </div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>初期状態（display:block）で A の <code>margin-bottom: 24px</code> と B の <code>margin-top: 24px</code> の間隔を目視確認する → 大きい方の 24px に折りたたまれている</li>
+        <li>ボタンをクリックして grid に切り替える → 間隔が 48px（24+24）に広がることを確認する</li>
+        <li>下部の計測値（px）が block: 24px → grid: 48px に変わることを確認する</li>
+      </ol>
+      <strong>見るポイント：</strong>block では隣接マージンが折りたたまれて大きい方の値になる。grid item 間ではマージン折りたたみが発生せず両方が合計される。
+    </div>
+  </div>
+  <div class="info-box ok">✅ <strong>DevTools確認：</strong>Elements パネルで <code style="background:rgba(0,92,197,.1);padding:1px 4px;border-radius:3px">grid</code> バッジ。クリックでgrid overlay（行/列番号・gap・エリア名が表示される）。</div>
+</div>
+
+<!-- ═══ GFC トラック確認 ═══ -->
+<div class="card anchor" id="sec-gfc-track">
+  <div class="card-header">
+    <div class="attr-badge">GFC Track</div>
+    <div class="card-meta">
+      <h2>明示的トラック vs 暗黙的トラック</h2>
+      <p>grid-template で定義した列/行と、自動生成されるトラックの違い</p>
+      <div class="tags"><span class="tag tag-grid">GRID</span></div>
+    </div>
+  </div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: アイテム数を増やして暗黙トラックを発生させる</div>
+    <div style="display:flex;gap:4px;margin-bottom:10px">
+      <button class="btn btn-secondary" onclick="setGridItems(3)">3アイテム</button>
+      <button class="btn btn-secondary" onclick="setGridItems(5)">5アイテム</button>
+      <button class="btn btn-secondary" onclick="setGridItems(8)">8アイテム</button>
+    </div>
+    <div class="live-panel">
+      <div class="live-label">grid-template-columns: 1fr 1fr 1fr (3列明示)</div>
+      <div id="grid-track-container" style="display:grid;grid-template-columns:1fr 1fr 1fr;grid-auto-rows:50px;gap:8px;border:2px solid #6366f1;padding:12px;border-radius:6px;background:rgba(99,102,241,.05)">
+        <div class="box-a" style="display:flex;align-items:center;justify-content:center;width:auto;height:auto">1</div>
+        <div class="box-b" style="display:flex;align-items:center;justify-content:center;width:auto;height:auto">2</div>
+        <div class="box-c" style="display:flex;align-items:center;justify-content:center;width:auto;height:auto">3</div>
+      </div>
+    </div>
+    <div class="measure" id="grid-track-measure" style="margin-top:6px"></div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>「3アイテム」ボタンをクリック → 3列すべてが明示トラック（1行目）に収まることを確認する</li>
+        <li>「5アイテム」をクリック → 4・5番目のアイテムが2行目（暗黙トラック）に配置されることを確認する</li>
+        <li>「8アイテム」をクリック → 3行目まで暗黙トラックが増えることを確認する</li>
+        <li>DevTools の Layout パネル → Grid → コンテナにチェック → overlay で実線（明示）と破線（暗黙）の違いを確認する</li>
+      </ol>
+      <strong>見るポイント：</strong>3列を超えたアイテムは自動的に <code>grid-auto-rows</code> で定義した高さの暗黙トラックに配置される。明示トラックを増やすには <code>grid-template-rows</code> を追加する。
+    </div>
+  </div>
+  <div class="info-box warn">⚠️ <strong>暗黙トラック：</strong>4番目以降のアイテムは <code>grid-auto-rows: 50px</code> による暗黙トラックに配置されます。DevTools の grid overlay で実線（明示）と破線（暗黙）の違いを確認できます。</div>
+</div>
+
+<!-- ═══ GFC エリア配置 ═══ -->
+<div class="card anchor" id="sec-gfc-area">
+  <div class="card-header">
+    <div class="attr-badge">grid-area</div>
+    <div class="card-meta">
+      <h2>Grid エリア配置</h2>
+      <p>grid-template-areas でセルをまたぐ名前付きエリアを定義</p>
+      <div class="tags"><span class="tag tag-grid">GRID</span></div>
+    </div>
+  </div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: 典型的なページレイアウト</div>
+    <div class="live-panel">
+      <div class="live-label">grid-template-areas</div>
+      <div style="display:grid;grid-template-areas:'hd hd hd' 'sb main main' 'ft ft ft';grid-template-columns:120px 1fr 1fr;grid-template-rows:40px 1fr 40px;gap:6px;min-height:200px;border:2px solid #6366f1;padding:8px;border-radius:6px;background:rgba(99,102,241,.05)">
+        <div class="box-a" style="grid-area:hd;display:flex;align-items:center;justify-content:center;width:auto;height:auto">header</div>
+        <div class="box-d" style="grid-area:sb;display:flex;align-items:center;justify-content:center;width:auto;height:auto">sidebar</div>
+        <div class="box-b" style="grid-area:main;display:flex;align-items:center;justify-content:center;width:auto;height:auto">main</div>
+        <div class="box-c" style="grid-area:ft;display:flex;align-items:center;justify-content:center;width:auto;height:auto">footer</div>
+      </div>
+    </div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>header が横幅全体（3列分）を占有していることを確認する</li>
+        <li>sidebar が左1列・main が右2列を占有していることを確認する</li>
+        <li>footer が横幅全体（3列分）を占有していることを確認する</li>
+        <li>DevTools Layout → Grid → 「Show area names」にチェック → 各エリア名がオーバーレイに表示されることを確認する</li>
+      </ol>
+      <strong>見るポイント：</strong><code>grid-template-areas</code> で名前を付けたエリアに <code>grid-area</code> で配置する。セル数を変えずに CSS だけでレイアウト変更が可能。
+    </div>
+  </div>
+  <div class="code-block">
+    <div class="code-block-header"><span>CSS — grid-template-areas</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre class="code"><span class="sel">.layout</span> {
+  <span class="prop">display</span>: <span class="val">grid</span>;
+  <span class="prop">grid-template-areas</span>:
+    <span class="val">"header  header  header"</span>
+    <span class="val">"sidebar main    main"</span>
+    <span class="val">"footer  footer  footer"</span>;
+  <span class="prop">grid-template-columns</span>: <span class="val">120px 1fr 1fr</span>;
+  <span class="prop">grid-template-rows</span>: <span class="val">40px 1fr 40px</span>;
+}
+<span class="sel">.header</span>  { <span class="prop">grid-area</span>: <span class="val">header</span>; }
+<span class="sel">.sidebar</span> { <span class="prop">grid-area</span>: <span class="val">sidebar</span>; }
+<span class="sel">.main</span>    { <span class="prop">grid-area</span>: <span class="val">main</span>; }
+<span class="sel">.footer</span>  { <span class="prop">grid-area</span>: <span class="val">footer</span>; }</pre>
+  </div>
+  <div class="info-box ok">✅ <strong>DevTools：</strong>Layout パネル → Grid → 「Show area names」にチェックを入れると、各エリア名がオーバーレイに表示されます。</div>
+</div>
+
+<!-- ═══ GFC 効果: 自動配置 ═══ -->
+<div class="card anchor" id="sec-gfc-auto">
+  <div class="card-header">
+    <div class="attr-badge">GFC 効果</div>
+    <div class="card-meta">
+      <h2>自動配置 — grid-auto-flow と span</h2>
+      <p>Gridの自動配置アルゴリズムとdenseモード・spanによる穴埋めを確認</p>
+      <div class="tags"><span class="tag tag-grid">GRID</span></div>
+    </div>
+  </div>
+  <div class="explanation">GFCでは配置位置を指定しないアイテムはグリッド自動配置アルゴリズムによって空きセルに順番に配置されます。<br><code>grid-auto-flow: row</code>（デフォルト）: 左→右→次の行の順<br><code>grid-auto-flow: column</code>: 上→下→次の列の順<br><code>grid-auto-flow: row dense</code>: 後続アイテムが前の空きを埋める（<strong>dense モード</strong>）<br><code>grid-column: span N</code> で複数列を占有すると空きセルが発生しやすくなります。</div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: grid-auto-flow 切替（3列グリッド・アイテムAはspan 2）</div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="btn btn-secondary" onclick="setGridFlow('row')">row（デフォルト）</button>
+      <button class="btn btn-secondary" onclick="setGridFlow('column')">column</button>
+      <button class="btn btn-secondary" onclick="setGridFlow('row dense')">row dense</button>
+    </div>
+    <div class="live-panel">
+      <div class="live-label" id="gflow-label">grid-auto-flow: row</div>
+      <div id="gflow-container" style="display:grid;grid-template-columns:1fr 1fr 1fr;grid-auto-rows:60px;gap:8px;border:2px solid #6366f1;padding:12px;border-radius:6px;background:rgba(99,102,241,.05)">
+        <div class="box-a" style="grid-column:span 2;display:flex;align-items:center;justify-content:center;width:auto;height:auto;font-size:11px;font-family:var(--mono)">A (span 2)</div>
+        <div class="box-b" style="display:flex;align-items:center;justify-content:center;width:auto;height:auto">B</div>
+        <div class="box-c" style="display:flex;align-items:center;justify-content:center;width:auto;height:auto">C</div>
+        <div class="box-d" style="display:flex;align-items:center;justify-content:center;width:auto;height:auto">D</div>
+        <div class="box-b" style="display:flex;align-items:center;justify-content:center;width:auto;height:auto">E</div>
+        <div class="box-c" style="display:flex;align-items:center;justify-content:center;width:auto;height:auto">F</div>
+      </div>
+    </div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>「row（デフォルト）」を選択 → A（span 2）の後ろの3列目に空きセルが残り、B が2行目に配置されることを確認する</li>
+        <li>「column」を選択 → アイテムが列方向（上→下→次列）に配置されることを確認する</li>
+        <li>「row dense」を選択 → B が A の後ろの空きセルを埋め、C以降が詰めて配置されることを確認する</li>
+        <li>DevTools grid overlay で各アイテムのセル番号（行/列）を確認する</li>
+      </ol>
+      <strong>見るポイント：</strong>dense モードはDOMの順番と視覚順が変わる可能性がある。スクリーンリーダーはDOM順で読み上げるため、アクセシビリティへの影響に注意。
+    </div>
+  </div>
+  <div class="info-box warn">⚠️ <strong>dense の注意点：</strong><code>row dense</code> にすると後続アイテムが空きを埋めます。A（span 2）の後ろに1列分の空きが残る場合、BがそこへC→Bの順で移動します（DOM順 ≠ 視覚順）。アクセシビリティ上タブ順が乱れるためスクリーンリーダー利用者に影響します。</div>
+  <div class="verify">
+    <div class="verify-col verify-before">
+      <div class="verify-label">⬛ row（デフォルト）</div>
+      Aはspan 2を占有→3列目に空きが残る<br>
+      後続BはAの空きを埋めず次の行へ<br>
+      DevTools: grid overlay で空きセルを確認
+    </div>
+    <div class="verify-col verify-after">
+      <div class="verify-label">✅ row dense</div>
+      後続の1列アイテムがAの後ろの空きを埋める<br>
+      視覚的な順序がDOM順と変わる可能性あり<br>
+      grid overlay: 各アイテムのセル番号を確認
+    </div>
+  </div>
+  <div class="info-box ok">✅ <strong>DevTools確認：</strong>Layout パネル → Grid → コンテナにチェック → overlay で各アイテムが何行/何列目に配置されているかをセル番号で確認できます。</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!--  Table FC                                   -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="card anchor" id="sec-tfc">
+  <div class="card-header">
+    <div class="attr-badge">TFC</div>
+    <div class="card-meta">
+      <h2>Table Formatting Context</h2>
+      <p>display: table 系で生成。行グループ→行→セルの階層構造</p>
+      <div class="tags"><span class="tag tag-table">TABLE</span><span class="tag tag-layout">LAYOUT</span></div>
+    </div>
+  </div>
+  <div class="section-label">▍ 生成条件</div>
+  <div class="explanation"><code>display: table</code>、<code>table-row-group</code>、<code>table-row</code>、<code>table-cell</code> などを指定すると TFC が生成されます。HTML の <code>&lt;table&gt;</code> タグも同様です。</div>
+  <div class="section-label">▍ TFCの効果</div>
+  <table class="compare-table">
+    <thead><tr><th>効果</th><th>説明</th></tr></thead>
+    <tbody>
+      <tr><td>階層構造</td><td>table → row-group → row → cell の階層が強制される</td></tr>
+      <tr><td>各セルがBFC</td><td>各 table-cell は独自のBFCを確立する</td></tr>
+      <tr><td>匿名ボックス</td><td>不足する階層（row-group等）が自動生成される</td></tr>
+      <tr><td>border-collapse</td><td>セル間ボーダーの結合/分離を制御</td></tr>
+      <tr><td>等幅分配</td><td>table-layout: fixed でカラム幅を均等分配</td></tr>
+      <tr><td>垂直中央</td><td>vertical-align が table-cell 内で有効（中央揃え可能）</td></tr>
+    </tbody>
+  </table>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: CSS table レイアウト（非&lt;table&gt;要素）</div>
+    <div class="live-panel">
+      <div class="live-label">display: table / table-cell</div>
+      <div style="display:table;width:100%;border:2px solid #6366f1;border-radius:6px;overflow:hidden">
+        <div style="display:table-row">
+          <div class="box-a" style="display:table-cell;padding:16px;vertical-align:middle;border:none;border-right:2px solid #6366f1;width:33%;border-radius:0">vertical-align: middle</div>
+          <div class="box-b" style="display:table-cell;padding:16px;vertical-align:top;border:none;border-right:2px solid #6366f1;width:33%;border-radius:0">vertical-align: top<br><br>複数行のコンテンツ</div>
+          <div class="box-c" style="display:table-cell;padding:16px;vertical-align:bottom;border:none;width:33%;border-radius:0">vertical-align: bottom</div>
+        </div>
+      </div>
+    </div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>左セル（A）の「vertical-align: middle」が列の高さの中央に配置されていることを確認する</li>
+        <li>中央セル（B）の「vertical-align: top」が上端に揃い、複数行で高さが増えていることを確認する</li>
+        <li>右セル（C）の「vertical-align: bottom」が下端に揃っていることを確認する</li>
+        <li>DevTools で各セルを選択 → Computed タブで <code>display: table-cell</code> を確認する</li>
+      </ol>
+      <strong>見るポイント：</strong><code>vertical-align</code> は table-cell 内で縦方向の整列として機能する。flex/grid では <code>align-items</code> を使うのが現代的。
+    </div>
+  </div>
+    <div class="demo-area">
+      <div class="section-label">▍ 実機デモ ②: 各セルがBFC — セル内のfloatが隣セルに影響しないことを確認</div>
+      <div class="live-panel">
+        <div class="live-label">display: table-cell — 各セルが独立BFCを確立</div>
+        <div style="display:table;width:100%;border:2px solid #6366f1;border-radius:6px;overflow:hidden">
+          <div style="display:table-row">
+            <div class="box-a" style="display:table-cell;padding:12px;border:none;border-right:2px solid #6366f1;width:50%;border-radius:0;vertical-align:top">
+              セルA（BFC内）<br>
+              <div style="float:left;background:#1d4ed8;color:#fff;padding:4px 8px;margin:4px 4px 0 0;border-radius:3px;font-size:11px;font-family:var(--mono)">float: left</div>
+              <div style="float:left;background:#1d4ed8;color:#fff;padding:4px 8px;margin:4px 0 0 0;border-radius:3px;font-size:11px;font-family:var(--mono)">float: left</div>
+            </div>
+            <div class="box-b" style="display:table-cell;padding:12px;border:none;width:50%;border-radius:0;vertical-align:top">セルB — Aのfloatに影響されない（独立BFC）</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>セル A の中に float:left 要素が2つ並んでいることを確認する</li>
+        <li>セル B に float 要素が侵入していないことを目視確認する</li>
+        <li>DevTools で セル A を選択 → Computed タブで <code>display: table-cell</code> を確認する</li>
+      </ol>
+      <strong>見るポイント：</strong>table-cell はそれぞれ独立した BFC を確立するため、A 内の float が B に影響しない。flex item・grid item と同じ性質を持つ。
+    </div>
+    <div class="demo-area">
+      <div class="section-label">▍ 実機デモ ③: 匿名ボックス — table-cellをtable-row省略で直配置すると自動補完される</div>
+      <div class="live-panel">
+        <div class="live-label">display: table → table-cell（table-row省略 → 匿名ボックスが自動生成）</div>
+        <div style="display:table;width:100%;border:2px solid #6366f1;border-radius:6px;overflow:hidden;background:rgba(99,102,241,.05)">
+          <div class="box-a" style="display:table-cell;padding:12px;border:none;border-right:2px solid #6366f1;width:33%;border-radius:0">セルA（直配置）</div>
+          <div class="box-b" style="display:table-cell;padding:12px;border:none;border-right:2px solid #6366f1;width:33%;border-radius:0">セルB（直配置）</div>
+          <div class="box-c" style="display:table-cell;padding:12px;border:none;width:33%;border-radius:0">セルC（直配置）</div>
+        </div>
+      </div>
+      <div class="info-box warn" style="margin-top:8px">⚠️ table-rowを省略してもブラウザが匿名の table-row を自動生成するため正常表示されます。DevToolsのElementsパネルで <code>::before</code> 等の匿名ボックスが確認できます。</div>
+      <div class="check-steps">
+        <div class="check-steps-title">📋 確認手順</div>
+        <ol>
+          <li>3つのセルが横一列に並んでいることを目視確認する（table-row を書いていないのに正常表示される）</li>
+          <li>DevTools の Elements パネルで div.box-a を選択 → 親要素が匿名の <code>table-row</code> になっていることを確認する</li>
+          <li>DevTools Computed タブで各セルの <code>display</code> 値が <code>table-cell</code> であることを確認する</li>
+        </ol>
+        <strong>見るポイント：</strong>table-cell を直接 table に入れると、ブラウザが欠落した table-row を自動生成（匿名ボックス）する。階層が不完全でも正常に表示される仕組み。
+      </div>
+    </div>
+    <div class="demo-area">
+      <div class="section-label">▍ 実機デモ ④: border-collapse — separate（デフォルト）↔ collapse 切替</div>
+      <div style="display:flex;gap:4px;margin-bottom:10px">
+        <button class="btn btn-secondary" onclick="setBorderCollapse('separate')">separate（デフォルト）</button>
+        <button class="btn btn-secondary" onclick="setBorderCollapse('collapse')">collapse</button>
+      </div>
+      <div class="live-panel">
+        <div class="live-label" id="tfc-bc-label">border-collapse: separate</div>
+        <table id="tfc-bc-table" style="border-collapse:separate;border-spacing:4px;width:100%;font-size:12px;font-family:var(--mono)">
+          <thead><tr>
+            <th style="background:#e0e7ff;border:2px solid #6366f1;padding:8px">ヘッダ A</th>
+            <th style="background:#e0e7ff;border:2px solid #6366f1;padding:8px">ヘッダ B</th>
+            <th style="background:#e0e7ff;border:2px solid #6366f1;padding:8px">ヘッダ C</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td style="background:#dbeafe;border:2px solid #3b82f6;padding:8px">セル 1-A</td>
+              <td style="background:#dcfce7;border:2px solid #22c55e;padding:8px">セル 1-B</td>
+              <td style="background:#fef3c7;border:2px solid #f59e0b;padding:8px">セル 1-C</td>
+            </tr>
+            <tr>
+              <td style="background:#dbeafe;border:2px solid #3b82f6;padding:8px">セル 2-A</td>
+              <td style="background:#dcfce7;border:2px solid #22c55e;padding:8px">セル 2-B</td>
+              <td style="background:#fef3c7;border:2px solid #f59e0b;padding:8px">セル 2-C</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>「separate（デフォルト）」を選択 → セル間にすき間（border-spacing）があり、隣接するセルのボーダーが2本並んで見えることを確認する</li>
+        <li>「collapse」を選択 → すき間がなくなり、隣接ボーダーが1本に統合されることを確認する</li>
+        <li>DevTools でテーブルを選択 → Computed タブの <code>border-collapse</code> の値を確認する</li>
+      </ol>
+      <strong>見るポイント：</strong>separate では border-spacing でセル間の余白を指定できる。collapse では隣合うボーダーが共有されて細いスッキリした表になる。
+    </div>
+    <div class="demo-area">
+      <div class="section-label">▍ 実機デモ ⑤: 等幅分配 — table-layout: auto ↔ fixed 切替</div>
+      <div style="display:flex;gap:4px;margin-bottom:10px">
+        <button class="btn btn-secondary" onclick="setTableLayout('auto')">auto（デフォルト: コンテンツ幅で決定）</button>
+        <button class="btn btn-secondary" onclick="setTableLayout('fixed')">fixed（均等分配）</button>
+      </div>
+      <div class="live-panel">
+        <div class="live-label" id="tfc-tl-label">table-layout: auto</div>
+        <table id="tfc-tl-table" style="table-layout:auto;width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono)">
+          <thead><tr>
+            <th style="background:#e0e7ff;border:1px solid #6366f1;padding:8px">短い</th>
+            <th style="background:#e0e7ff;border:1px solid #6366f1;padding:8px">これはとても長いヘッダーテキストです</th>
+            <th style="background:#e0e7ff;border:1px solid #6366f1;padding:8px">中くらい</th>
+          </tr></thead>
+          <tbody><tr>
+            <td style="background:#dbeafe;border:1px solid #3b82f6;padding:8px">A</td>
+            <td style="background:#dcfce7;border:1px solid #22c55e;padding:8px">長いコンテンツが入っている列</td>
+            <td style="background:#fef3c7;border:1px solid #f59e0b;padding:8px">普通</td>
+          </tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>「auto（デフォルト）」を選択 → 「これはとても長いヘッダーテキストです」列が広く、「短い」列が狭いことを確認する（コンテンツ幅で決まる）</li>
+        <li>「fixed（均等分配）」を選択 → 3列が均等幅になることを確認する</li>
+        <li>DevTools でテーブルを選択 → Computed タブの <code>table-layout</code> の値を確認する</li>
+      </ol>
+      <strong>見るポイント：</strong>auto はコンテンツを読んでから幅を決めるため描画が遅くなる場合がある。fixed は1行目だけで幅を確定するため高速。大量行のテーブルでは fixed 推奨。
+    </div>
+  <div class="info-box info">💡 <strong>現在の位置づけ：</strong>表形式データには <code>&lt;table&gt;</code> を使い、レイアウト目的では Flexbox / Grid を使うのが現代的。CSS table レイアウトは vertical-align が効く点が特徴的。</div>
+</div>
+
+<!-- ═══ Ruby FC ═══ -->
+<div class="card anchor" id="sec-ruby">
+  <div class="card-header">
+    <div class="attr-badge">Ruby FC</div>
+    <div class="card-meta">
+      <h2>Ruby Formatting Context</h2>
+      <p>ふりがな（ルビ）の配置を制御するフォーマッティングコンテキスト</p>
+      <div class="tags"><span class="tag tag-text">TEXT</span><span class="tag tag-layout">LAYOUT</span></div>
+    </div>
+  </div>
+  <div class="section-label">▍ 生成条件</div>
+  <div class="explanation"><code>&lt;ruby&gt;</code> 要素、または <code>display: ruby</code>、<code>display: ruby-text</code> を指定すると Ruby FC が生成されます。日本語のふりがな、中国語のピンイン表記などに使われます。</div>
+  <div class="section-label">▍ 効果</div>
+  <table class="compare-table">
+    <thead><tr><th>効果</th><th>説明</th><th>CSS</th></tr></thead>
+    <tbody>
+      <tr><td>ルビ配置</td><td>ベーステキストの上（または下）にルビ注釈を配置</td><td><code>ruby-position</code></td></tr>
+      <tr><td>ルビ整列</td><td>ルビとベースの水平方向の整列を制御</td><td><code>ruby-align</code></td></tr>
+      <tr><td>行間調整</td><td>ルビの存在により行間が自動調整される</td><td><code>line-height</code></td></tr>
+    </tbody>
+  </table>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: ルビ表示</div>
+    <div class="live-panel">
+      <div class="live-label">Ruby FC</div>
+      <p style="font-size:24px;line-height:2.5">
+        <ruby>東京<rp>(</rp><rt>とうきょう</rt><rp>)</rp></ruby>の
+        <ruby>天気<rp>(</rp><rt>てんき</rt><rp>)</rp></ruby>は
+        <ruby>晴<rp>(</rp><rt>は</rt><rp>)</rp></ruby>れです。
+        <ruby>Formatting<rp>(</rp><rt>フォーマッティング</rt><rp>)</rp></ruby>
+        <ruby>Context<rp>(</rp><rt>コンテキスト</rt><rp>)</rp></ruby>
+      </p>
+    </div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>漢字の上にひらがなのルビが表示されていることを確認する</li>
+        <li>「Formatting」「Context」のカタカナルビも確認する</li>
+        <li>DevTools で <code>&lt;ruby&gt;</code> 要素を選択 → Computed タブで <code>display: ruby</code> を確認する</li>
+        <li><code>&lt;rt&gt;</code> 要素を選択 → <code>display: ruby-text</code> になっていることを確認する</li>
+      </ol>
+      <strong>見るポイント：</strong><code>&lt;rp&gt;</code> はルビ非対応ブラウザ用の括弧（現代ブラウザでは非表示）。ルビにより行間が自動調整されていることに注目。
+    </div>
+  </div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ ①: ルビ配置 — ruby-position: over ↔ under 切替</div>
+    <div style="display:flex;gap:4px;margin-bottom:10px">
+      <button class="btn btn-secondary" onclick="setRubyPosition('over')">over（上に表示・デフォルト）</button>
+      <button class="btn btn-secondary" onclick="setRubyPosition('under')">under（下に表示）</button>
+    </div>
+    <div class="live-panel">
+      <div class="live-label" id="ruby-pos-label">ruby-position: over</div>
+      <p id="ruby-pos-demo" style="font-size:28px;line-height:3;ruby-position:over">
+        <ruby>東京<rp>(</rp><rt>とうきょう</rt><rp>)</rp></ruby>・
+        <ruby>大阪<rp>(</rp><rt>おおさか</rt><rp>)</rp></ruby>・
+        <ruby>京都<rp>(</rp><rt>きょうと</rt><rp>)</rp></ruby>
+      </p>
+    </div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>「over（上に表示・デフォルト）」を選択 → ルビが漢字の上に表示されることを確認する</li>
+        <li>「under（下に表示）」を選択 → ルビが漢字の下に移動することを確認する</li>
+        <li>DevTools で <code>&lt;p id="ruby-pos-demo"&gt;</code> を選択 → Computed タブで <code>ruby-position</code> の値を確認する</li>
+      </ol>
+      <strong>見るポイント：</strong>日本語は通常 over（上にルビ）だが、中国語のピンインは under（下にピンイン）を使うこともある。ブラウザのサポート状況に注意。
+    </div>
+  </div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ ②: ルビ整列 — ruby-align 切替でルビとベースの水平整列を確認</div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="btn btn-secondary" onclick="setRubyAlign('start')">start</button>
+      <button class="btn btn-secondary" onclick="setRubyAlign('center')">center（デフォルト）</button>
+      <button class="btn btn-secondary" onclick="setRubyAlign('space-around')">space-around</button>
+      <button class="btn btn-secondary" onclick="setRubyAlign('space-between')">space-between</button>
+    </div>
+    <div class="live-panel">
+      <div class="live-label" id="ruby-align-label">ruby-align: center</div>
+      <p id="ruby-align-demo" style="font-size:28px;line-height:3;ruby-align:center">
+        <ruby>東京<rp>(</rp><rt>とうきょう</rt><rp>)</rp></ruby>・
+        <ruby>A<rp>(</rp><rt>長いルビテキスト</rt><rp>)</rp></ruby>・
+        <ruby>語<rp>(</rp><rt>ご</rt><rp>)</rp></ruby>
+      </p>
+    </div>
+    <div class="info-box info" style="margin-top:8px">💡 ルビとベーステキストの幅が異なるとき、ruby-align でルビの整列位置を変えると違いがわかりやすくなります。「A」に付いた長いルビで効果を確認してください。</div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>「center（デフォルト）」を選択 → ルビが中央揃えになっていることを確認する（特に「東京」と「A」で違いがわかりやすい）</li>
+        <li>「start」を選択 → ルビがベーステキストの左端に揃うことを確認する</li>
+        <li>「space-between」を選択 → ルビの文字がベーステキストの両端に広がることを確認する</li>
+        <li>「A」に付いた「長いルビテキスト」で各モードの違いをよく観察する</li>
+      </ol>
+      <strong>見るポイント：</strong>ルビがベーステキストより長い場合（「A」の例）に整列の違いが最も見えやすい。space-around/between は均等配置なので読みやすさが変わる。
+    </div>
+  </div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ ③: 行間調整 — ルビあり/なし比較（同じline-heightでの行間の違い）</div>
+    <div class="live-panel">
+      <div class="live-label">line-height: 1.8 固定 — ルビなし（左）vs ルビあり（右）</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div style="border:1px solid var(--border);border-radius:6px;padding:12px;background:var(--surface2)">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:6px">ルビなし（line-height: 1.8）</div>
+          <p style="font-size:18px;line-height:1.8;margin:0">東京の天気は晴れです。大阪では雨が降っています。</p>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:6px;padding:12px;background:var(--surface2)">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:6px">ルビあり（line-height: 1.8）</div>
+          <p style="font-size:18px;line-height:1.8;margin:0">
+            <ruby>東京<rp>(</rp><rt>とうきょう</rt><rp>)</rp></ruby>の
+            <ruby>天気<rp>(</rp><rt>てんき</rt><rp>)</rp></ruby>は
+            <ruby>晴<rp>(</rp><rt>は</rt><rp>)</rp></ruby>れです。
+            <ruby>大阪<rp>(</rp><rt>おおさか</rt><rp>)</rp></ruby>では
+            <ruby>雨<rp>(</rp><rt>あめ</rt><rp>)</rp></ruby>が降っています。
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="info-box warn" style="margin-top:8px">⚠️ 同じline-heightでもルビあり行の行間が広がっているのがわかります。ルビのスペースを確保するためブラウザが行間を自動調整します。</div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>左右を見比べて、どちらも <code>line-height: 1.8</code> の同じ設定であることを確認する</li>
+        <li>右側（ルビあり）の行間が左側（ルビなし）より広がっていることを目視確認する</li>
+        <li>DevTools で右側の <code>&lt;p&gt;</code> を選択 → Box Model でテキスト行の高さがルビ分だけ増えていることを確認する</li>
+      </ol>
+      <strong>見るポイント：</strong>ルビのスペースを確保するためブラウザが行間を自動拡張する。ルビを多用するページでは <code>line-height</code> の設定が見た目に大きく影響する。
+    </div>
+  </div>
+  <div class="verify">
+    <div class="verify-col verify-before">
+      <div class="verify-label">⬛ 確認ポイント</div>
+      DevTools でルビ要素を選択 →<br>
+      Computed: <code>display: ruby</code> を確認<br>
+      <code>&lt;rt&gt;</code> 要素: <code>display: ruby-text</code>
+    </div>
+    <div class="verify-col verify-after">
+      <div class="verify-label">✅ 観察すべき挙動</div>
+      ベーステキストの上にルビが配置されている<br>
+      行間がルビの高さ分だけ広がっている<br>
+      <code>&lt;rp&gt;</code> はルビ非対応ブラウザ用の括弧（通常は非表示）
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Multicol FC ═══ -->
+<div class="card anchor" id="sec-multicol">
+  <div class="card-header">
+    <div class="attr-badge">Multicol</div>
+    <div class="card-meta">
+      <h2>Multicol Formatting Context</h2>
+      <p>column-count / column-width で生成。新聞風の段組レイアウト</p>
+      <div class="tags"><span class="tag tag-layout">LAYOUT</span></div>
+    </div>
+  </div>
+  <div class="section-label">▍ 生成条件</div>
+  <div class="explanation"><code>column-count</code> または <code>column-width</code> が <code>auto</code> 以外の値を持つ要素が Multicol コンテナとなり、Multicol FC を確立します。Multicol コンテナ自体もBFCを確立します。</div>
+  <div class="section-label">▍ 効果</div>
+  <table class="compare-table">
+    <thead><tr><th>効果</th><th>説明</th><th>CSS</th></tr></thead>
+    <tbody>
+      <tr><td>段組分割</td><td>コンテンツが自動的に複数カラムに分割される</td><td><code>column-count</code></td></tr>
+      <tr><td>カラム幅</td><td>各カラムの最小幅を指定（自動で列数決定）</td><td><code>column-width</code></td></tr>
+      <tr><td>カラム間余白</td><td>カラム間のスペースを制御</td><td><code>column-gap</code></td></tr>
+      <tr><td>カラム間罫線</td><td>カラム間に罫線を描画</td><td><code>column-rule</code></td></tr>
+      <tr><td>分断防止</td><td>要素がカラム途中で分断されるのを防ぐ</td><td><code>break-inside: avoid</code></td></tr>
+      <tr><td>BFC確立</td><td>Multicolコンテナ自身がBFCを確立する</td><td>—</td></tr>
+    </tbody>
+  </table>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: 段組数の切替</div>
+    <div style="display:flex;gap:4px;margin-bottom:10px">
+      <button class="btn btn-secondary" onclick="setMcCols(1)">1段</button>
+      <button class="btn btn-secondary" onclick="setMcCols(2)">2段</button>
+      <button class="btn btn-secondary" onclick="setMcCols(3)">3段</button>
+      <button class="btn btn-secondary" onclick="setMcCols(4)">4段</button>
+    </div>
+    <div class="live-panel">
+      <div class="live-label" id="mc-label">column-count: 2</div>
+      <div id="mc-container" style="column-count:2;column-gap:20px;column-rule:1px solid #c8cdd3;font-size:13px;line-height:1.8">
+        CSSフォーマッティングコンテキストは、ブラウザがHTML要素をどのように配置するかを決定するルールの集合です。BFC（Block Formatting Context）は最も基本的で重要なFCで、フロート包含やマージン折りたたみの制御に不可欠です。IFC（Inline Formatting Context）はテキストやインライン要素の水平配置を制御します。FFC（Flex Formatting Context）は1次元の柔軟なレイアウトを提供し、GFC（Grid Formatting Context）は2次元のグリッドレイアウトを可能にします。これらのFCを正しく理解することで、予期しないレイアウト崩れを防ぐことができます。
+      </div>
+    </div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>「2段」の状態でテキストが2カラムに分割されていることを確認する</li>
+        <li>「3段」をクリック → テキストが3カラムになることを確認する</li>
+        <li>「1段」をクリック → 通常の1カラムテキストに戻ることを確認する</li>
+        <li>「4段」にして、カラムが細くなるとテキストの1行が短くなることを確認する</li>
+      </ol>
+      <strong>見るポイント：</strong>カラム数を増やすと1列あたりの幅が狭くなりテキストが折り返す。新聞紙のように1つのテキストが複数段に自動で分割される。
+    </div>
+  </div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ ②: カラム幅 — column-width スライダー（最小カラム幅で自動列数決定）</div>
+    <label style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">column-width = <span id="mc-width-val">150</span>px（コンテナ幅に応じて列数が自動決定）</label>
+    <input type="range" min="80" max="400" value="150" style="width:100%;margin:6px 0 10px" oninput="setMcWidth(this.value)" id="mc-width-slider">
+    <div class="live-panel">
+      <div class="live-label" id="mc-width-label">column-width: 150px</div>
+      <div id="mc-width-container" style="column-width:150px;column-gap:20px;column-rule:1px solid #c8cdd3;font-size:13px;line-height:1.8">
+        CSSのMulticol FCはcolumn-countで列数を固定するか、column-widthで最小幅を指定して列数を自動決定できます。ウィンドウ幅が変わると列数も変わります。新聞やマガジンレイアウトに活用されます。
+      </div>
+    </div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>スライダーを左端（80px）に移動 → カラムが多く細くなることを確認する（コンテナ幅 ÷ 最小カラム幅で列数が決まる）</li>
+        <li>スライダーを右端（400px）に移動 → カラムが1列になることを確認する（最小幅がコンテナ幅を超えると1列）</li>
+        <li>ウィンドウ幅を変えてみると、同じ column-width 値でも列数が変わることを確認する</li>
+      </ol>
+      <strong>見るポイント：</strong><code>column-width</code> は最小幅の目安を指定する。ブラウザがコンテナ幅に合わせて列数を自動計算するため、レスポンシブ対応に向く。
+    </div>
+  </div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ ③: カラム間余白 — column-gap スライダー</div>
+    <label style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">column-gap = <span id="mc-gap-val">20</span>px</label>
+    <input type="range" min="0" max="80" value="20" style="width:100%;margin:6px 0 10px" oninput="setMcGap(this.value)" id="mc-gap-slider">
+    <div class="live-panel">
+      <div class="live-label" id="mc-gap-label">column-gap: 20px</div>
+      <div id="mc-gap-container" style="column-count:2;column-gap:20px;column-rule:2px solid #6366f1;font-size:13px;line-height:1.8">
+        カラム間余白（column-gap）を調整するとカラム間のスペースが変わります。column-ruleはカラムの中央に描画され、column-gapの影響を受けます。gapを0にするとruleが消えることも確認できます。
+      </div>
+    </div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>スライダーを右（80px）に動かすと、column-gap が広がりカラム間のスペースが拡大することを確認する</li>
+        <li>スライダーを 0px に近づけると、column-rule（罫線）が消えることを確認する（gapが0でruleが描画スペースを持てない）</li>
+        <li>DevTools でコンテナを選択 → grid overlay（または multi-col overlay）でカラム間の余白を確認する</li>
+      </ol>
+      <strong>見るポイント：</strong>column-gap はカラム間の余白幅を指定する。column-rule はこのギャップの中央に描画されるため、gapを0にするとruleも見えなくなる。
+    </div>
+  </div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ ④: カラム間罫線 — column-rule スタイル切替</div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="btn btn-secondary" onclick="setMcRule('none')">none（なし）</button>
+      <button class="btn btn-secondary" onclick="setMcRule('1px solid #6366f1')">solid（実線）</button>
+      <button class="btn btn-secondary" onclick="setMcRule('2px dashed #6366f1')">dashed（破線）</button>
+      <button class="btn btn-secondary" onclick="setMcRule('3px dotted #6366f1')">dotted（点線）</button>
+      <button class="btn btn-secondary" onclick="setMcRule('4px double #6366f1')">double（二重線）</button>
+    </div>
+    <div class="live-panel">
+      <div class="live-label" id="mc-rule-label">column-rule: 1px solid #6366f1</div>
+      <div id="mc-rule-container" style="column-count:3;column-gap:24px;column-rule:1px solid #6366f1;font-size:13px;line-height:1.8">
+        column-ruleはカラム間の境界線を描画します。borderと同様にwidth・style・colorを指定します。column-gapより広いruleを指定しても隣のカラムにははみ出しません。
+      </div>
+    </div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>「none（なし）」を選択 → カラム間の罫線が消えることを確認する</li>
+        <li>「solid（実線）」を選択 → カラム間に実線が描画されることを確認する</li>
+        <li>「dashed（破線）」「dotted（点線）」「double（二重線）」を順に切り替え、デザインの違いを確認する</li>
+        <li>DevTools でコンテナを選択 → Computed タブで <code>column-rule-style</code> の値を確認する</li>
+      </ol>
+      <strong>見るポイント：</strong>column-rule は border-left/right と異なりスペースを占有しない（column-gap の中に描画される）。太い rule を指定しても隣カラムには影響しない。
+    </div>
+  </div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ ⑤: 分断防止 — break-inside: auto ↔ avoid 切替</div>
+    <div style="display:flex;gap:4px;margin-bottom:10px">
+      <button class="btn btn-secondary" onclick="setBreakInside('auto')">auto（デフォルト: カラム中で分断される）</button>
+      <button class="btn btn-secondary" onclick="setBreakInside('avoid')">avoid（カラム途中で分断しない）</button>
+    </div>
+    <div class="live-panel">
+      <div class="live-label" id="mc-break-label">break-inside: auto</div>
+      <div style="column-count:2;column-gap:20px;column-rule:1px solid #c8cdd3;font-size:13px;line-height:1.8">
+        <p style="margin:0 0 8px">通常のテキスト段落です。</p>
+        <div id="mc-break-box" style="break-inside:auto;border:2px solid #6366f1;border-radius:6px;padding:10px;background:rgba(99,102,241,.06);margin-bottom:8px">
+          <strong style="font-size:11px;font-family:var(--mono);color:#4338ca">▶ この枠内は分断防止対象</strong><br>
+          このボックスはbreak-insideの設定によってカラムをまたいで分断されるか、次のカラムに丸ごと送られるかが変わります。avoidを選択するとこの枠がカラムの途中で切れなくなります。
+        </div>
+        <p style="margin:0">続きのテキストが続きます。</p>
+      </div>
+    </div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>「auto（デフォルト）」を選択 → 青い枠ボックスがカラムの途中で分断される可能性があることを確認する（ウィンドウ幅によっては分断が見える）</li>
+        <li>「avoid」を選択 → 青い枠ボックスが分断されず、丸ごと次のカラムに移動することを確認する</li>
+        <li>DevTools で <code>#mc-break-box</code> を選択 → Computed タブの <code>break-inside</code> の値を確認する</li>
+      </ol>
+      <strong>見るポイント：</strong>見出し+本文のセットや、カードUIなどを段組レイアウトで使う時に <code>break-inside: avoid</code> を指定すると途中で切れなくなる。
+    </div>
+  </div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ ⑥: BFC確立 — Multicolコンテナ自身がBFCを確立（フロート包含）</div>
+    <div class="live-panel">
+      <div class="live-label">column-count: 2（Multicol FC = BFC確立）</div>
+      <div style="column-count:2;column-gap:20px;column-rule:1px solid #c8cdd3;border:2px solid #6366f1;padding:12px;border-radius:6px;background:rgba(99,102,241,.05)">
+        <div style="float:left;background:#1d4ed8;color:#fff;padding:6px 12px;margin:0 8px 0 0;border-radius:3px;font-size:12px;font-family:var(--mono)">float: left</div>
+        Multicolコンテナ自身がBFCを確立するため、内部のフロートを包含します。コンテナの高さが縮む問題が発生しません。
+      </div>
+    </div>
+    <div class="info-box ok" style="margin-top:8px">✅ Multicolコンテナは自動的にBFCを確立します。追加の overflow や display: flow-root は不要です。</div>
+    <div class="check-steps">
+      <div class="check-steps-title">📋 確認手順</div>
+      <ol>
+        <li>青い「float: left」バッジがコンテナの左に配置され、テキストがその隣に回り込んでいることを確認する</li>
+        <li>コンテナの外枠（青い border）がフロートを包含して高さが正常に確保されていることを確認する（高さが縮んでいない）</li>
+        <li>DevTools でコンテナを選択 → Computed タブで <code>display: block</code>（BFC確立）と <code>column-count: 2</code> が両立していることを確認する</li>
+      </ol>
+      <strong>見るポイント：</strong>Multicol コンテナは BFC を自動確立するため、内部の float を包含できる。<code>overflow: hidden</code> や <code>display: flow-root</code> を追加しなくても高さ崩れが起きない。
+    </div>
+  </div>
+  <div class="verify">
+    <div class="verify-col verify-before">
+      <div class="verify-label">⬛ 確認ポイント</div>
+      Computed タブで <code>column-count</code> の値を確認<br>
+      テキストが複数カラムに分割されているか目視確認
+    </div>
+    <div class="verify-col verify-after">
+      <div class="verify-label">✅ 段数変更時の観察</div>
+      カラム数を変えるとテキストの流れが変わる<br>
+      <code>column-rule</code> がカラム間に描画される<br>
+      <code>column-gap</code> でカラム間の余白が制御されている
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!--  横断比較                                    -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="card anchor" id="sec-compare">
+  <div class="card-header">
+    <div class="attr-badge">比較</div>
+    <div class="card-meta">
+      <h2>全 Formatting Context 比較表</h2>
+      <p>7種類のFCを一覧で整理</p>
+      <div class="tags"><span class="tag tag-layout">LAYOUT</span></div>
+    </div>
+  </div>
+  <div style="overflow-x:auto">
+  <table class="compare-table">
+    <thead><tr><th>FC</th><th>生成条件</th><th>配置方向</th><th>float</th><th>margin折畳</th><th>子がBFC</th><th>主な用途</th></tr></thead>
+    <tbody>
+      <tr><td>BFC</td><td>flow-root, overflow, float, position等</td><td>縦</td><td><span class="yes">包含</span></td><td><span class="yes">遮断</span></td><td>—</td><td>フロート制御、マージン制御</td></tr>
+      <tr><td>IFC</td><td>インライン子のみの時に自動</td><td>横</td><td>—</td><td>—</td><td>—</td><td>テキスト配置、行ボックス</td></tr>
+      <tr><td>FFC</td><td>display: flex / inline-flex</td><td>主軸</td><td><span class="yes">無効化</span></td><td><span class="yes">なし</span></td><td><span class="yes">○</span></td><td>1次元レイアウト</td></tr>
+      <tr><td>GFC</td><td>display: grid / inline-grid</td><td>行+列</td><td><span class="yes">無効化</span></td><td><span class="yes">なし</span></td><td><span class="yes">○</span></td><td>2次元レイアウト</td></tr>
+      <tr><td>TFC</td><td>display: table 系</td><td>行→セル</td><td>—</td><td>—</td><td><span class="yes">○</span></td><td>表形式データ</td></tr>
+      <tr><td>Ruby</td><td>ruby 要素 / display: ruby</td><td>ベース+注釈</td><td>—</td><td>—</td><td>—</td><td>ふりがな</td></tr>
+      <tr><td>Multicol</td><td>column-count/width ≠ auto</td><td>カラム分割</td><td>—</td><td>—</td><td>—</td><td>段組レイアウト</td></tr>
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<!-- ═══ DevTools 判別法 ═══ -->
+<div class="card anchor" id="sec-devtools">
+  <div class="card-header">
+    <div class="attr-badge">DevTools</div>
+    <div class="card-meta">
+      <h2>DevTools での FC 判別フロー</h2>
+      <p>Chrome / Edge DevTools で各FCを特定する手順</p>
+      <div class="tags"><span class="tag tag-layout">LAYOUT</span></div>
+    </div>
+  </div>
+  <div class="devtools-step"><div class="devtools-num">1</div><div>対象要素を右クリック → <strong>検証</strong>（Inspect）で Elements パネルを開く</div></div>
+  <div class="devtools-step"><div class="devtools-num">2</div><div><strong>バッジ確認</strong>：要素名の横に <code style="background:rgba(0,92,197,.1);padding:1px 4px;border-radius:3px">flex</code> / <code style="background:rgba(227,98,9,.1);padding:1px 4px;border-radius:3px">grid</code> バッジがあれば即座に FFC / GFC。クリックでオーバーレイ表示</div></div>
+  <div class="devtools-step"><div class="devtools-num">3</div><div><strong>Computed タブ</strong>で <code>display</code> の計算値を確認。<code>flex</code>→FFC、<code>grid</code>→GFC、<code>table</code>→TFC、<code>ruby</code>→Ruby、<code>block</code>/<code>flow-root</code>→BFC候補</div></div>
+  <div class="devtools-step"><div class="devtools-num">4</div><div><strong>BFC判定チェック</strong>（display が block の場合）：<br>
+    ・<code>overflow</code> が visible / clip 以外？ → BFC<br>
+    ・<code>float</code> が none 以外？ → BFC<br>
+    ・<code>position</code> が absolute / fixed？ → BFC<br>
+    ・<code>display</code> が inline-block / flow-root？ → BFC<br>
+    ・<code>column-count</code> が auto 以外？ → Multicol FC + BFC<br>
+    ・親が flex / grid コンテナ？ → 自分は flex/grid item = BFC</div></div>
+  <div class="devtools-step"><div class="devtools-num">5</div><div><strong>Layout パネル</strong>（Chrome）：Flexbox / Grid コンテナの一覧が表示される。チェックを入れるとオーバーレイが表示され、ラインナンバー・エリア名・gap が視覚化される</div></div>
+  <div class="devtools-step"><div class="devtools-num">6</div><div><strong>IFC判定</strong>：要素の子がすべてインラインレベル（span, a, em, img, text）のみなら IFC。ブロック要素が1つでも混ざっていたら IFC は分断されている</div></div>
+  <div class="devtools-step"><div class="devtools-num">7</div><div><strong>検証テスト</strong>：Styles パネルでプロパティを一時変更して効果を確認<br>
+    ・フロート包含テスト: 親に <code>display: flow-root</code> を追加 → 高さが変わるか<br>
+    ・マージン折畳テスト: 要素間の距離が変わるか<br>
+    ・float無効テスト: 親を <code>display: flex</code> に変更 → float子が横並びになるか</div></div>
+
+  <div class="info-box ok">✅ <strong>実践のコツ：</strong>判別に迷ったらDevToolsの Styles パネルで <code>display: flow-root</code> を一時追加してレイアウトが変わるかを確認。変わればBFCが関係している証拠です。</div>
+</div>
+
+</main>
+</div>
+
+<script>
+/* ===== Navigation ===== */
+function goTo(id, el) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (el) el.classList.add('active');
+  document.getElementById(id).scrollIntoView({behavior:'smooth'});
+}
+
+/* ===== Copy Code ===== */
+function copyCode(btn) {
+  const code = btn.closest('.code-block').querySelector('pre').textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    btn.textContent = 'copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+/* ===== BFC Generation Demo ===== */
+function demoBfcGen(mode) {
+  const el = document.getElementById('bfc-gen-parent');
+  const label = document.getElementById('bfc-gen-label');
+  const measure = document.getElementById('bfc-gen-measure');
+  el.style.cssText = 'border:2px solid #6366f1;padding:8px;background:rgba(99,102,241,.06);border-radius:6px;';
+  switch(mode) {
+    case 'none': label.textContent='parent — BFCなし'; break;
+    case 'flow-root': el.style.display='flow-root'; label.textContent='parent — display: flow-root'; break;
+    case 'overflow-hidden': el.style.overflow='hidden'; label.textContent='parent — overflow: hidden'; break;
+    case 'overflow-auto': el.style.overflow='auto'; label.textContent='parent — overflow: auto'; break;
+    case 'inline-block': el.style.display='inline-block'; el.style.width='100%'; label.textContent='parent — display: inline-block'; break;
+    case 'float-left': el.style.float='left'; el.style.width='100%'; label.textContent='parent — float: left'; break;
+    case 'position-absolute': label.textContent='parent — position: absolute/fixed はその要素自身がBFCを確立する（フロー外になるため高さ測定は変化なし。DevTools Styles パネルで直接試してください）'; break;
+    case 'contain-layout': el.style.contain='layout'; label.textContent='parent — contain: layout'; break;
+  }
+  requestAnimationFrame(() => {
+    measure.textContent = `親の高さ: ${el.offsetHeight}px（フロート子: 80px）→ ${el.offsetHeight >= 80 ? '✅ フロート包含している' : '❌ フロート包含していない（高さが潰れている）'}`;
+  });
+}
+
+/* ===== Float Contain Demo ===== */
+function toggleFloatContain() {
+  const btn = document.getElementById('btn-float-contain');
+  const el = document.getElementById('float-bfc');
+  const isOn = btn.classList.toggle('on');
+  el.style.display = isOn ? 'flow-root' : '';
+  btn.textContent = isOn ? 'BFC ON — flow-root 適用中' : 'BFC OFF — display: flow-root を適用';
+  requestAnimationFrame(() => {
+    document.getElementById('float-no-measure').textContent = `高さ: ${document.getElementById('float-no-bfc').offsetHeight}px`;
+    document.getElementById('float-yes-measure').textContent = `高さ: ${el.offsetHeight}px`;
+  });
+}
+
+/* ===== Margin Sibling Demo ===== */
+function toggleMarginSibling() {
+  const btn = document.getElementById('btn-margin-sibling');
+  const container = document.getElementById('margin-sibling-container');
+  const isOn = btn.classList.toggle('on');
+  if (isOn) {
+    container.innerHTML = '<div style="display:flow-root"><div class="box-a" style="margin-bottom:30px">Box A (margin-bottom: 30px) ← flow-root内</div></div><div style="display:flow-root"><div class="box-b" style="margin-top:20px">Box B (margin-top: 20px) ← flow-root内</div></div>';
+    btn.textContent = 'BFC ON — 各要素を flow-root で包み中';
+  } else {
+    container.innerHTML = '<div class="box-a" style="margin-bottom:30px">Box A (margin-bottom: 30px)</div><div class="box-b" style="margin-top:20px">Box B (margin-top: 20px)</div>';
+    btn.textContent = 'BFC OFF — 各要素を flow-root で包む';
+  }
+  requestAnimationFrame(() => {
+    const boxes = container.querySelectorAll('.box-a, .box-b');
+    if (boxes.length >= 2) {
+      const gap = boxes[1].getBoundingClientRect().top - boxes[0].getBoundingClientRect().bottom;
+      document.getElementById('margin-sibling-measure').textContent = `Box間の実測距離: ${Math.round(gap)}px（折畳時: 30px / 遮断時: 50px）`;
+    }
+  });
+}
+
+/* ===== Margin Parent-Child Demo ===== */
+function toggleMarginParent() {
+  const btn = document.getElementById('btn-margin-parent');
+  const elYes = document.getElementById('margin-parent-yes');
+  const isOn = btn.classList.toggle('on');
+  elYes.style.display = isOn ? 'flow-root' : '';
+  btn.textContent = isOn ? 'BFC ON — 右側の親に flow-root 適用中' : 'BFC OFF — 右側の親に flow-root を適用';
+}
+
+/* ===== Float Exclude Demo ===== */
+function toggleFloatExclude() {
+  const btn = document.getElementById('btn-float-excl');
+  const el = document.getElementById('float-excl-main');
+  const isOn = btn.classList.toggle('on');
+  el.style.display = isOn ? 'flow-root' : '';
+  el.style.overflow = isOn ? 'hidden' : '';
+  btn.textContent = isOn ? 'BFC ON — flow-root 適用中' : 'BFC OFF — メインにflow-rootを適用';
+}
+
+/* ===== IFC Padding Demo ===== */
+function toggleIfcPad() {
+  const btn = document.getElementById('btn-ifc-pad');
+  const el = document.getElementById('ifc-span');
+  const isOn = btn.classList.toggle('on');
+  el.style.padding = isOn ? '20px' : '';
+  btn.textContent = isOn ? 'padding ON — 20px適用中（行高さは変わらない）' : 'padding OFF — span にpadding 20pxを適用';
+}
+
+/* ===== FFC Float Demo ===== */
+function toggleFfcFloat() {
+  const btn = document.getElementById('btn-ffc-float');
+  const el = document.getElementById('ffc-float-container');
+  const label = document.getElementById('ffc-float-label');
+  const isOn = btn.classList.toggle('on');
+  el.style.display = isOn ? 'flex' : '';
+  el.style.gap = isOn ? '8px' : '';
+  label.textContent = isOn ? 'display: flex（float無効化）' : 'display: block';
+  btn.textContent = isOn ? 'display: flex — display: block に戻す' : 'display: block — display: flex に切替';
+}
+
+/* ===== Flex Axis Demo ===== */
+let fDir='row', fJC='flex-start', fAI='stretch';
+function updateFlexAxis() {
+  const c = document.getElementById('flex-axis-container');
+  c.style.flexDirection = fDir;
+  c.style.justifyContent = fJC;
+  c.style.alignItems = fAI;
+  document.getElementById('flex-axis-label').textContent = `${fDir} / ${fJC} / ${fAI}`;
+}
+function setFlexDir(v) { fDir=v; updateFlexAxis(); }
+function setFlexJC(v) { fJC=v; updateFlexAxis(); }
+function setFlexAI(v) { fAI=v; updateFlexAxis(); }
+
+/* ===== Flex Grow Demo ===== */
+function updateFlexGrow() {
+  const a=document.getElementById('fg-a').value;
+  const b=document.getElementById('fg-b').value;
+  const c=document.getElementById('fg-c').value;
+  document.getElementById('fg-a-val').textContent=a;
+  document.getElementById('fg-b-val').textContent=b;
+  document.getElementById('fg-c-val').textContent=c;
+  document.getElementById('fg-box-a').style.flexGrow=a;
+  document.getElementById('fg-box-b').style.flexGrow=b;
+  document.getElementById('fg-box-c').style.flexGrow=c;
+  document.getElementById('fg-label').textContent=`flex-grow: ${a} / ${b} / ${c}`;
+}
+
+/* ===== Grid Track Demo ===== */
+function setGridItems(n) {
+  const c = document.getElementById('grid-track-container');
+  const colors = ['box-a','box-b','box-c','box-d','box-a','box-b','box-c','box-d'];
+  let html = '';
+  for (let i = 0; i < n; i++) {
+    html += `<div class="${colors[i % 4]}" style="display:flex;align-items:center;justify-content:center;width:auto;height:auto">${i+1}${i>=3?' (暗黙)':''}</div>`;
+  }
+  c.innerHTML = html;
+  const rows = Math.ceil(n / 3);
+  document.getElementById('grid-track-measure').textContent =
+    `明示列: 3 / 実際の行数: ${rows}（${rows > 1 ? '暗黙トラック発生: ' + (rows-1) + '行' : '暗黙トラックなし'}）`;
+}
+
+/* ===== IFC text-align Demo ===== */
+function setTextAlign(v) {
+  document.getElementById('ta-container').style.textAlign = v;
+  document.getElementById('ta-label').textContent = 'text-align: ' + v;
+}
+
+/* ===== IFC line-height Demo ===== */
+function setLineHeight(v) {
+  const val = parseFloat(v);
+  const fontSize = 16;
+  const lineBoxPx = Math.round(val * fontSize);
+  const halfLeading = Math.round((val * fontSize - fontSize) / 2);
+  document.getElementById('lh-val').textContent = val.toFixed(1);
+  document.getElementById('lh-px').textContent = lineBoxPx + 'px';
+  document.getElementById('lh-hl').textContent = halfLeading + 'px';
+  const c = document.getElementById('lh-container');
+  c.style.lineHeight = val.toFixed(1);
+  requestAnimationFrame(() => {
+    document.getElementById('lh-label').textContent =
+      `line-height: ${val.toFixed(1)} / 要素の実測高さ: ${c.offsetHeight}px`;
+    document.getElementById('lh-measure').textContent =
+      `行ボックス高さ: ${lineBoxPx}px（= font-size ${fontSize}px × ${val.toFixed(1)}） / half-leading: 上下各 ${halfLeading}px`;
+  });
+}
+
+/* ===== FFC flex-wrap Demo ===== */
+let fWrap = 'nowrap', fAC = 'flex-start';
+function updateFlexWrap() {
+  const c = document.getElementById('fwrap-container');
+  c.style.flexWrap = fWrap;
+  c.style.alignContent = fAC;
+  document.getElementById('fwrap-label').textContent = `flex-wrap: ${fWrap} / align-content: ${fAC}`;
+}
+function setFlexWrap(v) { fWrap = v; updateFlexWrap(); }
+function setFlexAC(v) { fAC = v; updateFlexWrap(); }
+
+/* ===== GFC grid-auto-flow Demo ===== */
+function setGridFlow(v) {
+  document.getElementById('gflow-container').style.gridAutoFlow = v;
+  document.getElementById('gflow-label').textContent = 'grid-auto-flow: ' + v;
+}
+
+/* ===== Multicol Demo ===== */
+function setMcCols(n) {
+  document.getElementById('mc-container').style.columnCount = n;
+  document.getElementById('mc-label').textContent = `column-count: ${n}`;
+}
+
+/* ===== Scroll spy ===== */
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      document.querySelectorAll('.nav-item').forEach(n => {
+        n.classList.toggle('active', n.getAttribute('onclick')?.includes(id));
+      });
+    }
+  });
+}, {rootMargin: '-80px 0px -40% 0px'});
+document.querySelectorAll('.anchor').forEach(el => observer.observe(el));
+
+/* ===== Init ===== */
+demoBfcGen('none');
+requestAnimationFrame(() => {
+  document.getElementById('float-no-measure').textContent = `高さ: ${document.getElementById('float-no-bfc').offsetHeight}px`;
+  document.getElementById('float-yes-measure').textContent = `高さ: ${document.getElementById('float-bfc').offsetHeight}px`;
+});
+
+/* ===== FFC 追加デモ ===== */
+function toggleFfcItemize() {
+  const btn = document.getElementById('btn-ffc-itemize');
+  const c = document.getElementById('ffc-item-container');
+  const label = document.getElementById('ffc-item-label');
+  const isOn = btn.classList.toggle('on');
+  c.style.display = isOn ? 'flex' : '';
+  c.style.gap = isOn ? '8px' : '';
+  label.textContent = isOn ? 'display: flex（子要素がflex itemになり横並びに）' : 'display: block（通常ブロック）';
+  c.querySelectorAll('[class^="box-"]').forEach(el => {
+    el.style.marginBottom = isOn ? '0' : '8px';
+    el.style.flexShrink = isOn ? '1' : '';
+    el.style.flex = isOn ? '1' : '';
+  });
+}
+
+function toggleFfcMargin() {
+  const btn = document.getElementById('btn-ffc-margin');
+  const c = document.getElementById('ffc-margin-container');
+  const label = document.getElementById('ffc-margin-label');
+  const measure = document.getElementById('ffc-margin-measure');
+  const isOn = btn.classList.toggle('on');
+  c.style.display = isOn ? 'flex' : '';
+  c.style.flexDirection = isOn ? 'column' : '';
+  c.style.gap = isOn ? '0' : '';
+  label.textContent = isOn
+    ? 'display: flex（margin-bottom:24px + margin-top:24px = 合計48px / 折りたたみなし）'
+    : 'display: block（margin-bottom:24px + margin-top:24px = 折りたたみで24px）';
+  requestAnimationFrame(() => {
+    const aEl = document.getElementById('ffc-margin-a');
+    const bEl = document.getElementById('ffc-margin-b');
+    const gap = bEl.getBoundingClientRect().top - aEl.getBoundingClientRect().bottom;
+    measure.textContent = `A下端とB上端の実測ギャップ: ${Math.round(gap)}px → ${isOn ? '✅ 48px（折りたたみなし）' : '⬛ 24px（折りたたまれている）'}`;
+  });
+}
+
+/* ===== GFC 追加デモ ===== */
+function toggleGfcItemize() {
+  const btn = document.getElementById('btn-gfc-itemize');
+  const c = document.getElementById('gfc-item-container');
+  const label = document.getElementById('gfc-item-label');
+  const isOn = btn.classList.toggle('on');
+  c.style.display = isOn ? 'grid' : '';
+  c.style.gridTemplateColumns = isOn ? '1fr 1fr 1fr' : '';
+  c.style.gap = isOn ? '8px' : '';
+  label.textContent = isOn ? 'display: grid（子要素がgrid itemになり3列に自動配置）' : 'display: block（通常ブロック・縦積み）';
+  c.querySelectorAll('[class^="box-"]').forEach(el => {
+    el.style.marginBottom = isOn ? '0' : '8px';
+  });
+}
+
+function toggleGfcFloat() {
+  const btn = document.getElementById('btn-gfc-float');
+  const c = document.getElementById('gfc-float-container');
+  const label = document.getElementById('gfc-float-label');
+  const isOn = btn.classList.toggle('on');
+  c.style.display = isOn ? 'grid' : '';
+  c.style.gridTemplateColumns = isOn ? '1fr 1fr 1fr' : '';
+  c.style.gap = isOn ? '8px' : '';
+  label.textContent = isOn ? 'display: grid（floatは無効化され grid item として配置される）' : 'display: block（floatが効いている）';
+}
+
+function toggleGfcMargin() {
+  const btn = document.getElementById('btn-gfc-margin');
+  const c = document.getElementById('gfc-margin-container');
+  const label = document.getElementById('gfc-margin-label');
+  const measure = document.getElementById('gfc-margin-measure');
+  const isOn = btn.classList.toggle('on');
+  c.style.display = isOn ? 'grid' : '';
+  c.style.gridTemplateColumns = isOn ? '1fr' : '';
+  label.textContent = isOn
+    ? 'display: grid（margin-bottom:24px + margin-top:24px = 合計48px / 折りたたみなし）'
+    : 'display: block（margin-bottom:24px + margin-top:24px = 折りたたみで24px）';
+  requestAnimationFrame(() => {
+    const aEl = document.getElementById('gfc-margin-a');
+    const bEl = document.getElementById('gfc-margin-b');
+    const gap = bEl.getBoundingClientRect().top - aEl.getBoundingClientRect().bottom;
+    measure.textContent = `A下端とB上端の実測ギャップ: ${Math.round(gap)}px → ${isOn ? '✅ 48px（折りたたみなし）' : '⬛ 24px（折りたたまれている）'}`;
+  });
+}
+
+/* ===== TFC 追加デモ ===== */
+function setBorderCollapse(v) {
+  const t = document.getElementById('tfc-bc-table');
+  const label = document.getElementById('tfc-bc-label');
+  t.style.borderCollapse = v;
+  t.style.borderSpacing = v === 'separate' ? '4px' : '0';
+  label.textContent = 'border-collapse: ' + v + (v === 'separate' ? '（セル間に隙間あり）' : '（セル境界線が結合）');
+}
+
+function setTableLayout(v) {
+  const t = document.getElementById('tfc-tl-table');
+  const label = document.getElementById('tfc-tl-label');
+  t.style.tableLayout = v;
+  label.textContent = 'table-layout: ' + v + (v === 'fixed' ? '（均等分配: 全列が同じ幅に）' : '（auto: コンテンツ量で幅が決まる）');
+}
+
+/* ===== Ruby 追加デモ ===== */
+function setRubyPosition(v) {
+  const el = document.getElementById('ruby-pos-demo');
+  const label = document.getElementById('ruby-pos-label');
+  el.style.rubyPosition = v;
+  label.textContent = 'ruby-position: ' + v + (v === 'over' ? '（ベーステキストの上）' : '（ベーステキストの下）');
+}
+
+function setRubyAlign(v) {
+  const el = document.getElementById('ruby-align-demo');
+  const label = document.getElementById('ruby-align-label');
+  el.style.rubyAlign = v;
+  label.textContent = 'ruby-align: ' + v;
+}
+
+/* ===== Multicol 追加デモ ===== */
+function setMcWidth(v) {
+  document.getElementById('mc-width-val').textContent = v;
+  document.getElementById('mc-width-container').style.columnWidth = v + 'px';
+  document.getElementById('mc-width-label').textContent = 'column-width: ' + v + 'px';
+}
+
+function setMcGap(v) {
+  document.getElementById('mc-gap-val').textContent = v;
+  document.getElementById('mc-gap-container').style.columnGap = v + 'px';
+  document.getElementById('mc-gap-label').textContent = 'column-gap: ' + v + 'px';
+}
+
+function setMcRule(v) {
+  document.getElementById('mc-rule-container').style.columnRule = v;
+  document.getElementById('mc-rule-label').textContent = 'column-rule: ' + v;
+}
+
+function setBreakInside(v) {
+  document.getElementById('mc-break-box').style.breakInside = v;
+  document.getElementById('mc-break-label').textContent = 'break-inside: ' + v;
+}
+</script>
+</body>
+</html>

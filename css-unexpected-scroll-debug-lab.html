@@ -1,0 +1,1916 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSS 意図しない縦スクロール 実機確認ラボ</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&family=Noto+Sans+JP:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#ffffff;--surface:#f5f7fa;--surface2:#ebeef2;--border:#c8cdd3;
+    --accent:#005cc5;--accent2:#22863a;--accent3:#6f42c1;--accent4:#b08800;
+    --text:#1a1a2e;--text-dim:#5c6370;--code:#005cc5;
+    --mono:'IBM Plex Mono',monospace;--sans:'Noto Sans JP',sans-serif;
+    --red:#cb2431;--red-bg:rgba(203,36,49,.06);--green-bg:rgba(34,134,58,.06);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.7;min-height:100vh}
+  header{padding:20px 24px 14px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:100}
+  header h1{font-family:var(--mono);font-size:1rem;color:var(--accent);letter-spacing:.05em}
+  header h1 span{color:var(--text-dim)}
+  header p{font-size:11px;color:var(--text-dim);margin-top:3px}
+  .layout{display:grid;grid-template-columns:240px 1fr;min-height:calc(100vh - 63px)}
+  nav{background:var(--surface);border-right:1px solid var(--border);padding:12px 0;position:sticky;top:63px;height:calc(100vh - 63px);overflow-y:auto}
+  nav::-webkit-scrollbar{width:3px}
+  nav::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+  .nav-section{padding:6px 14px 2px;font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:.12em;text-transform:uppercase;margin-top:6px}
+  .nav-item{display:block;padding:7px 14px;cursor:pointer;border-left:2px solid transparent;transition:all .15s;font-size:12px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .nav-item:hover{background:var(--surface2);color:var(--text)}
+  .nav-item.active{border-left-color:var(--accent);background:rgba(0,92,197,.06);color:var(--accent);font-weight:700}
+  .nav-item code{font-family:var(--mono);font-size:11px;background:rgba(0,0,0,.05);padding:1px 5px;border-radius:3px}
+  main{padding:24px;overflow-x:hidden}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:22px;margin-bottom:22px;transition:border-color .2s}
+  .card:hover{border-color:var(--accent)}
+  .card-header{display:flex;align-items:flex-start;gap:12px;margin-bottom:16px}
+  .attr-badge{font-family:var(--mono);font-size:12px;font-weight:700;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;color:var(--accent);white-space:nowrap;flex-shrink:0}
+  .card-meta{flex:1}
+  .card-meta h2{font-size:15px;font-weight:700;color:var(--text)}
+  .card-meta p{font-size:12px;color:var(--text-dim);margin-top:2px}
+  .tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+  .tag{font-size:9px;font-family:var(--mono);padding:2px 6px;border-radius:99px;border:1px solid}
+  .tag-box{border-color:var(--accent);color:var(--accent);background:rgba(0,92,197,.08)}
+  .tag-margin{border-color:var(--accent3);color:var(--accent3);background:rgba(111,66,193,.08)}
+  .tag-sizing{border-color:var(--accent2);color:var(--accent2);background:rgba(34,134,58,.08)}
+  .tag-position{border-color:var(--accent4);color:var(--accent4);background:rgba(176,136,0,.08)}
+  .tag-flex{border-color:#e36209;color:#e36209;background:rgba(227,98,9,.08)}
+  .tag-common{border-color:var(--red);color:var(--red);background:rgba(203,36,49,.08)}
+  .tag-devtools{border-color:var(--text-dim);color:var(--text-dim);background:rgba(92,99,112,.08)}
+  .section-label{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:7px}
+  .explanation{font-size:13px;line-height:1.8;color:var(--text);margin-bottom:16px}
+  .explanation strong{color:var(--accent)}
+  .diagram{background:#f0f4f8;border:1px solid var(--border);border-radius:7px;padding:14px 16px;font-family:var(--mono);font-size:11.5px;line-height:1.6;color:#24292e;white-space:pre;overflow-x:auto;margin-bottom:16px}
+  .code-block{background:#f0f4f8;border:1px solid var(--border);border-radius:7px;overflow:hidden;margin-bottom:16px}
+  .code-block-header{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;background:var(--surface2);border-bottom:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--text-dim)}
+  .copy-btn{background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:4px;cursor:pointer;transition:all .15s}
+  .copy-btn:hover,.copy-btn.copied{border-color:var(--accent);color:var(--accent)}
+  pre.code{padding:14px;font-size:12px;line-height:1.65;overflow-x:auto;margin:0}
+  .kw{color:#d73a49}.prop{color:#22863a}.val{color:#032f62}.cmt{color:#6a737d}.sel{color:#005cc5}
+  .demo-area{background:#f0f4f8;border:1px solid var(--border);border-radius:7px;padding:16px;margin-bottom:12px}
+  .demo-area .section-label{margin-bottom:8px}
+  .btn{font-family:var(--mono);font-size:12px;padding:6px 14px;border-radius:6px;border:none;cursor:pointer;transition:all .15s;margin-right:6px;margin-bottom:6px}
+  .btn-primary{background:var(--accent);color:#fff;font-weight:700}
+  .btn-primary:hover{background:#0047a3}
+  .btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+  .btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+  .btn-toggle{background:var(--surface2);color:var(--text);border:1px solid var(--border);position:relative}
+  .btn-toggle.on{background:var(--accent2);color:#fff;border-color:var(--accent2)}
+  .compare-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px}
+  .compare-table th{background:var(--surface2);padding:7px 10px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--text-dim);border-bottom:1px solid var(--border);white-space:nowrap}
+  .compare-table td{padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:top}
+  .compare-table tr:last-child td{border-bottom:none}
+  .compare-table td:first-child{font-family:var(--mono);color:var(--accent);font-size:11px}
+  .info-box{border-radius:6px;padding:10px 12px;font-size:12.5px;margin-bottom:12px;border-left:3px solid;line-height:1.7}
+  .info-box.warn{background:rgba(176,136,0,.07);border-color:var(--accent4);color:#7a5c00}
+  .info-box.info{background:rgba(34,134,58,.07);border-color:var(--accent2);color:#196127}
+  .info-box.ok{background:rgba(0,92,197,.07);border-color:var(--accent);color:#003d8f}
+  .info-box.err{background:rgba(203,36,49,.07);border-color:var(--red);color:#9a1320}
+  .verify{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+  @media(max-width:600px){.verify{grid-template-columns:1fr}}
+  .verify-col{border-radius:6px;padding:10px 14px;font-size:12px;line-height:1.7}
+  .verify-before{background:var(--red-bg);border:1px solid rgba(203,36,49,.2);color:#6b1a22}
+  .verify-after{background:var(--green-bg);border:1px solid rgba(34,134,58,.2);color:#154f1e}
+  .verify-label{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;font-weight:700}
+  .verify-before .verify-label{color:var(--red)}
+  .verify-after .verify-label{color:var(--accent2)}
+  .anchor{scroll-margin-top:80px}
+  hr{border:none;border-top:1px solid var(--border);margin:18px 0}
+
+  /* ===== Live Demo Panels ===== */
+  .live-panel{border:2px dashed var(--border);border-radius:8px;margin-bottom:12px;position:relative;background:var(--bg);transition:all .3s}
+  .live-label{position:absolute;top:-10px;left:12px;background:var(--bg);padding:0 6px;font-family:var(--mono);font-size:10px;color:var(--text-dim)}
+  .sandbox{border:2px solid #6366f1;border-radius:6px;background:rgba(99,102,241,.04);position:relative}
+  .sandbox-broken{border-color:var(--red)}
+  .sandbox-fixed{border-color:var(--accent2)}
+  .measure{font-family:var(--mono);font-size:11px;color:var(--accent3);margin-top:6px}
+  .devtools-step{display:flex;gap:10px;margin-bottom:10px;font-size:12px;line-height:1.6;align-items:flex-start}
+  .devtools-num{min-width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
+  .scroll-indicator{position:absolute;top:4px;right:8px;font-family:var(--mono);font-size:9px;padding:2px 6px;border-radius:99px;z-index:2}
+  .scroll-yes{background:rgba(203,36,49,.12);color:var(--red);border:1px solid rgba(203,36,49,.3)}
+  .scroll-no{background:rgba(34,134,58,.12);color:var(--accent2);border:1px solid rgba(34,134,58,.3)}
+
+  @media(max-width:700px){
+    .layout{grid-template-columns:1fr}
+    nav{position:static;height:auto;display:flex;flex-wrap:wrap;padding:6px;border-right:none;border-bottom:1px solid var(--border)}
+    .nav-section{display:none}
+    .nav-item{padding:4px 8px;font-size:11px;border-left:none;border-bottom:2px solid transparent}
+    .nav-item.active{border-bottom-color:var(--accent);border-left-color:transparent}
+    main{padding:14px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span>overflow-y:</span> 意図しない縦スクロール <span>デバッグラボ</span></h1>
+  <p>縦スクロールが発生する全パターンとその解消法をブラウザ実機で目視確認 — 各デモは Before/After トグルで即時比較できます</p>
+</header>
+
+<div class="layout">
+<nav id="sidebar">
+  <div class="nav-section">box model</div>
+  <div class="nav-item active" onclick="goTo('sec-boxsizing',this)">① box-sizing 未設定</div>
+  <div class="nav-item" onclick="goTo('sec-padding-100',this)">② padding + 100vh/100%</div>
+  <div class="nav-item" onclick="goTo('sec-border-100',this)">③ border + 100vh</div>
+  <div class="nav-section">margin</div>
+  <div class="nav-item" onclick="goTo('sec-body-margin',this)">④ body のデフォルトmargin</div>
+  <div class="nav-item" onclick="goTo('sec-margin-collapse',this)">⑤ margin 突き抜け</div>
+  <div class="nav-item" onclick="goTo('sec-margin-bottom',this)">⑥ 末尾要素の margin</div>
+  <div class="nav-section">height / sizing</div>
+  <div class="nav-item" onclick="goTo('sec-vh-mobile',this)">⑦ 100vh モバイル問題</div>
+  <div class="nav-item" onclick="goTo('sec-min-height',this)">⑧ min-height + 子の膨張</div>
+  <div class="nav-item" onclick="goTo('sec-calc-rounding',this)">⑨ calc() 端数・誤差</div>
+  <div class="nav-section">position / transform</div>
+  <div class="nav-item" onclick="goTo('sec-abs-outside',this)">⑩ absolute 要素のはみ出し</div>
+  <div class="nav-item" onclick="goTo('sec-negative-pos',this)">⑪ 負の top/left</div>
+  <div class="nav-item" onclick="goTo('sec-transform',this)">⑫ transform はみ出し</div>
+  <div class="nav-section">overflow</div>
+  <div class="nav-item" onclick="goTo('sec-overflow-x',this)">⑬ overflow-x と overflow-y</div>
+  <div class="nav-item" onclick="goTo('sec-scrollbar-gutter',this)">⑭ スクロールバー幅</div>
+  <div class="nav-section">flexbox / grid</div>
+  <div class="nav-item" onclick="goTo('sec-flex-basis',this)">⑮ flex-basis と min-width</div>
+  <div class="nav-item" onclick="goTo('sec-flex-column',this)">⑯ flex column + 100vh</div>
+  <div class="nav-item" onclick="goTo('sec-grid-overflow',this)">⑰ grid 暗黙トラック膨張</div>
+  <div class="nav-section">その他</div>
+  <div class="nav-item" onclick="goTo('sec-inline-baseline',this)">⑱ inline-block の隙間</div>
+  <div class="nav-item" onclick="goTo('sec-img-bottom',this)">⑲ img 下の余白</div>
+  <div class="nav-item" onclick="goTo('sec-debug-flow',this)">デバッグ手順まとめ</div>
+</nav>
+
+<main>
+
+<!-- ══════════════════════════════════════ -->
+<!-- ① box-sizing                          -->
+<!-- ══════════════════════════════════════ -->
+<div class="card anchor" id="sec-boxsizing">
+  <div class="card-header">
+    <div class="attr-badge">① box-sizing</div>
+    <div class="card-meta">
+      <h2>box-sizing: content-box で padding/border が高さに加算される</h2>
+      <p>100vh + padding で viewport を超える最も基本的なパターン</p>
+      <div class="tags"><span class="tag tag-box">BOX MODEL</span><span class="tag tag-common">頻出</span></div>
+    </div>
+  </div>
+  <div class="explanation">CSSのデフォルトは <code>box-sizing: content-box</code>。この場合 <code>height: 100vh</code> に <code>padding</code> が<strong>加算</strong>されるため、合計が 100vh を超えてスクロールが発生します。</div>
+  <div class="diagram">content-box:  height = コンテンツだけ
+  ┌─ border ──────────────────┐
+  │ ┌─ padding ────────────┐  │
+  │ │ ┌─ content ────────┐ │  │
+  │ │ │   height: 100vh  │ │  │  total = 100vh + padding×2 + border×2
+  │ │ └──────────────────┘ │  │        = 100vh + 40px + 4px = OVERFLOW!
+  │ └──────────────────────┘  │
+  └───────────────────────────┘
+
+border-box:   height = border + padding + コンテンツ
+  ┌─ border ──────────────────┐
+  │ ┌─ padding ────────────┐  │
+  │ │ ┌─ content ────────┐ │  │
+  │ │ │   (自動縮小)      │ │  │  total = 100vh（全部込み）
+  │ │ └──────────────────┘ │  │        = ピッタリ収まる ✓
+  │ └──────────────────────┘  │
+  └───────────────────────────┘</div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ</div>
+    <button class="btn btn-toggle" id="btn-bs" onclick="toggleDemo('bs')">修正 OFF — border-box を適用する</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px">
+      <div class="live-panel" style="padding:12px">
+        <div class="live-label">content-box（デフォルト）</div>
+        <div class="sandbox sandbox-broken" id="bs-broken" style="box-sizing:content-box;height:120px;padding:20px;overflow:auto">
+          <span class="scroll-indicator scroll-yes" id="bs-broken-ind">SCROLL</span>
+          <div id="bs-broken-child" style="background:#dbeafe;border:1px solid #3b82f6;height:150px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;color:#1e40af">コンテンツ150px &gt; content-box高さ120px → 溢れてスクロール</div>
+        </div>
+        <div class="measure" id="bs-broken-m"></div>
+      </div>
+      <div class="live-panel" style="padding:12px">
+        <div class="live-label">border-box（修正後）</div>
+        <div class="sandbox sandbox-fixed" id="bs-fixed" style="box-sizing:border-box;height:120px;padding:20px;overflow:auto">
+          <span class="scroll-indicator scroll-no">NO SCROLL</span>
+          <div style="background:#dcfce7;border:1px solid #22c55e;height:100%;border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;color:#166534">height:120px（padding込み）= 120px</div>
+        </div>
+        <div class="measure" id="bs-fixed-m"></div>
+      </div>
+    </div>
+  </div>
+  <div class="code-block">
+    <div class="code-block-header"><span>CSS — 修正方法（グローバルリセット）</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre class="code"><span class="cmt">/* ✅ 全プロジェクトで最初に書くべきリセット */</span>
+<span class="sel">*,
+*::before,
+*::after</span> {
+  <span class="prop">box-sizing</span>: <span class="val">border-box</span>;
+}
+<span class="cmt">/* → なぜ有効か: デフォルトの content-box では padding・border が width/height に
+      加算され実寸が拡大する。border-box に変えると padding・border が
+      内側に収まり、指定した寸法がそのまま要素の外寸になるため溢れが起きない */</span></pre>
+  </div>
+  <div class="verify">
+    <div class="verify-col verify-before">
+      <div class="verify-label">⬛ Before（content-box）</div>
+      要素を Inspect → Computed → Box model<br>
+      表示サイズ = height + padding×2 + border×2<br>
+      スクロールバーが出現する
+    </div>
+    <div class="verify-col verify-after">
+      <div class="verify-label">✅ After（border-box）</div>
+      Computed → box-sizing: border-box を確認<br>
+      表示サイズ = 指定した height ちょうど<br>
+      スクロールバーが消える
+    </div>
+  </div>
+</div>
+
+<!-- ② padding + 100vh/100% -->
+<div class="card anchor" id="sec-padding-100">
+  <div class="card-header">
+    <div class="attr-badge">② padding+vh</div>
+    <div class="card-meta">
+      <h2>padding + height: 100vh / 100% の組み合わせ</h2>
+      <p>border-box でも height:100% + 親の padding で溢れるケース</p>
+      <div class="tags"><span class="tag tag-box">BOX MODEL</span><span class="tag tag-sizing">SIZING</span></div>
+    </div>
+  </div>
+  <div class="explanation"><code>border-box</code> をリセットしていても、親が <code>height: 100vh</code> + <code>padding</code> を持ち、子が <code>height: 100%</code> を指定すると、子の 100% は<strong>親のコンテンツ領域</strong>（= 100vh - padding×2）を参照するため問題ないはずですが、<strong>子自身にもpaddingやmarginがある場合</strong>、それが加算されてオーバーフローします。</div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ</div>
+    <button class="btn btn-toggle" id="btn-pvh" onclick="toggleDemo('pvh')">修正 OFF — 子のmarginを削除</button>
+    <div class="live-panel" style="padding:12px;margin-top:10px">
+      <div class="live-label">親 height:150px + padding:16px / 子 height:100%</div>
+      <div class="sandbox sandbox-broken" id="pvh-demo" style="height:150px;padding:16px;overflow:auto;box-sizing:border-box">
+        <span class="scroll-indicator" id="pvh-ind">SCROLL</span>
+        <div id="pvh-child" style="background:#dbeafe;border:1px solid #3b82f6;height:100%;margin:10px 0;border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;color:#1e40af;box-sizing:border-box">子: height:100% + margin:10px = はみ出す</div>
+      </div>
+      <div class="measure" id="pvh-m"></div>
+    </div>
+    <div style="margin-top:8px;border-top:1px dashed var(--border);padding-top:8px">
+      <div class="section-label" style="margin-bottom:6px">▍ 解決策を 1 対 1 で試す</div>
+      <button class="btn btn-secondary" id="btn-pvh-s1" onclick="applyFix('pvh',1)">解決1: margin → padding に変更</button>
+      <button class="btn btn-secondary" id="btn-pvh-s2" onclick="applyFix('pvh',2)">解決2: calc(100% − 20px)</button>
+      <button class="btn btn-secondary" id="btn-pvh-s3" onclick="applyFix('pvh',3)">解決3: flexbox + flex:1</button>
+      <div id="pvh-explain" class="info-box ok" style="display:none;margin-top:8px;font-size:12px;line-height:1.7"></div>
+    </div>
+  </div>
+  <div class="code-block">
+    <div class="code-block-header"><span>CSS — 修正方法</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre class="code"><span class="cmt">/* ❌ margin が 100% の外に加算される */</span>
+<span class="sel">.child</span> { <span class="prop">height</span>: <span class="val">100%</span>; <span class="prop">margin</span>: <span class="val">10px 0</span>; }
+
+<span class="cmt">/* ✅ 解決策1: margin を padding に変更 */</span>
+<span class="sel">.parent</span> { <span class="prop">padding</span>: <span class="val">26px 16px</span>; }
+<span class="sel">.child</span>  { <span class="prop">height</span>: <span class="val">100%</span>; <span class="prop">margin</span>: <span class="val">0</span>; }
+<span class="cmt">/* → なぜ有効か: height:100% の計算後に margin が外側へ加算されるのが原因。
+      余白を margin でなく親の padding に変えると内側から確保されるため
+      子が親の高さを超えなくなる */</span>
+
+<span class="cmt">/* ✅ 解決策2: calc() で差し引く */</span>
+<span class="sel">.child</span> { <span class="prop">height</span>: <span class="val">calc(100% - 20px)</span>; <span class="prop">margin</span>: <span class="val">10px 0</span>; }
+<span class="cmt">/* → なぜ有効か: margin 上下の合計（10px × 2 = 20px）をあらかじめ差し引いた
+      高さを明示することで、margin を維持したままぴったり収まる寸法になる */</span>
+
+<span class="cmt">/* ✅ 解決策3: flexbox で自動調整 */</span>
+<span class="sel">.parent</span> { <span class="prop">display</span>: <span class="val">flex</span>; <span class="prop">flex-direction</span>: <span class="val">column</span>; }
+<span class="sel">.child</span>  { <span class="prop">flex</span>: <span class="val">1</span>; <span class="prop">margin</span>: <span class="val">10px 0</span>; }
+<span class="cmt">/* → なぜ有効か: flex アルゴリズムは利用可能空間を flex:1 で配分するとき
+      margin を自動的に考慮する。height:100% という固定比率の計算が不要になり
+      margin 込みで余白を自動調整してくれる */</span></pre>
+  </div>
+</div>
+
+<!-- ③ border + 100vh -->
+<div class="card anchor" id="sec-border-100">
+  <div class="card-header">
+    <div class="attr-badge">③ border+vh</div>
+    <div class="card-meta">
+      <h2>border + height: 100vh（content-box 時）</h2>
+      <p>border も content-box では高さに加算される</p>
+      <div class="tags"><span class="tag tag-box">BOX MODEL</span></div>
+    </div>
+  </div>
+  <div class="explanation"><code>content-box</code> の場合、<code>border</code> も高さに加算されます。<code>height: 100vh</code> + <code>border-top: 2px</code> + <code>border-bottom: 2px</code> = <strong>100vh + 4px</strong> となり、4px分スクロールが発生します。<br>これは <code>outline</code> を使えば回避できます。<code>outline</code> はボックスモデルに影響しません。</div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ</div>
+    <button class="btn btn-toggle" id="btn-bvh" onclick="toggleDemo('bvh')">修正 OFF — border-box または outline に変更</button>
+    <div class="live-panel" style="padding:12px;margin-top:10px">
+      <div class="live-label">height:120px + border:3px（content-box）</div>
+      <div class="sandbox sandbox-broken" id="bvh-demo" style="box-sizing:content-box;height:120px;border:3px solid #ef4444;overflow:auto">
+        <span class="scroll-indicator" id="bvh-ind">checking...</span>
+        <div id="bvh-child" style="background:#fef3c7;height:140px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;color:#92400e">コンテンツ140px &gt; content-area 120px → borderの6px分溢れる</div>
+      </div>
+      <div class="measure" id="bvh-m"></div>
+    </div>
+    <div style="margin-top:8px;border-top:1px dashed var(--border);padding-top:8px">
+      <div class="section-label" style="margin-bottom:6px">▍ 解決策を 1 対 1 で試す</div>
+      <button class="btn btn-secondary" id="btn-bvh-s1" onclick="applyFix('bvh',1)">解決1: box-sizing: border-box</button>
+      <button class="btn btn-secondary" id="btn-bvh-s2" onclick="applyFix('bvh',2)">解決2: outline（ボックスモデル外）</button>
+      <button class="btn btn-secondary" id="btn-bvh-s3" onclick="applyFix('bvh',3)">解決3: box-shadow inset</button>
+      <div id="bvh-explain" class="info-box ok" style="display:none;margin-top:8px;font-size:12px;line-height:1.7"></div>
+    </div>
+  </div>
+  <div class="code-block">
+    <div class="code-block-header"><span>CSS — 修正方法</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre class="code"><span class="cmt">/* ✅ 解決策1: border-box（推奨） */</span>
+<span class="sel">.container</span> { <span class="prop">box-sizing</span>: <span class="val">border-box</span>; }
+<span class="cmt">/* → なぜ有効か: border-box では border が width/height の内側に描画されるため
+      height:100vh + border:3px を指定しても合計が 100vh を超えず溢れない */</span>
+
+<span class="cmt">/* ✅ 解決策2: outline（ボックスモデルに影響しない） */</span>
+<span class="sel">.container</span> { <span class="prop">border</span>: <span class="val">none</span>; <span class="prop">outline</span>: <span class="val">3px solid #ef4444</span>; }
+<span class="cmt">/* → なぜ有効か: outline はボックスモデルの外側に描画されレイアウト計算に
+      含まれない。border を outline に替えると高さが変わらず溢れが起きない */</span>
+
+<span class="cmt">/* ✅ 解決策3: box-shadow（inset でborder風） */</span>
+<span class="sel">.container</span> { <span class="prop">box-shadow</span>: <span class="val">inset 0 0 0 3px #ef4444</span>; }
+<span class="cmt">/* → なぜ有効か: box-shadow も寸法に影響しないプロパティ。inset を付けると
+      内側に描画されるため border と同じ見た目を実現しつつ高さが増えない */</span></pre>
+  </div>
+</div>
+
+<!-- ④ body のデフォルトmargin -->
+<div class="card anchor" id="sec-body-margin">
+  <div class="card-header">
+    <div class="attr-badge">④ body margin</div>
+    <div class="card-meta">
+      <h2>body のデフォルト margin: 8px</h2>
+      <p>全ブラウザのデフォルトスタイルで body に 8px マージンが設定されている</p>
+      <div class="tags"><span class="tag tag-margin">MARGIN</span><span class="tag tag-common">頻出</span></div>
+    </div>
+  </div>
+  <div class="explanation">ブラウザの User Agent Stylesheet は <code>body { margin: 8px }</code> をデフォルトで持ちます。<code>height: 100vh</code> の要素を置くと、<strong>100vh + 8px × 2 = 100vh + 16px</strong> となり、縦スクロールが発生します。</div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ（iframe でシミュレーション）</div>
+    <button class="btn btn-toggle" id="btn-bm" onclick="toggleDemo('bm')">修正 OFF — body { margin: 0 } を適用</button>
+    <div class="live-panel" style="padding:12px;margin-top:10px">
+      <div class="live-label">body margin のシミュレーション</div>
+      <div class="sandbox sandbox-broken" id="bm-demo" style="height:130px;overflow:auto;padding:8px;background:rgba(239,68,68,.05)">
+        <span class="scroll-indicator" id="bm-ind">SCROLL</span>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--red);margin-bottom:4px">↑↓ body margin: 8px がここに相当 → padding で再現</div>
+        <div id="bm-child" style="background:#dbeafe;border:1px solid #3b82f6;height:100px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;color:#1e40af">div { height: 100px }</div>
+      </div>
+      <div class="measure" id="bm-m"></div>
+    </div>
+  </div>
+  <div class="code-block">
+    <div class="code-block-header"><span>CSS — 修正方法（リセット）</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre class="code"><span class="cmt">/* ✅ 最小リセット */</span>
+<span class="sel">body</span> { <span class="prop">margin</span>: <span class="val">0</span>; }
+<span class="cmt">/* → なぜ有効か: ブラウザは body にデフォルトで 8px の margin を適用する。
+      上下で 16px の余分な高さが生じ 100vh を超えてスクロールが出る。
+      margin:0 にするだけで消える最頻出パターン */</span>
+
+<span class="cmt">/* ✅ モダンリセット（推奨） */</span>
+<span class="sel">*</span> { <span class="prop">margin</span>: <span class="val">0</span>; <span class="prop">padding</span>: <span class="val">0</span>; <span class="prop">box-sizing</span>: <span class="val">border-box</span>; }
+<span class="cmt">/* → なぜ有効か: 全要素のデフォルト margin/padding を一括でゼロにし、
+      box-sizing も border-box にすることでブラウザ差を根本から排除する。
+      新規プロジェクトのリセット CSS として最も確実な方法 */</span></pre>
+  </div>
+  <div class="info-box err">⚠️ <strong>最頻出パターン：</strong>新しいHTMLファイルを作って100vhのレイアウトを組んだのにスクロールする→ <code>body { margin: 0 }</code> を忘れている。CSS リセットの最重要項目です。</div>
+</div>
+
+<!-- ⑤ margin 突き抜け -->
+<div class="card anchor" id="sec-margin-collapse">
+  <div class="card-header">
+    <div class="attr-badge">⑤ margin突抜</div>
+    <div class="card-meta">
+      <h2>子の margin-top/bottom が親の外に突き抜ける</h2>
+      <p>マージン折りたたみにより子のmarginが親コンテナの外に漏れ出す</p>
+      <div class="tags"><span class="tag tag-margin">MARGIN</span><span class="tag tag-common">頻出</span></div>
+    </div>
+  </div>
+  <div class="explanation">親要素に <code>padding</code>、<code>border</code>、<code>overflow</code> がない場合、子要素の <code>margin-top</code> / <code>margin-bottom</code> が親の外に「突き抜け」ます。これにより<strong>html/bodyレベルで意図しない縦方向の余白</strong>が生まれ、スクロールが発生します。</div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ</div>
+    <button class="btn btn-toggle" id="btn-mc" onclick="toggleDemo('mc')">修正 OFF — * { margin: 0 } を適用（モダンリセット）</button>
+    <div class="live-panel" style="padding:12px;margin-top:10px">
+      <div class="live-label" id="mc-live-label">親に border/padding なし → 子のmarginが突き抜ける</div>
+      <div class="sandbox sandbox-broken" id="mc-demo" style="height:120px;overflow:auto;background:rgba(99,102,241,.06)">
+        <span class="scroll-indicator" id="mc-ind">SCROLL</span>
+        <div id="mc-parent" style="background:rgba(239,68,68,.08);">
+          <div id="mc-child" style="margin:24px 12px;background:#dbeafe;border:1px solid #3b82f6;padding:16px;border-radius:4px;font-family:var(--mono);font-size:11px;color:#1e40af">子要素（margin: 24px 12px）<br>↑ この margin-top が親の外に突き抜ける<br>→ 赤い背景の外に margin 分の空白ができる<br>→ 合計でコンテナをはみ出す</div>
+        </div>
+      </div>
+      <div class="measure" id="mc-m"></div>
+    </div>
+    <div style="margin-top:8px;border-top:1px dashed var(--border);padding-top:8px">
+      <div class="section-label" style="margin-bottom:6px">▍ 解決策を 1 対 1 で試す</div>
+      <button class="btn btn-secondary" id="btn-mc-s1" onclick="applyFix('mc',1)">解決1: display: flow-root</button>
+      <button class="btn btn-secondary" id="btn-mc-s2" onclick="applyFix('mc',2)">解決2: overflow: hidden</button>
+      <button class="btn btn-secondary" id="btn-mc-s3" onclick="applyFix('mc',3)">解決3: padding-top: 1px</button>
+      <button class="btn btn-secondary" id="btn-mc-s4" onclick="applyFix('mc',4)">解決4: border-top: 1px solid transparent</button>
+      <button class="btn btn-secondary" id="btn-mc-s5" onclick="applyFix('mc',5)">解決5: display: flex</button>
+      <button class="btn btn-secondary" id="btn-mc-s6" onclick="applyFix('mc',6)">解決6: * { margin: 0 }（モダンリセット）</button>
+      <div id="mc-explain" class="info-box ok" style="display:none;margin-top:8px;font-size:12px;line-height:1.7"></div>
+    </div>
+  </div>
+  <div class="code-block">
+    <div class="code-block-header"><span>CSS — 修正方法（6つの選択肢）</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre class="code"><span class="cmt">/* ✅ 解決策1: display: flow-root（推奨・副作用なし） */</span>
+<span class="sel">.parent</span> { <span class="prop">display</span>: <span class="val">flow-root</span>; }
+<span class="cmt">/* → なぜ有効か: flow-root は BFC（ブロック整形コンテキスト）を作る最も
+      クリーンな方法。BFC 内では子の margin が境界を越えて折畳まれなくなるため
+      突き抜けが起きない。float や overflow 等の副作用が一切ない */</span>
+
+<span class="cmt">/* ✅ 解決策2: overflow: hidden（内容がクリップされる可能性） */</span>
+<span class="sel">.parent</span> { <span class="prop">overflow</span>: <span class="val">hidden</span>; }
+<span class="cmt">/* → なぜ有効か: overflow:hidden も BFC を作るため解決策1と同様の効果がある。
+      ただし絶対配置要素等がはみ出していると切り取られる副作用がある */</span>
+
+<span class="cmt">/* ✅ 解決策3: padding を 1px でも付ける */</span>
+<span class="sel">.parent</span> { <span class="prop">padding-top</span>: <span class="val">1px</span>; }
+<span class="cmt">/* → なぜ有効か: margin 折畳の条件は「親子の margin の間に border・padding・
+      BFC・clearance がない」こと。1px でも padding を付けると「間に何かある」
+      状態になり折畳が起きなくなる */</span>
+
+<span class="cmt">/* ✅ 解決策4: border を付ける */</span>
+<span class="sel">.parent</span> { <span class="prop">border-top</span>: <span class="val">1px solid transparent</span>; }
+<span class="cmt">/* → なぜ有効か: border も padding と同様に親子 margin の「間に挟む」役割を
+      果たす。transparent にすれば見た目に影響せず折畳を防止できる */</span>
+
+<span class="cmt">/* ✅ 解決策5: flexbox にする（マージン折畳が無効化） */</span>
+<span class="sel">.parent</span> { <span class="prop">display</span>: <span class="val">flex</span>; <span class="prop">flex-direction</span>: <span class="val">column</span>; }
+<span class="cmt">/* → なぜ有効か: flex container は FFC（フレックス整形コンテキスト）を確立し、
+      仕様上 FFC 内では margin の折畳（collapsing）が一切発生しない */</span>
+
+<span class="cmt">/* ✅ 解決策6: モダンリセット（根本的解決・実務で最も確実） */</span>
+<span class="sel">*</span> { <span class="prop">margin</span>: <span class="val">0</span>; <span class="prop">padding</span>: <span class="val">0</span>; <span class="prop">box-sizing</span>: <span class="val">border-box</span>; }
+<span class="cmt">/* → なぜ有効か: ブラウザデフォルトの margin を全要素でゼロにリセットするため
+      突き抜ける margin そのものが存在しなくなり、問題が根本から発生しない */</span></pre>
+  </div>
+  <div class="info-box ok">
+    <strong>🔰 なぜ <code>* { margin: 0; padding: 0; box-sizing: border-box; }</code> が実務で推奨されるのか</strong><br><br>
+    ブラウザには各要素に<strong>デフォルト margin / padding</strong> が設定されています（例：<code>&lt;p&gt;</code> は上下 1em、<code>&lt;h1&gt;</code> は上下 0.67em）。これが⑤⑥の問題の根本原因です。<br><br>
+    <strong>① margin: 0 → margin collapse が起きない</strong><br>
+    突き抜けるべき margin 自体が 0 になるため、BFC を作らなくても問題が発生しません。<br><br>
+    <strong>② padding: 0 → ブラウザ間の差を吸収</strong><br>
+    Chrome / Firefox / Safari でデフォルト余白が微妙に異なるため、0 にリセットすることでブラウザ差のない一貫したレイアウトが実現できます。<br><br>
+    <strong>③ box-sizing: border-box → height の計算が直感的になる</strong><br>
+    <code>border-box</code> では padding・border を含めた値が <code>width</code> / <code>height</code> になります。①の <code>box-sizing</code> 問題（padding で溢れる）も同時に解決します。<br><br>
+    ⚠️ <strong>注意点</strong>：<code>* { padding: 0 }</code> は <code>&lt;button&gt;</code> や <code>&lt;input&gt;</code> の見た目を壊す場合があります。実務では <strong>Tailwind CSS の preflight</strong> や <strong>normalize.css</strong> など、実績あるリセットライブラリの使用が安全です。
+  </div>
+</div>
+
+<!-- ⑥ 末尾要素の margin-bottom -->
+<div class="card anchor" id="sec-margin-bottom">
+  <div class="card-header">
+    <div class="attr-badge">⑥ 末尾margin</div>
+    <div class="card-meta">
+      <h2>末尾要素の margin-bottom が外に漏れる</h2>
+      <p>最後の子要素の margin-bottom が親を超えてスクロールを発生させる</p>
+      <div class="tags"><span class="tag tag-margin">MARGIN</span></div>
+    </div>
+  </div>
+  <div class="explanation">⑤と同じマージン折りたたみの問題ですが、<strong>末尾の要素の margin-bottom</strong> が親の外に漏れるパターンです。<code>&lt;p&gt;</code> や <code>&lt;h1&gt;</code>〜<code>&lt;h6&gt;</code> のデフォルト margin-bottom が原因になることが多いです。</div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ</div>
+    <button class="btn btn-toggle" id="btn-mbot" onclick="toggleDemo('mbot')">修正 OFF — * { margin: 0 } を適用（モダンリセット）</button>
+    <div class="live-panel" style="padding:12px;margin-top:10px">
+      <div class="live-label" id="mbot-live-label">最後の &lt;p&gt; の margin-bottom が漏れる</div>
+      <div class="sandbox sandbox-broken" id="mbot-demo" style="height:140px;overflow:auto;background:rgba(99,102,241,.06)">
+        <span class="scroll-indicator" id="mbot-ind">SCROLL</span>
+        <div id="mbot-parent" style="background:rgba(239,68,68,.08);">
+          <p style="padding:12px;font-family:var(--mono);font-size:11px;color:#1e40af;margin:0 12px 0">段落テキスト1（margin なし）</p>
+          <p style="padding:12px;font-family:var(--mono);font-size:11px;color:#1e40af;margin:0 12px 0">段落テキスト2（margin なし）</p>
+          <p id="mbot-last-p" style="padding:12px;font-family:var(--mono);font-size:11px;color:#1e40af;margin:0 12px 32px">段落テキスト3（margin-bottom: 32px）← <strong>これが親の外に漏れる</strong></p>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:8px;border-top:1px dashed var(--border);padding-top:8px">
+      <div class="section-label" style="margin-bottom:6px">▍ 解決策を 1 対 1 で試す</div>
+      <button class="btn btn-secondary" id="btn-mbot-s1" onclick="applyFix('mbot',1)">解決1: display: flow-root</button>
+      <button class="btn btn-secondary" id="btn-mbot-s2" onclick="applyFix('mbot',2)">解決2: p:last-child { margin-bottom: 0 }</button>
+      <button class="btn btn-secondary" id="btn-mbot-s3" onclick="applyFix('mbot',3)">解決3: * { margin: 0 }（モダンリセット）</button>
+      <div id="mbot-explain" class="info-box ok" style="display:none;margin-top:8px;font-size:12px;line-height:1.7"></div>
+    </div>
+  </div>
+  <div class="code-block">
+    <div class="code-block-header"><span>CSS — 修正方法</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre class="code"><span class="cmt">/* ❌ &lt;p&gt; のデフォルト margin-bottom が漏れる */</span>
+<span class="sel">p</span> { <span class="prop">margin-bottom</span>: <span class="val">1em</span>; } <span class="cmt">/* ← ブラウザのデフォルト */</span>
+
+<span class="cmt">/* ✅ 解決策1: 親に display: flow-root（BFC を作る） */</span>
+<span class="sel">.parent</span> { <span class="prop">display</span>: <span class="val">flow-root</span>; }
+<span class="cmt">/* → なぜ有効か: BFC 内の子要素の margin は BFC の境界を越えて外に漏れ出さない
+      という仕様がある。flow-root で BFC を作ることで末尾要素の margin-bottom が
+      親の外に突き抜けるのを防ぐ */</span>
+
+<span class="cmt">/* ✅ 解決策2: 末尾要素の margin-bottom を 0 にする */</span>
+<span class="sel">p:last-child</span> { <span class="prop">margin-bottom</span>: <span class="val">0</span>; }
+<span class="cmt">/* → なぜ有効か: 漏れる原因の margin-bottom 自体を :last-child で末尾要素だけ
+      ゼロにする直接的な解決。先頭・中間要素の余白には影響せず安全に適用できる */</span>
+
+<span class="cmt">/* ✅ 解決策3: モダンリセット（根本的解決・⑤と同じ理由） */</span>
+<span class="sel">*</span> { <span class="prop">margin</span>: <span class="val">0</span>; <span class="prop">padding</span>: <span class="val">0</span>; <span class="prop">box-sizing</span>: <span class="val">border-box</span>; }
+<span class="cmt">/* → なぜ有効か: ブラウザが &lt;p&gt; に適用するデフォルトの margin-bottom:1em を
+      全要素リセットで 0 にするため、漏れる margin 自体が存在しなくなる */</span></pre>
+  </div>
+  <div class="info-box ok">
+    <strong>🔰 ⑤ との違い</strong>：⑤は子の <code>margin-top</code> が上に突き抜けるパターン、⑥は末尾子の <code>margin-bottom</code> が下に漏れるパターンです。どちらも原因は同じ「<strong>親に BFC がない</strong>」こと。<code>display: flow-root</code> は視覚的な位置を変えますが、marginの大きさ自体は変わらないため <strong>scrollHeight は変化しません</strong>。<code>* { margin: 0 }</code> でマージンを 0 にすることが根本的な解決策です。
+  </div>
+</div>
+
+<!-- ⑦ 100vh モバイル問題 -->
+<div class="card anchor" id="sec-vh-mobile">
+  <div class="card-header">
+    <div class="attr-badge">⑦ 100vh mobile</div>
+    <div class="card-meta">
+      <h2>モバイルでの 100vh 問題</h2>
+      <p>モバイルブラウザのアドレスバーにより 100vh がビューポートを超える</p>
+      <div class="tags"><span class="tag tag-sizing">SIZING</span><span class="tag tag-common">頻出</span></div>
+    </div>
+  </div>
+  <div class="explanation">モバイルブラウザでは、<code>100vh</code> はアドレスバーを含む<strong>最大ビューポート高さ</strong>を参照します。アドレスバーが表示されている状態では実際の画面より大きくなり、スクロールが発生します。</div>
+  <div class="diagram">モバイルブラウザ:
+┌──────────────────┐
+│   Address Bar    │ ← 表示中は画面を圧迫
+├──────────────────┤
+│                  │
+│   実際の画面      │  ← 100vh はここ + アドレスバー分
+│   (小さい)       │
+│                  │
+├──────────────────┤
+│   Navigation     │
+└──────────────────┘
+
+100vh  = アドレスバー + 画面 + ナビゲーション（大きすぎる）
+100svh = アドレスバー表示時の画面だけ（小さい方）✅
+100dvh = 現在の動的なビューポート高さ ✅✅ 推奨
+100lvh = アドレスバー非表示時の最大高さ</div>
+  <div class="code-block">
+    <div class="code-block-header"><span>CSS — 修正方法</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre class="code"><span class="cmt">/* ❌ モバイルで溢れる */</span>
+<span class="sel">.hero</span> { <span class="prop">height</span>: <span class="val">100vh</span>; }
+
+<span class="cmt">/* ✅ 解決策1: dvh（動的ビューポート高さ）推奨 */</span>
+<span class="sel">.hero</span> { <span class="prop">height</span>: <span class="val">100dvh</span>; }
+<span class="cmt">/* → なぜ有効か: dvh はアドレスバーやナビゲーションバーの表示・非表示に
+      追従して変化する動的ビューポート高さ。スクロール時にバーが消えても
+      実際の表示領域と一致するため溢れが起きない */</span>
+
+<span class="cmt">/* ✅ 解決策2: svh（小さい方のビューポート高さ） */</span>
+<span class="sel">.hero</span> { <span class="prop">height</span>: <span class="val">100svh</span>; }
+<span class="cmt">/* → なぜ有効か: svh はアドレスバーが最大表示（最も狭い）状態のビューポート
+      高さを基準にする。常に「最小の安全な高さ」に収まるため溢れが起きない。
+      ただしスクロール後に下部に余白が生じる場合がある */</span>
+
+<span class="cmt">/* ✅ 解決策3: フォールバック付き */</span>
+<span class="sel">.hero</span> {
+  <span class="prop">height</span>: <span class="val">100vh</span>;           <span class="cmt">/* dvh 非対応ブラウザ向けフォールバック */</span>
+  <span class="prop">height</span>: <span class="val">100dvh</span>;          <span class="cmt">/* モダンブラウザで上書き */</span>
+}
+<span class="cmt">/* → なぜ有効か: CSS は同名プロパティを後勝ちで適用する。dvh を知らない古い
+      ブラウザは最初の 100vh を使い、dvh 対応ブラウザは 100dvh で上書きする */</span>
+
+<span class="cmt">/* ✅ 解決策4: JS で動的に設定 */</span>
+<span class="cmt">// window.innerHeight はアドレスバーを除いた実際の表示高さ（px）を返す</span>
+<span class="cmt">// document.documentElement.style.setProperty('--vh', window.innerHeight + 'px')</span>
+<span class="cmt">// → CSS では height: var(--vh) または calc(var(--vh)) で参照する</span>
+<span class="cmt">// → なぜ有効か: innerHeight は現在のUIを反映した実寸を直接返すため、
+      dvh等のCSS単位が使えない環境でも正確なビューポート高さを取得できる</span></pre>
+  </div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: 現在のブラウザの各単位を比較</div>
+    <button class="btn btn-primary" onclick="checkVhUnits()">▶ vh / svh / dvh / lvh を測定</button>
+    <div class="measure" id="vh-measure" style="margin-top:8px"></div>
+  </div>
+  <div class="info-box warn">⚠️ <strong>モバイルでテスト：</strong>この問題はPCでは再現しません。DevTools のモバイルシミュレーションでも不完全です。実機 Safari / Chrome for iOS で確認してください。</div>
+</div>
+
+<!-- ⑧ min-height + 子の膨張 -->
+<div class="card anchor" id="sec-min-height">
+  <div class="card-header">
+    <div class="attr-badge">⑧ min-height</div>
+    <div class="card-meta">
+      <h2>min-height: 100vh の中で子の height: 100% が効かない</h2>
+      <p>min-height は height: 100% の参照にならない CSS の仕様上の罠</p>
+      <div class="tags"><span class="tag tag-sizing">SIZING</span><span class="tag tag-flex">FLEXBOX</span></div>
+    </div>
+  </div>
+  <div class="explanation">親に <code>min-height: 100vh</code> を設定し、子に <code>height: 100%</code> を設定しても、<strong>子は 100% の参照先を見つけられず height: auto として扱われます</strong>。CSS仕様上、<code>height: 100%</code> は親の明示的な <code>height</code> のみを参照し、<code>min-height</code> は参照しません。</div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ</div>
+    <button class="btn btn-toggle" id="btn-mh" onclick="toggleDemo('mh')">修正 OFF — flexbox で解決する</button>
+    <div class="live-panel" style="padding:12px;margin-top:10px">
+      <div class="live-label" id="mh-live-label">外枠(height:80px) / 親(min-height:120px) / 子(height:100%) → 親が外枠を超えてSCROLL</div>
+      <div class="sandbox sandbox-broken" id="mh-demo" style="height:80px;overflow:auto">
+        <span class="scroll-indicator" id="mh-ind">checking...</span>
+        <div id="mh-parent" style="min-height:120px;background:rgba(239,68,68,.06);">
+          <div id="mh-child" style="background:#dbeafe;border:1px solid #3b82f6;height:100%;padding:8px;border-radius:4px;font-family:var(--mono);font-size:11px;color:#1e40af">子: height:100% → min-height からは取得できない → auto ≈ 30px<br>親の min-height:120px &gt; 外枠 80px → SCROLL!</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="code-block">
+    <div class="code-block-header"><span>CSS — 修正方法</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre class="code"><span class="cmt">/* ❌ 子の height:100% が効かない */</span>
+<span class="sel">.parent</span> { <span class="prop">min-height</span>: <span class="val">100vh</span>; }
+<span class="sel">.child</span>  { <span class="prop">height</span>: <span class="val">100%</span>; } <span class="cmt">/* → auto になる */</span>
+
+<span class="cmt">/* ✅ 解決策: flex column + flex:1 */</span>
+<span class="sel">.parent</span> {
+  <span class="prop">min-height</span>: <span class="val">100vh</span>;
+  <span class="prop">display</span>: <span class="val">flex</span>;
+  <span class="prop">flex-direction</span>: <span class="val">column</span>;
+}
+<span class="sel">.child</span> { <span class="prop">flex</span>: <span class="val">1</span>; } <span class="cmt">/* 残り全体を占有 */</span>
+<span class="cmt">/* → なぜ有効か: height:100% は親の「確定した高さ」を参照するが min-height
+      は最小値であり確定値でないため子の height:100% が auto 扱いになる。
+      flex column にすると子は「利用可能空間」を flex:1 で参照でき、
+      height:100% 不要で正確に親の残り領域全体を占有できる */</span></pre>
+  </div>
+</div>
+
+<!-- ⑨ calc() 端数 -->
+<div class="card anchor" id="sec-calc-rounding">
+  <div class="card-header">
+    <div class="attr-badge">⑨ calc()端数</div>
+    <div class="card-meta">
+      <h2>calc() の端数丸めで 1px はみ出す</h2>
+      <p>サブピクセルの丸め処理で合計が親を超えるケース</p>
+      <div class="tags"><span class="tag tag-sizing">SIZING</span></div>
+    </div>
+  </div>
+  <div class="explanation"><code>calc(100vh / 3)</code> のような割り切れない計算は、ブラウザのサブピクセル丸めにより合計が <code>100vh</code> を<strong>わずかに超える</strong>場合があります。例えば 3つの <code>33.333...vh</code> の合計が <code>100.001vh</code> になるケースです。</div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ</div>
+    <button class="btn btn-toggle" id="btn-calc" onclick="toggleDemo('calc')">修正 OFF — flex:1 で均等分割する</button>
+    <div class="live-panel" style="padding:12px;margin-top:10px">
+      <div class="live-label">3分割: calc(121px / 3) × 3（120px コンテナ）</div>
+      <div class="sandbox sandbox-broken" id="calc-demo" style="height:120px;overflow:auto">
+        <span class="scroll-indicator" id="calc-ind">checking...</span>
+        <div id="calc-children">
+          <div style="height:calc(121px / 3);background:#dbeafe;border-bottom:1px solid #3b82f6;display:flex;align-items:center;padding:0 12px;font-family:var(--mono);font-size:11px;color:#1e40af">1/3 = 40.333px → 40px に丸め</div>
+          <div style="height:calc(121px / 3);background:#dcfce7;border-bottom:1px solid #22c55e;display:flex;align-items:center;padding:0 12px;font-family:var(--mono);font-size:11px;color:#166534">2/3 = 40.333px → 40px に丸め</div>
+          <div style="height:calc(121px / 3);background:#fef3c7;display:flex;align-items:center;padding:0 12px;font-family:var(--mono);font-size:11px;color:#92400e">3/3 = 40.333px → 端数繰越で 41px → 合計 121px &gt; 120px!</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="code-block">
+    <div class="code-block-header"><span>CSS — 修正方法</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre class="code"><span class="cmt">/* ❌ 端数で溢れるリスク */</span>
+<span class="sel">.item</span> { <span class="prop">height</span>: <span class="val">calc(100% / 3)</span>; }
+
+<span class="cmt">/* ✅ flexbox で自動均等分割（端数問題なし） */</span>
+<span class="sel">.parent</span> { <span class="prop">display</span>: <span class="val">flex</span>; <span class="prop">flex-direction</span>: <span class="val">column</span>; }
+<span class="sel">.item</span>   { <span class="prop">flex</span>: <span class="val">1</span>; }
+<span class="cmt">/* → なぜ有効か: calc(100%/3) = 33.333...% をピクセルに変換すると各ブラウザで
+      端数の丸め方が異なり合計が 1px 溢れることがある。flex:1 はブラウザが
+      利用可能空間をサブピクセル精度で分配し余り分を自動吸収するため端数誤差が
+      生じない */</span></pre>
+  </div>
+</div>
+
+<!-- ⑩ absolute のはみ出し -->
+<div class="card anchor" id="sec-abs-outside">
+  <div class="card-header">
+    <div class="attr-badge">⑩ absolute</div>
+    <div class="card-meta">
+      <h2>position: absolute の要素がビューポート外にはみ出す</h2>
+      <p>absolute 要素が包含ブロックの外に配置されスクロールを発生させる</p>
+      <div class="tags"><span class="tag tag-position">POSITION</span></div>
+    </div>
+  </div>
+  <div class="explanation"><code>position: absolute</code> の要素に <code>top: 100%</code> や大きな <code>left</code>/<code>right</code> 値を設定すると、包含ブロックの外にはみ出します。包含ブロックが <code>&lt;body&gt;</code> の場合、ページ全体にスクロールが発生します。</div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ</div>
+    <button class="btn btn-toggle" id="btn-abs" onclick="toggleDemo('abs')">修正 OFF — 親に overflow:hidden を適用</button>
+    <div class="live-panel" style="padding:12px;margin-top:10px">
+      <div class="live-label">absolute 要素が外にはみ出す</div>
+      <div class="sandbox sandbox-broken" id="abs-demo" style="height:120px;overflow:auto;position:relative">
+        <span class="scroll-indicator" id="abs-ind">SCROLL</span>
+        <div style="background:#dbeafe;border:1px solid #3b82f6;padding:12px;border-radius:4px;font-family:var(--mono);font-size:11px;color:#1e40af">通常のコンテンツ</div>
+        <div id="abs-el" style="position:absolute;bottom:-30px;left:10px;background:#fce7f3;border:2px solid #ec4899;padding:8px 12px;border-radius:4px;font-family:var(--mono);font-size:11px;color:#9d174d">absolute (bottom:-30px) はみ出し!</div>
+      </div>
+    </div>
+    <div style="margin-top:8px;border-top:1px dashed var(--border);padding-top:8px">
+      <div class="section-label" style="margin-bottom:6px">▍ 解決策を 1 対 1 で試す</div>
+      <button class="btn btn-secondary" id="btn-abs-s1" onclick="applyFix('abs',1)">解決1: overflow: hidden</button>
+      <button class="btn btn-secondary" id="btn-abs-s2" onclick="applyFix('abs',2)">解決2: overflow: clip</button>
+      <button class="btn btn-secondary" id="btn-abs-s3" onclick="applyFix('abs',3)">解決3: absolute の位置を調整（bottom: 0）</button>
+      <div id="abs-explain" class="info-box ok" style="display:none;margin-top:8px;font-size:12px;line-height:1.7"></div>
+    </div>
+  </div>
+  <div class="code-block">
+    <div class="code-block-header"><span>CSS — 修正方法</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre class="code"><span class="cmt">/* ✅ 解決策1: 親に overflow:hidden（はみ出し要素を隠す） */</span>
+<span class="sel">.parent</span> { <span class="prop">position</span>: <span class="val">relative</span>; <span class="prop">overflow</span>: <span class="val">hidden</span>; }
+<span class="cmt">/* → なぜ有効か: position:relative で absolute 子の包含ブロックを親に固定し、
+      overflow:hidden で親の padding-box をはみ出した部分をクリップする。
+      親の外への飛び出しをまとめて封じ込める最も一般的な手法 */</span>
+
+<span class="cmt">/* ✅ 解決策2: overflow: clip（スクロールバーなし、より新しい） */</span>
+<span class="sel">.parent</span> { <span class="prop">overflow</span>: <span class="val">clip</span>; }
+<span class="cmt">/* → なぜ有効か: clip は overflow:hidden と同様にはみ出しをクリップするが、
+      スクロールコンテナを作らないため JS の scrollTo() 等も封じられる。
+      意図せずスクロール可能にしたくない場合に overflow:hidden より安全 */</span>
+
+<span class="cmt">/* ✅ 解決策3: absolute の位置を調整 */</span>
+<span class="sel">.tooltip</span> { <span class="prop">bottom</span>: <span class="val">0</span>; } <span class="cmt">/* 負の値を避ける */</span>
+<span class="cmt">/* → なぜ有効か: 「はみ出さない座標に配置する」という根本的な解決。
+      top/left に負値を使うと包含ブロックの外に出てしまうが、bottom:0 などで
+      親の範囲内に収まる座標を選べばはみ出し自体が発生しない */</span></pre>
+  </div>
+</div>
+
+<!-- ⑪ 負の top/left -->
+<div class="card anchor" id="sec-negative-pos">
+  <div class="card-header">
+    <div class="attr-badge">⑪ 負のtop</div>
+    <div class="card-meta">
+      <h2>負の margin / top / left でページ外に要素が存在する</h2>
+      <p>ページの上端や左端の外に要素があると逆方向にスクロールが発生することがある</p>
+      <div class="tags"><span class="tag tag-position">POSITION</span><span class="tag tag-margin">MARGIN</span></div>
+    </div>
+  </div>
+  <div class="explanation">negative margin や <code>top: -50px</code> などで要素がページの上端より上に配置されても、通常は上方向のスクロールは発生しません（ブラウザの仕様）。ただし、<strong>下方向や右方向のはみ出し</strong>はスクロールを発生させます。負の margin-bottom は後続要素を引き上げ、結果的にコンテンツ全体の高さが変わってスクロール問題を起こすことがあります。</div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: 負の margin-bottom が後続を引き上げる</div>
+    <button class="btn btn-toggle" id="btn-neg" onclick="toggleDemo('neg')">修正 OFF — * { margin: 0 } を適用（モダンリセット）</button>
+    <div class="live-panel" style="padding:12px;margin-top:10px">
+      <div class="live-label" id="neg-live-label">margin-bottom: 40px で後続要素が押し下げられてSCROLL</div>
+      <div class="sandbox sandbox-broken" id="neg-demo" style="height:150px;overflow:auto">
+        <span class="scroll-indicator" id="neg-ind">checking...</span>
+        <div id="neg-box" style="background:#dbeafe;border:1px solid #3b82f6;padding:12px;margin-bottom:40px;border-radius:4px;font-family:var(--mono);font-size:11px;color:#1e40af">margin-bottom: 40px（後続を40px押し下げる → overflow!）</div>
+        <div style="background:#dcfce7;border:1px solid #22c55e;padding:12px;border-radius:4px;font-family:var(--mono);font-size:11px;color:#166534">後続要素（40px 押し下げられた位置に配置）</div>
+        <div style="background:#fef3c7;border:1px solid #f59e0b;padding:12px;border-radius:4px;font-family:var(--mono);font-size:11px;color:#92400e">さらに後続要素</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ⑫ transform はみ出し -->
+<div class="card anchor" id="sec-transform">
+  <div class="card-header">
+    <div class="attr-badge">⑫ transform</div>
+    <div class="card-meta">
+      <h2>transform で視覚的にはみ出すがスクロールは発生しない...はず</h2>
+      <p>transform は通常スクロールに影響しないが、特定条件で影響する</p>
+      <div class="tags"><span class="tag tag-position">POSITION</span></div>
+    </div>
+  </div>
+  <div class="explanation"><code>transform</code> は要素の<strong>視覚的な位置</strong>だけを変え、レイアウト上の位置は変わりません。通常はスクロールに影響しません。ただし、<code>overflow: auto/scroll</code> を持つ親の中で <code>transform: translateY()</code> すると、親のスクロール範囲に影響を与える場合があります。</div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ: transform vs position の違い</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="live-panel" style="padding:12px">
+        <div class="live-label">transform: translateY(30px)</div>
+        <div class="sandbox" style="height:100px;overflow:auto;border-color:var(--accent2)">
+          <div style="background:#dcfce7;border:1px solid #22c55e;padding:12px;transform:translateY(30px);border-radius:4px;font-family:var(--mono);font-size:11px;color:#166534">transform（通常スクロール不要）</div>
+        </div>
+      </div>
+      <div class="live-panel" style="padding:12px">
+        <div class="live-label">position: relative; top: 30px</div>
+        <div class="sandbox sandbox-broken" style="height:100px;overflow:auto">
+          <div style="background:#dbeafe;border:1px solid #3b82f6;padding:12px;position:relative;top:30px;border-radius:4px;font-family:var(--mono);font-size:11px;color:#1e40af">position:relative（スクロール発生）</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="info-box ok">
+    <strong>🔰 このデモで確認すること</strong><br><br>
+    <strong>① 左パネル（transform: translateY(30px)）</strong><br>
+    緑のボックスが 30px 下にはみ出して見えますが、<strong>スクロールバーが現れません</strong>。<code>transform</code> はペイント位置を変えるだけで、レイアウト上の位置（scrollHeight の計算対象）は変わらないためです。<br><br>
+    <strong>② 右パネル（position: relative; top: 30px）</strong><br>
+    青のボックスも同様に見えますが、こちらは <code>position: relative</code> のオフセットがレイアウト後の描画位置に影響し、<strong>スクロールが発生する可能性</strong>があります（コンテンツが小さい場合は発生しないこともあります）。<br><br>
+    <strong>③ 実務での使い分け</strong><br>
+    アニメーションやホバー演出 → <code>transform</code>（スクロールに影響なし・GPU 加速）<br>
+    レイアウト上の位置調整 → <code>position: relative</code>（スクロールに影響する場合あり）
+  </div>
+</div>
+
+<!-- ⑬ overflow-x と overflow-y の連動 -->
+<div class="card anchor" id="sec-overflow-x">
+  <div class="card-header">
+    <div class="attr-badge">⑬ overflow連動</div>
+    <div class="card-meta">
+      <h2>overflow-x: hidden にすると overflow-y: auto になる</h2>
+      <p>overflow の片方を visible 以外にすると、もう片方が自動的に auto になる</p>
+      <div class="tags"><span class="tag tag-box">OVERFLOW</span><span class="tag tag-common">頻出</span></div>
+    </div>
+  </div>
+  <div class="explanation">CSS仕様により、<code>overflow-x</code> と <code>overflow-y</code> の一方が <code>visible</code> 以外で、もう一方が <code>visible</code> の場合、<code>visible</code> の方が<strong>自動的に auto に変換</strong>されます。<br>つまり <code>overflow-x: hidden</code> だけ書くと、<code>overflow-y</code> が暗黙的に <code>auto</code> になり、縦スクロールが発生し得ます。</div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ</div>
+    <button class="btn btn-toggle" id="btn-ovx" onclick="toggleDemo('ovx')">修正 OFF — overflow-y: hidden も追加</button>
+    <div class="live-panel" style="padding:12px;margin-top:10px">
+      <div class="live-label" id="ovx-label">overflow-x: hidden (overflow-y は auto になる)</div>
+      <div class="sandbox sandbox-broken" id="ovx-demo" style="height:100px;overflow-x:hidden">
+        <span class="scroll-indicator" id="ovx-ind">checking...</span>
+        <div style="background:#dbeafe;border:1px solid #3b82f6;padding:12px;border-radius:4px;font-family:var(--mono);font-size:11px;color:#1e40af;height:140px">高さ 140px のコンテンツ（親 100px）<br><br>overflow-x: hidden だけ指定<br>→ overflow-y が auto になる<br>→ 縦スクロール発生!</div>
+      </div>
+    </div>
+    <div style="margin-top:8px;border-top:1px dashed var(--border);padding-top:8px">
+      <div class="section-label" style="margin-bottom:6px">▍ 解決策を 1 対 1 で試す</div>
+      <button class="btn btn-secondary" id="btn-ovx-s1" onclick="applyFix('ovx',1)">解決1: overflow-x/y: hidden（両方明示）</button>
+      <button class="btn btn-secondary" id="btn-ovx-s2" onclick="applyFix('ovx',2)">解決2: overflow: hidden（ショートハンド）</button>
+      <button class="btn btn-secondary" id="btn-ovx-s3" onclick="applyFix('ovx',3)">解決3: overflow: clip</button>
+      <div id="ovx-explain" class="info-box ok" style="display:none;margin-top:8px;font-size:12px;line-height:1.7"></div>
+    </div>
+  </div>
+  <div class="code-block">
+    <div class="code-block-header"><span>CSS — 修正方法</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre class="code"><span class="cmt">/* ❌ overflow-y が暗黙的に auto になる */</span>
+<span class="sel">.container</span> { <span class="prop">overflow-x</span>: <span class="val">hidden</span>; }
+
+<span class="cmt">/* ✅ 両方明示的に指定する */</span>
+<span class="sel">.container</span> {
+  <span class="prop">overflow-x</span>: <span class="val">hidden</span>;
+  <span class="prop">overflow-y</span>: <span class="val">hidden</span>;  <span class="cmt">/* または clip */</span>
+}
+<span class="cmt">/* → なぜ有効か: CSS 仕様では overflow-x/y の一方が visible 以外で、もう一方が
+      visible のとき、visible は強制的に auto に変換される。overflow-x:hidden
+      だけ指定すると overflow-y が auto になりスクロールが発生する。両方に明示
+      することでこの暗黙変換を防げる */</span>
+
+<span class="cmt">/* ✅ または overflow ショートハンド */</span>
+<span class="sel">.container</span> { <span class="prop">overflow</span>: <span class="val">hidden</span>; }
+<span class="cmt">/* → なぜ有効か: ショートハンドは x/y 両方を同じ値でセットするため
+      「片方だけ指定する」という暗黙変換の罠を一行で回避できる */</span>
+
+<span class="cmt">/* ✅ overflow: clip は scroll container を作らない */</span>
+<span class="sel">.container</span> { <span class="prop">overflow</span>: <span class="val">clip</span>; }
+<span class="cmt">/* → なぜ有効か: clip も x/y を一括指定するため暗黙変換を防ぐ。加えて
+      スクロールコンテナ自体を作らないため JS のスクロール操作も封じられる。
+      「切り取りたいだけでスクロールさせたくない」場合に最も意図が明確 */</span></pre>
+  </div>
+  <div class="info-box err">⚠️ <strong>最も見落としやすいパターン：</strong>「横スクロールを消したいだけなのに縦スクロールが出現する」原因の大半がこれです。</div>
+</div>
+
+<!-- ⑭ スクロールバー幅 -->
+<div class="card anchor" id="sec-scrollbar-gutter">
+  <div class="card-header">
+    <div class="attr-badge">⑭ scrollbar</div>
+    <div class="card-meta">
+      <h2>スクロールバーの出現でレイアウトがシフトする</h2>
+      <p>コンテンツ追加でスクロールバーが出現し、幅が変わってさらに溢れる連鎖</p>
+      <div class="tags"><span class="tag tag-box">OVERFLOW</span></div>
+    </div>
+  </div>
+  <div class="explanation">Windows の Chrome/Edge ではスクロールバーが<strong>約15px幅</strong>のスペースを占有します。スクロールバーが出現すると、コンテンツの利用可能幅が狭まり、テキストの折り返しで高さが増え、さらにスクロールが増える「連鎖」が起きます。</div>
+  <div class="code-block">
+    <div class="code-block-header"><span>CSS — 対策方法</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre class="code"><span class="cmt">/* ✅ 解決策1: scrollbar-gutter でスペースを事前確保 */</span>
+<span class="sel">.container</span> { <span class="prop">scrollbar-gutter</span>: <span class="val">stable</span>; }
+<span class="cmt">/* → なぜ有効か: stable を指定するとスクロールバーが出現する前からスクロール
+      バー幅のスペース（gutter）を確保する。出現時にレイアウトが収縮せず、
+      幅が変わったことによる折り返し増加→スクロール増加の連鎖を防ぐ */</span>
+
+<span class="cmt">/* ✅ 解決策2: overlay スクロールバー（macOS デフォルト） */</span>
+<span class="sel">.container</span> { <span class="prop">overflow-y</span>: <span class="val">overlay</span>; } <span class="cmt">/* 非推奨・一部ブラウザのみ */</span>
+<span class="cmt">/* → なぜ有効か: overlay はコンテンツの上に重なって描画されレイアウト幅を
+      消費しない。スクロールバー出現でレイアウトが変化しないため連鎖が起きない。
+      ただし deprecated であり将来的に廃止される可能性がある */</span>
+
+<span class="cmt">/* ✅ 解決策3: カスタムスクロールバー（幅を細くする） */</span>
+<span class="sel">.container::-webkit-scrollbar</span> { <span class="prop">width</span>: <span class="val">6px</span>; }
+<span class="sel">.container::-webkit-scrollbar-thumb</span> { <span class="prop">background</span>: <span class="val">#c8cdd3</span>; }
+<span class="cmt">/* → なぜ有効か: デフォルトの約 15px から 6px にスクロールバー幅を縮小する。
+      出現時のレイアウト収縮量が小さくなり連鎖スクロールのリスクを軽減する。
+      -webkit-scrollbar は非標準だが Chrome/Edge/Safari で広く使える */</span></pre>
+  </div>
+</div>
+
+<!-- ⑮ flex-basis と min-width -->
+<div class="card anchor" id="sec-flex-basis">
+  <div class="card-header">
+    <div class="attr-badge">⑮ flex min-w</div>
+    <div class="card-meta">
+      <h2>flex item の min-width: auto でコンテンツが溢れる</h2>
+      <p>flex item のデフォルト min-width/min-height が auto のため縮小しない</p>
+      <div class="tags"><span class="tag tag-flex">FLEXBOX</span><span class="tag tag-common">頻出</span></div>
+    </div>
+  </div>
+  <div class="explanation">flex item のデフォルトは <code>min-width: auto</code>（= コンテンツの最小幅）で、<strong>コンテンツより小さくは縮まない</strong>仕様です。長いテキストや画像があると flex item が溢れ、結果的に横→縦スクロールの連鎖が起きます。<code>flex-direction: column</code> の場合は <code>min-height: auto</code> が同様の問題を起こします。</div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ</div>
+    <button class="btn btn-toggle" id="btn-fmin" onclick="toggleDemo('fmin')">修正 OFF — min-width: 0 を適用</button>
+    <div class="live-panel" style="padding:12px;margin-top:10px">
+      <div class="live-label">flex item に長いテキスト</div>
+      <div id="fmin-demo" style="display:flex;gap:8px;border:2px solid #6366f1;border-radius:6px;padding:8px;overflow:auto;background:rgba(99,102,241,.04)">
+        <span class="scroll-indicator" id="fmin-ind">checking...</span>
+        <div id="fmin-item" style="background:#dbeafe;border:1px solid #3b82f6;padding:12px;border-radius:4px;font-family:var(--mono);font-size:11px;color:#1e40af;flex:1">AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA_VERY_LONG_UNBREAKABLE_STRING_THAT_ABSOLUTELY_POSITIVELY_CANNOT_WRAP_UNDER_ANY_CIRCUMSTANCES_WHATSOEVER_OVERFLOW_EXPECTED</div>
+        <div style="background:#dcfce7;border:1px solid #22c55e;padding:12px;border-radius:4px;font-family:var(--mono);font-size:11px;color:#166534;flex-shrink:0;width:80px">固定幅</div>
+      </div>
+    </div>
+    <div style="margin-top:8px;border-top:1px dashed var(--border);padding-top:8px">
+      <div class="section-label" style="margin-bottom:6px">▍ 解決策を 1 対 1 で試す</div>
+      <button class="btn btn-secondary" id="btn-fmin-s1" onclick="applyFix('fmin',1)">解決1: min-width: 0</button>
+      <button class="btn btn-secondary" id="btn-fmin-s2" onclick="applyFix('fmin',2)">解決2: overflow: hidden</button>
+      <button class="btn btn-secondary" id="btn-fmin-s3" onclick="applyFix('fmin',3)">解決3: word-break: break-all</button>
+      <div id="fmin-explain" class="info-box ok" style="display:none;margin-top:8px;font-size:12px;line-height:1.7"></div>
+    </div>
+  </div>
+  <div class="code-block">
+    <div class="code-block-header"><span>CSS — 修正方法</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre class="code"><span class="cmt">/* ❌ min-width: auto でコンテンツが溢れる */</span>
+<span class="sel">.flex-item</span> { <span class="prop">flex</span>: <span class="val">1</span>; }
+
+<span class="cmt">/* ✅ 解決策1: min-width: 0 */</span>
+<span class="sel">.flex-item</span> { <span class="prop">flex</span>: <span class="val">1</span>; <span class="prop">min-width</span>: <span class="val">0</span>; }
+<span class="cmt">/* → なぜ有効か: flex item のデフォルト min-width:auto はコンテンツ幅を下限に
+      保つためどれだけ親が狭くなっても縮まない。min-width:0 にすると下限がゼロ
+      になり flex-shrink が正常に機能し、item がコンテナ内に収まるまで縮小できる */</span>
+
+<span class="cmt">/* ✅ 解決策2: overflow: hidden で切る */</span>
+<span class="sel">.flex-item</span> { <span class="prop">flex</span>: <span class="val">1</span>; <span class="prop">overflow</span>: <span class="val">hidden</span>; }
+<span class="cmt">/* → なぜ有効か: CSS 仕様で overflow が visible 以外の値を持つ flex item は
+      min-width:auto が min-width:0 に強制変換される副作用がある（解決策1と同効果）。
+      加えてはみ出したコンテンツをクリップするため親の横スクロールも消える */</span>
+
+<span class="cmt">/* ✅ 解決策3: word-break で折り返す */</span>
+<span class="sel">.flex-item</span> { <span class="prop">flex</span>: <span class="val">1</span>; <span class="prop">word-break</span>: <span class="val">break-all</span>; }
+<span class="cmt">/* → なぜ有効か: min-width の問題を回避するのでなく「コンテンツ幅自体を縮める」
+      別アプローチ。break-all で長い文字列をコンテナ幅で強制折り返しすると
+      コンテンツの最小幅が小さくなり min-width:auto の下限値も下がる */</span></pre>
+  </div>
+</div>
+
+<!-- ⑯ flex column + 100vh -->
+<div class="card anchor" id="sec-flex-column">
+  <div class="card-header">
+    <div class="attr-badge">⑯ flex column</div>
+    <div class="card-meta">
+      <h2>flex-direction: column + height: 100vh で子が溢れる</h2>
+      <p>flex column の子の合計高さが親を超えるとスクロールが発生</p>
+      <div class="tags"><span class="tag tag-flex">FLEXBOX</span><span class="tag tag-sizing">SIZING</span></div>
+    </div>
+  </div>
+  <div class="explanation"><code>flex-direction: column</code> + <code>height: 100vh</code> の親に対して、flex item の合計高さが 100vh を超えると溢れます。<code>flex-shrink</code> のデフォルトは 1 ですが、<code>min-height: auto</code> のためコンテンツより小さくは縮みません。</div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ</div>
+    <button class="btn btn-toggle" id="btn-fcol" onclick="toggleDemo('fcol')">修正 OFF — min-height: 0 を適用</button>
+    <div class="live-panel" style="padding:12px;margin-top:10px">
+      <div class="live-label">flex column / height:160px / min-width:auto → 縦スクロール＋横スクロール両方発生</div>
+      <div id="fcol-demo" style="display:flex;flex-direction:column;height:160px;border:2px solid #6366f1;border-radius:6px;overflow:auto;background:rgba(99,102,241,.04)">
+        <span class="scroll-indicator" id="fcol-ind">checking...</span>
+        <div style="background:#dbeafe;border-bottom:1px solid #3b82f6;padding:16px;font-family:var(--mono);font-size:11px;color:#1e40af">ヘッダー（固定高さ）</div>
+        <div id="fcol-main" style="background:#dcfce7;border-bottom:1px solid #22c55e;padding:16px;font-family:var(--mono);font-size:11px;color:#166534;flex:1">メインコンテンツ（flex:1）<br>min-height:auto → 縦方向に縮まない → <strong>縦スクロール</strong><br>min-width:auto → 横方向に縮まない → <strong>横スクロール</strong><br><span style="white-space:nowrap;color:#166534">→ 横overflow例: .component__element--modifier-that-is-very-long__BEM-style-naming-convention__demonstrates-min-width-auto-causing-horizontal-overflow__in-flex-column-container__this-text-will-not-wrap-due-to-white-space-nowrap__forcing-flex-item-wider-than-container__縦横両方のスクロールが発生する</span></div>
+        <div style="background:#fef3c7;padding:16px;font-family:var(--mono);font-size:11px;color:#92400e">フッター（固定高さ）</div>
+      </div>
+    </div>
+  </div>
+  <div class="code-block">
+    <div class="code-block-header"><span>CSS — 修正方法</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre class="code"><span class="cmt">/* ✅ 解決策: flex:1 の子に min-height: 0 + overflow: auto */</span>
+<span class="sel">.main</span> {
+  <span class="prop">flex</span>: <span class="val">1</span>;
+  <span class="prop">min-height</span>: <span class="val">0</span>;       <span class="cmt">/* ← これが鍵! */</span>
+  <span class="prop">overflow-y</span>: <span class="val">auto</span>;     <span class="cmt">/* メイン領域だけスクロール */</span>
+}
+<span class="cmt">/* → なぜ有効か: flex:1 で伸縮する子は min-height:auto がデフォルトなので
+      コンテンツより小さく縮まない（⑮ と同じ仕組み）。min-height:0 で下限を
+      ゼロにすると flex-shrink が機能し、コンテナに収まるまで縮む。収まりきらない
+      分は overflow-y:auto でその要素だけスクロールさせることで全体の溢れを防ぐ */</span></pre>
+  </div>
+</div>
+
+<!-- ⑰ grid 暗黙トラック -->
+<div class="card anchor" id="sec-grid-overflow">
+  <div class="card-header">
+    <div class="attr-badge">⑰ grid膨張</div>
+    <div class="card-meta">
+      <h2>grid の暗黙トラックがコンテナを超える</h2>
+      <p>grid-auto-rows のデフォルトが auto のためコンテンツに応じて際限なく膨張</p>
+      <div class="tags"><span class="tag tag-flex">GRID</span><span class="tag tag-sizing">SIZING</span></div>
+    </div>
+  </div>
+  <div class="explanation"><code>grid-template-rows</code> で定義した明示的トラック以外のアイテムは<strong>暗黙的トラック</strong>に配置されます。暗黙トラックのデフォルトサイズは <code>auto</code>（コンテンツに合わせて膨張）なので、アイテム数が増えるとコンテナを超えます。<br><br>⚠️ <strong>アイテム追加ボタンで確認できます</strong>：row 3（暗黙）以降にアイテムを追加すると縦スクロールが発生します。Row 7 前後で顕著に確認できます。<code>grid-auto-rows: auto</code> のままではアイテムが増えるほど際限なく膨張するため、<code>grid-auto-rows: minmax(0, 1fr)</code> または固定高さに変更するのが実務上の対応です。</div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ</div>
+    <button class="btn btn-secondary" onclick="addGridItem()">+ アイテム追加</button>
+    <button class="btn btn-secondary" onclick="resetGridItems()">リセット</button>
+    <button class="btn btn-toggle" id="btn-grid" onclick="toggleDemo('grid')">修正 OFF — minmax() + overflow を適用</button>
+    <div class="live-panel" style="padding:12px;margin-top:10px">
+      <div class="live-label">grid / height:160px / template-rows: 40px 40px</div>
+      <div id="grid-demo" style="display:grid;grid-template-rows:40px 40px;grid-auto-rows:auto;gap:4px;height:160px;border:2px solid #6366f1;border-radius:6px;overflow:auto;background:rgba(99,102,241,.04);padding:4px">
+        <span class="scroll-indicator" id="grid-ind">checking...</span>
+        <div style="background:#dbeafe;border:1px solid #3b82f6;display:flex;align-items:center;justify-content:center;border-radius:4px;font-family:var(--mono);font-size:11px;color:#1e40af">明示 row 1</div>
+        <div style="background:#dcfce7;border:1px solid #22c55e;display:flex;align-items:center;justify-content:center;border-radius:4px;font-family:var(--mono);font-size:11px;color:#166534">明示 row 2</div>
+        <div style="background:#fef3c7;border:1px solid #f59e0b;display:flex;align-items:center;justify-content:center;border-radius:4px;font-family:var(--mono);font-size:11px;color:#92400e">暗黙 row 3 (auto)</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ⑱ inline-block の隙間 -->
+<div class="card anchor" id="sec-inline-baseline">
+  <div class="card-header">
+    <div class="attr-badge">⑱ inline隙間</div>
+    <div class="card-meta">
+      <h2>inline-block 要素間の余白とベースラインの隙間</h2>
+      <p>HTML ソースの改行がスペースになり、合計幅が 100% を超える</p>
+      <div class="tags"><span class="tag tag-box">BOX MODEL</span></div>
+    </div>
+  </div>
+  <div class="explanation"><code>inline-block</code> 要素をHTMLソースで改行して書くと、改行が<strong>空白文字（約4px）</strong>として描画されます。<code>width: 50%</code> × 2 + 空白 = 100% 超 → 折り返しが発生し、縦方向に余計なスペースが生まれます。</div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ</div>
+    <button class="btn btn-toggle" id="btn-inl" onclick="toggleDemo('inl')">修正 OFF — flexbox に変更</button>
+    <div class="live-panel" style="padding:12px;margin-top:10px">
+      <div class="live-label" id="inl-label">inline-block × 2（50% + 50% + 空白 = 折り返し）</div>
+      <div id="inl-demo" style="border:2px solid #6366f1;border-radius:6px;background:rgba(99,102,241,.04);height:70px;overflow:auto;position:relative">
+        <span class="scroll-indicator" id="inl-ind">checking...</span>
+        <div id="inl-a" style="display:inline-block;width:50%;background:#dbeafe;border-right:1px solid #3b82f6;padding:16px;font-family:var(--mono);font-size:11px;color:#1e40af;vertical-align:top;box-sizing:border-box">左 50%（空白で折り返し↓）</div>
+        <div id="inl-b" style="display:inline-block;width:50%;background:#dcfce7;padding:16px;font-family:var(--mono);font-size:11px;color:#166534;vertical-align:top;box-sizing:border-box">右 50%（2行目に落ちる）</div>
+      </div>
+    </div>
+    <div style="margin-top:8px;border-top:1px dashed var(--border);padding-top:8px">
+      <div class="section-label" style="margin-bottom:6px">▍ 解決策を 1 対 1 で試す</div>
+      <button class="btn btn-secondary" id="btn-inl-s1" onclick="applyFix('inl',1)">解決1: display: flex（推奨）</button>
+      <button class="btn btn-secondary" id="btn-inl-s2" onclick="applyFix('inl',2)">解決2: font-size: 0（親）</button>
+      <button class="btn btn-secondary" id="btn-inl-s3" onclick="applyFix('inl',3)">解決3: HTMLコメントで空白除去</button>
+      <div id="inl-explain" class="info-box ok" style="display:none;margin-top:8px;font-size:12px;line-height:1.7"></div>
+    </div>
+  </div>
+  <div class="code-block">
+    <div class="code-block-header"><span>CSS — 修正方法</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre class="code"><span class="cmt">/* ✅ 解決策1: flexbox を使う（推奨） */</span>
+<span class="sel">.parent</span> { <span class="prop">display</span>: <span class="val">flex</span>; }
+<span class="cmt">/* → なぜ有効か: flex container の子は FFC（フレックス整形コンテキスト）に置かれ
+      インライン整形コンテキストから外れる。HTML の空白・改行文字がフォントサイズ
+      に基づく「隙間」として描画されなくなる */</span>
+
+<span class="cmt">/* ✅ 解決策2: 親の font-size: 0 */</span>
+<span class="sel">.parent</span> { <span class="prop">font-size</span>: <span class="val">0</span>; }
+<span class="sel">.child</span>  { <span class="prop">font-size</span>: <span class="val">14px</span>; } <span class="cmt">/* 子で復帰 */</span>
+<span class="cmt">/* → なぜ有効か: 隙間の正体は HTML の空白・改行文字がテキストとして描画された幅。
+      親の font-size を 0 にするとその文字の描画幅がゼロになり隙間が消える。
+      子要素で font-size を再指定しないとテキストが表示されないので注意 */</span>
+
+<span class="cmt">/* ✅ 解決策3: HTML のコメントで空白を除去 */</span>
+<span class="cmt">&lt;div&gt;左&lt;/div&gt;&lt;!--</span>
+<span class="cmt">--&gt;&lt;div&gt;右&lt;/div&gt;</span>
+<span class="cmt">/* → なぜ有効か: 要素間の改行・空白文字をHTMLコメントで囲って無効化することで
+      ブラウザに渡るテキストノードがなくなり隙間が描画されない。CSS を変えずに
+      HTML 側で解決するため font-size の副作用がない */</span></pre>
+  </div>
+</div>
+
+<!-- ⑲ img 下の余白 -->
+<div class="card anchor" id="sec-img-bottom">
+  <div class="card-header">
+    <div class="attr-badge">⑲ img余白</div>
+    <div class="card-meta">
+      <h2>img 要素の下に数ピクセルの隙間が生じる</h2>
+      <p>img は inline 要素のためベースライン揃えで下に隙間ができる</p>
+      <div class="tags"><span class="tag tag-box">BOX MODEL</span><span class="tag tag-common">頻出</span></div>
+    </div>
+  </div>
+  <div class="explanation"><code>&lt;img&gt;</code> はデフォルトで <code>inline</code> 要素であり、<code>vertical-align: baseline</code> で配置されます。ベースラインの下にはディセンダ（g, p, y などの下部分）用のスペースがあるため、画像の下に<strong>3〜5px の隙間</strong>が生まれます。高さぴったりのコンテナに画像を入れると、この隙間でスクロールが発生します。</div>
+  <div class="demo-area">
+    <div class="section-label">▍ 実機デモ</div>
+    <button class="btn btn-toggle" id="btn-img" onclick="toggleDemo('img')">修正 OFF — display: block を適用</button>
+    <div class="live-panel" style="padding:12px;margin-top:10px">
+      <div class="live-label">img のベースライン隙間</div>
+      <div class="sandbox sandbox-broken" id="img-demo" style="height:65px;overflow:auto;border:2px solid #ef4444;line-height:normal">
+        <span class="scroll-indicator" id="img-ind">checking...</span>
+        <div id="img-wrapper" style="background:rgba(239,68,68,.1)">
+          <img id="img-el" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='60' fill='%233b82f6'%3E%3Crect width='300' height='60' rx='4'/%3E%3Ctext x='150' y='35' text-anchor='middle' fill='white' font-family='monospace' font-size='12'%3Eimg (inline, baseline)%3C/text%3E%3C/svg%3E" style="max-width:100%">
+        </div>
+      </div>
+      <div class="measure" style="font-size:10px;color:var(--red);margin-top:4px">↑ 赤い背景部分がベースライン下の隙間（約4px）→ コンテナ高さ65pxを超えてSCROLL</div>
+    </div>
+    <div style="margin-top:8px;border-top:1px dashed var(--border);padding-top:8px">
+      <div class="section-label" style="margin-bottom:6px">▍ 解決策を 1 対 1 で試す</div>
+      <button class="btn btn-secondary" id="btn-img-s1" onclick="applyFix('img',1)">解決1: display: block</button>
+      <button class="btn btn-secondary" id="btn-img-s2" onclick="applyFix('img',2)">解決2: vertical-align: bottom</button>
+      <button class="btn btn-secondary" id="btn-img-s3" onclick="applyFix('img',3)">解決3: 親の line-height: 0</button>
+      <button class="btn btn-secondary" id="btn-img-s4" onclick="applyFix('img',4)">解決4: 親を display: flex</button>
+      <div id="img-explain" class="info-box ok" style="display:none;margin-top:8px;font-size:12px;line-height:1.7"></div>
+    </div>
+  </div>
+  <div class="code-block">
+    <div class="code-block-header"><span>CSS — 修正方法</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre class="code"><span class="cmt">/* ✅ 解決策1: display: block（最も確実） */</span>
+<span class="sel">img</span> { <span class="prop">display</span>: <span class="val">block</span>; }
+<span class="cmt">/* → なぜ有効か: img のデフォルトは display:inline でベースライン揃えが適用され、
+      ベースラインより下の「g y p」等のディセンダー文字用の空間が img の下に生じる。
+      block にするとインライン整形から外れてベースライン揃えが適用されなくなり
+      ディセンダー空間が消える */</span>
+
+<span class="cmt">/* ✅ 解決策2: vertical-align: bottom */</span>
+<span class="sel">img</span> { <span class="prop">vertical-align</span>: <span class="val">bottom</span>; }
+<span class="cmt">/* → なぜ有効か: デフォルトの baseline 揃えでは img の下端がベースラインに揃い
+      ディセンダー分の空間が img の下に発生する。bottom に変えると img の下端が
+      行ボックスの下端に揃い、ディセンダー空間がなくなる */</span>
+
+<span class="cmt">/* ✅ 解決策3: 親の line-height: 0 */</span>
+<span class="sel">.img-wrapper</span> { <span class="prop">line-height</span>: <span class="val">0</span>; }
+<span class="cmt">/* → なぜ有効か: ディセンダー空間は行の高さ（line-height）の一部として確保される。
+      line-height:0 にすると行高がゼロになりディセンダー空間も消える。ただし
+      wrapper 内のテキストも詰まるため img 専用の wrapper に限定して使うのが安全 */</span>
+
+<span class="cmt">/* ✅ 解決策4: 親を flex にする */</span>
+<span class="sel">.img-wrapper</span> { <span class="prop">display</span>: <span class="val">flex</span>; }
+<span class="cmt">/* → なぜ有効か: flex container の子は FFC に置かれインライン整形コンテキストから
+      外れる。解決策1の display:block と同様にベースライン揃えが適用されなくなり
+      ディセンダー空間が消える */</span></pre>
+  </div>
+  <div class="info-box err">⚠️ <strong>よくある発生場所：</strong>画像スライダー、カード内の画像、ヒーロー画像。<code>img { display: block }</code> はCSSリセットに含めることを推奨。</div>
+</div>
+
+<!-- ══════════════════════════════════════ -->
+<!-- デバッグ手順まとめ                      -->
+<!-- ══════════════════════════════════════ -->
+<div class="card anchor" id="sec-debug-flow">
+  <div class="card-header">
+    <div class="attr-badge">Debug</div>
+    <div class="card-meta">
+      <h2>意図しない縦スクロール デバッグ手順</h2>
+      <p>「なぜスクロールが出るのか分からない」時の体系的な調査フロー</p>
+      <div class="tags"><span class="tag tag-devtools">DEVTOOLS</span></div>
+    </div>
+  </div>
+
+  <div class="section-label">▍ ステップ1: 犯人を特定する</div>
+  <div class="code-block">
+    <div class="code-block-header"><span>CSS — はみ出し要素を全て可視化する</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre class="code"><span class="cmt">/* DevTools Console に貼り付けて実行 */</span>
+document.querySelectorAll(<span class="str">'*'</span>).forEach(<span class="val">el</span> => {
+  <span class="kw">if</span> (el.scrollHeight > el.clientHeight ||
+      el.scrollWidth > el.clientWidth) {
+    el.style.outline = <span class="str">'2px solid red'</span>;
+    console.log(<span class="str">'溢れ:'</span>, el.tagName, el.className,
+      <span class="str">`scroll:${el.scrollHeight}x${el.scrollWidth}`</span>,
+      <span class="str">`client:${el.clientHeight}x${el.clientWidth}`</span>);
+  }
+});</pre>
+  </div>
+
+  <div class="section-label">▍ ステップ2: 原因を分類する</div>
+  <div class="devtools-step"><div class="devtools-num">1</div><div><strong>body/html の margin/padding 確認</strong> → Computed タブで body と html の margin を確認。8px あれば④が原因。</div></div>
+  <div class="devtools-step"><div class="devtools-num">2</div><div><strong>box-sizing 確認</strong> → 溢れ要素の Computed → box-sizing。content-box なら①②③を疑う。</div></div>
+  <div class="devtools-step"><div class="devtools-num">3</div><div><strong>overflow の連動確認</strong> → overflow-x が hidden で overflow-y が auto になっていないか → ⑬。</div></div>
+  <div class="devtools-step"><div class="devtools-num">4</div><div><strong>マージン突き抜け確認</strong> → 親に padding/border がなく子に margin がある → ⑤⑥。親に <code>display: flow-root</code> を一時追加して変化を見る。</div></div>
+  <div class="devtools-step"><div class="devtools-num">5</div><div><strong>flex/grid の min-width/min-height 確認</strong> → Computed で min-width: auto / min-height: auto になっていないか → ⑮⑯。</div></div>
+  <div class="devtools-step"><div class="devtools-num">6</div><div><strong>img のベースライン隙間確認</strong> → img の下に赤い隙間が見える → ⑲。</div></div>
+  <div class="devtools-step"><div class="devtools-num">7</div><div><strong>100vh のモバイル問題</strong> → PCでは再現しない場合 → ⑦。dvh / svh に変更してテスト。</div></div>
+
+  <div class="section-label" style="margin-top:16px">▍ リセットCSS テンプレート（コピペ用）</div>
+  <div class="code-block">
+    <div class="code-block-header"><span>CSS — スクロール防止リセット</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre class="code"><span class="cmt">/* ===== 意図しないスクロールを防ぐ最小リセット ===== */</span>
+<span class="sel">*,
+*::before,
+*::after</span> {
+  <span class="prop">box-sizing</span>: <span class="val">border-box</span>;
+  <span class="prop">margin</span>: <span class="val">0</span>;
+  <span class="prop">padding</span>: <span class="val">0</span>;
+}
+
+<span class="sel">html, body</span> {
+  <span class="prop">height</span>: <span class="val">100%</span>;
+  <span class="prop">overflow-x</span>: <span class="val">hidden</span>;      <span class="cmt">/* 横スクロール防止 */</span>
+}
+
+<span class="sel">img</span> {
+  <span class="prop">display</span>: <span class="val">block</span>;          <span class="cmt">/* ベースライン隙間防止 */</span>
+  <span class="prop">max-width</span>: <span class="val">100%</span>;        <span class="cmt">/* はみ出し防止 */</span>
+}</pre>
+  </div>
+
+  <div class="section-label" style="margin-top:16px">▍ 全パターン早見表</div>
+  <div style="overflow-x:auto">
+  <table class="compare-table">
+    <thead><tr><th>#</th><th>原因</th><th>修正</th><th>頻度</th></tr></thead>
+    <tbody>
+      <tr><td>①</td><td>box-sizing: content-box</td><td>border-box リセット</td><td class="no">★★★</td></tr>
+      <tr><td>②</td><td>padding + 100%</td><td>calc() / flex</td><td class="na">★★</td></tr>
+      <tr><td>③</td><td>border + 100vh</td><td>border-box / outline</td><td class="na">★</td></tr>
+      <tr><td>④</td><td>body margin: 8px</td><td>margin: 0 リセット</td><td class="no">★★★</td></tr>
+      <tr><td>⑤</td><td>margin 突き抜け</td><td>flow-root / overflow</td><td class="no">★★★</td></tr>
+      <tr><td>⑥</td><td>末尾 margin-bottom</td><td>flow-root</td><td class="na">★★</td></tr>
+      <tr><td>⑦</td><td>100vh モバイル</td><td>dvh / svh</td><td class="no">★★★</td></tr>
+      <tr><td>⑧</td><td>min-height + 100%</td><td>flex + flex:1</td><td class="na">★★</td></tr>
+      <tr><td>⑨</td><td>calc() 端数</td><td>flex 均等分割</td><td class="na">★</td></tr>
+      <tr><td>⑩</td><td>absolute はみ出し</td><td>overflow:hidden / clip</td><td class="na">★★</td></tr>
+      <tr><td>⑪</td><td>負の margin</td><td>値の調整</td><td class="na">★</td></tr>
+      <tr><td>⑫</td><td>transform はみ出し</td><td>通常は影響なし</td><td class="na">★</td></tr>
+      <tr><td>⑬</td><td>overflow-x/y 連動</td><td>両方明示指定</td><td class="no">★★★</td></tr>
+      <tr><td>⑭</td><td>スクロールバー幅</td><td>scrollbar-gutter</td><td class="na">★</td></tr>
+      <tr><td>⑮</td><td>flex min-width:auto</td><td>min-width:0</td><td class="no">★★★</td></tr>
+      <tr><td>⑯</td><td>flex column 溢れ</td><td>min-height:0</td><td class="na">★★</td></tr>
+      <tr><td>⑰</td><td>grid 暗黙トラック</td><td>minmax() / overflow</td><td class="na">★★</td></tr>
+      <tr><td>⑱</td><td>inline-block 空白</td><td>flex / font-size:0</td><td class="na">★</td></tr>
+      <tr><td>⑲</td><td>img ベースライン</td><td>display:block</td><td class="no">★★★</td></tr>
+    </tbody>
+  </table>
+  </div>
+</div>
+
+</main>
+</div>
+
+<script>
+/* ===== Navigation ===== */
+function goTo(id, el) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (el) el.classList.add('active');
+  document.getElementById(id).scrollIntoView({behavior:'smooth'});
+}
+/* ===== Scroll spy ===== */
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      document.querySelectorAll('.nav-item').forEach(n => {
+        n.classList.toggle('active', n.getAttribute('onclick')?.includes(id));
+      });
+    }
+  });
+}, {rootMargin: '-80px 0px -60% 0px'});
+document.querySelectorAll('.anchor').forEach(el => observer.observe(el));
+
+/* ===== Copy Code ===== */
+function copyCode(btn) {
+  const code = btn.closest('.code-block').querySelector('pre').textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    btn.textContent = 'copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+/* ===== Scroll Detection ===== */
+function checkScroll(el, indId) {
+  const ind = document.getElementById(indId);
+  if (!ind) return;
+  requestAnimationFrame(() => {
+    const st = window.getComputedStyle(el);
+    const oy = st.overflowY;
+    // overflow:hidden/clip clips content but does NOT create a scroll bar
+    const canScrollY = oy === 'auto' || oy === 'scroll';
+    const has = canScrollY && el.scrollHeight > el.clientHeight + 1;
+    ind.textContent = has ? 'SCROLL' : 'NO SCROLL';
+    ind.className = 'scroll-indicator ' + (has ? 'scroll-yes' : 'scroll-no');
+  });
+}
+
+/* ===== Solution fix buttons ===== */
+const fixStates = {};
+const solutionFixes = {
+  pvh: {
+    1: {
+      apply() {
+        const d = document.getElementById('pvh-demo');
+        const c = document.getElementById('pvh-child');
+        d.style.padding = '26px 16px';
+        c.style.margin = '0';
+        c.textContent = '解決1: 親 padding:26px / 子 margin:0 → ぴったり ✓';
+      },
+      reset() {
+        const d = document.getElementById('pvh-demo');
+        const c = document.getElementById('pvh-child');
+        d.style.padding = '16px';
+        c.style.margin = '10px 0';
+        c.textContent = '子: height:100% + margin:10px = はみ出す';
+      },
+      check() { checkScroll(document.getElementById('pvh-demo'), 'pvh-ind'); },
+      explain: '<code>margin</code> は <code>height:100%</code> の計算後に外側へ加算されて溢れますが、<code>padding</code> は親のコンテンツ領域を内側から縮める形で機能します。親の上下 padding を <code>26px</code> にすることで余白が padding 内に収まり、子が溢れなくなります。'
+    },
+    2: {
+      apply() {
+        const c = document.getElementById('pvh-child');
+        c.style.height = 'calc(100% - 20px)';
+        c.textContent = '解決2: height:calc(100%−20px) → margin:10px込みでぴったり ✓';
+      },
+      reset() {
+        const c = document.getElementById('pvh-child');
+        c.style.height = '100%';
+        c.textContent = '子: height:100% + margin:10px = はみ出す';
+      },
+      check() { checkScroll(document.getElementById('pvh-demo'), 'pvh-ind'); },
+      explain: '<code>calc(100% - 20px)</code> は「margin上下の合計（10px × 2 = 20px）を差し引いた高さ」を明示的に計算します。演算結果がコンテンツ領域にぴったり収まるため、margin を維持したまま溢れを防止できます。'
+    },
+    3: {
+      apply() {
+        const d = document.getElementById('pvh-demo');
+        const c = document.getElementById('pvh-child');
+        d.style.display = 'flex';
+        d.style.flexDirection = 'column';
+        c.style.height = '';
+        c.style.flex = '1';
+        c.textContent = '解決3: flexbox + flex:1 → margin含めて自動調整 ✓';
+      },
+      reset() {
+        const d = document.getElementById('pvh-demo');
+        const c = document.getElementById('pvh-child');
+        d.style.display = '';
+        d.style.flexDirection = '';
+        c.style.height = '100%';
+        c.style.flex = '';
+        c.textContent = '子: height:100% + margin:10px = はみ出す';
+      },
+      check() { checkScroll(document.getElementById('pvh-demo'), 'pvh-ind'); },
+      explain: 'flex container は子要素を自動配分します。<code>flex:1</code> を指定すると margin を考慮した上で残りスペースをすべて占有するため、<code>height:100% + margin</code> という計算問題が発生しません。'
+    }
+  },
+  bvh: {
+    1: {
+      apply() {
+        const d = document.getElementById('bvh-demo');
+        const c = document.getElementById('bvh-child');
+        d.style.boxSizing = 'border-box';
+        c.style.height = '100%';
+        c.textContent = '解決1: border-box → border込みで120px ぴったり ✓';
+      },
+      reset() {
+        const d = document.getElementById('bvh-demo');
+        const c = document.getElementById('bvh-child');
+        d.style.boxSizing = 'content-box';
+        c.style.height = '140px';
+        c.textContent = 'コンテンツ140px > content-area 120px → borderの6px分溢れる';
+      },
+      check() { requestAnimationFrame(() => { document.getElementById('bvh-m').textContent = `実際の高さ: ${document.getElementById('bvh-demo').offsetHeight}px`; checkScroll(document.getElementById('bvh-demo'), 'bvh-ind'); }); },
+      explain: '<code>border-box</code> では <code>height</code> 指定値に border が「込み」になります。<code>height:120px</code> が border(3px×2=6px)込みの総サイズになるため、コンテンツ領域 = 120 − 6 = 114px。子の <code>height:100%</code> がこの 114px を参照し、溢れません。'
+    },
+    2: {
+      apply() {
+        const d = document.getElementById('bvh-demo');
+        const c = document.getElementById('bvh-child');
+        d.style.border = 'none';
+        d.style.outline = '3px solid #ef4444';
+        d.style.outlineOffset = '-3px';
+        c.style.height = '100%';
+        c.textContent = '解決2: outline に変更（ボックスモデル外） → 120px ぴったり ✓';
+      },
+      reset() {
+        const d = document.getElementById('bvh-demo');
+        const c = document.getElementById('bvh-child');
+        d.style.border = '3px solid #ef4444';
+        d.style.outline = '';
+        d.style.outlineOffset = '';
+        c.style.height = '140px';
+        c.textContent = 'コンテンツ140px > content-area 120px → borderの6px分溢れる';
+      },
+      check() { requestAnimationFrame(() => { document.getElementById('bvh-m').textContent = `実際の高さ: ${document.getElementById('bvh-demo').offsetHeight}px`; checkScroll(document.getElementById('bvh-demo'), 'bvh-ind'); }); },
+      explain: '<code>outline</code> はボックスモデルの外側に描画され、レイアウトスペースを一切消費しません（border の視覚的代替）。border を除去することで <code>height:120px</code> が純粋なコンテンツ領域になり、子の <code>height:100%</code> が 120px にぴったり収まります。'
+    },
+    3: {
+      apply() {
+        const d = document.getElementById('bvh-demo');
+        const c = document.getElementById('bvh-child');
+        d.style.border = 'none';
+        d.style.boxShadow = 'inset 0 0 0 3px #ef4444';
+        c.style.height = '100%';
+        c.textContent = '解決3: box-shadow inset（ボックスモデル外） → 120px ぴったり ✓';
+      },
+      reset() {
+        const d = document.getElementById('bvh-demo');
+        const c = document.getElementById('bvh-child');
+        d.style.border = '3px solid #ef4444';
+        d.style.boxShadow = '';
+        c.style.height = '140px';
+        c.textContent = 'コンテンツ140px > content-area 120px → borderの6px分溢れる';
+      },
+      check() { requestAnimationFrame(() => { document.getElementById('bvh-m').textContent = `実際の高さ: ${document.getElementById('bvh-demo').offsetHeight}px`; checkScroll(document.getElementById('bvh-demo'), 'bvh-ind'); }); },
+      explain: '<code>inset</code> の box-shadow は要素の内側に描画されるため、width・height の計算に影響しません。border を除去して box-shadow で見た目を維持することで、ボックスモデルを崩さず border 風の表示が実現できます。'
+    }
+  },
+  mc: {
+    1: {
+      apply() { document.getElementById('mc-parent').style.display = 'flow-root'; document.getElementById('mc-child').innerHTML = '解決1: 親に display:flow-root → BFC形成 → 赤い背景が margin を視覚的に封じ込め<br><small style="opacity:.7">※ scrollHeight は変わらないためスクロールは残ります（下の説明を確認）</small>'; },
+      reset() { document.getElementById('mc-parent').style.display = ''; document.getElementById('mc-child').innerHTML = '子要素（margin: 24px 12px）<br>↑ この margin-top が親の外に突き抜ける<br>→ 赤い背景の外に margin 分の空白ができる<br>→ 合計でコンテナをはみ出す'; },
+      check() { checkScroll(document.getElementById('mc-demo'), 'mc-ind'); },
+      warn: true,
+      explain: '<code>display:flow-root</code> は親に BFC（Block Formatting Context）を作り、子の margin が親の<strong>外に突き抜けることを視覚的に防ぎます</strong>（赤い背景が margin を包む）。<br>ただし margin 自体の大きさは変わらないため、外側のスクロールコンテナ（<code>overflow:auto</code>）から見た <strong>scrollHeight は変化しません</strong> → スクロールが残ります。完全に解消するには解決3〜6（margin を封じ込めるか margin 自体を 0 にする）を使用してください。'
+    },
+    2: {
+      apply() { document.getElementById('mc-parent').style.overflow = 'hidden'; document.getElementById('mc-child').innerHTML = '解決2: 親に overflow:hidden → BFC形成 → 赤い背景が margin を視覚的に封じ込め<br><small style="opacity:.7">※ scrollHeight は変わらないためスクロールは残ります（下の説明を確認）</small>'; },
+      reset() { document.getElementById('mc-parent').style.overflow = ''; document.getElementById('mc-child').innerHTML = '子要素（margin: 24px 12px）<br>↑ この margin-top が親の外に突き抜ける<br>→ 赤い背景の外に margin 分の空白ができる<br>→ 合計でコンテナをはみ出す'; },
+      check() { checkScroll(document.getElementById('mc-demo'), 'mc-ind'); },
+      warn: true,
+      explain: '<code>overflow:hidden</code> も BFC を形成し、子の margin を視覚的に封じ込めます。解決1と同様に <strong>scrollHeight は変わらない</strong>ためスクロールは残ります。加えて内容がクリップされる副作用があります。スクロール解消には解決3〜6を使用してください。'
+    },
+    3: {
+      apply() { document.getElementById('mc-parent').style.paddingTop = '1px'; document.getElementById('mc-child').innerHTML = '解決3: 親に padding-top:1px → margin collapse の条件を崩す ✓'; },
+      reset() { document.getElementById('mc-parent').style.paddingTop = ''; document.getElementById('mc-child').innerHTML = '子要素（margin: 24px 12px）<br>↑ この margin-top が親の外に突き抜ける<br>→ 赤い背景の外に margin 分の空白ができる<br>→ 合計でコンテナをはみ出す'; },
+      check() { checkScroll(document.getElementById('mc-demo'), 'mc-ind'); },
+      explain: 'margin collapse の発生条件は「親子間に border も padding もないこと」です。<code>padding-top:1px</code> を追加することでこの条件が崩れ、子の <code>margin-top</code> が親の内側に留まります。結果的に外側の scrollHeight が減少しスクロールが解消されます。'
+    },
+    4: {
+      apply() { document.getElementById('mc-parent').style.borderTop = '1px solid transparent'; document.getElementById('mc-child').innerHTML = '解決4: 親に border-top:1px solid transparent → margin collapse の条件を崩す ✓'; },
+      reset() { document.getElementById('mc-parent').style.borderTop = ''; document.getElementById('mc-child').innerHTML = '子要素（margin: 24px 12px）<br>↑ この margin-top が親の外に突き抜ける<br>→ 赤い背景の外に margin 分の空白ができる<br>→ 合計でコンテナをはみ出す'; },
+      check() { checkScroll(document.getElementById('mc-demo'), 'mc-ind'); },
+      explain: 'padding と同様に、border が存在すると margin collapse の条件が崩れます。<code>transparent</code>（透明）でも効果があります。子の <code>margin-top</code> が親の内側に収まるため、外側の scrollHeight が減少しスクロールが解消されます。'
+    },
+    5: {
+      apply() { document.getElementById('mc-parent').style.display = 'flex'; document.getElementById('mc-parent').style.flexDirection = 'column'; document.getElementById('mc-child').innerHTML = '解決5: 親に display:flex → flex item に margin collapse は発生しない ✓'; },
+      reset() { document.getElementById('mc-parent').style.display = ''; document.getElementById('mc-parent').style.flexDirection = ''; document.getElementById('mc-child').innerHTML = '子要素（margin: 24px 12px）<br>↑ この margin-top が親の外に突き抜ける<br>→ 赤い背景の外に margin 分の空白ができる<br>→ 合計でコンテナをはみ出す'; },
+      check() { checkScroll(document.getElementById('mc-demo'), 'mc-ind'); },
+      explain: 'CSS 仕様により <strong>flex item（flex container の直接の子）には margin collapse が発生しません</strong>。親を <code>display:flex</code> にすることで子が flex item になり、<code>margin</code> が適切に親内部で計算されてスクロールが解消されます。'
+    },
+    6: {
+      apply() { document.getElementById('mc-child').style.margin = '0 12px'; document.getElementById('mc-child').innerHTML = '解決6: * { margin:0 } → margin 自体を 0 に → 突き抜ける margin が存在しない ✓'; },
+      reset() { document.getElementById('mc-child').style.margin = '24px 12px'; document.getElementById('mc-child').innerHTML = '子要素（margin: 24px 12px）<br>↑ この margin-top が親の外に突き抜ける<br>→ 赤い背景の外に margin 分の空白ができる<br>→ 合計でコンテナをはみ出す'; },
+      check() { checkScroll(document.getElementById('mc-demo'), 'mc-ind'); },
+      explain: '解決1〜5は「突き抜けを防ぐ仕組みを作る」アプローチですが、解決6は<strong>「突き抜ける margin 自体をなくす」根本的解決</strong>です。<code>* { margin:0 }</code> でブラウザのデフォルト margin をリセットすれば、margin collapse の問題自体が発生しなくなります。実務で最も確実な方法です。'
+    }
+  },
+  mbot: {
+    1: {
+      apply() { document.getElementById('mbot-parent').style.display = 'flow-root'; document.getElementById('mbot-last-p').innerHTML = '解決1: 親に display:flow-root → BFC形成 → 赤い背景が margin-bottom を視覚的に封じ込め<br><small style="opacity:.7">※ scrollHeight は変わらないためスクロールは残ります（下の説明を確認）</small>'; },
+      reset() { document.getElementById('mbot-parent').style.display = ''; document.getElementById('mbot-last-p').innerHTML = '段落テキスト3（margin-bottom: 32px）← <strong>これが親の外に漏れる</strong>'; },
+      check() { checkScroll(document.getElementById('mbot-demo'), 'mbot-ind'); },
+      warn: true,
+      explain: '<code>display:flow-root</code> で BFC を作ると、末尾要素の <code>margin-bottom</code> が親の外に漏れることを視覚的に防ぎます（赤い背景が margin を包む）。<br>しかし margin 自体の大きさは変わらないため、外側の <strong>scrollHeight は変化せずスクロールが残ります</strong>。完全に解消するには解決2・3（margin 自体を 0 にする）を使用してください。'
+    },
+    2: {
+      apply() { document.getElementById('mbot-last-p').style.marginBottom = '0'; document.getElementById('mbot-last-p').innerHTML = '解決2: p:last-child { margin-bottom:0 } → 漏れるmarginが消える ✓'; },
+      reset() { document.getElementById('mbot-last-p').style.marginBottom = '32px'; document.getElementById('mbot-last-p').innerHTML = '段落テキスト3（margin-bottom: 32px）← <strong>これが親の外に漏れる</strong>'; },
+      check() { checkScroll(document.getElementById('mbot-demo'), 'mbot-ind'); },
+      explain: '末尾要素（<code>p:last-child</code>）の <code>margin-bottom</code> を 0 にすることで、漏れ出す margin 自体をなくします。原因を直接除去するアプローチで、他の要素の margin に影響を与えずに済みます。'
+    },
+    3: {
+      apply() { document.getElementById('mbot-last-p').style.marginBottom = '0'; document.getElementById('mbot-last-p').innerHTML = '解決3: * { margin:0 } → ブラウザデフォルト margin を全リセット → 漏れなし ✓'; },
+      reset() { document.getElementById('mbot-last-p').style.marginBottom = '32px'; document.getElementById('mbot-last-p').innerHTML = '段落テキスト3（margin-bottom: 32px）← <strong>これが親の外に漏れる</strong>'; },
+      check() { checkScroll(document.getElementById('mbot-demo'), 'mbot-ind'); },
+      explain: '<code>* { margin:0 }</code> でブラウザのデフォルト margin（<code>&lt;p&gt;</code> の上下 1em など）を全リセットします。<strong>全要素の margin が 0 になるため</strong>、漏れ出す margin の根本原因を消去します。⑤ と同じ理由で実務で最も確実な根本的解決策です。'
+    }
+  },
+  abs: {
+    1: {
+      apply() { const d = document.getElementById('abs-demo'); d.style.overflow = 'hidden'; document.getElementById('abs-el').textContent = 'absolute → overflow:hidden でクリップ ✓'; },
+      reset() { const d = document.getElementById('abs-demo'); d.style.overflow = 'auto'; document.getElementById('abs-el').textContent = 'absolute (bottom:-30px) はみ出し!'; },
+      check() { checkScroll(document.getElementById('abs-demo'), 'abs-ind'); },
+      explain: '<code>overflow:hidden</code> で親が absolute 子のはみ出しをクリップします。<code>position:relative</code> を持つ親が包含ブロックになっているため、<code>bottom:-30px</code> の absolute 子が包含ブロックの外に出ていた部分が非表示になり、スクロールコンテナへの影響がなくなります。'
+    },
+    2: {
+      apply() { const d = document.getElementById('abs-demo'); d.style.overflow = 'clip'; document.getElementById('abs-el').textContent = 'absolute → overflow:clip でクリップ（スクロールコンテナを作らない） ✓'; },
+      reset() { const d = document.getElementById('abs-demo'); d.style.overflow = 'auto'; document.getElementById('abs-el').textContent = 'absolute (bottom:-30px) はみ出し!'; },
+      check() { checkScroll(document.getElementById('abs-demo'), 'abs-ind'); },
+      explain: '<code>overflow:clip</code> は <code>overflow:hidden</code> と同様にクリップしますが、<strong>スクロールコンテナ（scroll container）を作りません</strong>。JS の <code>scrollTo()</code> や <code>scrollBy()</code> が効かなくなるため、プログラムからのスクロール操作も完全に防ぎたい場合に有効です。'
+    },
+    3: {
+      apply() { document.getElementById('abs-el').style.bottom = '0'; document.getElementById('abs-el').textContent = 'absolute (bottom:0) → 親の内側に収まる ✓'; },
+      reset() { document.getElementById('abs-el').style.bottom = '-30px'; document.getElementById('abs-el').textContent = 'absolute (bottom:-30px) はみ出し!'; },
+      check() { checkScroll(document.getElementById('abs-demo'), 'abs-ind'); },
+      explain: 'negative 値（<code>bottom:-30px</code>）を使わず <code>bottom:0</code> など包含ブロック内に収まる値に調整する方法です。はみ出しを隠すのではなく<strong>はみ出さないよう位置を設計する</strong>ため、コンテンツが意図通り表示されます。absolute 要素の配置設計を見直す際の根本的なアプローチです。'
+    }
+  },
+  ovx: {
+    1: {
+      apply() { const d = document.getElementById('ovx-demo'); d.style.overflowX = 'hidden'; d.style.overflowY = 'hidden'; document.getElementById('ovx-label').textContent = '解決1: overflow-x:hidden + overflow-y:hidden（両方明示） ✓'; },
+      reset() { const d = document.getElementById('ovx-demo'); d.style.overflowX = 'hidden'; d.style.overflowY = ''; document.getElementById('ovx-label').textContent = 'overflow-x: hidden (overflow-y は auto になる)'; },
+      check() { checkScroll(document.getElementById('ovx-demo'), 'ovx-ind'); },
+      explain: 'CSS 仕様で <code>overflow-x:hidden</code> のみ指定すると <code>overflow-y</code> が暗黙的に <code>auto</code> に変換されます。<code>overflow-y:hidden</code> を明示することでこの暗黙変換を上書きし、縦方向のコンテンツをクリップします（縦スクロールバーが出ない）。'
+    },
+    2: {
+      apply() { const d = document.getElementById('ovx-demo'); d.style.overflow = 'hidden'; document.getElementById('ovx-label').textContent = '解決2: overflow:hidden（ショートハンド） ✓'; },
+      reset() { const d = document.getElementById('ovx-demo'); d.style.overflow = ''; d.style.overflowX = 'hidden'; document.getElementById('ovx-label').textContent = 'overflow-x: hidden (overflow-y は auto になる)'; },
+      check() { checkScroll(document.getElementById('ovx-demo'), 'ovx-ind'); },
+      explain: '<code>overflow:hidden</code> ショートハンドで縦横両方向を一括指定します。個別指定による暗黙変換の余地がなく、縦横ともに確実にクリップされます。最も簡潔で意図が明確な書き方です。'
+    },
+    3: {
+      apply() { const d = document.getElementById('ovx-demo'); d.style.overflow = 'clip'; document.getElementById('ovx-label').textContent = '解決3: overflow:clip（scroll container を作らない） ✓'; },
+      reset() { const d = document.getElementById('ovx-demo'); d.style.overflow = ''; d.style.overflowX = 'hidden'; document.getElementById('ovx-label').textContent = 'overflow-x: hidden (overflow-y は auto になる)'; },
+      check() { checkScroll(document.getElementById('ovx-demo'), 'ovx-ind'); },
+      explain: '<code>overflow:clip</code> はクリップしますが <code>overflow:hidden</code> と違い<strong>スクロールコンテナを作りません</strong>（JS の <code>scrollTo()</code> 等が効かない）。また <code>overflow-clip-margin</code> プロパティでクリップ境界を要素外まで広げることもできます。より厳密に「スクロール不可」を保証したい場合に有効です。'
+    }
+  },
+  inl: {
+    1: {
+      apply() { const d = document.getElementById('inl-demo'); d.style.display = 'flex'; document.getElementById('inl-label').textContent = '解決1: display:flex → 空白問題なし → 1行に収まる ✓'; },
+      reset() { const d = document.getElementById('inl-demo'); d.style.display = ''; document.getElementById('inl-label').textContent = 'inline-block × 2（50% + 50% + 空白 = 折り返し）'; },
+      check() { requestAnimationFrame(() => checkScroll(document.getElementById('inl-demo'), 'inl-ind')); }
+    },
+    2: {
+      apply() {
+        const d = document.getElementById('inl-demo');
+        const a = document.getElementById('inl-a');
+        const b = document.getElementById('inl-b');
+        d.style.fontSize = '0';
+        a.style.fontSize = '11px';
+        b.style.fontSize = '11px';
+        document.getElementById('inl-label').textContent = '解決2: 親 font-size:0 → 空白文字が消えて折り返しなし ✓';
+      },
+      reset() {
+        const d = document.getElementById('inl-demo');
+        const a = document.getElementById('inl-a');
+        const b = document.getElementById('inl-b');
+        d.style.fontSize = '';
+        a.style.fontSize = '';
+        b.style.fontSize = '';
+        document.getElementById('inl-label').textContent = 'inline-block × 2（50% + 50% + 空白 = 折り返し）';
+      },
+      check() { requestAnimationFrame(() => checkScroll(document.getElementById('inl-demo'), 'inl-ind')); }
+    },
+    3: {
+      apply() {
+        const d = document.getElementById('inl-demo');
+        const a = document.getElementById('inl-a');
+        const b = document.getElementById('inl-b');
+        // Remove whitespace text node between a and b
+        let node = a.nextSibling;
+        while (node && node !== b) {
+          const next = node.nextSibling;
+          if (node.nodeType === 3) { node._inlRemoved = true; node.parentNode.removeChild(node); }
+          node = next;
+        }
+        document.getElementById('inl-label').textContent = '解決3: HTMLコメントで空白除去 → 折り返しなし ✓';
+      },
+      reset() {
+        const d = document.getElementById('inl-demo');
+        const a = document.getElementById('inl-a');
+        const b = document.getElementById('inl-b');
+        // Re-insert whitespace between a and b
+        const textNode = document.createTextNode('\n        ');
+        d.insertBefore(textNode, b);
+        document.getElementById('inl-label').textContent = 'inline-block × 2（50% + 50% + 空白 = 折り返し）';
+      },
+      check() { requestAnimationFrame(() => checkScroll(document.getElementById('inl-demo'), 'inl-ind')); }
+    }
+  },
+  img: {
+    1: {
+      apply() { document.getElementById('img-el').style.display = 'block'; },
+      reset() { document.getElementById('img-el').style.display = ''; },
+      check() { checkScroll(document.getElementById('img-demo'), 'img-ind'); }
+    },
+    2: {
+      apply() { document.getElementById('img-el').style.verticalAlign = 'bottom'; },
+      reset() { document.getElementById('img-el').style.verticalAlign = ''; },
+      check() { checkScroll(document.getElementById('img-demo'), 'img-ind'); }
+    },
+    3: {
+      apply() { document.getElementById('img-wrapper').style.lineHeight = '0'; },
+      reset() { document.getElementById('img-wrapper').style.lineHeight = ''; },
+      check() { checkScroll(document.getElementById('img-demo'), 'img-ind'); }
+    },
+    4: {
+      apply() { document.getElementById('img-wrapper').style.display = 'flex'; },
+      reset() { document.getElementById('img-wrapper').style.display = ''; },
+      check() { checkScroll(document.getElementById('img-demo'), 'img-ind'); }
+    }
+  },
+  fmin: {
+    1: {
+      apply() {
+        const item = document.getElementById('fmin-item');
+        item.style.minWidth = '0';
+        item.textContent = '解決1: min-width:0 → flex item が縮めるようになり溢れない ✓ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA_VERY_LONG_UNBREAKABLE_STRING_THAT_ABSOLUTELY_POSITIVELY_CANNOT_WRAP_UNDER_ANY_CIRCUMSTANCES_WHATSOEVER_OVERFLOW_EXPECTED';
+      },
+      reset() {
+        const item = document.getElementById('fmin-item');
+        item.style.minWidth = '';
+        item.textContent = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA_VERY_LONG_UNBREAKABLE_STRING_THAT_ABSOLUTELY_POSITIVELY_CANNOT_WRAP_UNDER_ANY_CIRCUMSTANCES_WHATSOEVER_OVERFLOW_EXPECTED';
+      },
+      check() { checkScroll(document.getElementById('fmin-demo'), 'fmin-ind'); },
+      explain: 'flex item のデフォルト <code>min-width: auto</code> はコンテンツ幅を下限として保護するため、どれだけ親が狭くても item が縮みません。<code>min-width: 0</code> を指定すると下限がゼロになり、flex の <code>flex-shrink</code> が正常に機能して item が縮小できるようになります。'
+    },
+    2: {
+      apply() {
+        const item = document.getElementById('fmin-item');
+        item.style.overflow = 'hidden';
+        item.textContent = '解決2: overflow:hidden → 溢れた部分を切り取り ✓ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA_VERY_LONG_UNBREAKABLE_STRING_THAT_ABSOLUTELY_POSITIVELY_CANNOT_WRAP_UNDER_ANY_CIRCUMSTANCES_WHATSOEVER_OVERFLOW_EXPECTED';
+      },
+      reset() {
+        const item = document.getElementById('fmin-item');
+        item.style.overflow = '';
+        item.textContent = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA_VERY_LONG_UNBREAKABLE_STRING_THAT_ABSOLUTELY_POSITIVELY_CANNOT_WRAP_UNDER_ANY_CIRCUMSTANCES_WHATSOEVER_OVERFLOW_EXPECTED';
+      },
+      check() { checkScroll(document.getElementById('fmin-demo'), 'fmin-ind'); },
+      explain: '<code>overflow: hidden</code> を flex item 自身に設定すると、<code>min-width</code> が <code>0</code> に強制される副作用があります（仕様上 overflow:visible 以外の値は min-width:auto を無効化）。加えてはみ出したコンテンツが切り取られるため、親コンテナが横スクロールしなくなります。'
+    },
+    3: {
+      apply() {
+        const item = document.getElementById('fmin-item');
+        item.style.wordBreak = 'break-all';
+        item.textContent = '解決3: word-break:break-all → 長い文字列を強制折り返し ✓ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA_VERY_LONG_UNBREAKABLE_STRING_THAT_ABSOLUTELY_POSITIVELY_CANNOT_WRAP_UNDER_ANY_CIRCUMSTANCES_WHATSOEVER_OVERFLOW_EXPECTED';
+      },
+      reset() {
+        const item = document.getElementById('fmin-item');
+        item.style.wordBreak = '';
+        item.textContent = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA_VERY_LONG_UNBREAKABLE_STRING_THAT_ABSOLUTELY_POSITIVELY_CANNOT_WRAP_UNDER_ANY_CIRCUMSTANCES_WHATSOEVER_OVERFLOW_EXPECTED';
+      },
+      check() { checkScroll(document.getElementById('fmin-demo'), 'fmin-ind'); },
+      explain: '<code>word-break: break-all</code> は単語や記号の区切りに関係なく、コンテナ幅に達した時点で強制的に改行します。長い URL や連続した英数字が折り返せるようになるため、コンテンツ幅が親を超えなくなり溢れが解消します。テキストが途切れる見た目になりますが、省略ではなく折り返しのため情報は失われません。'
+    }
+  }
+};
+
+function applyFix(id, num) {
+  const btn = document.getElementById(`btn-${id}-s${num}`);
+  const isActive = fixStates[id] === num;
+  const explainEl = document.getElementById(`${id}-explain`);
+  // Deactivate current active fix for this demo
+  if (fixStates[id]) {
+    const prev = fixStates[id];
+    const prevBtn = document.getElementById(`btn-${id}-s${prev}`);
+    if (prevBtn) prevBtn.classList.remove('on');
+    if (solutionFixes[id] && solutionFixes[id][prev]) {
+      solutionFixes[id][prev].reset();
+      solutionFixes[id][prev].check();
+    }
+    fixStates[id] = 0;
+  }
+  if (explainEl) { explainEl.style.display = 'none'; explainEl.className = 'info-box ok'; }
+  if (!isActive) {
+    fixStates[id] = num;
+    if (btn) btn.classList.add('on');
+    const fix = solutionFixes[id] && solutionFixes[id][num];
+    if (fix) {
+      fix.apply();
+      fix.check();
+      if (explainEl && fix.explain) {
+        explainEl.innerHTML = '💡 <strong>なぜ有効か：</strong> ' + fix.explain;
+        if (fix.warn) explainEl.className = 'info-box warn';
+        explainEl.style.display = '';
+      }
+    }
+  }
+}
+
+/* ===== Generic toggle ===== */
+const demoStates = {};
+function toggleDemo(id) {
+  // Reset any active solution button for this demo
+  if (fixStates[id]) {
+    const prev = fixStates[id];
+    const prevBtn = document.getElementById(`btn-${id}-s${prev}`);
+    if (prevBtn) prevBtn.classList.remove('on');
+    if (solutionFixes[id] && solutionFixes[id][prev]) solutionFixes[id][prev].reset();
+    fixStates[id] = 0;
+  }
+  const btn = document.getElementById('btn-' + id);
+  const on = demoStates[id] = !demoStates[id];
+  btn.classList.toggle('on', on);
+  const fixes = {
+    bs() {
+      const el = document.getElementById('bs-broken');
+      const child = document.getElementById('bs-broken-child');
+      el.style.boxSizing = on ? 'border-box' : 'content-box';
+      if (child) {
+        child.style.height = on ? '100%' : '150px';
+        child.textContent = on ? 'border-box: height:120px = padding 込みでぴったり ✓' : 'コンテンツ150px > content-box高さ120px → 溢れてスクロール';
+      }
+      btn.textContent = on ? '修正 ON — content-box に戻す' : '修正 OFF — border-box を適用する';
+      requestAnimationFrame(() => {
+        document.getElementById('bs-broken-m').textContent = `実際の高さ: ${el.offsetHeight}px`;
+        checkScroll(el, 'bs-broken-ind');
+      });
+    },
+    pvh() {
+      const child = document.getElementById('pvh-child');
+      child.style.margin = on ? '0' : '10px 0';
+      child.textContent = on ? '子: height:100% + margin:0 = ピッタリ' : '子: height:100% + margin:10px = はみ出す';
+      btn.textContent = on ? '修正 ON — margin を元に戻す' : '修正 OFF — 子のmarginを削除';
+      checkScroll(document.getElementById('pvh-demo'), 'pvh-ind');
+    },
+    bvh() {
+      const el = document.getElementById('bvh-demo');
+      const child = document.getElementById('bvh-child');
+      el.style.boxSizing = on ? 'border-box' : 'content-box';
+      if (child) {
+        child.style.height = on ? '100%' : '140px';
+        child.textContent = on ? 'border-box: border 込みで120px ぴったり ✓' : 'コンテンツ140px > content-area 120px → borderの6px分溢れる';
+      }
+      btn.textContent = on ? '修正 ON — content-box に戻す' : '修正 OFF — border-box または outline に変更';
+      requestAnimationFrame(() => {
+        document.getElementById('bvh-m').textContent = `実際の高さ: ${el.offsetHeight}px`;
+        checkScroll(el, 'bvh-ind');
+      });
+    },
+    bm() {
+      const el = document.getElementById('bm-demo');
+      el.style.padding = on ? '0' : '8px';
+      btn.textContent = on ? '修正 ON — margin: 8px を元に戻す' : '修正 OFF — body { margin: 0 } を適用';
+      checkScroll(el, 'bm-ind');
+    },
+    mc() {
+      const child = document.getElementById('mc-child');
+      const label = document.getElementById('mc-live-label');
+      if (child) {
+        child.style.margin = on ? '0 12px' : '24px 12px';
+        child.innerHTML = on
+          ? '* { margin: 0 } 適用後: margin = 0 → 突き抜けなし → スクロールなし ✓'
+          : '子要素（margin: 24px 12px）<br>↑ この margin-top が親の外に突き抜ける<br>→ 赤い背景の外に margin 分の空白ができる<br>→ 合計でコンテナをはみ出す';
+      }
+      if (label) label.textContent = on
+        ? '* { margin: 0 } 適用後 → margin が 0 → スクロールなし'
+        : '親に border/padding なし → 子のmarginが突き抜ける';
+      btn.textContent = on ? '修正 ON — margin を元に戻す' : '修正 OFF — * { margin: 0 } を適用（モダンリセット）';
+      checkScroll(document.getElementById('mc-demo'), 'mc-ind');
+    },
+    mbot() {
+      const lastP = document.getElementById('mbot-last-p');
+      const label = document.getElementById('mbot-live-label');
+      if (lastP) {
+        lastP.style.marginBottom = on ? '0' : '32px';
+        lastP.innerHTML = on
+          ? '段落テキスト3（margin-bottom: 0）← * { margin: 0 } 適用後 → 漏れなし ✓'
+          : '段落テキスト3（margin-bottom: 32px）← <strong>これが親の外に漏れる</strong>';
+      }
+      if (label) label.textContent = on
+        ? '* { margin: 0 } 適用後 → margin-bottom が 0 → スクロールなし'
+        : '最後の <p> の margin-bottom が漏れる';
+      btn.textContent = on ? '修正 ON — margin-bottom を元に戻す' : '修正 OFF — * { margin: 0 } を適用（モダンリセット）';
+      checkScroll(document.getElementById('mbot-demo'), 'mbot-ind');
+    },
+    mh() {
+      const sandbox = document.getElementById('mh-demo');
+      const parent = document.getElementById('mh-parent');
+      const child = document.getElementById('mh-child');
+      const label = document.getElementById('mh-live-label');
+      if (on) {
+        // Fixed: parent uses height:100% (=sandbox 80px) + flex → child flex:1 fills it
+        parent.style.minHeight = '';
+        parent.style.height = '100%';
+        parent.style.display = 'flex';
+        parent.style.flexDirection = 'column';
+        child.style.height = '';
+        child.style.flex = '1';
+        child.textContent = '子: flex:1 → 親 height:100%(=外枠80px) にぴったり → スクロールなし ✓';
+        if (label) label.textContent = '修正後: 親 height:100% + flex / 子 flex:1 → 外枠にぴったり';
+      } else {
+        // Broken: parent has min-height:120px → overflows sandbox 80px
+        parent.style.minHeight = '120px';
+        parent.style.height = '';
+        parent.style.display = '';
+        parent.style.flexDirection = '';
+        child.style.height = '100%';
+        child.style.flex = '';
+        child.innerHTML = '子: height:100% → min-height からは取得できない → auto ≈ 30px<br>親の min-height:120px &gt; 外枠 80px → SCROLL!';
+        if (label) label.textContent = '外枠(height:80px) / 親(min-height:120px) / 子(height:100%) → 親が外枠を超えてSCROLL';
+      }
+      btn.textContent = on ? '修正 ON — min-height に戻す' : '修正 OFF — flexbox で解決する';
+      checkScroll(sandbox, 'mh-ind');
+    },
+    calc() {
+      const container = document.getElementById('calc-demo');
+      const children = document.getElementById('calc-children');
+      if (on) {
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column';
+        children.style.display = 'contents';
+        children.querySelectorAll(':scope > div').forEach(d => {
+          d.style.height = '';
+          d.style.flex = '1';
+        });
+      } else {
+        container.style.display = '';
+        container.style.flexDirection = '';
+        children.style.display = '';
+        const divs = children.querySelectorAll(':scope > div');
+        divs.forEach(d => { d.style.height = 'calc(121px / 3)'; d.style.flex = ''; });
+      }
+      btn.textContent = on ? '修正 ON — calc() に戻す' : '修正 OFF — flex:1 で均等分割する';
+      checkScroll(container, 'calc-ind');
+    },
+    abs() {
+      const el = document.getElementById('abs-demo');
+      el.style.overflow = on ? 'hidden' : 'auto';
+      btn.textContent = on ? '修正 ON — overflow:auto に戻す' : '修正 OFF — 親に overflow:hidden を適用';
+      checkScroll(el, 'abs-ind');
+    },
+    neg() {
+      const box = document.getElementById('neg-box');
+      const label = document.getElementById('neg-live-label');
+      box.style.marginBottom = on ? '0' : '40px';
+      box.textContent = on
+        ? 'margin-bottom: 0 → スクロールなし ✓'
+        : 'margin-bottom: 40px（後続を40px押し下げる → overflow!）';
+      if (label) label.textContent = on
+        ? '* { margin: 0 } 適用後 → margin が 0 → スクロールなし'
+        : 'margin-bottom: 40px で後続要素が押し下げられてSCROLL';
+      btn.textContent = on ? '修正 ON — margin-bottom を元に戻す' : '修正 OFF — * { margin: 0 } を適用（モダンリセット）';
+      checkScroll(document.getElementById('neg-demo'), 'neg-ind');
+    },
+    ovx() {
+      const el = document.getElementById('ovx-demo');
+      const label = document.getElementById('ovx-label');
+      if (on) {
+        el.style.overflowY = 'hidden';
+        label.textContent = 'overflow-x: hidden + overflow-y: hidden（修正済み）';
+      } else {
+        el.style.overflowY = '';
+        label.textContent = 'overflow-x: hidden (overflow-y は auto になる)';
+      }
+      btn.textContent = on ? '修正 ON — overflow-y: hidden を外す' : '修正 OFF — overflow-y: hidden も追加';
+      checkScroll(el, 'ovx-ind');
+    },
+    fmin() {
+      const item = document.getElementById('fmin-item');
+      item.style.minWidth = on ? '0' : '';
+      btn.textContent = on ? '修正 ON — min-width:auto に戻す' : '修正 OFF — min-width: 0 を適用';
+      checkScroll(document.getElementById('fmin-demo'), 'fmin-ind');
+    },
+    fcol() {
+      const main = document.getElementById('fcol-main');
+      main.style.minHeight = on ? '0' : '';
+      main.style.minWidth = on ? '0' : '';
+      main.style.overflow = on ? 'auto' : '';
+      btn.textContent = on ? '修正 ON — min-height/width: auto に戻す' : '修正 OFF — min-height: 0 + min-width: 0 を適用';
+      checkScroll(document.getElementById('fcol-demo'), 'fcol-ind');
+    },
+    grid() {
+      const el = document.getElementById('grid-demo');
+      el.style.gridAutoRows = on ? 'minmax(0, 1fr)' : 'auto';
+      btn.textContent = on ? '修正 ON — auto に戻す' : '修正 OFF — minmax() + overflow を適用';
+      checkScroll(el, 'grid-ind');
+    },
+    inl() {
+      const demo = document.getElementById('inl-demo');
+      const label = document.getElementById('inl-label');
+      if (on) {
+        demo.style.display = 'flex';
+        label.textContent = 'display: flex（空白問題なし → 1行に収まる）';
+      } else {
+        demo.style.display = '';
+        label.textContent = 'inline-block × 2（50% + 50% + 空白 = 折り返し）';
+      }
+      btn.textContent = on ? '修正 ON — inline-block に戻す' : '修正 OFF — flexbox に変更';
+      requestAnimationFrame(() => checkScroll(demo, 'inl-ind'));
+    },
+    img() {
+      const el = document.getElementById('img-el');
+      el.style.display = on ? 'block' : '';
+      btn.textContent = on ? '修正 ON — inline に戻す' : '修正 OFF — display: block を適用';
+      checkScroll(document.getElementById('img-demo'), 'img-ind');
+    },
+  };
+  if (fixes[id]) fixes[id]();
+}
+
+/* ===== vh units demo ===== */
+function checkVhUnits() {
+  const el = document.getElementById('vh-measure');
+  const test = document.createElement('div');
+  test.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;';
+  document.body.appendChild(test);
+  test.style.height = '100vh';
+  const vh = test.offsetHeight;
+  test.style.height = '100svh';
+  const svh = test.offsetHeight;
+  test.style.height = '100dvh';
+  const dvh = test.offsetHeight;
+  test.style.height = '100lvh';
+  const lvh = test.offsetHeight;
+  document.body.removeChild(test);
+  el.innerHTML = `100vh = ${vh}px / 100svh = ${svh}px / 100dvh = ${dvh}px / 100lvh = ${lvh}px / window.innerHeight = ${window.innerHeight}px`;
+}
+
+/* ===== Grid item add ===== */
+let gridCount = 3;
+function addGridItem() {
+  gridCount++;
+  const colors = ['#dbeafe','#dcfce7','#fef3c7','#fce7f3'];
+  const borders = ['#3b82f6','#22c55e','#f59e0b','#ec4899'];
+  const textColors = ['#1e40af','#166534','#92400e','#9d174d'];
+  const i = (gridCount - 1) % 4;
+  const el = document.createElement('div');
+  el.style.cssText = `background:${colors[i]};border:1px solid ${borders[i]};display:flex;align-items:center;justify-content:center;border-radius:4px;font-family:var(--mono);font-size:11px;color:${textColors[i]}`;
+  el.textContent = `暗黙 row ${gridCount}`;
+  document.getElementById('grid-demo').appendChild(el);
+  checkScroll(document.getElementById('grid-demo'), 'grid-ind');
+}
+function resetGridItems() {
+  gridCount = 3;
+  const c = document.getElementById('grid-demo');
+  const ind = c.querySelector('.scroll-indicator');
+  c.innerHTML = '';
+  c.appendChild(ind);
+  const items = [
+    {bg:'#dbeafe',b:'#3b82f6',c:'#1e40af',t:'明示 row 1'},
+    {bg:'#dcfce7',b:'#22c55e',c:'#166534',t:'明示 row 2'},
+    {bg:'#fef3c7',b:'#f59e0b',c:'#92400e',t:'暗黙 row 3 (auto)'},
+  ];
+  items.forEach(it => {
+    const d = document.createElement('div');
+    d.style.cssText = `background:${it.bg};border:1px solid ${it.b};display:flex;align-items:center;justify-content:center;border-radius:4px;font-family:var(--mono);font-size:11px;color:${it.c}`;
+    d.textContent = it.t;
+    c.appendChild(d);
+  });
+  checkScroll(c, 'grid-ind');
+}
+
+/* ===== Init all scroll indicators ===== */
+requestAnimationFrame(() => {
+  const checks = [
+    ['bs-broken','bs-broken-ind'], ['pvh-demo','pvh-ind'], ['bvh-demo','bvh-ind'],
+    ['bm-demo','bm-ind'], ['mc-demo','mc-ind'], ['mbot-demo','mbot-ind'],
+    ['mh-demo','mh-ind'], ['calc-demo','calc-ind'], ['abs-demo','abs-ind'],
+    ['neg-demo','neg-ind'], ['ovx-demo','ovx-ind'], ['fmin-demo','fmin-ind'],
+    ['fcol-demo','fcol-ind'], ['grid-demo','grid-ind'], ['inl-demo','inl-ind'], ['img-demo','img-ind'],
+  ];
+  checks.forEach(([elId, indId]) => {
+    const el = document.getElementById(elId);
+    if (el) checkScroll(el, indId);
+  });
+  const bs = document.getElementById('bs-broken');
+  if (bs) document.getElementById('bs-broken-m').textContent = `実際の高さ: ${bs.offsetHeight}px (指定: 120px + padding: 40px)`;
+  const bsf = document.getElementById('bs-fixed');
+  if (bsf) document.getElementById('bs-fixed-m').textContent = `実際の高さ: ${bsf.offsetHeight}px (指定: 120px 込み)`;
+  const bvh = document.getElementById('bvh-demo');
+  if (bvh) document.getElementById('bvh-m').textContent = `実際の高さ: ${bvh.offsetHeight}px (指定: 120px + border: 6px)`;
+});
+</script>
+</body>
+</html>
