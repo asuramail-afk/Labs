@@ -171,6 +171,12 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); line-he
   .hero h1 { font-size:1.6rem; }
   .toc-grid { grid-template-columns:1fr; }
 }
+.usecase-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25); border-left:3px solid var(--accent3); border-radius:7px; padding:12px 14px; margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em; color:var(--accent3); font-weight:700; margin-bottom:6px; }
+.usecase-list { margin-left:20px; margin-bottom:10px; }
+.usecase-list li { margin-bottom:4px; }
+.usecase-trigger { background:rgba(0,92,197,.05); border-left:3px solid var(--accent); padding:8px 12px; border-radius:5px; font-size:.82rem; color:#003d8f; margin-top:8px; }
+.usecase-trigger ul { margin:4px 0 0 20px; }
   </style>
 </head>
 <body>
@@ -1209,121 +1215,244 @@ customElements.<span class="fn">define</span>(<span class="str">'alert-banner'</
   const LAB_META = {
     lab0: {
       info:  { type:'info', html:'📘 <strong>DOCTYPE宣言</strong>: HTML5 では <code>&lt;!DOCTYPE html&gt;</code> の1行だけで Standards Mode が有効化される。HTML4 の長い DOCTYPE は不要。' },
+      usecase: {
+        scenes: ['社内管理ツールの HTML ファイルを新規作成するとき、必ず1行目に記述する',
+                 'レガシーシステムから引き継いだ HTML を修正する際、DOCTYPE が HTML4 や XHTML 形式になっていたら HTML5 に書き換える',
+                 'CMS（WordPress 等）のカスタムテンプレートを作るとき、DOCTYPE が自動出力されているか確認する',
+                 'メール配信用 HTML テンプレートでは DOCTYPE 省略が多い慣習があるが、Webページでは必須'],
+        triggers: ['ブラウザの DevTools で "BackCompat" モードと表示される', 'CSSのボックスモデルが期待と異なる（パディング計算がおかしい）']
+      },
       verify:{ before:'DOCTYPE なし → DevTools の Document Mode を確認すると "BackCompat"', after:'DOCTYPE あり → Document Mode が "CSS1Compat" に変わる' },
-      check: ['① DevTools Console で <code>document.compatMode</code> を実行 → "CSS1Compat" ならOK',
-              '② width:200px + padding:20px の要素を作り、実際の描画幅が 240px か確認',
-              '③ HTML Validator (validator.w3.org) でエラーがないことを確認']
+      check: ['① このページを <strong>右クリック → ページのソースを表示</strong> し、1行目に <code>&lt;!DOCTYPE html&gt;</code> があることを確認',
+              '② <strong>Ctrl+U（または Cmd+U）</strong> でソース表示後、<code>DOCTYPE</code> の文字列が1行目以外にないことを確認',
+              '③ ブラウザの <strong>アドレスバー左のサイトアイコン</strong> をクリックし、接続情報に警告がないことを確認',
+              '④ <a href="https://validator.w3.org/#validate_by_input" target="_blank">W3C Validator</a> にこのページの HTML を貼り付けて <strong>エラー0件</strong> を確認']
     },
     lab1: {
       info:  { type:'info', html:'📘 <strong>charset は先頭1024バイト以内</strong>に記述しないと、ブラウザが文字コードを誤判定するリスクがある。viewport 未設定だとモバイルで 980px 幅レンダリングになる。' },
-      check: ['① DevTools → Network → ページをリロード → Response Headers で Content-Type の charset を確認',
-              '② DevTools → Elements → &lt;head&gt; 内の meta タグ順序を確認',
-              '③ viewport meta を削除してモバイル表示がどう変わるか確認',
-              '④ Lighthouse で「Document does not have a meta description」警告を確認']
+      usecase: {
+        scenes: ['多言語対応サイトを構築するとき、文字化けを防ぐために charset を最優先で設定する',
+                 'スマートフォン対応ページを作るとき、viewport を設定しないとモバイルで縮小表示になる',
+                 'ページタイトルを SEO 対策として最適化する際に meta タグをまとめて整備する',
+                 '社内向け日本語フォームページで文字化けが発生した場合のデバッグ起点として確認する'],
+        triggers: ['スマホで見るとページが小さく表示されて拡大しないと読めない', '日本語が文字化けして表示される']
+      },
+      check: ['① <strong>Ctrl+U</strong> でソース表示し、<code>&lt;meta charset="UTF-8"&gt;</code> が <code>&lt;head&gt;</code> の <strong>先頭付近（1024バイト以内）</strong> にあることを目視確認',
+              '② ソース表示で <code>&lt;meta name="viewport"</code> の記述があることを確認',
+              '③ ブラウザの <strong>ズーム倍率を 50% に変更</strong>（Ctrl+マイナス）し、文字やレイアウトが縮小されて読めることを確認（viewport 設定が有効な証拠）',
+              '④ <strong>ブラウザのウィンドウ幅を 375px 程度に縮小</strong>し、テキストがはみ出さず折り返されることを確認']
     },
     lab2: {
       info:  { type:'info', html:'📘 <strong>main 要素は1ページに1つだけ</strong>。複数の article は OK。section には必ず見出し（h2-h6）を入れること（W3C 仕様推奨）。' },
-      check: ['① DevTools → Accessibility タブ → ランドマークツリーで banner / main / contentinfo が表示されるか確認',
-              '② スクリーンリーダー（NVDA / VoiceOver）で「ランドマーク一覧」を開き、正しくリスト化されるか確認',
-              '③ Chrome拡張「Landmarks」でページ上のランドマーク領域がハイライトされるか確認']
+      usecase: {
+        scenes: ['ブログ・ニュースサイトで記事一覧ページを構築するとき、各記事を article でマークアップする',
+                 'コーポレートサイトのトップページに header／main／footer の骨格を作る',
+                 'スクリーンリーダー対応が必要なサービスで、ランドマークナビゲーションを提供する',
+                 '社内ポータルの管理ページで nav・aside を使ってサイドバーと本文を明確に分ける'],
+        triggers: ['スクリーンリーダーでページ構造をジャンプ読みしたい', 'SEO で見出し階層を最適化したい']
+      },
+      check: ['① <strong>Tab キー</strong> でページ内をフォーカス移動し、ヘッダー・本文・フッターの各エリアに自然に到達できることを確認',
+              '② <strong>Ctrl+U</strong> でソース表示し、<code>&lt;header&gt;</code>/<code>&lt;main&gt;</code>/<code>&lt;footer&gt;</code> タグが1か所ずつ存在することを確認',
+              '③ ソース表示で各 <code>&lt;section&gt;</code> 内に <code>&lt;h2&gt;</code> 〜 <code>&lt;h6&gt;</code> の見出しが含まれることを確認',
+              '④ <strong>Ctrl+F でページ内検索</strong> し、「main」「article」「section」の出現回数を確認（<code>&lt;main&gt;</code> は1件のみであるべき）']
     },
     lab3: {
       info:  { type:'info', html:'📘 <strong>CSS は常にレンダリングブロック</strong>。JS は配置と属性次第。<code>defer</code> は DOM 順序を保証するが <code>async</code> は保証しない点に注意。' },
+      usecase: {
+        scenes: ['ページ表示速度の改善（LCP短縮）を求められたとき、script タグの配置と defer/async を見直す',
+                 '複数の JS ファイルを読み込む SPA 以外のページで、読み込み順序に依存するライブラリを defer で安全に管理する',
+                 '外部 CDN のスクリプト（広告・分析タグ）に async を付けてメインコンテンツ表示をブロックしないようにする',
+                 'Core Web Vitals の FID/INP 改善を求められたとき、レンダリングブロックスクリプトを特定する'],
+        triggers: ['ページを開いた瞬間にスタイルなしの HTML が一瞬見える（FOUC）', 'Lighthouse で「レンダーブロックリソースの除外」が指摘される']
+      },
       verify:{ before:'script（属性なし）を &lt;head&gt; に配置 → FOUC（スタイル適用前の一瞬表示）や白画面が発生', after:'CSS → preload → defer の順に配置 → First Paint が高速化し FOUC 消滅' },
-      check: ['① DevTools → Network → Waterfall で CSS/JS の読込タイミングを比較',
-              '② Performance タブで FCP (First Contentful Paint) の数値を確認',
-              '③ defer 付き script の実行順序が HTML 記述順と一致するか console.log で確認',
-              '④ async 付き script 2本の実行順序がランダムになることを確認']
+      check: ['① <strong>Ctrl+Shift+R（強制リロード）</strong> してページが一瞬白くなったり文字が崩れた状態で表示される（FOUC）がないことを目視確認',
+              '② <strong>ブラウザのキャッシュをクリア</strong>（Ctrl+Shift+Delete）してから再読み込みし、スタイルが初回から正しく適用されることを確認',
+              '③ <strong>Ctrl+U</strong> でソース表示し、<code>&lt;link rel="stylesheet"&gt;</code> が <code>&lt;script&gt;</code> より前に記述されていることを確認',
+              '④ ソース表示で <code>defer</code> 属性が全 <code>&lt;script&gt;</code> タグに付いていることを確認']
     },
     lab4: {
       info:  { type:'info', html:'📘 <strong>novalidate 属性</strong>をフォームに付けると HTML5 ネイティブバリデーションを無効化でき、JS でカスタムバリデーションを実装する際に使う。' },
-      check: ['① label をクリックして対応する input にフォーカスが移るか確認',
-              '② スクリーンリーダーで fieldset/legend が「グループ名」として読み上げられるか確認',
-              '③ autocomplete 属性を設定し、ブラウザが適切な自動入力候補を表示するか確認',
-              '④ Tab キーでフォーカス順序が論理的に移動するか確認']
+      usecase: {
+        scenes: ['ユーザー登録フォームで名前・メール・パスワードをラベルと紐付けてアクセシビリティを確保する',
+                 'アンケートフォームで複数のチェックボックスや radio ボタンを fieldset／legend でグループ化する',
+                 'ブラウザの自動補完（autocomplete）を活用して住所・クレジットカード入力を快適にする',
+                 '問い合わせフォームで必須項目に required を付けてネイティブバリデーションを活用する'],
+        triggers: ['フォームのラベルをクリックしても入力欄にフォーカスが移らない', 'タブキーで入力欄を順番に移動できない']
+      },
+      check: ['① <strong>ラベルテキストをクリック</strong>して、対応する input/checkbox/radio にフォーカスが移ることを確認（カーソル点滅 or チェック切替）',
+              '② <strong>Tab キー</strong> でフォーカスを移動し、ラベル名→入力欄→送信ボタンの順に論理的に進むことを確認',
+              '③ <strong>名前欄・メール欄をクリック</strong>し、ブラウザの自動入力候補（オートコンプリート）が適切な種類で表示されることを確認',
+              '④ <strong>送信ボタンをクリック</strong>し、未入力の必須欄にブラウザのエラーポップアップが表示されることを確認']
     },
     lab5: {
       info:  { type:'info', html:'📘 <strong>pattern 属性は全文一致</strong>: <code>^</code> <code>$</code> が暗黙的に付くため不要。<code>title</code> 属性でパターンの説明を必ず添えること。' },
+      usecase: {
+        scenes: ['郵便番号・電話番号・社員コードなど書式が決まっている入力欄に pattern を使ってフォーマットを強制する',
+                 '会員登録フォームでメールアドレス入力の type="email" + required で二重チェックする',
+                 '数量入力欄に min/max/step を付けて不正な値の送信をブラウザ側で防ぐ',
+                 'パスワード欄に minlength を設定して8文字未満を送信できなくする'],
+        triggers: ['サーバー側バリデーションエラーが頻発している（クライアント側で事前チェックすれば減らせる）', '入力欄の書式制約をユーザーに分かりやすく伝えたい']
+      },
       verify:{ before:'required なし → 空欄でも送信可能', after:'required あり → 空欄で送信するとブラウザネイティブのエラーポップアップが表示' },
-      check: ['① 不正な値を入力して :invalid 擬似クラスが適用されるか DevTools で確認',
-              '② form.checkValidity() の戻り値を Console で確認',
-              '③ input.validationMessage でブラウザ標準メッセージを取得できるか確認',
-              '④ setCustomValidity() でカスタムメッセージが表示されるか確認']
+      check: ['① メールアドレス欄に <strong>「abc」（@なし）</strong> を入力して送信ボタンを押し、「@を含めてください」のようなブラウザエラーが表示されることを確認',
+              '② 郵便番号欄に <strong>「1234」（4桁）</strong> を入力して送信し、パターン不一致のエラーポップアップが表示されることを確認',
+              '③ <strong>必須欄（required）を空欄</strong> のまま送信して、ブラウザのバリデーションメッセージが出ることを確認',
+              '④ 全欄に<strong>正しい値</strong>を入力して送信し、エラーなく通過（フォームリセットまたは送信完了）することを確認']
     },
     lab6: {
       info:  { type:'info', html:'📘 <strong>inputmode 属性</strong>: <code>type</code> を変えずにモバイルキーボードだけを切り替えられる。例: <code>type="text" inputmode="numeric"</code> でテンキー表示。' },
-      check: ['① モバイル実機で type="email" のキーボードに @ キーがあるか確認',
-              '② type="tel" でテンキーが表示されるか確認',
-              '③ autocomplete="cc-number" でクレジットカード自動入力が動作するか確認',
-              '④ type="date" が各ブラウザでネイティブピッカーを表示するか比較確認']
+      usecase: {
+        scenes: ['EC サイトのカート画面で数量入力に inputmode="numeric" を付けてスマホでテンキーを表示する',
+                 '予約フォームの日付欄に type="date" を使い、モバイルでネイティブ日付ピッカーを呼び出す',
+                 '検索欄に type="search" を付けて iOS でキーボードに「検索」ボタンを表示する',
+                 '電話番号入力欄で type="tel" にして国際フォーマットに対応したテンキーを表示する'],
+        triggers: ['スマホでテキスト欄をタップしたときにフルキーボードが出てきて数字入力が不便', 'モバイルで日付選択の UI が使いにくいと言われる']
+      },
+      check: ['① <strong>スマートフォン実機</strong>（またはタブレット）で <code>type="email"</code> 欄をタップし、キーボードに <strong>@ キーが表示</strong> されることを確認',
+              '② 実機で <code>type="tel"</code> 欄をタップし、<strong>テンキー（数字キーボード）</strong> が表示されることを確認',
+              '③ <strong>PCのChromeで</strong> <code>type="date"</code> 欄をクリックし、ネイティブの日付ピッカーが表示されることを確認',
+              '④ <strong>別のブラウザ（Firefox / Safari）</strong> でも開き、日付ピッカーや数値入力の見た目の違いを比較確認']
     },
     lab7: {
       info:  { type:'warn', html:'⚠️ <strong>aria-hidden="true"</strong> をフォーカス可能な要素（button, a, input）に付けると、スクリーンリーダーから「見えないのにフォーカスが当たる」状態になり、重大なアクセシビリティ問題になる。' },
-      check: ['① Chrome DevTools → Accessibility タブで ARIA 属性のエラーがないか確認',
-              '② aria-live="polite" の要素内テキストを JS で変更し、VoiceOver が読み上げるか確認',
-              '③ role="tablist" のタブを矢印キーで切り替えられるか確認（キーボード操作）',
-              '④ axe DevTools 拡張で ARIA 関連の Violation が 0 件か確認']
+      usecase: {
+        scenes: ['タブ UI（切り替えタブ）を実装するとき、aria-selected と role="tab" で状態をスクリーンリーダーに伝える',
+                 'カルーセルやスライダーで非表示コンテンツに aria-hidden を付けてスクリーンリーダーの読み上げを制御する',
+                 'トースト通知や動的に変わるエラーメッセージに aria-live="polite" を付けて変更を通知する',
+                 'アイコンのみのボタン（×閉じる等）に aria-label を付けてスクリーンリーダーに操作名を伝える'],
+        triggers: ['axe DevTools や Lighthouse のアクセシビリティ監査で ARIA 関連の Violation が出る', 'キーボードだけでページ操作できない箇所がある']
+      },
+      check: ['① <strong>Tab キー</strong> でタブリストにフォーカスを当て、<strong>矢印キー（← →）</strong> でタブが切り替わることを確認',
+              '② ライブリージョン（通知エリア）の<strong>ボタンをクリック</strong>し、テキストが動的に更新されることを目視確認',
+              '③ <strong>Ctrl+U</strong> でソース表示し、<code>aria-label</code>/<code>aria-hidden</code>/<code>role</code> 属性の記述箇所を確認',
+              '④ <strong>Chrome拡張 <a href="https://chrome.google.com/webstore/detail/axe-devtools/lhdoppojpmngadmnindnejefpokejbdd" target="_blank">axe DevTools</a></strong> の無料版をインストールし「Analyze」を実行して Violations 0件を確認']
     },
     lab8: {
       info:  { type:'info', html:'📘 <strong>og:image は絶対URL必須</strong>。相対パスだとSNS側が取得できない。推奨サイズは 1200×630px。Twitter Card Validator と Facebook Debugger で事前に表示確認すること。' },
-      check: ['① https://cards-dev.twitter.com/validator で Twitter Card のプレビューを確認',
-              '② https://developers.facebook.com/tools/debug/ で OGP のプレビューを確認',
-              '③ Google Rich Results Test で JSON-LD にエラーがないか確認',
-              '④ DevTools → Elements で og:image の URL が絶対パスであることを確認']
+      usecase: {
+        scenes: ['ブログ記事や LP を SNS でシェアされたときにリッチプレビュー（画像＋タイトル）を表示させる',
+                 'ECサイトの商品ページを Twitter/X や LINE でシェアしたとき商品画像を表示させる',
+                 'JSON-LD で FAQ スキーマを追加して Google 検索結果のリッチスニペットを獲得する',
+                 '採用ページに Organization スキーマを付けて求人検索（しごと検索）に対応する'],
+        triggers: ['SNS でページをシェアすると画像が出ずテキストだけになる', 'Google Search Console でリッチリザルトが表示されないと指摘される']
+      },
+      check: ['① <strong>Ctrl+U</strong> でソース表示し、<code>&lt;meta property="og:image" content="http</code> のように <strong>絶対URL（http/https始まり）</strong> になっていることを確認',
+              '② ソース表示で <code>og:title</code>/<code>og:description</code>/<code>og:url</code> の4つが揃っていることを確認',
+              '③ <a href="https://developers.facebook.com/tools/debug/" target="_blank">Facebook Sharing Debugger</a> にページURLを入力してOGPプレビューを確認',
+              '④ <a href="https://search.google.com/test/rich-results" target="_blank">Google Rich Results Test</a> でJSON-LDに <strong>エラー0件</strong> を確認']
     },
     lab9: {
       info:  { type:'info', html:'📘 <strong>scope 属性</strong>は th に付けてスクリーンリーダーに列/行の見出し関係を伝える。複雑な結合テーブルでは <code>headers</code> 属性と <code>id</code> で明示的に関連付け。' },
+      usecase: {
+        scenes: ['売上レポートや在庫一覧などデータテーブルをページに表示するとき、th と scope でアクセシビリティを確保する',
+                 '比較表（料金プラン・スペック比較）を HTML テーブルで作るとき、見出し列・見出し行を適切にマークアップする',
+                 'スマホ対応ページで横幅の広いテーブルを overflow-x:auto のラッパーで横スクロール可能にする',
+                 'スクリーンリーダーユーザーが行・列を把握しやすいよう caption でテーブルの説明を付ける'],
+        triggers: ['スマホでテーブルの右側の列が見切れて表示されている', 'axe でテーブルヘッダーに関する Violation が出る']
+      },
       verify:{ before:'モバイルで列が画面外にはみ出し、横スクロールバーも見えない', after:'<code>.table-wrapper { overflow-x:auto; }</code> で横スクロール可能になり、全列アクセス可能' },
-      check: ['① スクリーンリーダーで th[scope="col"] の見出しが各セルと関連付けて読み上げられるか確認',
-              '② 幅 375px でレスポンシブテーブルの表示崩れがないか確認',
-              '③ caption 要素がスクリーンリーダーで「表のタイトル」として読み上げられるか確認']
+      check: ['① <strong>ブラウザウィンドウを 375px 幅に縮小</strong>し、テーブルが横スクロール可能で列が切れないことを確認',
+              '② <strong>Ctrl+U</strong> でソース表示し、<code>&lt;th scope="col"&gt;</code> または <code>scope="row"</code> が全見出しセルに付いていることを確認',
+              '③ ソース表示で <code>&lt;caption&gt;</code> タグがテーブルの先頭にあることを確認',
+              '④ <strong>Tab キー</strong> でテーブル内のリンク・ボタンにフォーカスが当たり、順番通りに移動できることを確認']
     },
     lab10: {
       info:  { type:'ok', html:'✅ <strong>dialog.showModal()</strong> は自動でフォーカストラップ・ESC閉じ・::backdrop を提供。jQuery UI Dialog や Bootstrap Modal より軽量で安全。' },
+      usecase: {
+        scenes: ['削除確認ダイアログを実装するとき、jQuery や Bootstrap なしに dialog 要素だけで安全なモーダルを作る',
+                 'FAQ ページのアコーディオン展開で details／summary 要素を使い、JS なしに開閉を実装する',
+                 'フォーム送信確認ポップアップで dialog を使い、フォーカストラップを自動的に得る',
+                 'タスク管理画面で「詳細を見る」モーダルを dialog.showModal() でアクセシブルに実装する'],
+        triggers: ['モーダルを開いたとき Tab キーを押すと背景の要素にフォーカスが移ってしまう', 'Bootstrap や jQuery UI を削除したい（軽量化）のにモーダルだけ依存している']
+      },
       verify:{ before:'自前モーダル: フォーカスが背景要素に逃げる、ESC で閉じない', after:'dialog.showModal(): Tab でフォーカスが dialog 内に閉じ込められ、ESC で自動的に閉じる' },
-      check: ['① dialog.showModal() 後に Tab キーでフォーカスが dialog 内に閉じ込められるか確認',
-              '② ESC キーで dialog が閉じるか確認',
-              '③ dialog.returnValue に form button の value が入るか確認',
-              '④ details[name] で排他的アコーディオンが動作するか確認（Chrome 120+）']
+      check: ['① <strong>「モーダルを開く」ボタンをクリック</strong>してダイアログを開き、<strong>Tab キー</strong> を連打してもフォーカスがダイアログ外に出ないことを確認',
+              '② ダイアログが開いた状態で <strong>ESC キー</strong> を押し、ダイアログが閉じることを確認',
+              '③ <strong>アコーディオン見出しをクリック</strong>して開閉が切り替わり、<strong>別の見出しをクリック</strong>すると前のパネルが閉じることを確認（排他制御）',
+              '④ ダイアログ内の <strong>「確認」ボタンをクリック</strong>してダイアログが閉じ、選択結果がページに表示されることを確認']
     },
     lab11: {
       info:  { type:'info', html:'📘 <strong>width / height 属性は CLS 防止に必須</strong>。ブラウザはこの値から aspect-ratio を計算してレイアウトシフトを防ぐ。CSS で <code>height:auto</code> を併用すること。' },
-      check: ['① DevTools → Network で「Img Size」列を表示し、適切な解像度の画像が配信されているか確認',
-              '② Lighthouse で LCP の計測値と「Properly size images」勧告を確認',
-              '③ loading="lazy" の画像がビューポート外ではリクエストされないことを Network タブで確認',
-              '④ WebP 非対応ブラウザ（Safari 旧版）で JPEG フォールバックが機能するか確認']
+      usecase: {
+        scenes: ['ニュースサイトや EC サイトのトップページで画像がロードされるときのレイアウトシフト（CLS）を防ぐ',
+                 'ファーストビューのヒーロー画像に fetchpriority="high" を付けて LCP を短縮する',
+                 '画像の多いブログ記事ページで loading="lazy" を付けてスクロールに応じた遅延読み込みにする',
+                 '次世代フォーマット（WebP / AVIF）を picture 要素で提供しつつ旧ブラウザには JPEG でフォールバックする'],
+        triggers: ['Lighthouse で CLS（累積レイアウトシフト）のスコアが悪い', '画像が読み込まれるたびにページ全体がガタつく（ジャンプする）']
+      },
+      check: ['① <strong>Ctrl+U</strong> でソース表示し、全 <code>&lt;img&gt;</code> タグに <code>width</code>/<code>height</code> 属性と <code>alt</code> 属性が記述されていることを確認',
+              '② <strong>ページをゆっくりスクロール</strong>し、スクロールに合わせて画像が遅延表示（フワッと表示）されることを確認（<code>loading="lazy"</code> の効果）',
+              '③ <strong>ブラウザウィンドウ幅を変えながらリロード</strong>し、<code>&lt;picture&gt;</code> 要素が幅に合った画像を切り替えて表示することを確認',
+              '④ <strong>Safari</strong> で同ページを開き、<code>&lt;picture&gt;</code> の WebP が非対応の場合に JPEG/PNG フォールバックが表示されることを確認']
     },
     lab12: {
       info:  { type:'err', html:'🚫 <strong>sandbox なしの iframe</strong> は埋め込みコンテンツに親ページと同等の権限を与える。外部サービス埋め込み時は最低限 <code>sandbox</code> 属性を付けること。' },
-      check: ['① sandbox 属性を付けた iframe 内で alert() が実行されないことを確認',
-              '② sandbox="allow-scripts" を追加して alert() が動作するようになることを確認',
-              '③ DevTools Console で CSP 違反ログが出ていないか確認',
-              '④ X-Frame-Options ヘッダーが設定されたページを iframe に埋め込んで、ブロックされることを確認']
+      usecase: {
+        scenes: ['外部の地図（Google Maps）や動画（YouTube）をページに埋め込むとき、sandbox で権限を最小化する',
+                 '社内ツールに外部ウィジェットや広告を iframe で埋め込む際、スクリプト実行を制限してXSSリスクを下げる',
+                 'ユーザーが投稿したリッチコンテンツ（HTML）をサンドボックス化した iframe でプレビュー表示する',
+                 'allow 属性でカメラ・マイク・位置情報など機能ごとのアクセス許可を明示的にコントロールする'],
+        triggers: ['外部サービスを埋め込んでいるページでセキュリティ診断に引っかかった', '埋め込みコンテンツが親ページのクッキーや localStorage にアクセスできてしまう']
+      },
+      check: ['① <strong>ページを読み込んだとき</strong>、<code>sandbox</code> 付き iframe 内のボタンをクリックしても <strong>アラートが表示されない</strong>ことを確認（ブロック成功）',
+              '② <strong>Ctrl+U</strong> でソース表示し、<code>&lt;iframe sandbox=</code> に必要な権限だけが列挙されていることを確認',
+              '③ <a href="https://www.youtube.com/" target="_blank">YouTube</a> などのサイトを <code>src</code> に指定した iframe が正しく表示（または拒否）されることを確認',
+              '④ <strong>右クリック → ページのソースを表示</strong> で <code>allow-scripts</code> を追加してから再読み込みし、今度はアラートが表示されることを確認']
     },
     lab13: {
       info:  { type:'warn', html:'⚠️ <code>unsafe-inline</code> を script-src に入れると CSP のXSS防御効果が大幅に低下する。代わりに <code>nonce</code> ベースまたは <code>strict-dynamic</code> を使うこと。' },
-      check: ['① DevTools Console で CSP 違反レポートが出るか確認（インラインスクリプトをわざとブロック）',
-              '② nonce 付きスクリプトだけが実行され、nonce なしがブロックされるか確認',
-              '③ 外部ドメインのスクリプトが connect-src で制限されるか確認',
-              '④ CSP Evaluator (csp-evaluator.withgoogle.com) でポリシーの安全性を評価']
+      usecase: {
+        scenes: ['XSS 攻撃対策として CSP ヘッダー（または meta タグ）を設定してインラインスクリプトの実行を制限する',
+                 'セキュリティ診断で「CSP が設定されていない」と指摘されたときの対応として追加する',
+                 '外部 CDN やサードパーティスクリプトの読み込み先ドメインを明示的にホワイトリストに登録する',
+                 'nonce ベースの CSP で SSR（サーバーサイドレンダリング）環境でのインラインスクリプトを安全に許可する'],
+        triggers: ['セキュリティ診断で "Content-Security-Policy が設定されていない" と指摘された', 'XSS の脆弱性テストを実施したら攻撃が通った']
+      },
+      check: ['① <strong>Ctrl+U</strong> でソース表示し、<code>&lt;meta http-equiv="Content-Security-Policy"</code> の <code>content</code> 属性に <code>nonce-</code> または <code>strict-dynamic</code> が含まれていることを確認',
+              '② ページ内で <strong>インラインの <code>&lt;script&gt;</code>（nonce なし）</strong> を追加し、再読み込みするとそのスクリプトだけ動作しないことを確認',
+              '③ <a href="https://csp-evaluator.withgoogle.com/" target="_blank">CSP Evaluator</a> に現在の CSP ポリシーを貼り付けて <strong>高リスク項目がない</strong>ことを確認',
+              '④ <strong>別のブラウザ（Firefox）</strong> で開き、コンソールなしでも想定どおりの動作（ブロック対象機能が動かない）を目視確認']
     },
     lab14: {
       info:  { type:'info', html:'📘 <strong>preload で as 属性を省略するとリソース種別不明で優先度が下がる</strong>。as="font" は crossorigin 属性も必須（フォントは常に CORS リクエスト）。' },
-      check: ['① DevTools → Network → Priority 列で preload リソースが High になっているか確認',
-              '② preconnect 後に初回リクエストの Time 列から TCP/TLS 時間が消えているか確認',
-              '③ 未使用の preload があると Console に警告が出るか確認（3秒ルール）',
-              '④ prefetch したリソースが次ページ遷移時にキャッシュから読まれるか確認']
+      usecase: {
+        scenes: ['ヒーローバナーの画像や主要フォントを preload して LCP（最大コンテンツ描画）を改善する',
+                 '外部フォント（Google Fonts など）の読み込みを preconnect で事前接続してレイテンシを短縮する',
+                 '次のページへのリンクに prefetch を付けてページ遷移を体感的に高速化する',
+                 'クリティカルでないスクリプトに preload を使わず defer で後回しにしてメインコンテンツを優先する'],
+        triggers: ['Lighthouse で "Eliminate render-blocking resources" や "Preload key requests" が指摘される', 'Google Fonts が初回表示時にちらつく（FOUT）']
+      },
+      check: ['① <strong>Ctrl+U</strong> でソース表示し、<code>&lt;link rel="preload"&gt;</code> に <code>as="font"</code>/<code>as="style"</code> などの <strong><code>as</code> 属性</strong>が付いていることを確認',
+              '② <strong>Ctrl+Shift+R（キャッシュクリア＋リロード）</strong> し、フォントや画像が初回から崩れなく表示されることを確認（preloadの効果）',
+              '③ ソース表示で <code>&lt;link rel="preconnect"&gt;</code> が外部ドメイン（フォントCDN等）に設定されていることを確認',
+              '④ <strong>ページ内リンクをクリック</strong>して次ページに移動し、prefetch 済みリソースが <strong>素早く表示</strong>されることを確認']
     },
     lab15: {
       info:  { type:'info', html:'📘 <strong>Shadow DOM のスタイルは外部CSSから干渉されない</strong>（カプセル化）。逆に、Shadow DOM 内から外部スタイルにもアクセスできない。CSS カスタムプロパティ（CSS変数）は Shadow 境界を貫通する唯一の手段。' },
-      check: ['① Custom Element が DOM に登録されたか <code>customElements.get("alert-banner")</code> で確認',
-              '② Shadow DOM 内の要素が DevTools → Elements で #shadow-root として表示されるか確認',
-              '③ 外部 CSS で Shadow DOM 内の要素をセレクトできないことを確認（カプセル化テスト）',
-              '④ slot にコンテンツを渡して正しく描画されるか確認']
+      usecase: {
+        scenes: ['デザインシステムの汎用 UI コンポーネント（ボタン・バッジ・カード）を Web Components として再利用可能にパッケージ化する',
+                 'サードパーティウィジェット（チャット・通知）を埋め込む際に親ページの CSS に影響されないよう Shadow DOM でカプセル化する',
+                 'マイクロフロントエンド構成で複数チームの UI が CSS 競合しないよう各チームが独立した Web Component を提供する',
+                 'slot を使って外部からコンテンツを差し込める柔軟なレイアウトコンポーネントを作る'],
+        triggers: ['コンポーネントのスタイルが他のページの CSS によって崩れる', '複数のプロジェクトで同じ UI 部品を使い回したい']
+      },
+      check: ['① ページ上で <strong><code>&lt;alert-banner&gt;</code> カスタム要素</strong>が正しくレンダリングされ（見た目が壊れていない）、テキストや色が表示されることを確認',
+              '② <strong>Ctrl+U</strong> でソース表示し、HTML に <code>&lt;alert-banner&gt;</code> タグが記述されていることを確認（ネイティブ要素への降格がないこと）',
+              '③ <strong>外側のページに適用されたCSSを書き換えても</strong>（ブラウザのズームや文字サイズ変更）Shadow DOM 内のスタイルが変わらないことを目視確認',
+              '④ <strong><code>slot</code> にテキストを渡した箇所</strong>（ソース表示で確認）が画面上に正しく差し込まれて表示されることを確認']
     }
   };
 
   function infoHTML(m){ return m?.info ? `<div class="info-box ${m.info.type||'info'}">${m.info.html}</div>` : ''; }
+  function buildUsecase(m){ if (!m?.usecase) return '';
+    const scenes = (m.usecase.scenes||[]).map(s=>`<li>${s}</li>`).join('');
+    const triggers = (m.usecase.triggers||[]).map(t=>`<li>${t}</li>`).join('');
+    return `<div class="usecase-box">
+      <div class="usecase-title">💡 USECASE — いつ使う？</div>
+      <ul class="usecase-list">${scenes}</ul>
+      ${triggers ? `<div class="usecase-trigger"><strong>このパターンを見たら候補：</strong><ul>${triggers}</ul></div>` : ''}
+    </div>`; }
   function verifyHTML(m){ if (!m?.verify) return '';
     const {before, after} = m.verify;
     return `<div class="verify">
@@ -1342,7 +1471,7 @@ customElements.<span class="fn">define</span>(<span class="str">'alert-banner'</
       const meta = LAB_META[lab.id]; const body = lab.querySelector('.lab-body');
       if (!body || !meta) return;
       const frag = document.createElement('div');
-      frag.innerHTML = infoHTML(meta) + verifyHTML(meta) + checkHTML(meta);
+      frag.innerHTML = infoHTML(meta) + buildUsecase(meta) + verifyHTML(meta) + checkHTML(meta);
       while (frag.firstChild) body.appendChild(frag.firstChild);
     });
 

@@ -98,6 +98,13 @@
   .scroll-yes{background:rgba(203,36,49,.12);color:var(--red);border:1px solid rgba(203,36,49,.3)}
   .scroll-no{background:rgba(34,134,58,.12);color:var(--accent2);border:1px solid rgba(34,134,58,.3)}
 
+  .usecase-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25); border-left:3px solid var(--accent3); border-radius:7px; padding:12px 14px; margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+  .usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em; color:var(--accent3); font-weight:700; margin-bottom:6px; }
+  .usecase-list { margin-left:20px; margin-bottom:10px; }
+  .usecase-list li { margin-bottom:4px; }
+  .usecase-trigger { background:rgba(0,92,197,.05); border-left:3px solid var(--accent); padding:8px 12px; border-radius:5px; font-size:.82rem; color:#003d8f; margin-top:8px; }
+  .usecase-trigger ul { margin:4px 0 0 20px; }
+
   @media(max-width:700px){
     .layout{grid-template-columns:1fr}
     nav{position:static;height:auto;display:flex;flex-wrap:wrap;padding:6px;border-right:none;border-bottom:1px solid var(--border)}
@@ -161,6 +168,21 @@
     </div>
   </div>
   <div class="explanation">CSSのデフォルトは <code>box-sizing: content-box</code>。この場合 <code>height: 100vh</code> に <code>padding</code> が<strong>加算</strong>されるため、合計が 100vh を超えてスクロールが発生します。</div>
+  <div class="usecase-box">
+    <div class="usecase-title">🚨 こんな現象に遭遇したら — 典型的な発生シーン</div>
+    <ul class="usecase-list">
+      <li><strong>ページ全体に padding をつけただけでスクロールバーが出現</strong>（body や main に padding:20px + height:100vh を設定）</li>
+      <li><strong>CSSリセットなしのプロジェクトでレイアウト要素が数十px溢れる</strong>（フレームワーク未使用のバニラCSSで起きやすい）</li>
+      <li><strong>コピペしたサンプルコードがブラウザで微妙にはみ出す</strong>（元コードは box-sizing を別途設定していた）</li>
+    </ul>
+    <div class="usecase-trigger">
+      <strong>🔔 気づきポイント</strong>: こう見えたらこのパターンを疑う
+      <ul>
+        <li>padding や border を追加した直後にスクロールバーが出た</li>
+        <li>DevTools で要素の実サイズを確認すると height 指定値より大きい</li>
+      </ul>
+    </div>
+  </div>
   <div class="diagram">content-box:  height = コンテンツだけ
   ┌─ border ──────────────────┐
   │ ┌─ padding ────────────┐  │
@@ -215,13 +237,13 @@ border-box:   height = border + padding + コンテンツ
   <div class="verify">
     <div class="verify-col verify-before">
       <div class="verify-label">⬛ Before（content-box）</div>
-      要素を Inspect → Computed → Box model<br>
+      デモ枠の右端にスクロールバーが出ているか目視確認<br>
       表示サイズ = height + padding×2 + border×2<br>
       スクロールバーが出現する
     </div>
     <div class="verify-col verify-after">
       <div class="verify-label">✅ After（border-box）</div>
-      Computed → box-sizing: border-box を確認<br>
+      After デモ枠のスクロールバーが消えているか目視確認<br>
       表示サイズ = 指定した height ちょうど<br>
       スクロールバーが消える
     </div>
@@ -239,6 +261,21 @@ border-box:   height = border + padding + コンテンツ
     </div>
   </div>
   <div class="explanation"><code>border-box</code> をリセットしていても、親が <code>height: 100vh</code> + <code>padding</code> を持ち、子が <code>height: 100%</code> を指定すると、子の 100% は<strong>親のコンテンツ領域</strong>（= 100vh - padding×2）を参照するため問題ないはずですが、<strong>子自身にもpaddingやmarginがある場合</strong>、それが加算されてオーバーフローします。</div>
+  <div class="usecase-box">
+    <div class="usecase-title">🚨 こんな現象に遭遇したら — 典型的な発生シーン</div>
+    <ul class="usecase-list">
+      <li><strong>モーダルやサイドパネルの内側コンテンツが数pxはみ出す</strong>（親に padding、子に height:100% + margin を同時設定）</li>
+      <li><strong>box-sizing:border-box を設定済みなのにスクロールが消えない</strong>（border-box を適用したが子の margin が原因と気づいていない）</li>
+      <li><strong>レスポンシブレイアウトで特定の画面サイズだけ溢れる</strong>（calc や % の組み合わせで端数がずれる）</li>
+    </ul>
+    <div class="usecase-trigger">
+      <strong>🔔 気づきポイント</strong>: こう見えたらこのパターンを疑う
+      <ul>
+        <li>border-box リセット済みなのに子要素が親からわずかにはみ出す</li>
+        <li>子の margin や padding を 0 にするとスクロールが消える</li>
+      </ul>
+    </div>
+  </div>
   <div class="demo-area">
     <div class="section-label">▍ 実機デモ</div>
     <button class="btn btn-toggle" id="btn-pvh" onclick="toggleDemo('pvh')">修正 OFF — 子のmarginを削除</button>
@@ -295,6 +332,21 @@ border-box:   height = border + padding + コンテンツ
     </div>
   </div>
   <div class="explanation"><code>content-box</code> の場合、<code>border</code> も高さに加算されます。<code>height: 100vh</code> + <code>border-top: 2px</code> + <code>border-bottom: 2px</code> = <strong>100vh + 4px</strong> となり、4px分スクロールが発生します。<br>これは <code>outline</code> を使えば回避できます。<code>outline</code> はボックスモデルに影響しません。</div>
+  <div class="usecase-box">
+    <div class="usecase-title">🚨 こんな現象に遭遇したら — 典型的な発生シーン</div>
+    <ul class="usecase-list">
+      <li><strong>デバッグ用に border を一時追加したらスクロールバーが出た</strong>（border を当てた瞬間に数px溢れが発生）</li>
+      <li><strong>ヘッダーやフッターに border をつけたらページ全体がずれた</strong>（100vh に border 分が加算）</li>
+      <li><strong>padding 問題は直したのに微妙なスクロールが残る</strong>（border が原因と気づいていない）</li>
+    </ul>
+    <div class="usecase-trigger">
+      <strong>🔔 気づきポイント</strong>: こう見えたらこのパターンを疑う
+      <ul>
+        <li>border の幅×2 にぴったり一致する数px分だけスクロール領域がある</li>
+        <li>border を none にするとスクロールが消える</li>
+      </ul>
+    </div>
+  </div>
   <div class="demo-area">
     <div class="section-label">▍ 実機デモ</div>
     <button class="btn btn-toggle" id="btn-bvh" onclick="toggleDemo('bvh')">修正 OFF — border-box または outline に変更</button>
@@ -344,6 +396,21 @@ border-box:   height = border + padding + コンテンツ
     </div>
   </div>
   <div class="explanation">ブラウザの User Agent Stylesheet は <code>body { margin: 8px }</code> をデフォルトで持ちます。<code>height: 100vh</code> の要素を置くと、<strong>100vh + 8px × 2 = 100vh + 16px</strong> となり、縦スクロールが発生します。</div>
+  <div class="usecase-box">
+    <div class="usecase-title">🚨 こんな現象に遭遇したら — 典型的な発生シーン</div>
+    <ul class="usecase-list">
+      <li><strong>CSSを一行も書いていないのにページにスクロールバーが出る</strong>（ほぼ空のHTMLファイルでも body の 8px margin が原因で発生）</li>
+      <li><strong>フルスクリーンランディングページが全ブラウザで微妙にずれる</strong>（CSSリセットを書き忘れた新規プロジェクト）</li>
+      <li><strong>ヒーローセクションを 100vh にしたのに下に謎の余白が残る</strong>（body margin がページ下部に空白を作る）</li>
+    </ul>
+    <div class="usecase-trigger">
+      <strong>🔔 気づきポイント</strong>: こう見えたらこのパターンを疑う
+      <ul>
+        <li>ページ四方に 8px の白い余白がある（DevTools で body を選択すると橙色のmarginが表示される）</li>
+        <li>全要素を削除してもスクロールが消えない</li>
+      </ul>
+    </div>
+  </div>
   <div class="demo-area">
     <div class="section-label">▍ 実機デモ（iframe でシミュレーション）</div>
     <button class="btn btn-toggle" id="btn-bm" onclick="toggleDemo('bm')">修正 OFF — body { margin: 0 } を適用</button>
@@ -385,6 +452,21 @@ border-box:   height = border + padding + コンテンツ
     </div>
   </div>
   <div class="explanation">親要素に <code>padding</code>、<code>border</code>、<code>overflow</code> がない場合、子要素の <code>margin-top</code> / <code>margin-bottom</code> が親の外に「突き抜け」ます。これにより<strong>html/bodyレベルで意図しない縦方向の余白</strong>が生まれ、スクロールが発生します。</div>
+  <div class="usecase-box">
+    <div class="usecase-title">🚨 こんな現象に遭遇したら — 典型的な発生シーン</div>
+    <ul class="usecase-list">
+      <li><strong>ページ最上部に謎の空白が出てコンテンツが下にずれる</strong>（h1 などの margin-top がbodyの外に出る）</li>
+      <li><strong>セクション要素を追加したら上部に不思議な余白が現れた</strong>（最初の子要素の margin-top が親コンテナを突き抜けた）</li>
+      <li><strong>padding:0 を指定したのに上部余白が消えない</strong>（padding がないためマージン折りたたみが起きている）</li>
+    </ul>
+    <div class="usecase-trigger">
+      <strong>🔔 気づきポイント</strong>: こう見えたらこのパターンを疑う
+      <ul>
+        <li>子の margin-top と同じ px 数だけページ上部に余白がある</li>
+        <li>親に padding:1px を追加すると余白が突然なくなる</li>
+      </ul>
+    </div>
+  </div>
   <div class="demo-area">
     <div class="section-label">▍ 実機デモ</div>
     <button class="btn btn-toggle" id="btn-mc" onclick="toggleDemo('mc')">修正 OFF — * { margin: 0 } を適用（モダンリセット）</button>
@@ -467,6 +549,21 @@ border-box:   height = border + padding + コンテンツ
     </div>
   </div>
   <div class="explanation">⑤と同じマージン折りたたみの問題ですが、<strong>末尾の要素の margin-bottom</strong> が親の外に漏れるパターンです。<code>&lt;p&gt;</code> や <code>&lt;h1&gt;</code>〜<code>&lt;h6&gt;</code> のデフォルト margin-bottom が原因になることが多いです。</div>
+  <div class="usecase-box">
+    <div class="usecase-title">🚨 こんな現象に遭遇したら — 典型的な発生シーン</div>
+    <ul class="usecase-list">
+      <li><strong>カードやセクションの下に謎の余白が残る</strong>（最後の &lt;p&gt; や &lt;h2&gt; のデフォルト margin-bottom が漏れ出す）</li>
+      <li><strong>コンテナに background-color をつけたが下部の色が途切れる</strong>（背景色の範囲内に margin-bottom が収まっていない）</li>
+      <li><strong>フッターとコンテンツの間に意図しない空白がある</strong>（コンテンツ末尾要素の margin-bottom が積み重なる）</li>
+    </ul>
+    <div class="usecase-trigger">
+      <strong>🔔 気づきポイント</strong>: こう見えたらこのパターンを疑う
+      <ul>
+        <li>親の background が早く終わっているのに余白がある（marginが親の外に出ている）</li>
+        <li>末尾要素の margin-bottom を 0 にすると余白が消える</li>
+      </ul>
+    </div>
+  </div>
   <div class="demo-area">
     <div class="section-label">▍ 実機デモ</div>
     <button class="btn btn-toggle" id="btn-mbot" onclick="toggleDemo('mbot')">修正 OFF — * { margin: 0 } を適用（モダンリセット）</button>
@@ -526,6 +623,21 @@ border-box:   height = border + padding + コンテンツ
     </div>
   </div>
   <div class="explanation">モバイルブラウザでは、<code>100vh</code> はアドレスバーを含む<strong>最大ビューポート高さ</strong>を参照します。アドレスバーが表示されている状態では実際の画面より大きくなり、スクロールが発生します。</div>
+  <div class="usecase-box">
+    <div class="usecase-title">🚨 こんな現象に遭遇したら — 典型的な発生シーン</div>
+    <ul class="usecase-list">
+      <li><strong>PC では問題ないのにスマホで縦スクロールが出る</strong>（iPhone/Android のブラウザバーが 100vh の計算に影響）</li>
+      <li><strong>ヒーローセクションや全画面モーダルがモバイルで少し溢れる</strong>（アドレスバー分の高さが加算される）</li>
+      <li><strong>スクロールするとコンテンツが隠れてしまう</strong>（アドレスバーが消えると 100vh が変わる）</li>
+    </ul>
+    <div class="usecase-trigger">
+      <strong>🔔 気づきポイント</strong>: こう見えたらこのパターンを疑う
+      <ul>
+        <li>PCでは正常でモバイル実機のみスクロールが出る</li>
+        <li>ページを少しスクロールしてアドレスバーが消えると溢れが改善する</li>
+      </ul>
+    </div>
+  </div>
   <div class="diagram">モバイルブラウザ:
 ┌──────────────────┐
 │   Address Bar    │ ← 表示中は画面を圧迫
@@ -579,7 +691,7 @@ border-box:   height = border + padding + コンテンツ
     <button class="btn btn-primary" onclick="checkVhUnits()">▶ vh / svh / dvh / lvh を測定</button>
     <div class="measure" id="vh-measure" style="margin-top:8px"></div>
   </div>
-  <div class="info-box warn">⚠️ <strong>モバイルでテスト：</strong>この問題はPCでは再現しません。DevTools のモバイルシミュレーションでも不完全です。実機 Safari / Chrome for iOS で確認してください。</div>
+  <div class="info-box warn">⚠️ <strong>モバイルでテスト：</strong>この問題はPCでは再現しません。ブラウザの画面サイズ変更でも不完全です。実機 Safari / Chrome for iOS で確認してください。</div>
 </div>
 
 <!-- ⑧ min-height + 子の膨張 -->
@@ -593,6 +705,21 @@ border-box:   height = border + padding + コンテンツ
     </div>
   </div>
   <div class="explanation">親に <code>min-height: 100vh</code> を設定し、子に <code>height: 100%</code> を設定しても、<strong>子は 100% の参照先を見つけられず height: auto として扱われます</strong>。CSS仕様上、<code>height: 100%</code> は親の明示的な <code>height</code> のみを参照し、<code>min-height</code> は参照しません。</div>
+  <div class="usecase-box">
+    <div class="usecase-title">🚨 こんな現象に遭遇したら — 典型的な発生シーン</div>
+    <ul class="usecase-list">
+      <li><strong>サイドバーやコンテンツ列を全高にしたいのに高さが縮む</strong>（min-height:100vh の親に height:100% の子を設定）</li>
+      <li><strong>ページが短いときでも最低100vhを確保したいのにコンテンツ追加で溢れる</strong>（min-height のせいで親が伸びる）</li>
+      <li><strong>「高さが効いていない」と感じるが DevTools では親が大きい</strong>（子の height:100% が auto になっている）</li>
+    </ul>
+    <div class="usecase-trigger">
+      <strong>🔔 気づきポイント</strong>: こう見えたらこのパターンを疑う
+      <ul>
+        <li>子の height:100% をセットしても背景色が広がらない（autoになっている）</li>
+        <li>親の height を min-height から固定値に変えると子が伸びる</li>
+      </ul>
+    </div>
+  </div>
   <div class="demo-area">
     <div class="section-label">▍ 実機デモ</div>
     <button class="btn btn-toggle" id="btn-mh" onclick="toggleDemo('mh')">修正 OFF — flexbox で解決する</button>
@@ -637,6 +764,21 @@ border-box:   height = border + padding + コンテンツ
     </div>
   </div>
   <div class="explanation"><code>calc(100vh / 3)</code> のような割り切れない計算は、ブラウザのサブピクセル丸めにより合計が <code>100vh</code> を<strong>わずかに超える</strong>場合があります。例えば 3つの <code>33.333...vh</code> の合計が <code>100.001vh</code> になるケースです。</div>
+  <div class="usecase-box">
+    <div class="usecase-title">🚨 こんな現象に遭遇したら — 典型的な発生シーン</div>
+    <ul class="usecase-list">
+      <li><strong>画面を均等3分割したら微妙にスクロールが出る</strong>（calc(100vh / 3) × 3 の端数誤差）</li>
+      <li><strong>特定のブラウザやデバイスでだけ 1px スクロールバーが出る</strong>（サブピクセル丸めがブラウザごとに異なる）</li>
+      <li><strong>グリッドやタイル配置で数px オーバーフローする</strong>（calc の割り算で端数が出る設計）</li>
+    </ul>
+    <div class="usecase-trigger">
+      <strong>🔔 気づきポイント</strong>: こう見えたらこのパターンを疑う
+      <ul>
+        <li>スクロール量が 1〜2px の極小（肉眼でほぼ見えないほど）</li>
+        <li>calc() で % 以外の端数計算をしている箇所がある</li>
+      </ul>
+    </div>
+  </div>
   <div class="demo-area">
     <div class="section-label">▍ 実機デモ</div>
     <button class="btn btn-toggle" id="btn-calc" onclick="toggleDemo('calc')">修正 OFF — flex:1 で均等分割する</button>
@@ -678,6 +820,21 @@ border-box:   height = border + padding + コンテンツ
     </div>
   </div>
   <div class="explanation"><code>position: absolute</code> の要素に <code>top: 100%</code> や大きな <code>left</code>/<code>right</code> 値を設定すると、包含ブロックの外にはみ出します。包含ブロックが <code>&lt;body&gt;</code> の場合、ページ全体にスクロールが発生します。</div>
+  <div class="usecase-box">
+    <div class="usecase-title">🚨 こんな現象に遭遇したら — 典型的な発生シーン</div>
+    <ul class="usecase-list">
+      <li><strong>ドロップダウンメニューやツールチップがページ下部に空白を作る</strong>（top:100% で親要素より下にはみ出す）</li>
+      <li><strong>ポップアップやモーダルの配置後にページスクロールが発生する</strong>（画面外座標に absolute 要素が存在）</li>
+      <li><strong>特定の要素を非表示にするとスクロールが消える</strong>（その要素が overflow に影響していた）</li>
+    </ul>
+    <div class="usecase-trigger">
+      <strong>🔔 気づきポイント</strong>: こう見えたらこのパターンを疑う
+      <ul>
+        <li>DevTools で position:absolute の要素を探すと画面外にある</li>
+        <li>親に overflow:hidden を付けるとスクロールが消える</li>
+      </ul>
+    </div>
+  </div>
   <div class="demo-area">
     <div class="section-label">▍ 実機デモ</div>
     <button class="btn btn-toggle" id="btn-abs" onclick="toggleDemo('abs')">修正 OFF — 親に overflow:hidden を適用</button>
@@ -730,6 +887,21 @@ border-box:   height = border + padding + コンテンツ
     </div>
   </div>
   <div class="explanation">negative margin や <code>top: -50px</code> などで要素がページの上端より上に配置されても、通常は上方向のスクロールは発生しません（ブラウザの仕様）。ただし、<strong>下方向や右方向のはみ出し</strong>はスクロールを発生させます。負の margin-bottom は後続要素を引き上げ、結果的にコンテンツ全体の高さが変わってスクロール問題を起こすことがあります。</div>
+  <div class="usecase-box">
+    <div class="usecase-title">🚨 こんな現象に遭遇したら — 典型的な発生シーン</div>
+    <ul class="usecase-list">
+      <li><strong>オフセット効果を出すため負のマージンを使ったら下部に余計な空白が出た</strong>（negative margin が後続要素の位置をずらす）</li>
+      <li><strong>要素を上に移動させたつもりがページ全体の高さが変わった</strong>（top:-50px は上にスクロールを作らないが下の空白は残る）</li>
+      <li><strong>コンポーネント間の重なりを作るため負 margin を使ったがレイアウトが崩れた</strong>（後続フローへの影響が予期せず出る）</li>
+    </ul>
+    <div class="usecase-trigger">
+      <strong>🔔 気づきポイント</strong>: こう見えたらこのパターンを疑う
+      <ul>
+        <li>コードに margin や top/left に負の値がある</li>
+        <li>要素を上に動かしたはずなのに下部の余白が増えた</li>
+      </ul>
+    </div>
+  </div>
   <div class="demo-area">
     <div class="section-label">▍ 実機デモ: 負の margin-bottom が後続を引き上げる</div>
     <button class="btn btn-toggle" id="btn-neg" onclick="toggleDemo('neg')">修正 OFF — * { margin: 0 } を適用（モダンリセット）</button>
@@ -756,6 +928,21 @@ border-box:   height = border + padding + コンテンツ
     </div>
   </div>
   <div class="explanation"><code>transform</code> は要素の<strong>視覚的な位置</strong>だけを変え、レイアウト上の位置は変わりません。通常はスクロールに影響しません。ただし、<code>overflow: auto/scroll</code> を持つ親の中で <code>transform: translateY()</code> すると、親のスクロール範囲に影響を与える場合があります。</div>
+  <div class="usecase-box">
+    <div class="usecase-title">🚨 こんな現象に遭遇したら — 典型的な発生シーン</div>
+    <ul class="usecase-list">
+      <li><strong>アニメーションで要素をスライドさせたらスクロールエリアが広がった</strong>（overflow:auto の親内で transform を使用）</li>
+      <li><strong>transform で中央寄せしたら親コンテナがスクロール可能になった</strong>（translateX(-50%) などが親の範囲外を参照）</li>
+      <li><strong>transform を使う前は問題なかったのに追加後にスクロールが出た</strong>（overflow:hidden との組み合わせで想定外の挙動）</li>
+    </ul>
+    <div class="usecase-trigger">
+      <strong>🔔 気づきポイント</strong>: こう見えたらこのパターンを疑う
+      <ul>
+        <li>transform を削除するとスクロールが消える</li>
+        <li>overflow:hidden の親内で transform を使っている箇所がある</li>
+      </ul>
+    </div>
+  </div>
   <div class="demo-area">
     <div class="section-label">▍ 実機デモ: transform vs position の違い</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -796,6 +983,21 @@ border-box:   height = border + padding + コンテンツ
     </div>
   </div>
   <div class="explanation">CSS仕様により、<code>overflow-x</code> と <code>overflow-y</code> の一方が <code>visible</code> 以外で、もう一方が <code>visible</code> の場合、<code>visible</code> の方が<strong>自動的に auto に変換</strong>されます。<br>つまり <code>overflow-x: hidden</code> だけ書くと、<code>overflow-y</code> が暗黙的に <code>auto</code> になり、縦スクロールが発生し得ます。</div>
+  <div class="usecase-box">
+    <div class="usecase-title">🚨 こんな現象に遭遇したら — 典型的な発生シーン</div>
+    <ul class="usecase-list">
+      <li><strong>横はみ出しを隠すため overflow-x:hidden を追加したら縦スクロールが出た</strong>（overflow-y が暗黙的に auto になる仕様）</li>
+      <li><strong>横スクロールを消したつもりなのに縦スクロールバーが現れた</strong>（片方だけ指定した副作用）</li>
+      <li><strong>overflow-x: hidden を削除したらスクロールが直った</strong>（この仕様を知らずに追加したケース）</li>
+    </ul>
+    <div class="usecase-trigger">
+      <strong>🔔 気づきポイント</strong>: こう見えたらこのパターンを疑う
+      <ul>
+        <li>overflow-x:hidden を設定した直後に縦スクロールが出た</li>
+        <li>DevTools でその要素の overflow-y を確認すると auto になっている</li>
+      </ul>
+    </div>
+  </div>
   <div class="demo-area">
     <div class="section-label">▍ 実機デモ</div>
     <button class="btn btn-toggle" id="btn-ovx" onclick="toggleDemo('ovx')">修正 OFF — overflow-y: hidden も追加</button>
@@ -854,6 +1056,21 @@ border-box:   height = border + padding + コンテンツ
     </div>
   </div>
   <div class="explanation">Windows の Chrome/Edge ではスクロールバーが<strong>約15px幅</strong>のスペースを占有します。スクロールバーが出現すると、コンテンツの利用可能幅が狭まり、テキストの折り返しで高さが増え、さらにスクロールが増える「連鎖」が起きます。</div>
+  <div class="usecase-box">
+    <div class="usecase-title">🚨 こんな現象に遭遇したら — 典型的な発生シーン</div>
+    <ul class="usecase-list">
+      <li><strong>コンテンツを追加したらスクロールバーが出て画面がガタつく</strong>（スクロールバーの幅分コンテンツ幅が縮んでレイアウトシフト）</li>
+      <li><strong>コンテンツ増加後に突然レイアウトが崩れる</strong>（スクロールバー出現→幅縮小→折り返し増加→さらにスクロール増加の連鎖）</li>
+      <li><strong>macOS では問題ないが Windows でだけレイアウトがズレる</strong>（macOS はオーバーレイ式でレイアウトに影響しない）</li>
+    </ul>
+    <div class="usecase-trigger">
+      <strong>🔔 気づきポイント</strong>: こう見えたらこのパターンを疑う
+      <ul>
+        <li>スクロールバーが出た瞬間にテキストの折り返し位置が変わる</li>
+        <li>Windowsのブラウザでのみレイアウトがズレる（約15pxの差）</li>
+      </ul>
+    </div>
+  </div>
   <div class="code-block">
     <div class="code-block-header"><span>CSS — 対策方法</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
     <pre class="code"><span class="cmt">/* ✅ 解決策1: scrollbar-gutter でスペースを事前確保 */</span>
@@ -888,6 +1105,21 @@ border-box:   height = border + padding + コンテンツ
     </div>
   </div>
   <div class="explanation">flex item のデフォルトは <code>min-width: auto</code>（= コンテンツの最小幅）で、<strong>コンテンツより小さくは縮まない</strong>仕様です。長いテキストや画像があると flex item が溢れ、結果的に横→縦スクロールの連鎖が起きます。<code>flex-direction: column</code> の場合は <code>min-height: auto</code> が同様の問題を起こします。</div>
+  <div class="usecase-box">
+    <div class="usecase-title">🚨 こんな現象に遭遇したら — 典型的な発生シーン</div>
+    <ul class="usecase-list">
+      <li><strong>flex レイアウトに長いテキストを入れたら横にはみ出した</strong>（min-width:auto でflex itemが縮小しない）</li>
+      <li><strong>flex-shrink:1 を設定したのに要素が縮まらない</strong>（min-width:auto が下限として機能している）</li>
+      <li><strong>縦に並べた flex column で子要素が親を超えて膨らむ</strong>（min-height:auto が同様の問題を引き起こす）</li>
+    </ul>
+    <div class="usecase-trigger">
+      <strong>🔔 気づきポイント</strong>: こう見えたらこのパターンを疑う
+      <ul>
+        <li>flex item に min-width:0 を追加するとはみ出しが解消する</li>
+        <li>コンテンツ（テキスト・画像）の最小幅以下に縮小できていない</li>
+      </ul>
+    </div>
+  </div>
   <div class="demo-area">
     <div class="section-label">▍ 実機デモ</div>
     <button class="btn btn-toggle" id="btn-fmin" onclick="toggleDemo('fmin')">修正 OFF — min-width: 0 を適用</button>
@@ -943,6 +1175,21 @@ border-box:   height = border + padding + コンテンツ
     </div>
   </div>
   <div class="explanation"><code>flex-direction: column</code> + <code>height: 100vh</code> の親に対して、flex item の合計高さが 100vh を超えると溢れます。<code>flex-shrink</code> のデフォルトは 1 ですが、<code>min-height: auto</code> のためコンテンツより小さくは縮みません。</div>
+  <div class="usecase-box">
+    <div class="usecase-title">🚨 こんな現象に遭遇したら — 典型的な発生シーン</div>
+    <ul class="usecase-list">
+      <li><strong>ヘッダー・メイン・フッターの3段レイアウトでメインが溢れる</strong>（flex column + height:100vh の定番パターン）</li>
+      <li><strong>メインエリアをスクロール可能にしたいのにページ全体がスクロールする</strong>（メインに min-height:0 と overflow-y:auto を設定する必要がある）</li>
+      <li><strong>flex:1 を設定したのにコンテンツが親を超えてしまう</strong>（min-height:auto が flex-shrink を上書きする）</li>
+    </ul>
+    <div class="usecase-trigger">
+      <strong>🔔 気づきポイント</strong>: こう見えたらこのパターンを疑う
+      <ul>
+        <li>flex column + height:100vh の構造でページ全体がスクロールする</li>
+        <li>メインエリアに min-height:0 を追加するとスクロール範囲が変わる</li>
+      </ul>
+    </div>
+  </div>
   <div class="demo-area">
     <div class="section-label">▍ 実機デモ</div>
     <button class="btn btn-toggle" id="btn-fcol" onclick="toggleDemo('fcol')">修正 OFF — min-height: 0 を適用</button>
@@ -982,6 +1229,21 @@ border-box:   height = border + padding + コンテンツ
     </div>
   </div>
   <div class="explanation"><code>grid-template-rows</code> で定義した明示的トラック以外のアイテムは<strong>暗黙的トラック</strong>に配置されます。暗黙トラックのデフォルトサイズは <code>auto</code>（コンテンツに合わせて膨張）なので、アイテム数が増えるとコンテナを超えます。<br><br>⚠️ <strong>アイテム追加ボタンで確認できます</strong>：row 3（暗黙）以降にアイテムを追加すると縦スクロールが発生します。Row 7 前後で顕著に確認できます。<code>grid-auto-rows: auto</code> のままではアイテムが増えるほど際限なく膨張するため、<code>grid-auto-rows: minmax(0, 1fr)</code> または固定高さに変更するのが実務上の対応です。</div>
+  <div class="usecase-box">
+    <div class="usecase-title">🚨 こんな現象に遭遇したら — 典型的な発生シーン</div>
+    <ul class="usecase-list">
+      <li><strong>グリッドカードのアイテムが増えたらコンテナを突き破った</strong>（grid-template-rows は2行分しか定義しておらず3行目以降が auto 暗黙トラック）</li>
+      <li><strong>動的にデータを追加したらグリッドレイアウトが崩れた</strong>（API で取得したデータを表示するたびに行が膨張）</li>
+      <li><strong>grid を使っているが特定の行だけ高さがおかしい</strong>（明示トラックと暗黙トラックでサイズルールが異なる）</li>
+    </ul>
+    <div class="usecase-trigger">
+      <strong>🔔 気づきポイント</strong>: こう見えたらこのパターンを疑う
+      <ul>
+        <li>grid-template-rows で定義した行数を超えるアイテムがある</li>
+        <li>アイテムを削除して定義行数以内に収めるとスクロールが消える</li>
+      </ul>
+    </div>
+  </div>
   <div class="demo-area">
     <div class="section-label">▍ 実機デモ</div>
     <button class="btn btn-secondary" onclick="addGridItem()">+ アイテム追加</button>
@@ -1010,6 +1272,21 @@ border-box:   height = border + padding + コンテンツ
     </div>
   </div>
   <div class="explanation"><code>inline-block</code> 要素をHTMLソースで改行して書くと、改行が<strong>空白文字（約4px）</strong>として描画されます。<code>width: 50%</code> × 2 + 空白 = 100% 超 → 折り返しが発生し、縦方向に余計なスペースが生まれます。</div>
+  <div class="usecase-box">
+    <div class="usecase-title">🚨 こんな現象に遭遇したら — 典型的な発生シーン</div>
+    <ul class="usecase-list">
+      <li><strong>50% 幅のコンテナを2つ並べたのに折り返された</strong>（改行による空白文字が約4px 加算される）</li>
+      <li><strong>レガシーコードのグリッド風レイアウトが崩れている</strong>（古い float や inline-block 手法の典型的な罠）</li>
+      <li><strong>コードを整形したら（インデント追加）レイアウトが壊れた</strong>（HTMLの改行・空白がinline-block間の空白として描画される）</li>
+    </ul>
+    <div class="usecase-trigger">
+      <strong>🔔 気づきポイント</strong>: こう見えたらこのパターンを疑う
+      <ul>
+        <li>inline-block 要素の合計幅がちょうど 100% なのに折り返される</li>
+        <li>HTML タグを詰めて書く（改行なし）と折り返しが消える</li>
+      </ul>
+    </div>
+  </div>
   <div class="demo-area">
     <div class="section-label">▍ 実機デモ</div>
     <button class="btn btn-toggle" id="btn-inl" onclick="toggleDemo('inl')">修正 OFF — flexbox に変更</button>
@@ -1064,6 +1341,21 @@ border-box:   height = border + padding + コンテンツ
     </div>
   </div>
   <div class="explanation"><code>&lt;img&gt;</code> はデフォルトで <code>inline</code> 要素であり、<code>vertical-align: baseline</code> で配置されます。ベースラインの下にはディセンダ（g, p, y などの下部分）用のスペースがあるため、画像の下に<strong>3〜5px の隙間</strong>が生まれます。高さぴったりのコンテナに画像を入れると、この隙間でスクロールが発生します。</div>
+  <div class="usecase-box">
+    <div class="usecase-title">🚨 こんな現象に遭遇したら — 典型的な発生シーン</div>
+    <ul class="usecase-list">
+      <li><strong>画像をコンテナにぴったり収めたはずが下に謎の数px余白がある</strong>（ベースライン揃えによるディセンダ分のギャップ）</li>
+      <li><strong>画像スライダーやカード画像の下部に白い線が見える</strong>（imgがinline扱いで行ボックスの隙間が出る）</li>
+      <li><strong>height を指定した div に img を入れたらスクロールが出た</strong>（3〜5px のディセンダ空間が div をはみ出す）</li>
+    </ul>
+    <div class="usecase-trigger">
+      <strong>🔔 気づきポイント</strong>: こう見えたらこのパターンを疑う
+      <ul>
+        <li>画像の真下に 3〜5px 程度の隙間がある（背景色で確認できる）</li>
+        <li>img に display:block を追加すると隙間が消える</li>
+      </ul>
+    </div>
+  </div>
   <div class="demo-area">
     <div class="section-label">▍ 実機デモ</div>
     <button class="btn btn-toggle" id="btn-img" onclick="toggleDemo('img')">修正 OFF — display: block を適用</button>
@@ -1132,7 +1424,7 @@ border-box:   height = border + padding + コンテンツ
   <div class="section-label">▍ ステップ1: 犯人を特定する</div>
   <div class="code-block">
     <div class="code-block-header"><span>CSS — はみ出し要素を全て可視化する</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
-    <pre class="code"><span class="cmt">/* DevTools Console に貼り付けて実行 */</span>
+    <pre class="code"><span class="cmt">/* ブラウザのコンソール（F12 → Console タブ）に貼り付けて実行 */</span>
 document.querySelectorAll(<span class="str">'*'</span>).forEach(<span class="val">el</span> => {
   <span class="kw">if</span> (el.scrollHeight > el.clientHeight ||
       el.scrollWidth > el.clientWidth) {
@@ -1145,11 +1437,11 @@ document.querySelectorAll(<span class="str">'*'</span>).forEach(<span class="val
   </div>
 
   <div class="section-label">▍ ステップ2: 原因を分類する</div>
-  <div class="devtools-step"><div class="devtools-num">1</div><div><strong>body/html の margin/padding 確認</strong> → Computed タブで body と html の margin を確認。8px あれば④が原因。</div></div>
-  <div class="devtools-step"><div class="devtools-num">2</div><div><strong>box-sizing 確認</strong> → 溢れ要素の Computed → box-sizing。content-box なら①②③を疑う。</div></div>
-  <div class="devtools-step"><div class="devtools-num">3</div><div><strong>overflow の連動確認</strong> → overflow-x が hidden で overflow-y が auto になっていないか → ⑬。</div></div>
+  <div class="devtools-step"><div class="devtools-num">1</div><div><strong>body/html の margin/padding 確認</strong> → 上記コードをコンソールで実行し body/html に 8px の余白がないか確認。8px あれば④が原因。</div></div>
+  <div class="devtools-step"><div class="devtools-num">2</div><div><strong>box-sizing 確認</strong> → 溢れ要素の CSS に <code>box-sizing: border-box</code> が指定されているか確認。指定なし（content-box）なら①②③を疑う。</div></div>
+  <div class="devtools-step"><div class="devtools-num">3</div><div><strong>overflow の連動確認</strong> → CSS で overflow-x が hidden で overflow-y が auto になっていないか → ⑬。</div></div>
   <div class="devtools-step"><div class="devtools-num">4</div><div><strong>マージン突き抜け確認</strong> → 親に padding/border がなく子に margin がある → ⑤⑥。親に <code>display: flow-root</code> を一時追加して変化を見る。</div></div>
-  <div class="devtools-step"><div class="devtools-num">5</div><div><strong>flex/grid の min-width/min-height 確認</strong> → Computed で min-width: auto / min-height: auto になっていないか → ⑮⑯。</div></div>
+  <div class="devtools-step"><div class="devtools-num">5</div><div><strong>flex/grid の min-width/min-height 確認</strong> → CSS に <code>min-width: 0</code> / <code>min-height: 0</code> を追加して変化を見る → ⑮⑯。</div></div>
   <div class="devtools-step"><div class="devtools-num">6</div><div><strong>img のベースライン隙間確認</strong> → img の下に赤い隙間が見える → ⑲。</div></div>
   <div class="devtools-step"><div class="devtools-num">7</div><div><strong>100vh のモバイル問題</strong> → PCでは再現しない場合 → ⑦。dvh / svh に変更してテスト。</div></div>
 
