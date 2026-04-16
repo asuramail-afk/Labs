@@ -1,0 +1,1961 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSS スタッキングコンテキスト 実機確認ラボ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+.verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+  line-height:1.7; border:1px solid; }
+.verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+.verify-before .verify-label { color:var(--error); }
+.verify-after  .verify-label { color:var(--success); }
+
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+.usecase-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:6px; }
+.usecase-list { margin-left:20px; margin-bottom:10px; }
+.usecase-list li { margin-bottom:4px; }
+.usecase-trigger { background:rgba(0,92,197,.05); border-left:3px solid var(--accent);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#003d8f; margin-top:8px; }
+.usecase-trigger ul { margin:4px 0 0 20px; }
+
+.livedemo { margin:14px 0; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+.livedemo-bar { display:flex; align-items:center; gap:12px; padding:8px 12px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.toggle-btn { font-family:var(--mono); font-size:.78rem; padding:5px 14px;
+  border-radius:6px; border:1px solid var(--accent); background:var(--accent);
+  color:#fff; cursor:pointer; transition:all .15s; }
+.toggle-btn:hover { opacity:.85; }
+.toggle-btn.is-before { background:var(--error); border-color:var(--error); }
+.toggle-label { font-family:var(--mono); font-size:.78rem; color:var(--text-dim); }
+.livedemo-stage { padding:16px; background:var(--bg); }
+.livedemo-stage.is-before { outline:2px dashed var(--error); outline-offset:-8px; }
+.livedemo-stage .ld-before { display:none; }
+.livedemo-stage.is-before .ld-before { display:block; }
+.livedemo-stage.is-before .ld-after { display:none; }
+.ld-panel { padding:12px; border-radius:6px; font-family:var(--mono); font-size:11px; line-height:1.6; }
+.ld-panel.bad { background:#fee2e2; border:1px solid #cb2431; color:#6b1a22; }
+.ld-panel.good { background:#dcfce7; border:1px solid #22863a; color:#166534; }
+
+.try-box { background:rgba(34,134,58,.06); border:1px solid rgba(34,134,58,.30);
+  border-left:3px solid var(--success); border-radius:7px;
+  padding:12px 14px; margin:14px 0; font-size:.86rem; line-height:1.8; color:#154f1e; }
+.try-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--success); font-weight:700; margin-bottom:6px; }
+.try-box ol { margin-left:20px; margin-top:4px; }
+.try-box ol li { margin-bottom:4px; }
+.try-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--success); }
+.try-tip { background:rgba(176,136,0,.06); border-left:3px solid var(--accent4);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#5c4400; margin-top:8px; }
+.try-tip strong { color:var(--accent4); }
+.try-skeleton { background:#f0f4f8; border:1px solid var(--border); border-radius:5px;
+  padding:10px 12px; margin-top:8px; font-family:var(--mono); font-size:.78rem;
+  color:var(--text); white-space:pre; overflow-x:auto; line-height:1.5; }
+
+.code-pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; }
+.code-pair-col { display:flex; flex-direction:column; min-width:0; }
+.code-pair-label { font-family:var(--mono); font-size:.72rem; letter-spacing:.05em;
+  font-weight:700; padding:6px 10px; border-radius:6px 6px 0 0; }
+.code-pair-before .code-pair-label { background:rgba(203,36,49,.10); color:#9a1320;
+  border:1px solid rgba(203,36,49,.30); border-bottom:none; }
+.code-pair-after  .code-pair-label { background:rgba(34,134,58,.10); color:#154f1e;
+  border:1px solid rgba(34,134,58,.30); border-bottom:none; }
+.code-pair-col .code-block { margin:0; border-radius:0 0 8px 8px; flex:1; }
+.code-pair-before .code-block { border-color:rgba(203,36,49,.30); }
+.code-pair-after  .code-block { border-color:rgba(34,134,58,.30); }
+
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+.demo-area { background:var(--code-bg); border:1px solid var(--border); border-radius:7px;
+  padding:16px; margin:12px 0; }
+.demo-label { font-family:var(--mono); font-size:.66rem; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--text-dim); margin-bottom:10px; }
+
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .verify { grid-template-columns:1fr; }
+  .code-pair { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// Stacking <span>Context</span></div>
+  <div class="nav-section">基礎概念</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>コンテキストとは</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>ルートコンテキスト</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>描画順序7段階</a>
+  <div class="nav-section">生成条件</div>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>position + z-index</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>fixed / sticky</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>opacity の罠</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>transform / filter</a>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>isolation: isolate</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>Flex/Grid + z-index</a>
+  <div class="nav-section">階層と比較</div>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>入れ子と閉じ込め</a>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>z-index:9999 の敗北</a>
+  <a class="nav-item" href="#lab11"><span class="nav-num">11</span>同値のDOM順解決</a>
+  <div class="nav-section">実践パターン</div>
+  <a class="nav-item" href="#lab12"><span class="nav-num">12</span>モーダル配置</a>
+  <a class="nav-item" href="#lab13"><span class="nav-num">13</span>ドロップダウン設計</a>
+  <a class="nav-item" href="#lab14"><span class="nav-num">14</span>blend-mode 副作用</a>
+  <div class="nav-section">デバッグ</div>
+  <a class="nav-item" href="#lab15"><span class="nav-num">15</span>デバッグ総合</a>
+</nav>
+
+<div class="hero">
+  <h1>CSS スタッキングコンテキスト 実機確認ラボ</h1>
+  <p class="subtitle">z-index:9999 が効かない謎を解く — 16ラボで重なりの仕組みを完全理解</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>スタッキングコンテキストとは</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>ルートスタッキングコンテキスト</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>描画順序の7段階ルール</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>position + z-index</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>fixed / sticky</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>opacity &lt; 1 の罠</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>transform / filter / will-change</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>isolation: isolate</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>Flex/Grid の子 + z-index</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>入れ子コンテキストと閉じ込め</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">10</span>z-index:9999 が効かない理由</a>
+    <a class="toc-item" href="#lab11"><span class="toc-num">11</span>同一コンテキスト内の順序解決</a>
+    <a class="toc-item" href="#lab12"><span class="toc-num">12</span>モーダル / ダイアログ配置</a>
+    <a class="toc-item" href="#lab13"><span class="toc-num">13</span>ドロップダウン / ツールチップ</a>
+    <a class="toc-item" href="#lab14"><span class="toc-num">14</span>blend-mode / backdrop-filter 副作用</a>
+    <a class="toc-item" href="#lab15"><span class="toc-num">15</span>デバッグ総合</a>
+  </div>
+</div>
+
+<div class="container">
+<!-- LABS_CHUNK_A_START (lab0-5) -->
+
+<!-- ===================== lab0 ===================== -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>スタッキングコンテキストとは</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      スタッキングコンテキスト（Stacking Context）は、ブラウザが要素を Z 軸方向（画面の手前・奥）に描画するときの<strong>独立したレイヤー空間</strong>です。
+      あるコンテキストの内側の要素は、外側の要素と直接 z-index 比較されず、必ずコンテキスト単位でまとめて配置されます。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 透明シートの束メタファー</div>
+      <p>印刷用の OHP シートを重ねるイメージです。各シート（コンテキスト）は丸ごと上下に動きますが、シートの内側に書かれた図形はシートの外の図形と直接「どちらが前？」を競えません。</p>
+      <pre class="ascii-art">
+  画面の手前 ▲
+             │  ┌─────────────────────┐
+  z高(正)   │  │  modal              │  ← 新しいコンテキスト (position+z-index)
+             │  │  (独立レイヤー)     │
+             │  └─────────────────────┘
+             │  ┌─────────────────────┐
+  z中        │  │  header             │  ← 新しいコンテキスト (position+z-index)
+             │  └─────────────────────┘
+             │  ┌─────────────────────┐
+  ルート     │  │  &lt;html&gt; = ルートSC │  ← 全ての起点
+             │  └─────────────────────┘
+  画面の奥 ▼</pre>
+    </div>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="stage-lab0">Before/After 切替</button>
+        <span class="toggle-label" id="stage-lab0-label">現在: After（正常）</span>
+      </div>
+      <div class="livedemo-stage" id="stage-lab0">
+        <div class="ld-before">
+          <div class="ld-panel bad">
+            <strong>Before（z-index なし）:</strong><br>
+            DOM 順に描画 — 後の要素が前に来る
+            <div style="position:relative;height:80px;margin-top:8px;">
+              <div style="position:absolute;top:0;left:0;width:120px;height:50px;background:#fca5a5;border:2px solid #cb2431;display:flex;align-items:center;justify-content:center;font-size:12px;color:#6b1a22;">Box A (DOM 先)</div>
+              <div style="position:absolute;top:15px;left:50px;width:120px;height:50px;background:#86efac;border:2px solid #22863a;display:flex;align-items:center;justify-content:center;font-size:12px;color:#166534;">Box B (DOM 後)</div>
+              <div style="position:absolute;top:30px;left:100px;width:120px;height:50px;background:#a5b4fc;border:2px solid #6f42c1;display:flex;align-items:center;justify-content:center;font-size:12px;color:#3a1d6e;">Box C (DOM 末)</div>
+            </div>
+          </div>
+        </div>
+        <div class="ld-after">
+          <div class="ld-panel good">
+            <strong>After（z-index 指定）:</strong><br>
+            Box A が最前面 (z-index:10)
+            <div style="position:relative;height:80px;margin-top:8px;">
+              <div style="position:absolute;top:0;left:0;width:120px;height:50px;background:#fca5a5;border:2px solid #cb2431;z-index:10;display:flex;align-items:center;justify-content:center;font-size:12px;color:#6b1a22;">Box A (z:10)</div>
+              <div style="position:absolute;top:15px;left:50px;width:120px;height:50px;background:#86efac;border:2px solid #22863a;z-index:5;display:flex;align-items:center;justify-content:center;font-size:12px;color:#166534;">Box B (z:5)</div>
+              <div style="position:absolute;top:30px;left:100px;width:120px;height:50px;background:#a5b4fc;border:2px solid #6f42c1;z-index:1;display:flex;align-items:center;justify-content:center;font-size:12px;color:#3a1d6e;">Box C (z:1)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== lab1 ===================== -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>ルートスタッキングコンテキスト</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>&lt;html&gt;</code> 要素はページ全体の<strong>ルートスタッキングコンテキスト</strong>を形成します。
+      コンテキストを明示的に作らない限り、すべての要素はルートに所属し、DOM の記述順（後の要素が前に来る）で描画されます。
+    </p>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">Before — static 要素はDOM順描画</div>
+        <div class="code-block">
+          <pre><span class="cm">/* position / z-index なし */</span>
+<span class="sel">.box-a</span> { <span class="prop">background</span>: <span class="str">#fca5a5</span>; }
+<span class="sel">.box-b</span> { <span class="prop">background</span>: <span class="str">#86efac</span>; }
+
+<span class="cm">/* DOM 順で B が A の上 */</span>
+<span class="tag">&lt;div</span> <span class="attr">class</span>=<span class="val">"box-a"</span><span class="tag">&gt;</span>A<span class="tag">&lt;/div&gt;</span>
+<span class="tag">&lt;div</span> <span class="attr">class</span>=<span class="val">"box-b"</span><span class="tag">&gt;</span>B<span class="tag">&lt;/div&gt;</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">After — z-index で順序変更</div>
+        <div class="code-block">
+          <pre><span class="cm">/* position + z-index で A を前面に */</span>
+<span class="sel">.box-a</span> {
+  <span class="prop">position</span>: <span class="kw">relative</span>;
+  <span class="prop">z-index</span>: <span class="num">2</span>;
+  <span class="prop">background</span>: <span class="str">#fca5a5</span>;
+}
+<span class="sel">.box-b</span> {
+  <span class="prop">position</span>: <span class="kw">relative</span>;
+  <span class="prop">z-index</span>: <span class="num">1</span>;
+  <span class="prop">background</span>: <span class="str">#86efac</span>;
+}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== lab2 ===================== -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>描画順序の7段階ルール</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      CSS 仕様では、スタッキングコンテキスト内の要素を以下の7段階で奥から前へ描画します。
+      <code>z-index</code> を設定しても、この段階をまたいで順序が逆転することはありません。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 7段階の描画順（奥 → 前）</div>
+      <pre class="ascii-art">
+  ① 背景・ボーダー（コンテキスト自身）
+      │
+  ② 負の z-index 要素 (z-index: -1, -2, ...)
+      │
+  ③ ブロックレベル要素 (display: block, static)
+      │
+  ④ float 要素
+      │
+  ⑤ インラインレベル要素 (display: inline, inline-block)
+      │
+  ⑥ z-index: 0 または z-index: auto の positioned 要素
+      │
+  ⑦ 正の z-index 要素 (z-index: 1, 2, 99, 9999 ...)
+                                                    ← 最前面</pre>
+    </div>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="stage-lab2">Before/After 切替</button>
+        <span class="toggle-label" id="stage-lab2-label">現在: After（正常）</span>
+      </div>
+      <div class="livedemo-stage" id="stage-lab2">
+        <div class="ld-before">
+          <div class="ld-panel bad">
+            <strong>Before（全 static）:</strong> DOM 順に重なる
+            <div style="position:relative;height:90px;margin-top:8px;font-size:11px;font-family:monospace;">
+              <div style="position:absolute;top:30px;left:10px;width:110px;height:45px;background:#e5e7eb;border:1px solid #9ca3af;display:flex;align-items:center;justify-content:center;">③ block</div>
+              <div style="position:absolute;top:20px;left:60px;width:110px;height:45px;background:#fde68a;border:1px solid #b08800;display:flex;align-items:center;justify-content:center;">④ float</div>
+              <div style="position:absolute;top:10px;left:110px;width:110px;height:45px;background:#bfdbfe;border:1px solid #3b82f6;display:flex;align-items:center;justify-content:center;">⑤ inline</div>
+            </div>
+          </div>
+        </div>
+        <div class="ld-after">
+          <div class="ld-panel good">
+            <strong>After（z-index 設定）:</strong> 7段階ルール通りに重なる
+            <div style="position:relative;height:90px;margin-top:8px;font-size:11px;font-family:monospace;">
+              <div style="position:absolute;top:40px;left:10px;width:110px;height:45px;background:#fca5a5;border:1px solid #cb2431;z-index:-1;display:flex;align-items:center;justify-content:center;">② z:-1</div>
+              <div style="position:absolute;top:25px;left:60px;width:110px;height:45px;background:#e5e7eb;border:1px solid #9ca3af;display:flex;align-items:center;justify-content:center;">③ block</div>
+              <div style="position:absolute;top:10px;left:110px;width:110px;height:45px;background:#86efac;border:1px solid #22863a;z-index:1;display:flex;align-items:center;justify-content:center;">⑦ z:1</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">Before — 全 static → DOM 順</div>
+        <div class="code-block">
+          <pre><span class="cm">/* position なし = 全要素がDOM順 */</span>
+<span class="sel">.block-el</span>  { <span class="prop">display</span>: <span class="kw">block</span>; }
+<span class="sel">.float-el</span>  { <span class="prop">float</span>: <span class="kw">left</span>; }
+<span class="sel">.inline-el</span> { <span class="prop">display</span>: <span class="kw">inline-block</span>; }</pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">After — z-index で7段階制御</div>
+        <div class="code-block">
+          <pre><span class="cm">/* 負 z-index が最奥 */</span>
+<span class="sel">.neg-z</span>  { <span class="prop">position</span>: <span class="kw">relative</span>; <span class="prop">z-index</span>: <span class="num">-1</span>; }
+<span class="cm">/* 正 z-index が最前面 */</span>
+<span class="sel">.pos-z</span>  { <span class="prop">position</span>: <span class="kw">relative</span>; <span class="prop">z-index</span>: <span class="num">10</span>; }
+<span class="cm">/* auto は⑥段階（inline の後）*/</span>
+<span class="sel">.auto-z</span> { <span class="prop">position</span>: <span class="kw">relative</span>; }</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== lab3 ===================== -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>position + z-index によるコンテキスト生成</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>position: relative / absolute / sticky / fixed</code> の要素に <code>z-index: auto</code> <em>以外</em>の値（0 を含む整数）を指定すると、新しいスタッキングコンテキストが生成されます。
+      コンテキスト内の子要素は、そのコンテキストの外へ z-index で抜け出せなくなります。
+    </p>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="stage-lab3">Before/After 切替</button>
+        <span class="toggle-label" id="stage-lab3-label">現在: After（正常）</span>
+      </div>
+      <div class="livedemo-stage" id="stage-lab3">
+        <div class="ld-before">
+          <div class="ld-panel bad">
+            <strong>Before（z-index:auto → コンテキスト非生成）:</strong><br>
+            子の z-index:999 が外の要素より前に出る
+            <div style="position:relative;height:90px;margin-top:8px;font-size:11px;font-family:monospace;">
+              <div style="position:absolute;top:5px;left:5px;width:130px;height:75px;background:#f3f4f6;border:2px dashed #9ca3af;padding:4px;">
+                <span style="font-size:10px;color:#6b7280;">親 z-index:auto</span>
+                <div style="position:absolute;top:20px;left:20px;width:80px;height:40px;background:#fca5a5;border:1px solid #cb2431;z-index:999;display:flex;align-items:center;justify-content:center;">子 z:999</div>
+              </div>
+              <div style="position:absolute;top:25px;left:100px;width:100px;height:40px;background:#86efac;border:1px solid #22863a;z-index:5;display:flex;align-items:center;justify-content:center;">外 z:5</div>
+            </div>
+            <p style="margin-top:8px;font-size:11px;color:#6b1a22;">→ 子(z:999) が外(z:5)より前面 = 意図しない重なり</p>
+          </div>
+        </div>
+        <div class="ld-after">
+          <div class="ld-panel good">
+            <strong>After（z-index:0 → コンテキスト生成）:</strong><br>
+            子の z-index:999 はコンテキスト内に閉じ込められる
+            <div style="position:relative;height:90px;margin-top:8px;font-size:11px;font-family:monospace;">
+              <div style="position:absolute;top:5px;left:5px;width:130px;height:75px;background:#f3f4f6;border:2px solid #005cc5;padding:4px;z-index:0;">
+                <span style="font-size:10px;color:#005cc5;">親 z-index:0 (SC生成)</span>
+                <div style="position:absolute;top:20px;left:20px;width:80px;height:40px;background:#fca5a5;border:1px solid #cb2431;z-index:999;display:flex;align-items:center;justify-content:center;">子 z:999</div>
+              </div>
+              <div style="position:absolute;top:25px;left:100px;width:100px;height:40px;background:#86efac;border:1px solid #22863a;z-index:5;display:flex;align-items:center;justify-content:center;">外 z:5</div>
+            </div>
+            <p style="margin-top:8px;font-size:11px;color:#166534;">→ 外(z:5) が 親コンテキスト(z:0) より前面。子は内部で完結</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">Before — z-index:auto（コンテキスト非生成）</div>
+        <div class="code-block">
+          <pre><span class="sel">.parent</span> {
+  <span class="prop">position</span>: <span class="kw">relative</span>;
+  <span class="cm">/* z-index 未指定 = auto */</span>
+  <span class="cm">/* → コンテキスト生成されない */</span>
+}
+<span class="sel">.child</span> {
+  <span class="prop">position</span>: <span class="kw">absolute</span>;
+  <span class="prop">z-index</span>: <span class="num">999</span>;
+  <span class="cm">/* ルートSC に直接参加 */</span>
+  <span class="cm">/* → 外の要素と比較される */</span>
+}</pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">After — z-index:0（コンテキスト生成）</div>
+        <div class="code-block">
+          <pre><span class="sel">.parent</span> {
+  <span class="prop">position</span>: <span class="kw">relative</span>;
+  <span class="prop">z-index</span>: <span class="num">0</span>;
+  <span class="cm">/* → 新しいSCを生成 */</span>
+}
+<span class="sel">.child</span> {
+  <span class="prop">position</span>: <span class="kw">absolute</span>;
+  <span class="prop">z-index</span>: <span class="num">999</span>;
+  <span class="cm">/* 親SCの内部に閉じ込められる */</span>
+  <span class="cm">/* → 外の要素と比較不可 */</span>
+}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== lab4 ===================== -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>fixed / sticky — 常にコンテキスト生成</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>position: fixed</code> および <code>position: sticky</code> は、<code>z-index</code> の値にかかわらず<strong>常に新しいスタッキングコンテキストを生成</strong>します。
+      sticky header の実例で、スクロール時に背景コンテンツをくぐり抜けないことを確認できます。
+    </p>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <span class="toggle-label" style="font-size:.82rem;color:var(--text-dim);">↓ スクロールして sticky header を確認</span>
+      </div>
+      <div class="livedemo-stage" id="stage-lab4">
+        <div style="height:160px;overflow-y:scroll;border:1px solid var(--border);border-radius:6px;position:relative;">
+          <div id="lab4-sticky-header" style="position:sticky;top:0;background:#005cc5;color:#fff;padding:8px 14px;font-family:monospace;font-size:12px;z-index:10;border-bottom:1px solid #003d8f;">
+            Sticky Header — スクロールしても追従します
+          </div>
+          <div style="padding:12px 14px;font-size:12px;color:var(--text-dim);line-height:2;">
+            <p>コンテンツ 1 行目</p><p>コンテンツ 2 行目</p><p>コンテンツ 3 行目</p>
+            <p>コンテンツ 4 行目（ここまでスクロールしても header は上部に固定）</p>
+            <p>コンテンツ 5 行目</p><p>コンテンツ 6 行目</p>
+            <div style="padding:8px;background:#fde68a;border:1px solid #b08800;border-radius:4px;color:#7a5c00;font-size:11px;">
+              ↑ この黄色ボックスも sticky header の下に潜り込まない（SCが閉じ込めるため）
+            </div>
+            <p>コンテンツ 7 行目</p><p>コンテンツ 8 行目</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm">/* fixed: z-index なしでも常にSC生成 */</span>
+<span class="sel">.fixed-header</span> {
+  <span class="prop">position</span>: <span class="kw">fixed</span>;
+  <span class="prop">top</span>: <span class="num">0</span>; <span class="prop">left</span>: <span class="num">0</span>; <span class="prop">right</span>: <span class="num">0</span>;
+  <span class="cm">/* z-index 省略でもSCが生成される */</span>
+}
+
+<span class="cm">/* sticky: スクロール追従 + SC生成 */</span>
+<span class="sel">.sticky-header</span> {
+  <span class="prop">position</span>: <span class="kw">sticky</span>;
+  <span class="prop">top</span>: <span class="num">0</span>;
+  <span class="cm">/* コンテナのオーバーフローが scroll/auto の親が必要 */</span>
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== lab5 ===================== -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>opacity &lt; 1 の罠</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>opacity: 0.99</code> のように <strong>1 未満の opacity</strong> を指定すると、GPU 合成レイヤーのためにスタッキングコンテキストが生成されます。
+      <code>opacity: 1</code> では生成されません。この差により、内部の子要素の z-index が突然「閉じ込め」られる現象が起きます。
+      デバッグ時に <code>will-change: opacity</code> や <code>transform</code> でも同様の罠があります。
+    </p>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="stage-lab5">Before/After 切替</button>
+        <span class="toggle-label" id="stage-lab5-label">現在: After（正常）</span>
+      </div>
+      <div class="livedemo-stage" id="stage-lab5">
+        <div class="ld-before">
+          <div class="ld-panel bad">
+            <strong>Before（opacity:1 → コンテキスト非生成）:</strong><br>
+            子の z-index:999 が外の赤いボックスより前に出る
+            <div style="position:relative;height:100px;margin-top:8px;font-size:11px;font-family:monospace;">
+              <div style="position:absolute;top:10px;left:10px;width:140px;height:70px;background:#dbeafe;border:2px dashed #3b82f6;padding:4px;opacity:1;">
+                <span style="font-size:10px;color:#1d4ed8;">親 opacity:1 (SC非生成)</span>
+                <div style="position:absolute;top:22px;left:15px;width:90px;height:35px;background:#a5b4fc;border:1px solid #6f42c1;z-index:999;display:flex;align-items:center;justify-content:center;">子 z:999</div>
+              </div>
+              <div style="position:absolute;top:30px;left:110px;width:100px;height:40px;background:#fca5a5;border:2px solid #cb2431;z-index:5;display:flex;align-items:center;justify-content:center;color:#6b1a22;">外 z:5 (後ろ)</div>
+            </div>
+            <p style="margin-top:6px;font-size:11px;color:#6b1a22;">子(z:999) が外(z:5) より前面 — 意図通りだが opacity を変えると…</p>
+          </div>
+        </div>
+        <div class="ld-after">
+          <div class="ld-panel good">
+            <strong>After（opacity:0.99 → コンテキスト生成）:</strong><br>
+            子の z-index:999 が親SCに閉じ込められ、外の z:5 より後ろになる
+            <div style="position:relative;height:100px;margin-top:8px;font-size:11px;font-family:monospace;">
+              <div style="position:absolute;top:10px;left:10px;width:140px;height:70px;background:#dbeafe;border:2px solid #005cc5;padding:4px;opacity:0.99;z-index:0;">
+                <span style="font-size:10px;color:#005cc5;">親 opacity:0.99 (SC生成!)</span>
+                <div style="position:absolute;top:22px;left:15px;width:90px;height:35px;background:#a5b4fc;border:1px solid #6f42c1;z-index:999;display:flex;align-items:center;justify-content:center;">子 z:999</div>
+              </div>
+              <div style="position:absolute;top:30px;left:110px;width:100px;height:40px;background:#fca5a5;border:2px solid #cb2431;z-index:5;display:flex;align-items:center;justify-content:center;color:#6b1a22;">外 z:5 (前面)</div>
+            </div>
+            <p style="margin-top:6px;font-size:11px;color:#166534;">外(z:5) が親コンテキスト(z:0相当)より前。子はいくら z-index 大きくても追い越せない</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">Before — opacity:1（コンテキスト非生成）</div>
+        <div class="code-block">
+          <pre><span class="sel">.parent</span> {
+  <span class="prop">position</span>: <span class="kw">relative</span>;
+  <span class="prop">opacity</span>: <span class="num">1</span>;
+  <span class="cm">/* SCは生成されない */</span>
+}
+<span class="sel">.child</span> {
+  <span class="prop">position</span>: <span class="kw">absolute</span>;
+  <span class="prop">z-index</span>: <span class="num">999</span>;
+  <span class="cm">/* ルートSCに直接参加 */</span>
+  <span class="cm">/* → 外の要素と比較される */</span>
+}</pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">After — opacity:0.99（コンテキスト生成！）</div>
+        <div class="code-block">
+          <pre><span class="sel">.parent</span> {
+  <span class="prop">position</span>: <span class="kw">relative</span>;
+  <span class="prop">opacity</span>: <span class="num">0.99</span>;
+  <span class="cm">/* GPU合成 → SC生成 */</span>
+  <span class="cm">/* 0.01 の差でz-index閉じ込め */</span>
+}
+<span class="sel">.child</span> {
+  <span class="prop">position</span>: <span class="kw">absolute</span>;
+  <span class="prop">z-index</span>: <span class="num">999</span>;
+  <span class="cm">/* 親SCの内部に閉じ込め */</span>
+  <span class="cm">/* → 外の要素に勝てない */</span>
+}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LABS_CHUNK_A_END -->
+<!-- LABS_CHUNK_B_START (lab6-10) -->
+
+<!-- ===================== lab6 ===================== -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>transform / filter / will-change</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>transform</code>・<code>filter</code>・<code>will-change:transform</code> などは視覚的効果がなくてもスタッキングコンテキストを生成する。
+      <code>translateZ(0)</code> や <code>blur(0)</code> のように「何もしていないように見える値」でも生成されるため、子の <code>z-index</code> が突然閉じ込められる原因になる。
+    </p>
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 SC を生成する transform / filter の値</div>
+      <pre class="ascii-art">
+  値が "none" 以外なら全て SC を生成する
+  +------------------------------------------------------+
+  |  transform:   translateZ(0) / translate(0,0) / ...  |
+  |  filter:      blur(0px) / brightness(1) / ...       |
+  |  will-change: transform / filter / opacity          |
+  |  perspective: 任意の値                              |
+  +------------------------------------------------------+
+  "副作用なし" に見えても SC は確実に生成される！</pre>
+    </div>
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="ld-transform">Before を見る</button>
+        <span class="toggle-label" id="ld-transform-label">現在: After（正常）</span>
+      </div>
+      <div class="livedemo-stage" id="ld-transform">
+        <div class="ld-panel good ld-after" style="position:relative;min-height:100px;">
+          ✓ After: 親に <code>transform:translateZ(0)</code> を追加すると子 z:999 はこの SC 内に閉じ込められ、兄弟 z:2 が前面に来る。
+          <div style="position:relative;height:80px;margin-top:8px;">
+            <div style="position:absolute;top:0;left:0;width:170px;height:65px;background:#bfdbfe;border:1.5px solid #3b82f6;border-radius:5px;transform:translateZ(0);z-index:1;padding:4px 6px;font-size:11px;font-family:monospace;">
+              親 transform:translateZ(0) z:1
+              <span style="position:absolute;bottom:6px;right:6px;background:#eff6ff;border:1px solid #93c5fd;border-radius:3px;padding:2px 5px;font-size:10px;">子 z:999（閉じ込め）</span>
+            </div>
+            <div style="position:absolute;top:8px;left:110px;width:130px;height:50px;background:#dcfce7;border:1.5px solid #22c55e;border-radius:5px;z-index:2;display:flex;align-items:center;justify-content:center;font-size:11px;font-family:monospace;">兄弟 z:2 が前面</div>
+          </div>
+        </div>
+        <div class="ld-panel bad ld-before">
+          ✗ Before: 親に transform なし → 子 z:999 が root SC で有効になり兄弟 z:2 より前面に出てしまう（意図しない重なり）。
+        </div>
+      </div>
+    </div>
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">Before — transform なし</div>
+        <div class="code-block"><pre>.parent {
+  position: relative;
+  z-index: 1;
+}
+.child {
+  position: absolute;
+  z-index: 999;
+}
+.sibling {
+  position: relative;
+  z-index: 2;
+  /* 親z:1 &lt; 兄弟z:2 → 兄弟が前面 */
+}</pre></div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">After — transform 追加で閉じ込め発生</div>
+        <div class="code-block"><pre>.parent {
+  position: relative;
+  z-index: 1;
+  transform: translateZ(0);
+  /* will-change:transform でも同様 */
+}
+.child {
+  position: absolute;
+  z-index: 999;
+  /* .parent SC内に閉じ込められる */
+}
+.sibling {
+  position: relative;
+  z-index: 2;
+  /* 子z:999は関係なし → 兄弟前面 */
+}</pre></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== lab7 ===================== -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>isolation: isolate</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>isolation: isolate</code> は「副作用なく明示的にスタッキングコンテキストを生成する」専用プロパティ。
+      <code>mix-blend-mode</code> の色合成が上位要素に漏れ出すのを防ぐ目的で使われるが、z-index の閉じ込めにも活用できる。
+    </p>
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 isolation の2つの値</div>
+      <pre class="ascii-art">
+  isolation: auto    → SC生成しない（デフォルト）
+  isolation: isolate → SC生成する（副作用なし）
+
+  +-- isolation:isolate を付けた要素 -----------------+
+  |   mix-blend-mode の合成範囲がここで止まる          |
+  |   z-index の閉じ込め範囲もここで止まる            |
+  |   transform / opacity の副作用は一切ない          |
+  +----------------------------------------------------+
+
+  "SCだけ作りたい" ときの唯一の pure な方法</pre>
+    </div>
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="ld-isolate">Before を見る</button>
+        <span class="toggle-label" id="ld-isolate-label">現在: After（正常）</span>
+      </div>
+      <div class="livedemo-stage" id="ld-isolate">
+        <div class="ld-panel good ld-after">
+          ✓ After: <code>isolation:isolate</code> を付けたコンテナで <code>mix-blend-mode:multiply</code> の合成が止まり、背景への漏れが遮断される。
+          <div style="margin-top:10px;display:flex;gap:16px;align-items:flex-start;">
+            <div style="isolation:isolate;background:#fef9c3;border:2px solid #eab308;border-radius:6px;padding:8px 10px;font-size:11px;font-family:monospace;">
+              isolation:isolate コンテナ
+              <div style="width:60px;height:28px;background:#3b82f6;mix-blend-mode:multiply;border-radius:3px;margin-top:4px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;">blend</div>
+              <div style="font-size:10px;margin-top:4px;color:#a16207;">→ 外部に漏れない</div>
+            </div>
+            <div style="background:#f0fdf4;border:2px solid #22c55e;border-radius:6px;padding:8px 10px;font-size:11px;font-family:monospace;">
+              外側の要素
+              <div style="font-size:10px;margin-top:4px;color:#166534;">← blend 影響なし</div>
+            </div>
+          </div>
+        </div>
+        <div class="ld-panel bad ld-before">
+          ✗ Before: <code>isolation:auto</code>（デフォルト）では <code>mix-blend-mode</code> が上位要素にまで及び、意図しない色変化が発生する。
+        </div>
+      </div>
+    </div>
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">Before — blend-mode 漏れ</div>
+        <div class="code-block"><pre>.container {
+  background: #fbbf24;
+  /* isolation: auto (デフォルト) */
+  /* SC生成されない → blend漏れる */
+}
+.blended {
+  background: #3b82f6;
+  mix-blend-mode: multiply;
+  /* 上位要素の背景色と合成 → 漏れ */
+}</pre></div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">After — isolation:isolate で遮断</div>
+        <div class="code-block"><pre>.container {
+  background: #fbbf24;
+  isolation: isolate;
+  /* SC生成 副作用なし */
+  /* blend の合成範囲がここで止まる */
+}
+.blended {
+  background: #3b82f6;
+  mix-blend-mode: multiply;
+  /* .container 内のみで合成 */
+}</pre></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== lab8 ===================== -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>Flex / Grid の子 + z-index</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>display:flex</code> または <code>display:grid</code> のコンテナの<strong>直接の子</strong>は、<code>z-index</code> が <code>auto</code> 以外の値を持つとスタッキングコンテキストを生成する。
+      <code>position</code> が <code>static</code> のままでも SC が生成される点に注意。
+    </p>
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 flex/grid 子の SC 生成条件</div>
+      <pre class="ascii-art">
+  通常の要素:
+    position:static + z-index:5  → SC生成なし（効果なし）
+
+  flex/grid の直接の子:
+    position:static + z-index:5  → SC生成あり（生成される！）
+    position:static + z-index:auto → SC生成なし
+
+  +--- display:flex / grid コンテナ ------------------+
+  |  子A (z-index:2) → SC生成あり                    |
+  |  子B (z-index:1) → SC生成あり                    |
+  |  子C (z-index:auto) → SC生成なし                 |
+  +----------------------------------------------------+</pre>
+    </div>
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="ld-flex-z">Before を見る</button>
+        <span class="toggle-label" id="ld-flex-z-label">現在: After（正常）</span>
+      </div>
+      <div class="livedemo-stage" id="ld-flex-z">
+        <div class="ld-panel good ld-after">
+          ✓ After: flex の子に <code>z-index</code> を付与すると各子が独立した SC を持ち重なり順を制御できる。
+          <div style="display:flex;gap:8px;margin-top:10px;height:70px;align-items:flex-start;">
+            <div style="flex:1;background:#bfdbfe;border:1.5px solid #3b82f6;border-radius:4px;z-index:2;display:flex;align-items:center;justify-content:center;font-size:11px;font-family:monospace;height:60px;">子A z:2</div>
+            <div style="flex:1;background:#fef9c3;border:1.5px solid #eab308;border-radius:4px;z-index:1;display:flex;align-items:center;justify-content:center;font-size:11px;font-family:monospace;height:60px;margin-top:10px;">子B z:1</div>
+            <div style="flex:1;background:#dcfce7;border:1.5px solid #22c55e;border-radius:4px;z-index:3;display:flex;align-items:center;justify-content:center;font-size:11px;font-family:monospace;height:60px;">子C z:3（最前面）</div>
+          </div>
+        </div>
+        <div class="ld-panel bad ld-before">
+          ✗ Before（混乱）: <code>position:static</code> の通常要素に <code>z-index</code> を書いても SC が生成されず効果がない。flex/grid 子は特殊ルールで例外扱いとなる。
+        </div>
+      </div>
+    </div>
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">Before — 通常要素（z-index 無効）</div>
+        <div class="code-block"><pre>.normal-parent {
+  display: block;
+}
+.child {
+  /* position:static のまま */
+  z-index: 5;
+  /* SC生成なし 効果なし */
+}</pre></div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">After — flex 子（z-index が有効）</div>
+        <div class="code-block"><pre>.flex-parent {
+  display: flex; /* or grid */
+}
+.flex-child {
+  /* position:static のまま */
+  z-index: 5;
+  /* SC生成あり flex/grid子は例外 */
+  /* 兄弟flex子との重なり順が変わる */
+}</pre></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== lab9 ===================== -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>入れ子コンテキストと z-index の閉じ込め</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>z-index</code> の比較は<strong>同一スタッキングコンテキスト内の兄弟間でのみ</strong>行われる。
+      親コンテキストが異なる要素はいくら <code>z-index</code> を大きくしても、親コンテキスト同士の勝負でしか勝てない。
+    </p>
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 マトリョーシカ図で理解する</div>
+      <pre class="ascii-art">
+  Root SC
+  +--------------------------------------------------+
+  |                                                  |
+  |  +--- 親A (z-index:1) ----------------------+   |
+  |  |                                          |   |
+  |  |   +- 子a (z-index:9999) -+               |   |
+  |  |   |  z:9999 は 親A内だけ  |               |   |
+  |  |   +----------------------+               |   |
+  |  +------------------------------------------+   |
+  |                                                  |
+  |  +--- 兄弟B (z-index:2) --------------------+   |
+  |  |   兄弟B は 親A(z:1) より前面             |   |
+  |  |   → 子a(z:9999) より前面に見える！       |   |
+  |  +------------------------------------------+   |
+  +--------------------------------------------------+
+
+  比較:
+    親A (z:1)  vs  兄弟B (z:2)  → 兄弟B 勝ち
+    子a (z:9999) は 親A SC の内側 → 比較対象外</pre>
+    </div>
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="ld-nesting">Before を見る</button>
+        <span class="toggle-label" id="ld-nesting-label">現在: After（確認）</span>
+      </div>
+      <div class="livedemo-stage" id="ld-nesting">
+        <div class="ld-panel good ld-after">
+          ✓ 確認: 親A (z:1) の子 z:9999 は兄弟B (z:2) に負ける。
+          <div style="position:relative;height:100px;margin-top:10px;">
+            <div style="position:absolute;top:5px;left:5px;width:190px;height:82px;background:#dbeafe;border:2px solid #3b82f6;border-radius:6px;z-index:1;padding:6px;font-size:10px;font-family:monospace;">
+              親A z:1
+              <div style="position:absolute;bottom:8px;right:8px;background:#bfdbfe;border:1px solid #93c5fd;border-radius:3px;padding:3px 7px;z-index:9999;font-size:10px;font-family:monospace;">子a z:9999</div>
+            </div>
+            <div style="position:absolute;top:14px;left:125px;width:150px;height:58px;background:#dcfce7;border:2px solid #22c55e;border-radius:6px;z-index:2;display:flex;align-items:center;justify-content:center;font-size:10px;font-family:monospace;">兄弟B z:2 が前面</div>
+          </div>
+        </div>
+        <div class="ld-panel bad ld-before">
+          ✗ Before（誤解）: 「z-index:9999 が最大だから最前面のはず」と思ってしまいがち。スタッキングコンテキストの閉じ込めを無視した誤った期待。
+        </div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-label">閉じ込めの実例と解決策</div>
+      <pre>.parent-a {
+  position: relative;
+  z-index: 1;  /* SC生成 → 子はここに閉じ込め */
+}
+.parent-a .child-a {
+  position: absolute;
+  z-index: 9999;
+  /* .parent-a SC内でしか有効でない */
+}
+.sibling-b {
+  position: relative;
+  z-index: 2;  /* 親A(1) &lt; 2 → 常に勝ち */
+}
+
+/* 解決策: .parent-a の z-index を 3以上にする */
+.parent-a { z-index: 3; }</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== lab10 ===================== -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>z-index:9999 が効かない理由</h3>
+    <span class="lab-tag tag-advanced">上級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      z-index の勝敗は「ベクトルの辞書式比較」で決まる。親コンテキストの z-index が先に比較され、親が負けた時点で子の z-index は無関係になる。
+      スライダーで親の z-index を変えながら勝敗がリアルタイムで変わる様子を確認しよう。
+    </p>
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 辞書式順序（lexicographic order）の計算図</div>
+      <pre class="ascii-art">
+  比較ベクトル: (親z, 子z)
+
+  ケース①: 親A(z:1) → 子a(z:9999)  →  ベクトル = (1, 9999)
+  ケース②: 兄弟B(z:2) → 子b(z:1)   →  ベクトル = (2, 1)
+
+  辞書式比較: まず先頭要素を比較
+    (1, 9999) vs (2, 1)
+     ^
+     1 &lt; 2 → ケース①が負け！後続の 9999 vs 1 は比較しない
+
+  → (1, 9999) &lt; (2, 1)  ← "9999 &gt; 1" なのに負ける！
+
+  辞書式順序 = 左から順に比較、最初に差がついた時点で決定</pre>
+    </div>
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <span style="font-family:monospace;font-size:.8rem;color:var(--text-dim);">親A の z-index を変更:</span>
+        <input type="range" id="parent-z-slider" min="1" max="5" value="1" style="width:120px;accent-color:var(--accent);">
+        <span id="parent-z-val" style="font-family:monospace;font-size:.85rem;color:var(--accent);min-width:20px;display:inline-block;">1</span>
+        <span id="result-badge" style="margin-left:auto;font-family:monospace;font-size:.78rem;padding:4px 10px;border-radius:12px;background:var(--error);color:#fff;">子a 負け</span>
+      </div>
+      <div class="livedemo-stage" style="position:relative;height:120px;overflow:hidden;">
+        <div id="parent-a-box" style="position:absolute;top:10px;left:10px;width:200px;height:90px;background:#dbeafe;border:2px solid #3b82f6;border-radius:6px;z-index:1;display:flex;align-items:flex-start;padding:8px;font-size:11px;font-family:monospace;">
+          親A z:<span id="parent-a-z-label">1</span>
+          <div style="position:absolute;bottom:10px;right:8px;background:#93c5fd;border:1px solid #3b82f6;border-radius:3px;padding:4px 8px;z-index:9999;font-size:10px;font-family:monospace;">子a z:9999</div>
+        </div>
+        <div style="position:absolute;top:20px;left:140px;width:150px;height:60px;background:#dcfce7;border:2px solid #22c55e;border-radius:6px;z-index:2;display:flex;align-items:center;justify-content:center;font-size:11px;font-family:monospace;">兄弟B z:2</div>
+        <div id="result-text" style="position:absolute;bottom:8px;left:10px;font-family:monospace;font-size:.75rem;color:var(--error);">(1,9999) &lt; (2,1) → 子a 負け</div>
+      </div>
+    </div>
+    <script>
+    (function(){
+      var slider = document.getElementById('parent-z-slider');
+      var badge = document.getElementById('result-badge');
+      var parentBox = document.getElementById('parent-a-box');
+      var parentLabel = document.getElementById('parent-a-z-label');
+      var parentZVal = document.getElementById('parent-z-val');
+      var resultText = document.getElementById('result-text');
+      if (!slider) return;
+      function update(){
+        var pz = parseInt(slider.value, 10);
+        parentZVal.textContent = pz;
+        parentLabel.textContent = pz;
+        parentBox.style.zIndex = pz;
+        var win = pz >= 2;
+        badge.textContent = win ? '子a 勝ち！' : '子a 負け';
+        badge.style.background = win ? 'var(--success)' : 'var(--error)';
+        resultText.style.color = win ? 'var(--success)' : 'var(--error)';
+        resultText.textContent = '('+pz+',9999) '+(win ? '> (2,1) → 子a 勝ち！' : '< (2,1) → 子a 負け');
+      }
+      slider.addEventListener('input', update);
+      update();
+    })();
+    </script>
+    <div class="code-block">
+      <div class="code-label">z-index:9999 が負ける構造と修正方法</div>
+      <pre>/* 問題のある構造 */
+.parent-a {
+  position: relative;
+  z-index: 1;  /* ここが 2 以上でないと負ける */
+}
+.parent-a .child {
+  position: absolute;
+  z-index: 9999;  /* 無意味な大きな値 */
+}
+.sibling-b {
+  position: relative;
+  z-index: 2;  /* 親A(1) &lt; 2 なので常に勝ち */
+}
+
+/* 修正: .parent-a の z-index を 3以上にする */
+.parent-a { z-index: 3; }
+/* (3, 9999) &gt; (2, 1) → 子aが前面に */</pre>
+    </div>
+  </div>
+</div>
+
+
+<!-- LABS_CHUNK_B_END -->
+<!-- LABS_CHUNK_C_START (lab11-15) -->
+
+<!-- lab11 -->
+<article class="lab" id="lab11">
+  <div class="lab-header">
+    <div class="lab-num">11</div>
+    <h3>同一コンテキスト内の順序解決：z-index 同値はDOM順で決まる</h3>
+    <span class="lab-tag tag-intermediate">Intermediate</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      同じスタッキングコンテキスト内で <code>z-index</code> が同じ値の場合、
+      <strong>DOMで後に出現する要素</strong>が上に表示されます（後勝ちルール）。
+      z-index を上げる前に、まずDOM順を見直すことが重要です。
+    </p>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" onclick="swapLab11(this)">DOM順を入れ替える</button>
+        <span class="toggle-label" id="lab11-swap-label">現在: 青が後（青が上に表示）</span>
+      </div>
+      <div class="livedemo-stage">
+        <div id="lab11-container" style="position:relative; height:110px;">
+          <div id="lab11-red" style="position:absolute; top:10px; left:10px; width:130px; height:80px;
+            background:#fee2e2; border:2px solid #cb2431; border-radius:6px;
+            display:flex; align-items:center; justify-content:center;
+            font-family:monospace; font-size:13px; color:#6b1a22; z-index:1;">
+            赤 (z-index:1)
+          </div>
+          <div id="lab11-blue" style="position:absolute; top:30px; left:70px; width:130px; height:80px;
+            background:#dbeafe; border:2px solid #1d4ed8; border-radius:6px;
+            display:flex; align-items:center; justify-content:center;
+            font-family:monospace; font-size:13px; color:#1e3a8a; z-index:1;">
+            青 (z-index:1)
+          </div>
+        </div>
+        <p style="font-family:monospace; font-size:12px; color:#6a737d; margin-top:4px;" id="lab11-dom-note">
+          DOM順: 赤 → 青（青が後 = 青が上）
+        </p>
+      </div>
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">Before — z-indexで解決しようとする（NG）</div>
+        <div class="code-block"><pre>.red  { position:absolute; z-index:<span class="num">1</span>; }
+.blue { position:absolute; z-index:<span class="num">1</span>; }
+<span class="cm">/* どちらが上? → 実はDOM順が決め手 */</span>
+<span class="cm">/* z-index:2 にしても根本解決にならない */</span></pre></div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">After — DOM順で意図的に制御する（OK）</div>
+        <div class="code-block"><pre><span class="cm">/* 赤を上にしたいなら赤をDOMで後に置く */</span>
+<span class="tag">&lt;div</span> <span class="attr">class</span>=<span class="val">"blue"</span><span class="tag">&gt;&lt;/div&gt;</span>
+<span class="tag">&lt;div</span> <span class="attr">class</span>=<span class="val">"red"</span><span class="tag">&gt;&lt;/div&gt;</span>
+<span class="cm">/* これだけで赤が青の上に表示される */</span></pre></div>
+      </div>
+    </div>
+  </div>
+</article>
+
+<!-- lab12 -->
+<article class="lab" id="lab12">
+  <div class="lab-header">
+    <div class="lab-num">12</div>
+    <h3>モーダル / ダイアログの正しい配置：body 直下でないと罠にはまる</h3>
+    <span class="lab-tag tag-advanced">Advanced</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>transform</code> を持つ親要素はスタッキングコンテキストを生成し、
+      その内側に置かれたモーダルの <code>z-index</code> はその親コンテキスト内でしか有効になりません。
+      モーダルは <code>&lt;body&gt;</code> 直下に配置するか、コンテキストを生成する親の外に出す必要があります。
+    </p>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="lab12-stage">Before/After 切り替え</button>
+        <span class="toggle-label" id="lab12-stage-label">現在: After（正常）</span>
+      </div>
+      <div class="livedemo-stage" id="lab12-stage" style="min-height:180px; position:relative;">
+        <div class="ld-after" style="position:relative; height:160px;">
+          <div style="transform:translateX(0); background:#f0fdf4; border:1px solid #22863a;
+            border-radius:6px; padding:12px; font-family:monospace; font-size:12px;
+            color:#166534; position:absolute; top:10px; left:10px; width:200px; z-index:1;">
+            transform親 (z-index:1)
+            <div style="padding:6px; margin-top:6px; background:#dcfce7; border-radius:4px; font-size:11px;">コンテンツ</div>
+          </div>
+          <div style="position:absolute; top:30px; left:120px;
+            background:white; border:2px solid #22863a; border-radius:8px; padding:14px 20px;
+            z-index:9999; font-family:monospace; font-size:12px; color:#166534;
+            box-shadow:0 8px 24px rgba(0,0,0,.15); text-align:center;">
+            モーダル (body直下相当)<br>
+            <span style="font-size:11px; color:#22863a;">z-index:9999 → 最前面</span>
+          </div>
+        </div>
+        <div class="ld-before" style="position:relative; height:160px;">
+          <div style="transform:translateX(0); background:#fff7f7; border:1px solid #cb2431;
+            border-radius:6px; padding:12px; font-family:monospace; font-size:12px;
+            color:#6b1a22; position:absolute; top:10px; left:10px; width:200px; z-index:1;">
+            transform親 (z-index:1) ← コンテキスト生成
+            <div style="padding:6px; margin-top:6px; background:#fee2e2; border-radius:4px; font-size:11px;">コンテンツ</div>
+            <div style="position:absolute; top:8px; right:-30px;
+              background:white; border:2px solid #cb2431; border-radius:6px; padding:10px 14px;
+              z-index:9999; font-family:monospace; font-size:11px; color:#9a1320;
+              box-shadow:0 4px 12px rgba(0,0,0,.1); text-align:center; min-width:120px;">
+              モーダル (ネスト内)<br>
+              <span style="font-size:10px;">z-index:9999 でも親に閉じ込め</span>
+            </div>
+          </div>
+          <div style="position:absolute; top:50px; left:180px; width:100px; height:50px;
+            background:#fef3c7; border:1px solid #d97706; border-radius:6px; z-index:2;
+            display:flex; align-items:center; justify-content:center;
+            font-family:monospace; font-size:11px; color:#92400e; text-align:center;">
+            他の要素<br>z-index:2<br>→ 上に来る
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">Before — transform 親の内側にモーダル</div>
+        <div class="code-block"><pre><span class="tag">&lt;div</span> <span class="attr">class</span>=<span class="val">"wrapper"</span><span class="tag">&gt;</span> <span class="cm">&lt;!-- transform あり --&gt;</span>
+  <span class="tag">&lt;div</span> <span class="attr">class</span>=<span class="val">"modal"</span><span class="tag">&gt;</span>...<span class="tag">&lt;/div&gt;</span>
+<span class="tag">&lt;/div&gt;</span>
+
+<span class="sel">.wrapper</span> { <span class="prop">transform</span>: <span class="fn">translateX</span>(<span class="num">0</span>); <span class="prop">z-index</span>:<span class="num">1</span>; }
+<span class="sel">.modal</span>   { <span class="prop">position</span>:fixed; <span class="prop">z-index</span>:<span class="num">9999</span>; }
+<span class="cm">/* z-index:9999 も .wrapper に閉じ込め */</span></pre></div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">After — body 直下に移動</div>
+        <div class="code-block"><pre><span class="tag">&lt;div</span> <span class="attr">class</span>=<span class="val">"wrapper"</span><span class="tag">&gt;</span>...<span class="tag">&lt;/div&gt;</span>
+<span class="tag">&lt;div</span> <span class="attr">class</span>=<span class="val">"modal"</span><span class="tag">&gt;</span>...<span class="tag">&lt;/div&gt;</span>
+<span class="cm">&lt;!-- body の直接の子 → ルートコンテキスト --&gt;</span>
+
+<span class="sel">.modal</span> { <span class="prop">position</span>:fixed; <span class="prop">z-index</span>:<span class="num">9999</span>; }
+<span class="cm">/* 今度は本当にすべての上に来る */</span></pre></div>
+      </div>
+    </div>
+  </div>
+</article>
+
+<!-- lab13 -->
+<article class="lab" id="lab13">
+  <div class="lab-header">
+    <div class="lab-num">13</div>
+    <h3>ドロップダウン / ツールチップ設計：overflow:hidden 親との衝突</h3>
+    <span class="lab-tag tag-advanced">Advanced</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>overflow:hidden</code> を持つ親はドロップダウンを視覚的にクリップします。
+      これは z-index とは別の問題で、<strong>クリッピング</strong>によるものです。
+      解決策は①親の <code>overflow</code> を <code>visible</code> にする、
+      ②ドロップダウンを DOM 的に親の外（body 直下等）に配置する、
+      ③ブラウザネイティブの <code>Popover API</code> を使う、の3択です。
+    </p>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="lab13-stage">Before/After 切り替え</button>
+        <span class="toggle-label" id="lab13-stage-label">現在: After（正常）</span>
+      </div>
+      <div class="livedemo-stage" id="lab13-stage" style="min-height:200px;">
+        <div class="ld-after">
+          <div style="overflow:visible; background:#f0fdf4; border:1px solid #22863a;
+            border-radius:6px; padding:12px; font-family:monospace; font-size:12px;
+            color:#166534; position:relative; display:inline-block;">
+            <span style="color:#22863a; font-size:11px;">overflow: visible（親）</span>
+            <button style="margin-left:10px; padding:3px 10px; background:#22863a; color:white;
+              border:none; border-radius:4px; font-family:monospace; font-size:11px; cursor:default;">
+              メニュー ▼
+            </button>
+            <div style="position:absolute; top:100%; left:8px;
+              background:white; border:1px solid #22863a; border-radius:6px;
+              padding:6px 0; min-width:120px; z-index:100;
+              box-shadow:0 4px 12px rgba(0,0,0,.12); font-size:12px;">
+              <div style="padding:5px 14px; color:#166534;">項目 1</div>
+              <div style="padding:5px 14px; color:#166534;">項目 2</div>
+              <div style="padding:5px 14px; color:#166534;">項目 3</div>
+            </div>
+          </div>
+          <p style="font-family:monospace; font-size:11px; color:#22863a; margin-top:90px;">
+            ドロップダウンが親の外まで正常に表示される
+          </p>
+        </div>
+        <div class="ld-before">
+          <div style="overflow:hidden; background:#fff7f7; border:1px solid #cb2431;
+            border-radius:6px; padding:12px; font-family:monospace; font-size:12px;
+            color:#6b1a22; position:relative; display:inline-block; height:44px;">
+            <span style="color:#cb2431; font-size:11px;">overflow: hidden（親）</span>
+            <button style="margin-left:10px; padding:3px 10px; background:#cb2431; color:white;
+              border:none; border-radius:4px; font-family:monospace; font-size:11px; cursor:default;">
+              メニュー ▼
+            </button>
+            <div style="position:absolute; top:100%; left:8px;
+              background:white; border:1px solid #cb2431; border-radius:6px;
+              padding:6px 0; min-width:120px; z-index:100;
+              box-shadow:0 4px 12px rgba(0,0,0,.12); font-size:12px;">
+              <div style="padding:5px 14px;">項目 1</div>
+              <div style="padding:5px 14px;">項目 2</div>
+              <div style="padding:5px 14px;">項目 3</div>
+            </div>
+          </div>
+          <p style="font-family:monospace; font-size:11px; color:#cb2431; margin-top:8px;">
+            overflow:hidden でドロップダウンが切られて見えない（z-index ではなくクリッピングの問題）
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">Before — overflow:hidden 親でクリップされる</div>
+        <div class="code-block"><pre><span class="sel">.nav-container</span> {
+  <span class="prop">overflow</span>: hidden; <span class="cm">/* スクロール制御のつもり */</span>
+  <span class="prop">position</span>: relative;
+}
+<span class="sel">.dropdown-menu</span> {
+  <span class="prop">position</span>: absolute;
+  <span class="prop">top</span>: <span class="num">100%</span>;
+  <span class="prop">z-index</span>: <span class="num">100</span>; <span class="cm">/* 意味なし — クリップされる */</span>
+}</pre></div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">After — Popover API で top-layer に昇格</div>
+        <div class="code-block"><pre><span class="tag">&lt;button</span> <span class="attr">popovertarget</span>=<span class="val">"menu"</span><span class="tag">&gt;</span>メニュー<span class="tag">&lt;/button&gt;</span>
+<span class="tag">&lt;div</span> <span class="attr">id</span>=<span class="val">"menu"</span> <span class="attr">popover</span><span class="tag">&gt;</span>
+  <span class="tag">&lt;ul&gt;</span>...<span class="tag">&lt;/ul&gt;</span>
+<span class="tag">&lt;/div&gt;</span>
+<span class="cm">/* popover は top-layer に昇格 */</span>
+<span class="cm">/* overflow:hidden も transform も無視 */</span></pre></div>
+      </div>
+    </div>
+  </div>
+</article>
+
+<!-- lab14 -->
+<article class="lab" id="lab14">
+  <div class="lab-header">
+    <div class="lab-num">14</div>
+    <h3>mix-blend-mode / backdrop-filter の副作用：意図せずコンテキスト生成</h3>
+    <span class="lab-tag tag-advanced">Advanced</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>backdrop-filter</code> や <code>mix-blend-mode</code>（normal 以外）を設定すると、
+      その要素は自動的にスタッキングコンテキストを生成します。
+      その結果、子要素の <code>z-index</code> は外部の要素と比較できなくなり、
+      意図した重なり順が崩れることがあります。
+    </p>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="lab14-stage">Before/After 切り替え</button>
+        <span class="toggle-label" id="lab14-stage-label">現在: After（正常）</span>
+      </div>
+      <div class="livedemo-stage" id="lab14-stage" style="min-height:160px; position:relative;">
+        <div class="ld-after" style="position:relative; height:140px;">
+          <div style="position:absolute; top:10px; left:10px; width:190px; height:100px;
+            background:linear-gradient(135deg,#dbeafe,#e0e7ff); border-radius:8px;
+            border:1px solid #93c5fd; display:flex; align-items:center; justify-content:center;
+            font-family:monospace; font-size:12px; color:#1e40af; flex-direction:column; gap:4px;">
+            親（backdrop-filter なし）
+            <span style="font-size:10px; color:#3b82f6;">コンテキスト生成なし</span>
+          </div>
+          <div style="position:absolute; top:25px; left:140px; width:130px; height:70px;
+            background:white; border:2px solid #22863a; border-radius:6px; z-index:10;
+            display:flex; align-items:center; justify-content:center;
+            font-family:monospace; font-size:12px; color:#166534; text-align:center;
+            box-shadow:0 4px 12px rgba(0,0,0,.15); line-height:1.5;">
+            子 z-index:10<br>正常に前面
+          </div>
+        </div>
+        <div class="ld-before" style="position:relative; height:140px;">
+          <div style="position:absolute; top:10px; left:10px; width:190px; height:100px;
+            background:linear-gradient(135deg,#fee2e2,#fef3c7);
+            backdrop-filter:blur(0.5px);
+            border-radius:8px; border:1px solid #fca5a5;
+            display:flex; align-items:center; justify-content:center;
+            font-family:monospace; font-size:12px; color:#991b1b; flex-direction:column; gap:4px;">
+            親（backdrop-filter: blur）
+            <span style="font-size:10px; color:#cb2431;">← コンテキスト生成!</span>
+            <div style="position:absolute; top:6px; right:-25px; width:120px; height:60px;
+              background:white; border:2px solid #cb2431; border-radius:6px; z-index:10;
+              display:flex; align-items:center; justify-content:center;
+              font-family:monospace; font-size:11px; color:#9a1320; text-align:center;
+              line-height:1.4;">
+              子 z-index:10<br>親に閉じ込め
+            </div>
+          </div>
+          <div style="position:absolute; top:45px; left:160px; width:100px; height:55px;
+            background:#fef3c7; border:1px solid #d97706; border-radius:6px; z-index:2;
+            display:flex; align-items:center; justify-content:center;
+            font-family:monospace; font-size:11px; color:#92400e; text-align:center; line-height:1.4;">
+            外の要素<br>z-index:2<br>→ 上に来る
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">Before — backdrop-filter が副作用でコンテキスト生成</div>
+        <div class="code-block"><pre><span class="sel">.glass-card</span> {
+  <span class="prop">backdrop-filter</span>: <span class="fn">blur</span>(<span class="num">10px</span>);
+  <span class="cm">/* ← ここでコンテキスト生成! */</span>
+}
+<span class="sel">.glass-card .tooltip</span> {
+  <span class="prop">position</span>: absolute;
+  <span class="prop">z-index</span>: <span class="num">9999</span>;
+  <span class="cm">/* .glass-card の外に出られない */</span>
+}</pre></div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">After — blur 専用要素を分離して副作用を回避</div>
+        <div class="code-block"><pre><span class="tag">&lt;div</span> <span class="attr">class</span>=<span class="val">"card-wrapper"</span><span class="tag">&gt;</span>
+  <span class="tag">&lt;div</span> <span class="attr">class</span>=<span class="val">"glass-bg"</span><span class="tag">&gt;&lt;/div&gt;</span> <span class="cm">&lt;!-- blur専用 --&gt;</span>
+  <span class="tag">&lt;div</span> <span class="attr">class</span>=<span class="val">"card-content"</span><span class="tag">&gt;</span>
+    <span class="tag">&lt;div</span> <span class="attr">class</span>=<span class="val">"tooltip"</span><span class="tag">&gt;</span>...<span class="tag">&lt;/div&gt;</span>
+  <span class="tag">&lt;/div&gt;</span>
+<span class="tag">&lt;/div&gt;</span>
+<span class="cm">/* blur専用要素を分離 → tooltip が外に出られる */</span></pre></div>
+      </div>
+    </div>
+  </div>
+</article>
+
+<!-- lab15 -->
+<article class="lab" id="lab15">
+  <div class="lab-header">
+    <div class="lab-num">15</div>
+    <h3>スタッキングコンテキスト デバッグ総合：検出スクリプトと診断フロー</h3>
+    <span class="lab-tag tag-advanced">Advanced</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      「z-index が効かない」問題の診断フロー：①対象要素が属するコンテキストを特定する、
+      ②コンテキストを生成している祖先を見つける、③<code>isolation:isolate</code> で分離するか body 直下に移動する。
+      以下のスクリプトで現在のページ内のスタッキングコンテキスト生成要素を一覧表示できます。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 診断フローチャート</div>
+      <pre class="ascii-art">z-index が効かない！
+        |
+        v
+  ┌──────────────────────────────┐
+  │ position が relative /       │
+  │ absolute / fixed / sticky ?  │
+  └──────────┬───────────────────┘
+             | NO → position を設定する
+             | YES
+             v
+  ┌──────────────────────────────┐
+  │ 祖先に transform / opacity / │
+  │ filter / backdrop-filter /   │
+  │ will-change / mix-blend-mode │
+  │ / isolation:isolate がある? │
+  └──────────┬───────────────────┘
+             | NO → DOM順を確認（後勝ちルール）
+             | YES
+             v
+  ┌──────────────────────────────┐
+  │ 祖先がコンテキスト生成       │
+  │ → z-index が閉じ込められている│
+  └──────────┬───────────────────┘
+             v
+  解決策を選ぶ:
+  A) isolation:isolate を祖先に追加
+     → コンテキストを意図的に管理
+  B) モーダル/ツールチップを body 直下へ
+     → DOM構造を変える
+  C) Popover API を使う
+     → top-layer に昇格、全制約を超える</pre>
+    </div>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" onclick="runStackingDetector()" style="background:var(--accent3); border-color:var(--accent3);">
+          このページのコンテキスト生成要素を検出
+        </button>
+        <span class="toggle-label">クリックで結果表示 ↓</span>
+      </div>
+      <div class="livedemo-stage">
+        <pre id="lab15-result" style="font-family:monospace; font-size:11px; color:var(--text);
+          background:var(--code-bg); border-radius:6px; padding:12px; min-height:48px;
+          white-space:pre-wrap; word-break:break-all; line-height:1.6;
+          border:1px solid var(--border);">▶ ボタンを押すと検出結果が表示されます</pre>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-label">全スタッキングコンテキスト検出スクリプト</div>
+      <pre><span class="kw">function</span> <span class="fn">detectStackingContexts</span>() {
+  <span class="kw">var</span> results = [];
+  <span class="kw">var</span> all = document.querySelectorAll(<span class="str">'*'</span>);
+  all.forEach(<span class="kw">function</span>(el) {
+    <span class="kw">var</span> s = getComputedStyle(el);
+    <span class="kw">var</span> reasons = [];
+    <span class="kw">var</span> pos = s.position, zi = s.zIndex;
+    <span class="kw">if</span> ((pos === <span class="str">'relative'</span> || pos === <span class="str">'absolute'</span>) && zi !== <span class="str">'auto'</span>)
+      reasons.push(<span class="str">'position:'</span>+pos+<span class="str">'+z-index:'</span>+zi);
+    <span class="kw">if</span> (pos === <span class="str">'fixed'</span> || pos === <span class="str">'sticky'</span>)
+      reasons.push(<span class="str">'position:'</span>+pos);
+    <span class="kw">if</span> (parseFloat(s.opacity) < <span class="num">1</span>)
+      reasons.push(<span class="str">'opacity:'</span>+s.opacity);
+    <span class="kw">if</span> (s.transform !== <span class="str">'none'</span>)
+      reasons.push(<span class="str">'transform'</span>);
+    <span class="kw">if</span> (s.filter !== <span class="str">'none'</span>)
+      reasons.push(<span class="str">'filter'</span>);
+    <span class="kw">if</span> (s.backdropFilter && s.backdropFilter !== <span class="str">'none'</span>)
+      reasons.push(<span class="str">'backdrop-filter'</span>);
+    <span class="kw">if</span> (s.mixBlendMode && s.mixBlendMode !== <span class="str">'normal'</span>)
+      reasons.push(<span class="str">'mix-blend-mode:'</span>+s.mixBlendMode);
+    <span class="kw">if</span> (s.isolation === <span class="str">'isolate'</span>)
+      reasons.push(<span class="str">'isolation:isolate'</span>);
+    <span class="kw">if</span> (s.willChange && [<span class="str">'transform'</span>,<span class="str">'opacity'</span>,<span class="str">'filter'</span>]
+        .some(<span class="kw">function</span>(p){ <span class="kw">return</span> s.willChange.includes(p); }))
+      reasons.push(<span class="str">'will-change:'</span>+s.willChange);
+    <span class="kw">if</span> (reasons.length > <span class="num">0</span>) {
+      <span class="kw">var</span> tag = el.tagName.toLowerCase();
+      <span class="kw">var</span> id  = el.id ? <span class="str">'#'</span>+el.id : <span class="str">''</span>;
+      <span class="kw">var</span> cls = el.className && <span class="kw">typeof</span> el.className === <span class="str">'string'</span>
+        ? <span class="str">'.'</span>+el.className.trim().split(<span class="str">/\s+/</span>).slice(<span class="num">0</span>,<span class="num">2</span>).join(<span class="str">'.'</span>) : <span class="str">''</span>;
+      results.push(tag+id+cls+<span class="str">' → '</span>+reasons.join(<span class="str">', '</span>));
+    }
+  });
+  <span class="kw">return</span> results;
+}</pre>
+    </div>
+  </div>
+</article>
+
+<!-- LABS_CHUNK_C_END -->
+</div>
+
+<script>
+function copyCode(btn) {
+  var block = btn.closest('.code-block') || btn.parentElement;
+  var pre = block.querySelector('pre');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.innerText).then(function(){
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(function(){ btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+var LAB_META = {
+  /* LAB_META_A_START */
+  "lab0": {
+    info: { type: "info", html: "<strong>定義:</strong> スタッキングコンテキスト（SC）は Z 軸の独立したレイヤー空間です。同一 SC 内の要素同士だけが z-index で直接比較されます。異なる SC 間は <strong>親 SC の z-index</strong> で比較されます（マトリョーシカ式）。" },
+    usecase: {
+      scenes: ["モーダルが他の要素の下に潜り込む", "ヘッダーが特定セクションで隠れる", "ツールチップが親要素の外に出ない"],
+      triggers: ["z-index を大きくしても重なりが変わらない", "ある要素だけ重なりが想定外の動作をする"]
+    },
+    check: [
+      "ページを開き、After 状態で赤いBoxAが最前面（緑・青より手前）に表示されることを目視確認",
+      "Before に切り替え、DOM順（青→緑→赤の順で後が前面）になることを確認",
+      "After に戻し、再び BoxA が最前面に来ることを確認"
+    ],
+    try: "3枚のボックスに好きな z-index を設定してみてください。数値が大きいほど前面に来ることを体感できます。"
+  },
+  "lab1": {
+    info: { type: "info", html: "<strong>ルートSC:</strong> <code>&lt;html&gt;</code> 要素は常にルートスタッキングコンテキストです。<code>position</code> も <code>z-index</code> も指定していない <strong>static 要素</strong>はルートSCに所属し、DOM 出現順（後の要素が前面）で描画されます。" },
+    usecase: {
+      scenes: ["DOM の後ろに書いた要素を、前に書いた要素より後ろに表示したい", "シンプルなカード重ねの順序を制御する"],
+      triggers: ["z-index を指定しても効かない（position が static のため）", "position を付けたら突然重なり順が変わった"]
+    },
+    check: [
+      "Before コードの状態（static）ではDOM後ろの要素Bが前面に表示されることをイメージで確認",
+      "After コードの状態では position:relative + z-index:2 の Box A が前面に来ることを確認",
+      "z-index は position が static 以外でないと効かないことを覚える"
+    ],
+    try: "position を指定せず z-index だけ設定しても重なり順が変わらないことを試してみてください。"
+  },
+  "lab2": {
+    info: { type: "warn", html: "<strong>7段階ルール:</strong> z-index の数値だけ見ていると混乱します。同じ z-index 値でも <strong>要素の種類（block/float/inline）</strong>によって描画順が異なります。特に <strong>負の z-index</strong> は背景の後ろに回り込む唯一の方法です。" },
+    usecase: {
+      scenes: ["背景画像の上にテキストを重ねたい", "float したバナーの上にボタンを乗せたい", "ネガティブ z-index で装飾を背景後ろに置きたい"],
+      triggers: ["z-index:-1 にしたら要素が消えた（実は背景の後ろに行っただけ）", "float 要素が inline 要素の後ろに来てしまう"]
+    },
+    check: [
+      "Before 状態で3つの要素がDOM順に重なること（static=順序どおり）を視覚確認",
+      "After 状態で z:-1 の赤ボックスが最奥、z:1 の緑ボックスが最前面に来ることを確認",
+      "灰色のブロック要素はz指定なしなので③段階（中間）に位置することを確認"
+    ],
+    try: "z-index:-1 の要素はその親SCの背景ボーダーより後ろに配置されます。親に background-color を付けると完全に消えます。"
+  },
+  "lab3": {
+    info: { type: "warn", html: "<strong>重要:</strong> <code>z-index: 0</code> と <code>z-index: auto</code> は<strong>同じ視覚効果ではありません</strong>。<code>z-index: 0</code> は新しいSCを生成し、<code>z-index: auto</code> は生成しません。この差が子要素の z-index 動作を根本的に変えます。" },
+    usecase: {
+      scenes: ["モーダルの背後に意図せず別の要素が現れる", "ドロップダウンが親コンポーネントの外に出ない", "z-index:9999 にしても他の要素に負ける"],
+      triggers: ["子要素の z-index をいくら大きくしても効果なし", "position を付けた途端に重なりが崩れた"]
+    },
+    check: [
+      "Before（auto）状態で子要素（z:999）が外の緑ボックス（z:5）より前面に出ることを確認",
+      "After（z:0）状態に切り替えると外の緑ボックスが親コンテキストより前面になることを確認",
+      "After 状態では子がいくら z-index 大きくても外の要素に追いつけないことを確認"
+    ],
+    try: "親に z-index:0 を追加するだけで子のレイヤーが完全に隔離されます。コンポーネント設計でこれを意図的に使うと独立したレイヤー管理が可能です。"
+  },
+  "lab4": {
+    info: { type: "ok", html: "<strong>fixed / sticky の特徴:</strong> <code>z-index</code> を書かなくても自動でSCが生成されます。<code>fixed</code> はビューポート基準、<code>sticky</code> はスクロールコンテナ基準で配置。sticky が機能するには<strong>祖先要素に overflow: scroll/auto が必要</strong>です。" },
+    usecase: {
+      scenes: ["ナビゲーションバーをページ先頭に固定する", "テーブルのヘッダー行をスクロール追従させる", "チャットのフッター入力欄を常時表示する"],
+      triggers: ["sticky にしたのに固定されない（親に overflow:hidden がある）", "fixed 要素が他の要素の後ろに潜り込む（z-index 不足）"]
+    },
+    check: [
+      "デモエリアを下にスクロールし、青いヘッダーが上端に固定されたまま追従することを確認",
+      "黄色のボックスがスクロールで移動してもヘッダーの下に隠れないことを確認",
+      "スクロールコンテナ（overflow:scroll）があることが sticky の前提であることを把握"
+    ],
+    try: "sticky の親要素に overflow:hidden を付けると sticky が機能しなくなります。これは CSS の仕様による制約です。"
+  },
+  "lab5": {
+    info: { type: "err", html: "<strong>opacity の罠:</strong> <code>opacity: 1</code> → SC非生成。<code>opacity: 0.99</code> → SC生成。<strong>たった 0.01 の差</strong>で z-index の動作が完全に変わります。<code>transform</code>・<code>filter</code>・<code>will-change</code> でも同様の副作用があります。フェードインアニメーションの途中で一時的にSCが生成されることも。" },
+    usecase: {
+      scenes: ["フェードイン中にモーダルが他要素の後ろに潜り込む", "hover で opacity を変えたら重なり順が崩れた", "アニメーション完了後に z-index が効かなくなった"],
+      triggers: ["opacity アニメーション中だけ重なりが崩れる", "will-change:opacity を付けたら常にSCが生成される"]
+    },
+    check: [
+      "After（opacity:0.99）状態で外の赤いボックスが親コンテキストより前面に出ることを確認",
+      "Before（opacity:1）状態に切り替えると子（z:999）が外（z:5）より前面に来ることを確認",
+      "0.99 と 1 のたった 0.01 の差で重なり順が逆転することを目視で体感"
+    ],
+    try: "opacity:0 や opacity:1 以外の値（例: 0.5, 0.8, 0.99）はすべてSCを生成します。CSS animation で opacity:0→1 にする場合、アニメーション完了の瞬間にSCが消滅することを覚えておきましょう。"
+  }
+  /* LAB_META_A_END */
+  /* LAB_META_B_START */
+  'lab6': {
+    info: { type:'warn', html:'<code>transform</code>・<code>filter</code>・<code>will-change</code> は値が <code>none</code> 以外ならすべて SC を生成します。<code>translateZ(0)</code> や <code>blur(0)</code> など視覚的に何もしていないように見えても例外ではありません。' },
+    usecase: {
+      scenes: [
+        'GPU アクセラレーション用の <code>translateZ(0)</code> を付けたら子の z-index が突然効かなくなった',
+        '<code>filter:drop-shadow()</code> で装飾したコンポーネントが背後に隠れるバグ',
+        '<code>will-change:transform</code> をパフォーマンス最適化で追加したら重なり順が変わった',
+      ],
+      triggers: [
+        '「transform を付けたら z-index が壊れた」という報告が来たらこのラボへ',
+        'アニメーションのために GPU 合成を有効にした直後に重なりがおかしくなった',
+      ]
+    },
+    check: [
+      '親要素に <code>transform:translateZ(0)</code> を付けた状態でページをブラウザで開く',
+      '兄弟要素（z-index:2）が子要素（z-index:999）より前面に表示されることを目視確認する',
+      '親から <code>transform</code> を削除すると子が前面に出ることを確認する',
+      'DevTools の Elements パネルで親要素の Computed スタイルに transform が表示されているか確認する（F12不要 → ページ右クリック「検証」でも可）',
+    ],
+    try: 'コードをコピーして HTML ファイルに貼り、ブラウザで <code>transform</code> の有無を切り替えながら z-index の挙動を確認してください。',
+  },
+  'lab7': {
+    info: { type:'ok', html:'<code>isolation: isolate</code> は SC を生成する唯一の「副作用なし」の方法です。<code>opacity</code> や <code>transform</code> を使わずに SC だけ作りたい場合に最適です。' },
+    usecase: {
+      scenes: [
+        '<code>mix-blend-mode</code> を使ったカード UI で背景が意図せず透けて見える問題の解決',
+        'コンポーネントの SC 境界を明示的に設定してデバッグを簡単にする設計',
+        'ポータル系コンポーネント（モーダル等）の内部 blend-mode が外部 UI に影響しないよう封じ込める',
+      ],
+      triggers: [
+        '<code>mix-blend-mode</code> の色がコンポーネントの外に「漏れている」と報告されたとき',
+        'React ポータルや iframe 内の blend 効果が親 DOM の色と合成してしまうとき',
+      ]
+    },
+    check: [
+      '<code>isolation:isolate</code> を付けたコンテナ内に <code>mix-blend-mode:multiply</code> の要素を作成する',
+      '黄色い背景のコンテナ内で青い blend 要素が緑色に合成されることを確認する',
+      '外側の要素の色が変化していないことを目視確認する',
+      '<code>isolation</code> を <code>auto</code> に変更すると blend が外側にも影響することを確認する',
+    ],
+    try: 'コンテナの <code>isolation</code> を <code>auto</code> と <code>isolate</code> で切り替えながら、外側要素への blend 影響の有無を確認してください。',
+  },
+  'lab8': {
+    info: { type:'info', html:'flex/grid の直接の子は <code>position:static</code> でも <code>z-index</code>（auto以外）があれば SC を生成します。通常要素では position が必要な点と異なります。' },
+    usecase: {
+      scenes: [
+        'flex レイアウトのカード間でホバー時のドロップシャドウが重なり順を制御したい',
+        'grid アイテムをドラッグ中に他のアイテムの上に表示させる UI',
+        'flex ナビゲーションでドロップダウンサブメニューが前面に来るよう設定する',
+      ],
+      triggers: [
+        'flex/grid レイアウトの子要素に z-index を設定したが思い通りに重ならない',
+        'position を付けずに z-index だけ設定しても効果がないと勘違いしているとき',
+      ]
+    },
+    check: [
+      '<code>display:flex</code> のコンテナを作り、子 A に <code>z-index:3</code>、子 B に <code>z-index:1</code> を設定する（position なし）',
+      '子 A が子 B より前面に描画されることを目視確認する',
+      '同じ z-index 設定を <code>display:block</code> のコンテナに変えると効果がないことを確認する',
+      'ブラウザでページを右クリック→検証し、flex 子の computed z-index を確認する',
+    ],
+    try: '<code>display:flex</code> と <code>display:block</code> を切り替えながら z-index の有効・無効を確認してください。',
+  },
+  'lab9': {
+    info: { type:'warn', html:'z-index の比較は<strong>同一 SC 内の兄弟間でのみ</strong>行われます。親 SC が異なれば、子の z-index がいくら大きくても親 SC の z-index で勝負が決まります。' },
+    usecase: {
+      scenes: [
+        '「z-index:9999 を設定したのに他の要素の後ろに隠れる」という典型的なバグの診断',
+        'モーダルが特定のセクション内に閉じ込められて全画面に出てこない問題',
+        '入れ子になったコンポーネントの重なり設計で SC 境界を考慮する',
+      ],
+      triggers: [
+        'z-index を増やしてもまだ後ろに隠れる場合は親の SC を確認',
+        '「なぜこの要素が前面に来ないのか」のデバッグでまず疑うべき原因',
+      ]
+    },
+    check: [
+      '親A（z:1）内に子a（z:9999）を配置し、兄弟B（z:2）を並べてブラウザで開く',
+      '兄弟B が子a より前面に描画されることを目視確認する',
+      '親A の z-index を 3 に変更すると子a が前面に出ることを確認する',
+      'ページ右クリック→検証でそれぞれの要素の z-index と SC 生成状態を確認する',
+    ],
+    try: '親A の z-index を 1・2・3 と変えながら、子a が兄弟B に勝つ条件を確認してください。',
+  },
+  'lab10': {
+    info: { type:'err', html:'z-index の勝敗は (親z, 子z) のベクトル辞書式比較で決まります。<strong>(1, 9999) &lt; (2, 1)</strong> です。親の z-index を上げることが唯一の解決策です。' },
+    usecase: {
+      scenes: [
+        '「z-index:9999 にしたのに効かない」という問い合わせへの根本的な回答',
+        'フロントエンドチームへの z-index 設計ルールの説明資料',
+        'モーダル・ドロップダウン・ツールチップの重なり設計の基礎理解',
+      ],
+      triggers: [
+        '大きな z-index 値を設定しても解決しない場合は親の SC レベルを確認',
+        '「z-index 戦争」と呼ばれる無限に増える z-index の根本原因',
+      ]
+    },
+    check: [
+      'スライダーを左端（z:1）に設定するとバッジが「子a 負け」（赤）になることを確認する',
+      'スライダーを右にスライドして z:2 にするとバッジが「子a 勝ち！」（緑）になることを確認する',
+      'スライダー操作中に result-text の式が (pz,9999) vs (2,1) でリアルタイム更新されることを確認する',
+      'コードの親A z-index を 1→3 に変更して保存し直してブラウザで確認する',
+    ],
+    try: '実際に親A の z-index を 1,2,3,10,100 と変えながら「2以上なら勝つ」というルールを体で覚えてください。',
+  },
+  /* LAB_META_B_END */
+  /* LAB_META_C_START */
+  'lab11': {
+    info: { type:'info', html:'同じコンテキスト内で <code>z-index</code> が同値の場合、<strong>DOM順（後勝ち）</strong>が決め手になります。z-indexを増やす前にDOMの並び順を確認しましょう。' },
+    usecase: {
+      scenes: ['2つのカードが同じ z-index でどちらが上か制御したい', 'ホバーエフェクトで要素を前面に出したい（z-index:1 の上書きを避けたい）'],
+      triggers: ['「z-index を大きくしても変わらない」→ 同値の場合は DOM 順を確認', '「後から追加した要素が常に手前になる」→ DOM順ルールが働いている']
+    },
+    check: [
+      '2つの四角形が重なって表示されることを確認する',
+      '「DOM順を入れ替える」ボタンをクリックして、青と赤の重なりが反転することを目視する',
+      'ボタン下のラベルテキストが「赤が後（赤が上）」に変化することを確認する',
+      '再度クリックで元に戻ることを確認する'
+    ],
+    try: 'position:absolute + 同じ z-index を持つ2つの div を作り、DOMの順番を入れ替えてどちらが上になるか確認しよう。'
+  },
+  'lab12': {
+    info: { type:'warn', html:'<code>transform</code> を持つ要素はスタッキングコンテキストを生成します。その内側のモーダルは、たとえ <code>z-index:9999</code> でも<strong>そのコンテキストの外に出られません</strong>。モーダルは <code>&lt;body&gt;</code> 直下に置くのが安全です。' },
+    usecase: {
+      scenes: ['モーダルダイアログが他の要素の下に隠れてしまう', 'position:fixed のモーダルがスクロールに追従してしまう（transform 親があると fixed の基準がずれる）'],
+      triggers: ['「モーダルが一部の画面でだけ隠れる」→ transform 持ち祖先の有無を確認', '「z-index:9999 にしても前面に来ない」→ コンテキスト生成祖先を探す']
+    },
+    verify: {
+      before: '🔴 transform親の内側にモーダル → z-index:9999 でも親の z-index に縛られ、他の要素の下に来てしまう',
+      after: '✅ body直下（またはコンテキスト外）にモーダル → z-index:9999 が本当に最前面に作用する'
+    },
+    check: [
+      'After 表示で「モーダル (body直下相当)」の白いボックスが前面に正常表示されることを確認する',
+      '「Before/After 切り替え」ボタンをクリックして Before に切り替える',
+      'Before 表示で「他の要素 z-index:2」の黄色ボックスがモーダルの上に来ることを目視する',
+      'After に戻してモーダルが前面に戻ることを確認する'
+    ],
+    try: 'transform:translateX(0) を持つ div の中に position:fixed; z-index:9999 の要素を置き、その外に別の z-index:2 の要素を置いてみよう。'
+  },
+  'lab13': {
+    info: { type:'warn', html:'<code>overflow:hidden</code> は z-index とは無関係に子要素をクリップします。ドロップダウンが「見えない」のは z-index の問題ではなく<strong>クリッピング</strong>の問題です。Popover API は <code>top-layer</code> に昇格するため overflow / transform / z-index の制約をすべて超えられます。' },
+    usecase: {
+      scenes: ['ナビゲーションバーのドロップダウンが切れて見えない', 'overflow:auto のスクロールコンテナ内でツールチップが隠れる'],
+      triggers: ['「z-index を上げても見えない」→ overflow のクリッピングを確認', '「親の角丸からはみ出させたい」→ overflow:visible か popover を検討']
+    },
+    verify: {
+      before: '🔴 overflow:hidden 親 → ドロップダウンが親の境界でクリップされ、メニュー項目が見えない',
+      after: '✅ overflow:visible → ドロップダウンが親の外まで表示され、すべての項目が見える'
+    },
+    check: [
+      'After 表示でドロップダウンメニューの3項目（項目1・2・3）が全部表示されていることを確認する',
+      '「Before/After 切り替え」ボタンをクリックして Before に切り替える',
+      'Before 表示ではメニューが overflow:hidden に切られて見えない（赤い枠の親の範囲内に収まっている）ことを目視する',
+      '「overflow:hidden でドロップダウンが切られて見えない」の注記テキストが表示されることを確認する'
+    ],
+    try: 'overflow:hidden の div の中に position:absolute; top:100% のドロップダウンを置いてみよう。次に overflow:visible に変えると表示が変わることを確認しよう。'
+  },
+  'lab14': {
+    info: { type:'warn', html:'<code>backdrop-filter</code> / <code>mix-blend-mode</code>（normal以外）/ <code>will-change: transform</code> などはスタッキングコンテキストを<strong>副作用として</strong>生成します。「グラスモーフィズム」等のデザインで意図せず子要素の z-index が閉じ込められることがあります。' },
+    usecase: {
+      scenes: ['ガラスカード（backdrop-filter:blur）の上にツールチップを表示したい', 'mix-blend-mode を使ったオーバーレイ内のモーダルが埋もれる'],
+      triggers: ['「blur エフェクトを追加したら重なりが崩れた」→ backdrop-filter のコンテキスト生成を確認', '「mix-blend-mode をつけたら子要素が隠れた」→ blend-mode のコンテキスト生成を確認']
+    },
+    verify: {
+      before: '🔴 backdrop-filter 持ち親 → 子の z-index:10 が外部要素（z-index:2）より下になってしまう',
+      after: '✅ backdrop-filter なし親 → 子の z-index:10 が外部要素（z-index:2）より正常に前面になる'
+    },
+    check: [
+      'After 表示で「子 z-index:10 正常に前面」の白いボックスが前面に表示されることを確認する',
+      '「Before/After 切り替え」ボタンをクリックして Before に切り替える',
+      'Before 表示で「外の要素 z-index:2 → 上に来る」の黄色ボックスが子（z-index:10）の前面に重なっていることを目視する',
+      'After に戻して子が正しく前面になることを確認する'
+    ],
+    try: 'backdrop-filter:blur(10px) を親要素に追加して、その子要素の z-index を大きくしても外の低い z-index 要素より下になることを確認しよう。'
+  },
+  'lab15': {
+    info: { type:'info', html:'スタッキングコンテキストを生成するプロパティは 10 種類以上あります。「z-index が効かない」問題の 90% は、<strong>コンテキストを生成している祖先要素が存在する</strong>ことが原因です。上のスクリプトでページ内の全コンテキスト生成要素を一覧できます。' },
+    usecase: {
+      scenes: ['本番環境で z-index の問題が突然発生した', '外部ライブラリのコンポーネントが期待通りに重なりを制御できない'],
+      triggers: ['「どこかの要素が原因でz-indexが効かなくなった」→ 検出スクリプトで一覧化して祖先を探す']
+    },
+    check: [
+      '「このページのコンテキスト生成要素を検出」ボタンをクリックする',
+      '結果エリアに「#sidebar → position:fixed」のような行が複数表示されることを確認する',
+      '表示された要素名と生成理由を目視して、見覚えのある要素（#sidebar など）が含まれていることを確認する',
+      '画面をスクロールして他の lab を見た後、再度ボタンを押すと同じ結果が表示されることを確認する'
+    ],
+    try: 'コードをコピーして試行.html に貼り付け、自分のページで実行してみよう。表示された要素の中から意図せず z-index に影響していそうな要素を特定してみよう。'
+  }
+  /* LAB_META_C_END */
+};
+
+function infoHTML(m){ return m&&m.info ? '<div class="info-box '+(m.info.type||'info')+'">'+m.info.html+'</div>' : ''; }
+function verifyHTML(m){ if (!m||!m.verify) return '';
+  return '<div class="verify"><div class="verify-col verify-before"><div class="verify-label">Before</div>'+(m.verify.before||'')+'</div><div class="verify-col verify-after"><div class="verify-label">After</div>'+(m.verify.after||'')+'</div></div>'; }
+function usecaseHTML(m){ if (!m||!m.usecase) return '';
+  var u=m.usecase;
+  var s=(u.scenes||[]).map(function(x){return '<li>'+x+'</li>';}).join('');
+  var t=(u.triggers||[]).map(function(x){return '<li>'+x+'</li>';}).join('');
+  var tb=t?'<div class="usecase-trigger"><strong>🔔 気づきポイント</strong><ul>'+t+'</ul></div>':'';
+  return '<div class="usecase-box"><div class="usecase-title">💡 こんな時に使える</div><ul class="usecase-list">'+s+'</ul>'+tb+'</div>'; }
+function tryHTML(m){
+  var tip=m&&m.try?'<div class="try-tip"><strong>💡 コツ:</strong> '+m.try+'</div>':'';
+  return '<div class="try-box"><div class="try-title">💻 コード例を試す手順</div><ol>'+
+    '<li>上の Copy ボタンでコードをコピー</li>'+
+    '<li>テキストエディタで <code>試行.html</code> を作成、下の雛形に貼り付け</li>'+
+    '<li>ブラウザで開いて動作確認</li></ol>'+
+    '<pre class="try-skeleton">&lt;!DOCTYPE html&gt;\n&lt;html lang="ja"&gt;\n&lt;head&gt;&lt;meta charset="UTF-8"&gt;&lt;title&gt;試行&lt;/title&gt;&lt;/head&gt;\n&lt;body&gt;\n  &lt;!-- ここに貼る --&gt;\n&lt;/body&gt;\n&lt;/html&gt;</pre>'+tip+'</div>'; }
+function checkHTML(m){ if (!m||!m.check||!m.check.length) return '';
+  return '<div class="check-steps"><div class="check-steps-title">🔍 ブラウザ実機チェック</div><ol>'+
+    m.check.map(function(s){return '<li>'+s+'</li>';}).join('')+'</ol></div>'; }
+
+function swapLab11(btn) {
+  var c = document.getElementById('lab11-container');
+  var red = document.getElementById('lab11-red');
+  var blue = document.getElementById('lab11-blue');
+  if (!c || !red || !blue) return;
+  var swapped = btn.dataset.swapped === 'true';
+  if (!swapped) {
+    c.appendChild(red);
+    btn.dataset.swapped = 'true';
+    document.getElementById('lab11-swap-label').textContent = '現在: 赤が後（赤が上に表示）';
+    document.getElementById('lab11-dom-note').textContent = 'DOM順: 青 → 赤（赤が後 = 赤が上）';
+  } else {
+    c.appendChild(blue);
+    btn.dataset.swapped = 'false';
+    document.getElementById('lab11-swap-label').textContent = '現在: 青が後（青が上に表示）';
+    document.getElementById('lab11-dom-note').textContent = 'DOM順: 赤 → 青（青が後 = 青が上）';
+  }
+}
+
+function runStackingDetector() {
+  var out = document.getElementById('lab15-result');
+  if (!out) return;
+  var results = [];
+  var all = document.querySelectorAll('*');
+  all.forEach(function(el) {
+    var s = getComputedStyle(el);
+    var reasons = [];
+    var pos = s.position, zi = s.zIndex;
+    if ((pos === 'relative' || pos === 'absolute') && zi !== 'auto')
+      reasons.push('position:'+pos+'+z-index:'+zi);
+    if (pos === 'fixed' || pos === 'sticky')
+      reasons.push('position:'+pos);
+    if (parseFloat(s.opacity) < 1)
+      reasons.push('opacity:'+s.opacity);
+    if (s.transform !== 'none')
+      reasons.push('transform');
+    if (s.filter !== 'none')
+      reasons.push('filter');
+    if (s.backdropFilter && s.backdropFilter !== 'none')
+      reasons.push('backdrop-filter');
+    if (s.mixBlendMode && s.mixBlendMode !== 'normal')
+      reasons.push('mix-blend-mode:'+s.mixBlendMode);
+    if (s.isolation === 'isolate')
+      reasons.push('isolation:isolate');
+    if (s.willChange && ['transform','opacity','filter']
+        .some(function(p){ return s.willChange.includes(p); }))
+      reasons.push('will-change:'+s.willChange);
+    if (reasons.length > 0) {
+      var tag = el.tagName.toLowerCase();
+      var id  = el.id ? '#'+el.id : '';
+      var cls = el.className && typeof el.className === 'string'
+        ? '.'+el.className.trim().split(/\s+/).slice(0,2).join('.') : '';
+      results.push(tag+id+cls+' → '+reasons.join(', '));
+    }
+  });
+  out.textContent = results.length
+    ? '検出数: '+results.length+' 件\n\n'+results.join('\n')
+    : '（コンテキスト生成要素は見つかりませんでした）';
+}
+
+document.addEventListener('click', function(e){
+  if (!e.target.matches('.toggle-btn')) return;
+  var btn=e.target, stage=document.getElementById(btn.dataset.target);
+  if (!stage) return;
+  var isBefore=stage.classList.toggle('is-before');
+  btn.classList.toggle('is-before', isBefore);
+  var label=document.getElementById(btn.dataset.target+'-label');
+  if (label) label.textContent=isBefore?'現在: Before（問題あり）':'現在: After（正常）';
+});
+
+document.addEventListener('DOMContentLoaded', function(){
+  document.querySelectorAll('.lab').forEach(function(lab){
+    var meta=LAB_META[lab.id]; var body=lab.querySelector('.lab-body');
+    if (!body||!meta) return;
+    var frag=document.createElement('div');
+    frag.innerHTML=infoHTML(meta)+usecaseHTML(meta)+verifyHTML(meta)+tryHTML(meta)+checkHTML(meta);
+    while(frag.firstChild) body.appendChild(frag.firstChild);
+  });
+
+  var links=Array.from(document.querySelectorAll('#sidebar .nav-item'));
+  var map=new Map();
+  links.forEach(function(a){ var el=document.getElementById(a.getAttribute('href').slice(1)); if(el)map.set(el,a); });
+  var io=new IntersectionObserver(function(es){ es.forEach(function(e){
+    if(e.isIntersecting){ var l=map.get(e.target); if(l){ links.forEach(function(n){n.classList.remove('active');}); l.classList.add('active'); }}
+  }); }, { rootMargin:'-30% 0px -60% 0px' });
+  document.querySelectorAll('.lab[id]').forEach(function(lab){ io.observe(lab); });
+
+  document.querySelectorAll('.code-block').forEach(function(cb,i){
+    if(cb.querySelector('.code-block-header')) return;
+    var existing=cb.querySelector('.code-label');
+    var labelText=existing?existing.textContent.trim():'Code #'+(i+1);
+    if(existing) existing.remove();
+    var header=document.createElement('div');
+    header.className='code-block-header';
+    header.innerHTML='<span>'+labelText+'</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>';
+    cb.insertBefore(header,cb.firstChild);
+  });
+});
+</script>
+
+</body>
+</html>
