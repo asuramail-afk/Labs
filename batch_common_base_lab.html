@@ -1,0 +1,3435 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>バッチ共通基盤 Lab — Phase 0〜8 VB.NET 実装ガイド</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+.kw{color:#d73a49;} .fn{color:#6f42c1;} .str{color:#032f62;}
+.cm{color:#6a737d;} .num{color:#b08800;} .tag{color:#22863a;}
+.attr{color:#6f42c1;} .val{color:#032f62;} .sel{color:#005cc5;} .prop{color:#22863a;}
+
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#86151e; }
+.info-box strong { font-weight:600; display:block; margin-bottom:2px; }
+
+.check-steps { margin:16px 0; background:#fff; border:1px solid var(--border);
+  border-radius:8px; overflow:hidden; }
+.check-steps-title { background:var(--surface2); padding:8px 14px;
+  font-family:var(--mono); font-size:.78rem; color:var(--accent); letter-spacing:.05em;
+  border-bottom:1px solid var(--border); }
+.check-steps ol { padding:12px 16px 12px 36px; }
+.check-steps li { font-size:.88rem; line-height:1.8; margin-bottom:4px; color:var(--text); }
+.check-steps li strong { color:var(--accent2); }
+
+.verify { margin:16px 0; display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.verify-col { border-radius:8px; padding:12px 14px; border:1px solid; }
+.verify-col.before { border-color:#ffc0cb; background:rgba(203,36,49,.05); }
+.verify-col.after  { border-color:#b3dec1; background:rgba(34,134,58,.05); }
+.verify-label { font-family:var(--mono); font-size:.72rem; font-weight:600; margin-bottom:6px; }
+.verify-col.before .verify-label { color:var(--error); }
+.verify-col.after  .verify-label { color:var(--success); }
+.verify-col ul { padding-left:16px; font-size:.85rem; line-height:1.8; }
+
+.livedemo { margin:16px 0; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+.livedemo-bar { display:flex; align-items:center; gap:12px; padding:8px 14px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.toggle-btn { font-family:var(--mono); font-size:.75rem; padding:4px 12px;
+  border:1px solid var(--accent); color:var(--accent); background:transparent;
+  border-radius:4px; cursor:pointer; transition:all .15s; }
+.toggle-btn:hover { background:var(--accent); color:#fff; }
+.toggle-label { font-family:var(--mono); font-size:.72rem; color:var(--text-dim); }
+.livedemo-stage { padding:14px 16px; }
+.ld-panel { padding:10px 14px; border-radius:6px; font-size:.87rem; line-height:1.7; display:none; }
+.ld-panel.good { background:rgba(34,134,58,.08); border:1px solid #b3dec1; color:#154f1e; }
+.ld-panel.bad  { background:rgba(203,36,49,.08);  border:1px solid #ffc0cb; color:#86151e; }
+.livedemo-stage .ld-after  { display:block; }
+.livedemo-stage .ld-before { display:none; }
+.livedemo-stage.is-before .ld-after  { display:none; }
+.livedemo-stage.is-before .ld-before { display:block; }
+
+.usecase-box { margin:14px 0; background:#fff; border:1px solid var(--border);
+  border-radius:8px; overflow:hidden; }
+.usecase-box-title { padding:8px 14px; background:var(--surface2);
+  border-bottom:1px solid var(--border); font-family:var(--mono);
+  font-size:.78rem; color:var(--accent3); letter-spacing:.05em; }
+.usecase-body { padding:12px 16px; }
+.usecase-list { padding-left:18px; font-size:.87rem; line-height:1.9; }
+.usecase-trigger { margin-top:8px; font-size:.82rem; color:var(--text-dim);
+  border-top:1px solid var(--border); padding-top:8px; }
+
+.beginner-box { margin:14px 0; background:rgba(0,92,197,.04);
+  border:1px solid rgba(0,92,197,.2); border-radius:8px; padding:14px 16px; }
+.beginner-box-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  margin-bottom:8px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.8rem;
+  line-height:1.6; color:var(--text); background:transparent;
+  white-space:pre; overflow-x:auto; margin-top:8px; }
+
+.try-box { margin:14px 0; background:#fffdf0; border:1px solid #e8d88a;
+  border-radius:8px; overflow:hidden; }
+.try-box-title { padding:8px 14px; background:#fdf5c8;
+  border-bottom:1px solid #e8d88a; font-family:var(--mono);
+  font-size:.78rem; color:#7a5c00; }
+.try-box-body { padding:12px 16px; font-size:.87rem; line-height:1.8; }
+.try-skeleton { font-family:var(--mono); font-size:.78rem; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:6px; padding:10px 12px;
+  margin-top:8px; white-space:pre; overflow-x:auto; color:var(--text); }
+
+.phase-badge { display:inline-block; font-family:var(--mono); font-size:.72rem;
+  padding:2px 8px; border-radius:10px; margin-right:6px;
+  background:rgba(0,92,197,.1); color:var(--accent); border:1px solid rgba(0,92,197,.25); }
+
+.file-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:8px; margin:12px 0; }
+.file-chip { font-family:var(--mono); font-size:.78rem; padding:6px 10px;
+  border-radius:6px; border:1px solid var(--border); background:#fff;
+  color:var(--text-dim); }
+.file-chip.new { border-color:#1D9E75; color:#0F6E56; background:#f0faf4; }
+.file-chip.mod { border-color:#BA7517; color:#854F0B; background:#fdf5e4; }
+
+.code-pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:12px 0; }
+.code-pair-label { font-family:var(--mono); font-size:.72rem; padding:4px 8px;
+  border-radius:4px 4px 0 0; font-weight:600; }
+.code-pair-before .code-pair-label { color:var(--error); background:rgba(203,36,49,.08); }
+.code-pair-after  .code-pair-label { color:var(--success); background:rgba(34,134,58,.08); }
+
+.summary-table { width:100%; border-collapse:collapse; font-size:.87rem; margin:12px 0; }
+.summary-table th { background:var(--surface2); padding:8px 12px;
+  border:1px solid var(--border); text-align:left; font-weight:600; font-size:.8rem; }
+.summary-table td { padding:8px 12px; border:1px solid var(--border); }
+.summary-table tr:nth-child(even) td { background:var(--surface); }
+.td-done   { color:var(--success); font-weight:600; }
+.td-todo   { color:var(--text-dim); }
+
+@media(max-width:900px){
+  body { padding-left:0; padding-top:48px; }
+  #sidebar { width:100%; height:auto; bottom:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0;
+    display:flex; flex-wrap:wrap; gap:0; overflow-x:auto; }
+  #sidebar .nav-title { display:none; }
+  #sidebar .nav-section { display:none; }
+  #sidebar .nav-item { padding:6px 12px; white-space:nowrap; }
+  .verify { grid-template-columns:1fr; }
+  .code-pair { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// Batch Base Lab</div>
+  <div class="nav-section">Part 1 設計の前に</div>
+  <a class="nav-item" href="#lab-p1a"><span class="nav-num">P1A</span>定義と責務範囲</a>
+  <a class="nav-item" href="#lab-p1b"><span class="nav-num">P1B</span>要件ヒアリング20項目</a>
+  <a class="nav-item" href="#lab-p1c"><span class="nav-num">P1C</span>網羅機能マップ 13×52</a>
+  <a class="nav-item" href="#lab-p1d"><span class="nav-num">P1D</span>優先度判定フロー</a>
+  <a class="nav-item" href="#lab-p1e"><span class="nav-num">P1E</span>製品選定ガイド</a>
+  <div class="nav-section">Part 2 段階的実装</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>痛みで育てるアプローチ</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>Phase 0 最小バッチ</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>Phase 1 ログ管理</a>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>Phase 2 エラーハンドリング</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>Phase 3 トランザクション</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>Phase 4 実行履歴管理</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>Phase 5 スケジュール管理</a>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>Phase 6 多重起動防止</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>Phase 7 監視・アラート</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>Phase 8 設定の外部化</a>
+  <div class="nav-section">Part 3 完成チェックと拡張</div>
+  <a class="nav-item" href="#lab-p3f"><span class="nav-num">P3F</span>機能実装マトリクス</a>
+  <a class="nav-item" href="#lab-p3g"><span class="nav-num">P3G</span>設計ミス10選</a>
+  <a class="nav-item" href="#lab-p3h"><span class="nav-num">P3H</span>Phase 9+ ロードマップ</a>
+  <a class="nav-item" href="#lab-p3i"><span class="nav-num">P3I</span>設計書テンプレート</a>
+</nav>
+
+<div class="hero">
+  <h1>バッチ共通基盤 Lab</h1>
+  <p class="subtitle">初心者が設計から実装まで辿る19Lab — 設計の前に / 段階的実装 / 完成チェックと拡張</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次 — Part 1 設計の前に</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab-p1a"><span class="toc-num">P1A</span>定義と責務範囲</a>
+    <a class="toc-item" href="#lab-p1b"><span class="toc-num">P1B</span>要件ヒアリング20項目</a>
+    <a class="toc-item" href="#lab-p1c"><span class="toc-num">P1C</span>網羅機能マップ 13×52</a>
+    <a class="toc-item" href="#lab-p1d"><span class="toc-num">P1D</span>優先度判定フロー</a>
+    <a class="toc-item" href="#lab-p1e"><span class="toc-num">P1E</span>製品選定ガイド</a>
+  </div>
+  <h2 style="margin-top:28px;">// 目次 — Part 2 段階的実装（VB.NET）</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>痛みで育てるアプローチ</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>Phase 0 最小バッチ</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>Phase 1 ログ管理</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>Phase 2 エラーハンドリング</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>Phase 3 トランザクション</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>Phase 4 実行履歴管理</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>Phase 5 スケジュール管理</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>Phase 6 多重起動防止</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>Phase 7 監視・アラート</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>Phase 8 設定の外部化</a>
+  </div>
+  <h2 style="margin-top:28px;">// 目次 — Part 3 完成チェックと拡張</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab-p3f"><span class="toc-num">P3F</span>機能実装マトリクス</a>
+    <a class="toc-item" href="#lab-p3g"><span class="toc-num">P3G</span>設計ミス10選</a>
+    <a class="toc-item" href="#lab-p3h"><span class="toc-num">P3H</span>Phase 9+ ロードマップ</a>
+    <a class="toc-item" href="#lab-p3i"><span class="toc-num">P3I</span>設計書テンプレート</a>
+  </div>
+</div>
+
+<div class="container">
+
+
+<!-- ============================================================
+     Part 1: 設計の前に（5 Lab） — 要件定義・機能マップ・製品選定
+     ============================================================ -->
+
+<!-- ============================================================
+     Part 1: 設計の前に — Lab-P1A 〜 Lab-P1E
+     batch_common_base_lab/_part1_fragments.html
+     ============================================================ -->
+
+<!-- ============================================================
+     Lab-P1A: バッチ共通基盤の定義と責務範囲
+     ============================================================ -->
+<div class="lab" id="lab-p1a">
+  <div class="lab-header">
+    <div class="lab-num">P1-A</div>
+    <h3>バッチ共通基盤の定義と責務範囲</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      「バッチ共通基盤」とは何か、スケジューラ単体との違いは何か——設計を始める前に必ずここを整理する。
+      責務範囲を曖昧にしたまま進むと、ビジネスロジックに基盤コードが混入し、後工程での改修コストが跳ね上がる。
+      3軸評価（制御性 / 回復性 / 運用性）とアーキテクチャ全体図で"基盤設計の地図"を手に入れよう。
+    </p>
+
+    <!-- 定義 -->
+    <h4 style="margin-top:1.4rem;margin-bottom:.5rem;color:var(--accent);">▌ バッチ共通基盤とは何か</h4>
+    <p class="lab-desc">
+      バッチ共通基盤とは、<strong>「ジョブを安全・確実・効率的に実行するための OS 的レイヤ」</strong>である。
+      個々のジョブが実装すべきビジネスロジックに一切介入せず、次の責務を横断的に担う。
+    </p>
+    <table class="summary-table">
+      <thead>
+        <tr>
+          <th>責務</th>
+          <th>具体的な機能例</th>
+          <th>ない場合に起きること</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>実行制御</td>
+          <td>スケジュール起動、依存関係 DAG、多重起動防止</td>
+          <td>先行ジョブ未完了のまま後続が走り、データ不整合が発生</td>
+        </tr>
+        <tr>
+          <td>状態管理</td>
+          <td>WAIT / RUNNING / SUCCESS / FAILED の永続化</td>
+          <td>再起動後に「どこまで終わったか」が分からず全件再処理</td>
+        </tr>
+        <tr>
+          <td>エラー回復</td>
+          <td>リトライ、チェックポイント再開、スキップ閾値</td>
+          <td>一時的なネットワーク障害で深夜バッチが全停止、翌朝対応が必要</td>
+        </tr>
+        <tr>
+          <td>ログ・監査</td>
+          <td>構造化ログ、実行履歴 DB、監査証跡</td>
+          <td>障害原因の追跡に数時間かかり、SLA 違反が多発</td>
+        </tr>
+        <tr>
+          <td>通知・アラート</td>
+          <td>メール / Slack / Webhook、SLA タイムオーバー検知</td>
+          <td>翌朝出社して初めて異常に気づく（夜間バッチの失敗が朝まで放置）</td>
+        </tr>
+        <tr>
+          <td>リソース管理</td>
+          <td>同時実行数制限、CPU / メモリ割当</td>
+          <td>重いジョブが DB 接続を使い尽くし他業務も巻き込んで停止</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- スケジューラとの違い -->
+    <div class="info-box warn">
+      <strong>// "スケジューラ単体"との根本的な違い</strong>
+      cron や Quartz のスケジューラは「決められた時刻にコマンドを起動する」機能しかない。
+      バッチ共通基盤は、<em>起動した後の状態追跡・失敗回復・並列制御・ログ集約・通知まで</em>を包括する。
+      スケジューラが「時計係」なら、共通基盤は「運行管理者」に相当する。
+    </div>
+
+    <!-- 3軸評価 -->
+    <h4 style="margin-top:1.6rem;margin-bottom:.5rem;color:var(--accent);">▌ 3軸評価フレームワーク</h4>
+    <p class="lab-desc">
+      設計レビューで「この基盤は本当に十分か？」を判断するとき、次の3軸で評価すると本質が見える。
+    </p>
+    <table class="summary-table">
+      <thead>
+        <tr>
+          <th>評価軸</th>
+          <th>英語名</th>
+          <th>問い</th>
+          <th>代表的な指標</th>
+          <th>不足しているとどうなるか</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>制御性</strong></td>
+          <td>Control</td>
+          <td>複雑な依存関係を表現できるか</td>
+          <td>DAG 深さ / 条件分岐数 / 並列度</td>
+          <td>手動でジョブ実行順を管理する "オペレータ依存運用" になる</td>
+        </tr>
+        <tr>
+          <td><strong>回復性</strong></td>
+          <td>Resilience</td>
+          <td>落ちても自力で復旧できるか</td>
+          <td>MTTR / リトライ成功率 / チェックポイント粒度</td>
+          <td>障害のたびに手動再投入が必要。深夜帯の無人運転が不可能</td>
+        </tr>
+        <tr>
+          <td><strong>運用性</strong></td>
+          <td>Operability</td>
+          <td>人間が扱いやすいか</td>
+          <td>障害検知までの時間 / 運用ドキュメント量 / 新担当の習熟期間</td>
+          <td>属人化が進み、特定担当者が不在の日は問題に気づかない</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- 責務境界 -->
+    <h4 style="margin-top:1.6rem;margin-bottom:.5rem;color:var(--accent);">▌ 責務の境界線：3層分離モデル</h4>
+    <table class="summary-table">
+      <thead>
+        <tr>
+          <th>レイヤ</th>
+          <th>誰が担う</th>
+          <th>具体的な内容</th>
+          <th>混入してはいけない要素</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>ビジネスロジック</strong></td>
+          <td>業務アプリ開発者</td>
+          <td>受注集計、請求書生成、在庫更新 etc.</td>
+          <td>リトライ制御・ログ出力・スケジュール定義</td>
+        </tr>
+        <tr>
+          <td><strong>共通基盤</strong></td>
+          <td>基盤チーム</td>
+          <td>起動制御、状態 DB、ログ集約、通知、リトライ</td>
+          <td>業務データの変換ロジック・業務ルール</td>
+        </tr>
+        <tr>
+          <td><strong>インフラ</strong></td>
+          <td>インフラ / クラウドチーム</td>
+          <td>OS、DB、ネットワーク、コンテナ、ストレージ</td>
+          <td>ジョブ固有の設定値・ビジネスパラメータ</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- ASCII 全体アーキテクチャ -->
+    <div class="beginner-box">
+      <div class="beginner-box-title">// バッチ共通基盤 — 全体アーキテクチャ（ASCII図）</div>
+      <pre class="ascii-art">
+ ┌────────────────────────────────────────────────────────────┐
+ │                    外部トリガー                             │
+ │        cron / イベント(ファイル到着) / 手動 / REST API      │
+ └──────────────────────┬─────────────────────────────────────┘
+                        │
+                        ▼
+ ┌────────────────────────────────────────────────────────────┐
+ │               【共通基盤 — 実行制御層】                     │
+ │  ┌──────────────┐  ┌───────────────┐  ┌────────────────┐  │
+ │  │ スケジューラ  │  │ DAG依存解決   │  │ キュー/優先度  │  │
+ │  │ (時刻/曜日)  │  │ (A→B→C制御)  │  │ (多重起動防止) │  │
+ │  └──────────────┘  └───────────────┘  └────────────────┘  │
+ └──────────────────────┬─────────────────────────────────────┘
+                        │ 実行指示
+                        ▼
+ ┌────────────────────────────────────────────────────────────┐
+ │               【共通基盤 — 実行環境層】                     │
+ │  ┌─────────────────────────────────────────────────────┐   │
+ │  │ ジョブコンテキスト (パラメータ / 実行ID / 状態保持)  │   │
+ │  │   ↓                                                  │   │
+ │  │  (初期化) → (データ抽出) → (加工) → (反映) → (終了) │   │
+ │  │                ↑                                     │   │
+ │  │           [ビジネスロジック] ← ← ← ← ← ← ← ←      │   │
+ │  │           ここだけ業務開発者が書く                   │   │
+ │  └─────────────────────────────────────────────────────┘   │
+ └──────┬─────────────────────────────────┬────────────────────┘
+        │ 記録・回復                       │ データ入出力
+        ▼                                 ▼
+ ┌─────────────────┐             ┌─────────────────────────┐
+ │ 状態管理 DB      │             │ データ I/O アダプタ      │
+ │  WAIT / RUNNING  │             │  DB / ファイル / API /  │
+ │  SUCCESS / FAILED│             │  S3 / MQ                │
+ └────────┬────────┘             └─────────────────────────┘
+          │
+          ├──────────────────────────────────────┐
+          ▼                                      ▼
+ ┌──────────────────┐                  ┌──────────────────────┐
+ │ エラー回復モジュール│                 │  ログ・監視・通知     │
+ │ ・リトライ(回数/  │                  │ ・構造化ログ          │
+ │   バックオフ)     │                  │ ・実行履歴 DB         │
+ │ ・チェックポイント│                  │ ・メール/Slack/PD     │
+ │ ・スキップ閾値    │                  │ ・ダッシュボード       │
+ └──────────────────┘                  └──────────────────────┘
+          │
+          ▼
+ ┌────────────────────────────────────────────────────────────┐
+ │           インフラ / リソース管理                           │
+ │   OS / DB / ネットワーク / コンテナ / クラウド              │
+ └────────────────────────────────────────────────────────────┘
+      </pre>
+    </div>
+
+    <!-- 初心者ボックス -->
+    <div class="beginner-box">
+      <div class="beginner-box-title">// 初心者向け：なぜ"基盤"と"アプリ"を分離するのか</div>
+      <p>
+        例えば「月次請求バッチ」を作るとき、<strong>リトライ処理</strong>を各バッチに書いていたとする。
+        30本のバッチがあれば、リトライロジックが 30箇所に分散する。
+        バックオフ戦略を変更したいとなったとき、<strong>30箇所を全部修正</strong>しなければならない。
+      </p>
+      <p style="margin-top:.6rem;">
+        共通基盤に集約すれば、<strong>1箇所変えれば全ジョブに適用</strong>される。
+        これが「基盤と業務の分離」の最大のメリットだ。
+        Spring Batch が ItemReader / ItemProcessor / ItemWriter を分けるのも同じ思想。
+      </p>
+      <pre class="ascii-art">
+ 分離なし（Bad）                 分離あり（Good）
+ ─────────────────────          ─────────────────────────────
+ 請求バッチ                      請求バッチ
+   [ビジネスロジック]               [ビジネスロジック のみ]
+   [リトライ制御 ※独自]                      │
+   [ログ出力 ※独自]                          ↓
+   [通知 ※独自]                      バッチ共通基盤
+                                      [リトライ制御]
+ 在庫バッチ                            [ログ出力]
+   [ビジネスロジック]                   [通知]
+   [リトライ制御 ※コピペ]           ↑
+   [ログ出力 ※コピペ]            在庫バッチ
+   [通知 ※コピペ]                  [ビジネスロジック のみ]
+      </pre>
+    </div>
+
+    <!-- check-steps -->
+    <div class="check-steps">
+      <div class="check-steps-title">// 自プロジェクト判定：どこまでが基盤側か</div>
+      <ol>
+        <li><strong>①</strong> 既存バッチを1本選んで開く。「リトライ処理」「ログ出力」「通知呼び出し」のコードがビジネスロジックと同じファイルにあれば、<em>分離できていない</em>サインだ。</li>
+        <li><strong>②</strong> 同じリトライロジックが複数ファイルに存在しないか検索する（コピペ検知）。3箇所以上あれば基盤化が必要なレベル。</li>
+        <li><strong>③</strong> 「3軸評価シート」で現状をスコアリングする。制御性・回復性・運用性それぞれ5点満点で採点し、3点未満の軸を基盤強化の優先対象にする。</li>
+        <li><strong>④</strong> スケジューラ（cron など）に書かれた設定を眺める。依存関係制御・障害通知が cron コメントに書かれていたら、基盤が育ちきっていない証拠。</li>
+        <li><strong>⑤</strong> 「担当者が 1 週間不在でも無人運転できるか？」という問いに自信を持って YES と言えるなら、基盤は合格水準にある。</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     Lab-P1B: 要件ヒアリング20項目チェックリスト
+     ============================================================ -->
+<div class="lab" id="lab-p1b">
+  <div class="lab-header">
+    <div class="lab-num">P1-B</div>
+    <h3>要件ヒアリング 20 項目チェックリスト</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      バッチ基盤の設計は、<strong>ヒアリングが 8 割</strong>といっても過言ではない。
+      聞き忘れた質問は、後工程での設計やり直しに直結する。
+      本 Lab では「絶対に聞くべき 20 項目」を関係者ヒアリングでそのまま使えるテンプレートとして提供する。
+      初めて設計に参加するエンジニアでも、この表を持ち込めば明日の会議で使える。
+    </p>
+
+    <div class="info-box warn">
+      <strong>// 聞き忘れると設計やり直しになる"地雷"項目 TOP 5</strong>
+      <ul style="margin-top:.5rem;padding-left:1.2rem;">
+        <li><strong>Q4（SLA / 完了期限）</strong>: "朝9時までに終わらせて"が後で判明 → バッチ分割設計を全部やり直し</li>
+        <li><strong>Q7（リラン要件）</strong>: "同じ日付で再実行したい"が後で判明 → 冪等性設計を追加、DB スキーマ変更も</li>
+        <li><strong>Q10（データ最大件数）</strong>: 「将来的に1億件になる」が後で判明 → チャンク処理・インデックス設計を全部見直し</li>
+        <li><strong>Q14（通知先と通知条件）</strong>: "異常終了は社長にも連絡" → 通知ロジックの大幅追加</li>
+        <li><strong>Q19（移行要件）</strong>: "現行バッチと並行稼働が必要" → テスト期間が 2 倍に膨らむ</li>
+      </ul>
+    </div>
+
+    <!-- 20項目テーブル -->
+    <table class="summary-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>カテゴリ</th>
+          <th>質問（そのまま使える）</th>
+          <th>回答例</th>
+          <th>影響する設計判断</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Q1</td>
+          <td>データ規模</td>
+          <td>1回の処理で対象となるレコード数は今どのくらいですか？</td>
+          <td>月次で約 50 万件</td>
+          <td>チャンクサイズ / メモリ設計 / バルク INSERT 採否</td>
+        </tr>
+        <tr>
+          <td>Q2</td>
+          <td>データ規模</td>
+          <td>3〜5年後の件数見込みはどのくらいですか？</td>
+          <td>3年後に 300 万件程度</td>
+          <td>水平スケール設計 / パーティショニング採否</td>
+        </tr>
+        <tr>
+          <td>Q3</td>
+          <td>頻度</td>
+          <td>実行頻度はどのくらいですか？（毎時 / 日次 / 週次 / 月次）</td>
+          <td>毎日深夜 1:00 と月末に1回</td>
+          <td>スケジュール設計 / カレンダー管理の要否</td>
+        </tr>
+        <tr>
+          <td>Q4</td>
+          <td>SLA</td>
+          <td>何時までに処理を完了させる必要がありますか？（完了期限）</td>
+          <td>翌朝 8:30 までに完了必須</td>
+          <td>タイムアウト値 / 並列化設計 / アラートタイミング</td>
+        </tr>
+        <tr>
+          <td>Q5</td>
+          <td>SLA / RPO</td>
+          <td>バッチが失敗した場合、どこまで遡って再実行できる必要がありますか？（RPO）</td>
+          <td>前日分まで再実行できれば OK</td>
+          <td>チェックポイント設計 / 実行履歴の保存期間</td>
+        </tr>
+        <tr>
+          <td>Q6</td>
+          <td>SLA</td>
+          <td>バッチ失敗が事業に与える影響を教えてください（軽微 / 業務停止 / 法的リスク）</td>
+          <td>請求データ未生成で売上計上ゼロになる</td>
+          <td>冗長化構成 / フェイルオーバー採否 / 緊急連絡先定義</td>
+        </tr>
+        <tr>
+          <td>Q7</td>
+          <td>リラン要件</td>
+          <td>同じ日付・条件で再実行したとき、結果が変わらない（冪等）必要がありますか？</td>
+          <td>はい、何度実行しても同じ結果であること</td>
+          <td>冪等性設計 / UPSERT vs INSERT / ステータス管理方式</td>
+        </tr>
+        <tr>
+          <td>Q8</td>
+          <td>依存関係</td>
+          <td>このバッチが実行される前に必ず終わっていなければならない処理はありますか？</td>
+          <td>在庫確定バッチの完了後に起動すること</td>
+          <td>DAG 設計 / 先行ジョブ完了チェック方式</td>
+        </tr>
+        <tr>
+          <td>Q9</td>
+          <td>依存関係</td>
+          <td>このバッチの後で動く処理（後続ジョブ）はありますか？</td>
+          <td>完了後に請求書 PDF 生成バッチが動く</td>
+          <td>完了通知方式 / ファイル連携か DB フラグか</td>
+        </tr>
+        <tr>
+          <td>Q10</td>
+          <td>データ規模詳細</td>
+          <td>1レコードあたりの平均サイズと最大サイズを教えてください</td>
+          <td>平均 2KB、最大 50KB（画像 URL 含む）</td>
+          <td>メモリ上限設定 / チャンクサイズ / OOM 対策</td>
+        </tr>
+        <tr>
+          <td>Q11</td>
+          <td>例外時要件</td>
+          <td>エラーが発生したとき、処理を中断しますか？それともエラーをスキップして続けますか？</td>
+          <td>1,000件に1件はスキップ OK、それ以上は中断</td>
+          <td>スキップ閾値設定 / デッドレターキュー設計</td>
+        </tr>
+        <tr>
+          <td>Q12</td>
+          <td>例外時要件</td>
+          <td>エラー時はロールバック（前の状態に戻す）が必要ですか？</td>
+          <td>中断時は当日分の更新を全部戻してほしい</td>
+          <td>トランザクション境界設計 / チャンクサイズとの関係</td>
+        </tr>
+        <tr>
+          <td>Q13</td>
+          <td>通知</td>
+          <td>どんな状態のとき、誰に通知が必要ですか？</td>
+          <td>異常終了時は運用チームと業務責任者にメール</td>
+          <td>通知先一覧 / 通知種別マトリクス設計</td>
+        </tr>
+        <tr>
+          <td>Q14</td>
+          <td>通知</td>
+          <td>遅延（SLA 残り 30 分前）の予告通知は必要ですか？</td>
+          <td>はい。完了期限 1 時間前に進捗が 70% 未満なら警告</td>
+          <td>進捗監視設計 / 処理速度トラッキング</td>
+        </tr>
+        <tr>
+          <td>Q15</td>
+          <td>権限</td>
+          <td>バッチを手動実行・停止できる人の範囲を決めてください</td>
+          <td>業務担当者は参照のみ、実行は運用チームのみ</td>
+          <td>RBAC 設計 / 操作ログ要件</td>
+        </tr>
+        <tr>
+          <td>Q16</td>
+          <td>セキュリティ</td>
+          <td>処理データに個人情報・機密情報は含まれますか？</td>
+          <td>氏名・口座番号が含まれる</td>
+          <td>ログマスキング / 暗号化 / アクセスログ保存期間</td>
+        </tr>
+        <tr>
+          <td>Q17</td>
+          <td>保守</td>
+          <td>ジョブ定義（スケジュール・パラメータ）を運用チームが自分で変更できる必要がありますか？</td>
+          <td>はい、年間カレンダーを自分たちで変えたい</td>
+          <td>GUI 管理ツール採否 / 設定ファイル外部化</td>
+        </tr>
+        <tr>
+          <td>Q18</td>
+          <td>運用時間帯</td>
+          <td>メンテナンス時間帯（バッチを止めてよい時間）はありますか？</td>
+          <td>毎週日曜 2:00〜5:00 は停止可</td>
+          <td>スケジュール設計 / カレンダー例外設定</td>
+        </tr>
+        <tr>
+          <td>Q19</td>
+          <td>移行</td>
+          <td>現行バッチと並行稼働（二重実行）する期間はありますか？</td>
+          <td>3ヶ月間は新旧同時稼働し、結果を突合</td>
+          <td>テスト環境設計 / 並行稼働時の二重書き込み防止策</td>
+        </tr>
+        <tr>
+          <td>Q20</td>
+          <td>将来要件</td>
+          <td>1〜3年以内に追加が見込まれる機能や変化はありますか？</td>
+          <td>来年から海外拠点のデータも処理対象になる可能性</td>
+          <td>マルチテナント設計 / タイムゾーン考慮 / 拡張ポイント設計</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- try-box: ヒアリングテンプレート -->
+    <div class="try-box">
+      <div class="try-box-title">// 記入式ヒアリングテンプレート（関係者との会議でそのまま使用可）</div>
+      <div class="try-box-body">
+        以下を印刷 or 共有ドキュメントに貼り付けて会議に持ち込む。
+        空欄は「TBD」と書いてその場で埋める。
+        <pre class="try-skeleton">
+【バッチ要件ヒアリングシート】  日付: ____/____/____  担当: __________
+
+■ データ規模・頻度
+  Q1. 現在のレコード数       : ___________件
+  Q2. 3〜5年後の見込み件数   : ___________件
+  Q3. 実行頻度               : 毎時 / 日次 / 週次 / 月次 / 都度（○で囲む）
+  Q3-補足. 具体的な時刻・条件: ________________________________
+
+■ SLA / 完了要件
+  Q4. 完了期限（何時まで）   : ___________
+  Q5. 再実行可能な範囲（RPO） : ___________（例：前日分まで）
+  Q6. 失敗時の業務影響       : 軽微 / 業務停止 / 法的リスク（○で囲む）
+
+■ 依存関係
+  Q7. 冪等性要否             : 必要 / 不要
+  Q8. 先行ジョブ             : ________________________________
+  Q9. 後続ジョブ             : ________________________________
+
+■ 例外・エラー要件
+  Q10. 1レコード平均サイズ   : ___KB　最大: ___KB
+  Q11. エラー時の動作        : 中断 / スキップ（スキップ閾値: ___件 or ___%）
+  Q12. ロールバック要否      : 必要 / 不要
+
+■ 通知・権限
+  Q13. 通知先・条件          : ________________________________
+  Q14. 遅延警告通知          : 必要 / 不要（条件: ________________）
+  Q15. 操作権限範囲          : ________________________________
+  Q16. 個人情報含む          : あり / なし（種類: ________________）
+
+■ 保守・移行
+  Q17. 設定変更の自己管理    : 必要 / 不要
+  Q18. メンテナンス時間帯    : ________________________________
+  Q19. 並行稼働期間          : ___ヶ月間（開始予定: ____/____）
+
+■ 将来要件
+  Q20. 1〜3年内の拡張見込み  : ________________________________
+
+【備考・決定事項】
+  ________________________________
+  ________________________________
+        </pre>
+      </div>
+    </div>
+
+    <!-- check-steps -->
+    <div class="check-steps">
+      <div class="check-steps-title">// ヒアリング後の確認手順</div>
+      <ol>
+        <li><strong>①</strong> 20 項目に TBD がないか確認する。TBD が残ったまま設計に進まない。</li>
+        <li><strong>②</strong> Q4（SLA）× Q3（頻度）× Q1（件数）の組み合わせから「1件あたり許容処理時間」を逆算する（例：50万件を7時間 = 1秒あたり約20件必要）。</li>
+        <li><strong>③</strong> Q11 のスキップ閾値を業務担当者と合意し、文書化する。</li>
+        <li><strong>④</strong> Q8・Q9 で洗い出した依存関係を DAG 図にし、関係者に確認してもらう。</li>
+        <li><strong>⑤</strong> 回答内容をベースに Lab-P1D の優先度マトリクスと照合し、必須機能を確定する。</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     Lab-P1C: 網羅機能マップ — 13カテゴリ × 約50機能（5AI統合版）
+     ============================================================ -->
+<div class="lab" id="lab-p1c">
+  <div class="lab-header">
+    <div class="lab-num">P1-C</div>
+    <h3>網羅機能マップ — 13 カテゴリ × 約 50 機能（5AI 統合版）</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ChatGPT / DeepSeek / Gemini / Grok / Perplexity の 5 AI が挙げたバッチ共通基盤の機能を統合・整理した決定版マップ。
+      「うちのシステムに必要な機能はどれか？」を判定する際のカタログとして使う。
+      13 カテゴリを大型テーブルで一覧化し、各機能に実装例と AI 言及状況を付記する。
+    </p>
+
+    <!-- 13カテゴリ相互関係 ASCII -->
+    <div class="beginner-box">
+      <div class="beginner-box-title">// 13 カテゴリの相互関係図（レイヤ構成）</div>
+      <pre class="ascii-art">
+ ╔══════════════════════════════════════════════════════════════╗
+ ║  【外部インターフェース層】                                   ║
+ ║   ⑨ 運用 UI    ⑩ 拡張性 API/SDK    ⑧ セキュリティ           ║
+ ╠══════════════════════════════════════════════════════════════╣
+ ║  【制御層（頭脳）】                                           ║
+ ║   ① 実行制御   ② 状態管理   ⑬ 時間・カレンダー制御           ║
+ ╠══════════════════════════════════════════════════════════════╣
+ ║  【回復・品質層】                                             ║
+ ║   ③ エラー回復   ④ ログ監査   ⑤ 通知・アラート               ║
+ ╠══════════════════════════════════════════════════════════════╣
+ ║  【実行エンジン層】                                           ║
+ ║   ⑦ データ I/O   ⑥ リソース管理   ⑪ 分散スケール             ║
+ ╠══════════════════════════════════════════════════════════════╣
+ ║  【開発・ライフサイクル管理層】                               ║
+ ║   ⑫ バージョン管理    [テスト支援]                           ║
+ ╚══════════════════════════════════════════════════════════════╝
+      </pre>
+    </div>
+
+    <!-- 機能マップ大型テーブル -->
+    <table class="summary-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>カテゴリ</th>
+          <th>機能名</th>
+          <th>目的・概要</th>
+          <th>実装例（製品 / コード）</th>
+          <th>言及 AI</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- ① 実行制御 -->
+        <tr style="background:var(--table-stripe);">
+          <td>①-1</td>
+          <td rowspan="5"><strong>①<br>実行制御</strong><br><small>(Execution Control)</small></td>
+          <td>スケジュール起動</td>
+          <td>時刻・曜日・cron 式で定期実行する。カレンダー休日も考慮</td>
+          <td>Quartz <code>0 0 1 * * ?</code> / cron / Spring <code>@Scheduled</code></td>
+          <td>全 5 AI</td>
+        </tr>
+        <tr style="background:var(--table-stripe);">
+          <td>①-2</td>
+          <td>イベントトリガー起動</td>
+          <td>ファイル到着・API 呼び出し・DB フラグ更新を契機に起動</td>
+          <td>Airflow FileSensor / S3 Event → Lambda → Airflow Trigger</td>
+          <td>ChatGPT, Grok, Perplexity</td>
+        </tr>
+        <tr style="background:var(--table-stripe);">
+          <td>①-3</td>
+          <td>依存関係制御（DAG）</td>
+          <td>ジョブ間の前後関係・条件分岐・並列実行を DAG で定義</td>
+          <td>Airflow DAG / JP1-AJS ジョブネット / Spring Batch <code>Flow</code></td>
+          <td>全 5 AI</td>
+        </tr>
+        <tr style="background:var(--table-stripe);">
+          <td>①-4</td>
+          <td>多重起動防止（排他制御）</td>
+          <td>同一ジョブが並行して二重起動するのを防ぐ。DB ロックまたは Redis 使用</td>
+          <td>DB の <code>SELECT FOR UPDATE</code> / Redis SETNX / Quartz TriggerState</td>
+          <td>DeepSeek, Gemini, Grok</td>
+        </tr>
+        <tr style="background:var(--table-stripe);">
+          <td>①-5</td>
+          <td>キューイング・優先度制御</td>
+          <td>実行待ちキューで優先度順に実行。ピーク時の過負荷を吸収</td>
+          <td>Celery priority queue / JP1 実行多重度 / AWS Batch Job Queue Priority</td>
+          <td>ChatGPT, DeepSeek</td>
+        </tr>
+
+        <!-- ② 状態管理 -->
+        <tr>
+          <td>②-1</td>
+          <td rowspan="4"><strong>②<br>状態管理</strong><br><small>(State Management)</small></td>
+          <td>ジョブ状態管理</td>
+          <td>WAIT / RUNNING / SUCCESS / FAILED / SKIPPED の 5 状態を DB 永続化</td>
+          <td>Spring Batch <code>BATCH_JOB_EXECUTION</code> テーブル / Airflow TaskInstance</td>
+          <td>全 5 AI</td>
+        </tr>
+        <tr>
+          <td>②-2</td>
+          <td>実行履歴管理</td>
+          <td>開始・終了時刻、処理件数、実行パラメータを記録。障害調査に使う</td>
+          <td>Spring Batch JobRepository / Airflow DB backend</td>
+          <td>全 5 AI</td>
+        </tr>
+        <tr>
+          <td>②-3</td>
+          <td>冪等性制御</td>
+          <td>同じジョブを再実行しても結果が変わらないよう設計。UPSERT で実現</td>
+          <td><code>INSERT ... ON CONFLICT DO UPDATE</code> / ステータスフラグチェック</td>
+          <td>DeepSeek, Grok</td>
+        </tr>
+        <tr>
+          <td>②-4</td>
+          <td>チェックポイント保存</td>
+          <td>大規模データ処理の途中経過を保存し、失敗時に途中から再開</td>
+          <td>Spring Batch StepExecution / ファイル offset 保存 / Redis cursor</td>
+          <td>ChatGPT, DeepSeek, Gemini</td>
+        </tr>
+
+        <!-- ③ エラー回復 -->
+        <tr style="background:var(--table-stripe);">
+          <td>③-1</td>
+          <td rowspan="5"><strong>③<br>エラー回復</strong><br><small>(Resilience)</small></td>
+          <td>リトライ制御</td>
+          <td>一時エラー（ネットワーク瞬断等）を検知し、指定回数・間隔で自動再実行</td>
+          <td>Spring Retry <code>@Retryable</code> / Airflow <code>retries=3, retry_delay=300</code></td>
+          <td>全 5 AI</td>
+        </tr>
+        <tr style="background:var(--table-stripe);">
+          <td>③-2</td>
+          <td>指数バックオフ</td>
+          <td>リトライ間隔を指数関数的に伸ばし、連続リトライによる過負荷を防ぐ</td>
+          <td>1秒→2秒→4秒→8秒 / Exponential Backoff with Jitter</td>
+          <td>ChatGPT, DeepSeek</td>
+        </tr>
+        <tr style="background:var(--table-stripe);">
+          <td>③-3</td>
+          <td>スキップ閾値</td>
+          <td>エラーレコードを一定件数まではスキップし、超えたら中断する安全弁</td>
+          <td>Spring Batch <code>skipLimit(100)</code> / カスタム SkipPolicy</td>
+          <td>DeepSeek, Gemini, Grok</td>
+        </tr>
+        <tr style="background:var(--table-stripe);">
+          <td>③-4</td>
+          <td>タイムアウト制御</td>
+          <td>異常ループや DB ロック待ちによる無限実行を検知し強制終了</td>
+          <td>JVM <code>Thread.interrupt()</code> / OS <code>timeout</code> コマンド / JP1 監視時間</td>
+          <td>ChatGPT, Gemini, Grok</td>
+        </tr>
+        <tr style="background:var(--table-stripe);">
+          <td>③-5</td>
+          <td>デッドレターキュー</td>
+          <td>処理不能レコードを専用キューに退避。後から個別確認・再処理が可能</td>
+          <td>AWS SQS DLQ / RabbitMQ Dead Letter Exchange / DB <code>ERROR_RECORDS</code> テーブル</td>
+          <td>DeepSeek, Grok</td>
+        </tr>
+
+        <!-- ④ ログ監査 -->
+        <tr>
+          <td>④-1</td>
+          <td rowspan="4"><strong>④<br>ログ・監査</strong><br><small>(Observability)</small></td>
+          <td>構造化ログ出力</td>
+          <td>JSON 形式で実行 ID・ジョブ名・件数・エラー内容を一元記録。検索が楽</td>
+          <td>Logback + Logstash encoder / structlog (Python) / Log4j2 JSON Layout</td>
+          <td>ChatGPT, Grok</td>
+        </tr>
+        <tr>
+          <td>④-2</td>
+          <td>メトリクス収集</td>
+          <td>実行時間・スループット（件/秒）・エラー率を時系列で蓄積</td>
+          <td>Micrometer → Prometheus → Grafana / CloudWatch Metrics</td>
+          <td>ChatGPT, Perplexity</td>
+        </tr>
+        <tr>
+          <td>④-3</td>
+          <td>監査ログ</td>
+          <td>誰がいつ手動実行・停止・設定変更したかを記録。コンプライアンス対応</td>
+          <td>操作ログ DB / AWS CloudTrail / JP1 操作ログ</td>
+          <td>ChatGPT, Grok, Perplexity</td>
+        </tr>
+        <tr>
+          <td>④-4</td>
+          <td>分散トレーシング</td>
+          <td>複数ジョブ・サービス間の因果関係を Trace ID で追跡</td>
+          <td>OpenTelemetry / Zipkin / Jaeger / AWS X-Ray</td>
+          <td>ChatGPT</td>
+        </tr>
+
+        <!-- ⑤ 通知・アラート -->
+        <tr style="background:var(--table-stripe);">
+          <td>⑤-1</td>
+          <td rowspan="3"><strong>⑤<br>通知・アラート</strong><br><small>(Alerting)</small></td>
+          <td>異常終了通知</td>
+          <td>FAILED / TIMEOUT 時に担当者へリアルタイム通知</td>
+          <td>Airflow email_on_failure / PagerDuty / Slack Incoming Webhook</td>
+          <td>全 5 AI</td>
+        </tr>
+        <tr style="background:var(--table-stripe);">
+          <td>⑤-2</td>
+          <td>SLA タイムオーバー警告</td>
+          <td>完了期限の N 分前に進捗が閾値未満なら先行警告を出す</td>
+          <td>カスタム監視スクリプト + Slack / Grafana Alerting</td>
+          <td>ChatGPT, DeepSeek</td>
+        </tr>
+        <tr style="background:var(--table-stripe);">
+          <td>⑤-3</td>
+          <td>Webhook / チャット連携</td>
+          <td>Microsoft Teams / Slack / LINE Notify にジョブ完了・失敗を投稿</td>
+          <td>Airflow SlackOperator / カスタム HTTP Callback</td>
+          <td>ChatGPT, Grok</td>
+        </tr>
+
+        <!-- ⑥ リソース管理 -->
+        <tr>
+          <td>⑥-1</td>
+          <td rowspan="4"><strong>⑥<br>リソース管理</strong><br><small>(Resource Mgmt)</small></td>
+          <td>同時実行数制限</td>
+          <td>DB 接続数・スレッド数の上限を設け、システム全体の過負荷を防ぐ</td>
+          <td>Airflow <code>max_active_runs=2</code> / Spring Batch TaskExecutor poolSize</td>
+          <td>全 5 AI</td>
+        </tr>
+        <tr>
+          <td>⑥-2</td>
+          <td>CPU / メモリ制限</td>
+          <td>単一ジョブが全リソースを独占しないよう cgroup / JVM ヒープで制限</td>
+          <td>Docker <code>--memory=2g</code> / JVM <code>-Xmx1g</code> / K8s resources.limits</td>
+          <td>DeepSeek, Grok</td>
+        </tr>
+        <tr>
+          <td>⑥-3</td>
+          <td>コネクションプーリング</td>
+          <td>DB 接続を再利用しオーバーヘッドを削減。バルク処理の性能向上に直結</td>
+          <td>HikariCP / pgBouncer / c3p0</td>
+          <td>DeepSeek</td>
+        </tr>
+        <tr>
+          <td>⑥-4</td>
+          <td>スロットリング</td>
+          <td>外部 API 呼び出しレートを制限し、API 規約違反や過負荷を防ぐ</td>
+          <td>Resilience4j RateLimiter / Bucket4j / Guava RateLimiter</td>
+          <td>DeepSeek</td>
+        </tr>
+
+        <!-- ⑦ データI/O -->
+        <tr style="background:var(--table-stripe);">
+          <td>⑦-1</td>
+          <td rowspan="5"><strong>⑦<br>データ I/O</strong><br><small>(Data Handling)</small></td>
+          <td>I/O アダプタ抽象化</td>
+          <td>DB / CSV / S3 / MQ / API を共通 I/F で扱い、ビジネスロジックと分離</td>
+          <td>Spring Batch ItemReader/Writer / Apache Camel / NiFi</td>
+          <td>全 5 AI</td>
+        </tr>
+        <tr style="background:var(--table-stripe);">
+          <td>⑦-2</td>
+          <td>チャンク（バルク）処理</td>
+          <td>大量データを N 件ずつに分割して処理。OOM 防止とトランザクション制御</td>
+          <td>Spring Batch chunk(1000) / JDBC batch insert / COPY コマンド</td>
+          <td>全 5 AI</td>
+        </tr>
+        <tr style="background:var(--table-stripe);">
+          <td>⑦-3</td>
+          <td>データ検証</td>
+          <td>スキーマチェック・件数チェック・型チェックを入力段階で実施</td>
+          <td>Spring Batch BeanValidationItemProcessor / Great Expectations</td>
+          <td>ChatGPT, Grok</td>
+        </tr>
+        <tr style="background:var(--table-stripe);">
+          <td>⑦-4</td>
+          <td>差分処理（CDC）</td>
+          <td>前回実行以降に変更されたレコードのみを処理。処理量を大幅削減</td>
+          <td>Debezium CDC / タイムスタンプ比較 / 変更フラグカラム</td>
+          <td>Grok</td>
+        </tr>
+        <tr style="background:var(--table-stripe);">
+          <td>⑦-5</td>
+          <td>フォーマット変換</td>
+          <td>CSV / JSON / XML / Parquet / 固定長 間の変換を共通部品で提供</td>
+          <td>Apache Commons CSV / Jackson / JAXB / Apache Parquet</td>
+          <td>DeepSeek, Grok</td>
+        </tr>
+
+        <!-- ⑧ セキュリティ -->
+        <tr>
+          <td>⑧-1</td>
+          <td rowspan="4"><strong>⑧<br>セキュリティ</strong><br><small>(Security)</small></td>
+          <td>認証・認可（RBAC）</td>
+          <td>ジョブの実行・停止・設定変更権限をロール別に制御</td>
+          <td>Airflow RBAC / Spring Security / JP1 ユーザー権限設定</td>
+          <td>全 5 AI</td>
+        </tr>
+        <tr>
+          <td>⑧-2</td>
+          <td>シークレット管理</td>
+          <td>DB パスワード・API キーを平文でコードに書かず安全に管理</td>
+          <td>HashiCorp Vault / AWS Secrets Manager / K8s Secret</td>
+          <td>ChatGPT, Grok</td>
+        </tr>
+        <tr>
+          <td>⑧-3</td>
+          <td>ログマスキング</td>
+          <td>個人情報・クレジットカード番号をログに出力しないよう自動マスク</td>
+          <td>Logback PatternReplace / カスタム Converter</td>
+          <td>Grok, Perplexity</td>
+        </tr>
+        <tr>
+          <td>⑧-4</td>
+          <td>コンプライアンス対応</td>
+          <td>ログ改ざん防止・長期保存（法的要件対応）・GDPR 削除要件</td>
+          <td>AWS CloudTrail / Immutable S3 / Elasticsearch ILM</td>
+          <td>Grok, Perplexity</td>
+        </tr>
+
+        <!-- ⑨ 運用UI -->
+        <tr style="background:var(--table-stripe);">
+          <td>⑨-1</td>
+          <td rowspan="4"><strong>⑨<br>運用 UI</strong><br><small>(Operations UI)</small></td>
+          <td>実行状況ダッシュボード</td>
+          <td>全ジョブの状態（RUNNING / SUCCESS / FAILED）をリアルタイム一覧表示</td>
+          <td>Airflow Web UI / JP1 Web Console / Grafana</td>
+          <td>全 5 AI</td>
+        </tr>
+        <tr style="background:var(--table-stripe);">
+          <td>⑨-2</td>
+          <td>手動操作（強制実行 / 停止 / 再実行）</td>
+          <td>スケジュール外の緊急実行や、失敗ジョブの手動再投入</td>
+          <td>Airflow <code>dag trigger</code> / JP1 手動実行 / REST API POST</td>
+          <td>ChatGPT, Grok, Perplexity</td>
+        </tr>
+        <tr style="background:var(--table-stripe);">
+          <td>⑨-3</td>
+          <td>進捗表示</td>
+          <td>総件数に対して何件処理済みかをリアルタイム表示</td>
+          <td>Spring Batch <code>ExecutionContext</code> / Airflow XCom / カスタム DB カウント</td>
+          <td>DeepSeek, Grok</td>
+        </tr>
+        <tr style="background:var(--table-stripe);">
+          <td>⑨-4</td>
+          <td>ジョブ定義エディタ / GUI</td>
+          <td>コードを書かずにスケジュール・依存関係をブラウザで設定</td>
+          <td>Airflow Web UI / JP1 AJS エディタ / Control-M Workload Automation</td>
+          <td>Grok, Perplexity</td>
+        </tr>
+
+        <!-- ⑩ 拡張性 -->
+        <tr>
+          <td>⑩-1</td>
+          <td rowspan="3"><strong>⑩<br>拡張性</strong><br><small>(Extensibility)</small></td>
+          <td>REST API 公開</td>
+          <td>外部システムからジョブ起動・状態取得ができる API を提供</td>
+          <td>Airflow REST API / Jenkins API / Spring Batch REST endpoint</td>
+          <td>全 5 AI</td>
+        </tr>
+        <tr>
+          <td>⑩-2</td>
+          <td>プラグイン機構</td>
+          <td>カスタムオペレータ・コネクタを追加できるプラグイン設計</td>
+          <td>Airflow Provider Package / Spring Batch ItemProcessor カスタム実装</td>
+          <td>ChatGPT, DeepSeek</td>
+        </tr>
+        <tr>
+          <td>⑩-3</td>
+          <td>テスト支援（ドライラン）</td>
+          <td>本番 DB に書き込まずロジックだけ検証するドライランモード</td>
+          <td>Spring Batch <code>--dry-run</code> / Airflow <code>test</code> サブコマンド / フラグ制御</td>
+          <td>DeepSeek</td>
+        </tr>
+
+        <!-- ⑪ 分散スケール -->
+        <tr style="background:var(--table-stripe);">
+          <td>⑪-1</td>
+          <td rowspan="3"><strong>⑪<br>分散・スケール</strong><br><small>(Distributed)</small></td>
+          <td>ワーカーノード分散</td>
+          <td>複数サーバにジョブを分散配置し処理スループットを向上</td>
+          <td>Airflow Celery/K8s Executor / AWS Batch Multi-Node</td>
+          <td>ChatGPT, Grok</td>
+        </tr>
+        <tr style="background:var(--table-stripe);">
+          <td>⑪-2</td>
+          <td>フェイルオーバー</td>
+          <td>マスタノード障害時に自動的に別ノードが引き継ぐ HA 構成</td>
+          <td>Airflow HA / JP1 クラスタ / K8s レプリカセット</td>
+          <td>DeepSeek, Grok</td>
+        </tr>
+        <tr style="background:var(--table-stripe);">
+          <td>⑪-3</td>
+          <td>パーティション並列処理</td>
+          <td>データを複数パーティションに分割し並列処理。大規模向け</td>
+          <td>Spring Batch Partitioner / Apache Spark partition / AWS Batch Array Job</td>
+          <td>DeepSeek, Grok</td>
+        </tr>
+
+        <!-- ⑫ バージョン管理 -->
+        <tr>
+          <td>⑫-1</td>
+          <td rowspan="3"><strong>⑫<br>バージョン管理</strong><br><small>(Versioning)</small></td>
+          <td>ジョブ定義バージョン管理</td>
+          <td>ジョブ定義ファイルを Git で管理。変更履歴とロールバックを可能に</td>
+          <td>Git + CI/CD / Airflow DAG バージョン / JP1 定義エクスポート</td>
+          <td>ChatGPT, DeepSeek</td>
+        </tr>
+        <tr>
+          <td>⑫-2</td>
+          <td>環境差分管理</td>
+          <td>dev / staging / prod で設定値を切り替え。コードは同一のまま</td>
+          <td>Spring Profile / Airflow Variable / K8s ConfigMap</td>
+          <td>ChatGPT, Grok</td>
+        </tr>
+        <tr>
+          <td>⑫-3</td>
+          <td>Blue-Green デプロイ</td>
+          <td>新旧バッチを並行稼働させ、問題なければ切り替え</td>
+          <td>AWS CodeDeploy / K8s Deployment rolling update</td>
+          <td>Grok</td>
+        </tr>
+
+        <!-- ⑬ 時間・カレンダー -->
+        <tr style="background:var(--table-stripe);">
+          <td>⑬-1</td>
+          <td rowspan="3"><strong>⑬<br>時間・カレンダー</strong><br><small>(Calendar)</small></td>
+          <td>営業日判定</td>
+          <td>祝日・振替休日・年末年始を考慮した営業日カレンダー管理</td>
+          <td>JP1 カレンダー / 内閣府祝日 CSV 取込 / Time4J</td>
+          <td>ChatGPT, Grok</td>
+        </tr>
+        <tr style="background:var(--table-stripe);">
+          <td>⑬-2</td>
+          <td>月次・年次バッチ制御</td>
+          <td>「月末営業日の 23:00」「3月最終営業日」といった複雑なスケジュール</td>
+          <td>JP1 相対日指定 / Quartz <code>CronTrigger</code> + カスタム Calendar</td>
+          <td>ChatGPT</td>
+        </tr>
+        <tr style="background:var(--table-stripe);">
+          <td>⑬-3</td>
+          <td>締め処理制御</td>
+          <td>前月締め処理が完了するまで当月バッチを待機させる制御</td>
+          <td>DB ステータスフラグ参照 / JP1 先行ジョブ完了待ち</td>
+          <td>ChatGPT</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info">
+      <strong>// この機能マップの使い方</strong>
+      全機能を実装する必要はない。Lab-P1B のヒアリング結果と Lab-P1D の優先度マトリクスを照合し、
+      「必須」「推奨」「将来」に分類してから設計に入る。
+      特に小規模システムでは①③④⑤だけで十分なことが多い。
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     Lab-P1D: 優先度判定フロー — 必須/推奨/将来
+     ============================================================ -->
+<div class="lab" id="lab-p1d">
+  <div class="lab-header">
+    <div class="lab-num">P1-D</div>
+    <h3>優先度判定フロー — 必須 / 推奨 / 将来</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      「全機能を実装しよう」とすると工数が爆発し、リリースが遅延する。
+      本 Lab では規模（小 / 中 / 大）と運用要件を軸に、<strong>どの機能が「今すぐ必須」でどれが「将来でよいか」</strong>を
+      決定フロー図と優先度マトリクスで明示する。
+    </p>
+
+    <!-- 決定フロー ASCII -->
+    <div class="beginner-box">
+      <div class="beginner-box-title">// 優先度判定フロー（ASCII 決定木）</div>
+      <pre class="ascii-art">
+ スタート: 新規バッチ基盤を設計する
+        │
+        ▼
+ ┌─────────────────────┐
+ │ ジョブ総数 &gt; 50 本 ？ │
+ └─────────────────────┘
+       │                 │
+     YES               NO
+       │                 │
+       ▼                 ▼
+ 大規模フラグON    ┌─────────────────────┐
+                  │ ジョブ数 &gt; 10 本 ？   │
+                  └─────────────────────┘
+                        │               │
+                      YES              NO
+                        │               │
+                        ▼               ▼
+                  中規模フラグON    小規模フラグON
+        │               │               │
+        ▼               ▼               ▼
+ ┌─────────────────────────────────────────┐
+ │         24時間無人運転が必要 ？          │
+ └─────────────────────────────────────────┘
+       │                                   │
+     YES                                  NO
+       │                                   │
+       ▼                                   ▼
+ ┌───────────────────┐             ┌───────────────────┐
+ │ 障害通知          │             │ 通知は翌営業日    │
+ │ リトライ          │ ← 必須 →   │ メールのみで可    │
+ │ タイムアウト監視  │             │ リトライは推奨    │
+ └─────────┬─────────┘             └───────────────────┘
+           │
+           ▼
+ ┌─────────────────────┐
+ │ SLA（完了時刻）有り ？ │
+ └─────────────────────┘
+       │                 │
+     YES               NO
+       │                 │
+       ▼                 ▼
+ ┌───────────────────┐   SLA 監視は
+ │ SLA 進捗監視 必須 │   推奨止まり
+ │ タイムアウト必須  │
+ └─────────┬─────────┘
+           │
+           ▼
+ ┌──────────────────────────────┐
+ │ 個人情報 / 機密データを扱う ？ │
+ └──────────────────────────────┘
+       │                          │
+     YES                         NO
+       │                          │
+       ▼                          ▼
+ ┌────────────────────┐      セキュリティは
+ │ シークレット管理 必須│      最小実装で可
+ │ ログマスキング 必須 │
+ │ 監査ログ 必須       │
+ └────────────────────┘
+      </pre>
+    </div>
+
+    <!-- 規模定義 -->
+    <h4 style="margin-top:1.6rem;margin-bottom:.5rem;color:var(--accent);">▌ 規模の定義</h4>
+    <table class="summary-table">
+      <thead>
+        <tr>
+          <th>規模</th>
+          <th>ジョブ数の目安</th>
+          <th>典型例</th>
+          <th>運用体制</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>小規模</strong></td>
+          <td>〜10 本</td>
+          <td>社内ツール / 部門システム / スタートアップ初期</td>
+          <td>兼任 1〜2 名（月 1〜2 回確認）</td>
+        </tr>
+        <tr>
+          <td><strong>中規模</strong></td>
+          <td>10〜50 本</td>
+          <td>中規模 EC / 会計・給与システム / 製造業 EDI</td>
+          <td>専任または兼任チーム（週次確認）</td>
+        </tr>
+        <tr>
+          <td><strong>大規模</strong></td>
+          <td>50 本〜</td>
+          <td>銀行・保険 / 通信キャリア / 大規模 EC</td>
+          <td>専任運用チーム（24h 監視）</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- 優先度マトリクス -->
+    <h4 style="margin-top:1.6rem;margin-bottom:.5rem;color:var(--accent);">▌ 13 カテゴリ × 3 規模 優先度マトリクス</h4>
+    <p class="lab-desc" style="margin-bottom:.6rem;">
+      ◎ = 必須（最初から実装）　○ = 推奨（早期に実装）　△ = 将来（フェーズ 2 以降）　— = 不要
+    </p>
+    <table class="summary-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>カテゴリ</th>
+          <th>小規模<br>〜10本</th>
+          <th>中規模<br>10〜50本</th>
+          <th>大規模<br>50本〜</th>
+          <th>判断のポイント</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>①</td>
+          <td>実行制御</td>
+          <td>◎</td>
+          <td>◎</td>
+          <td>◎</td>
+          <td>規模問わず必須。小規模は cron でも可。大規模は DAG 必須</td>
+        </tr>
+        <tr>
+          <td>②</td>
+          <td>状態管理</td>
+          <td>○</td>
+          <td>◎</td>
+          <td>◎</td>
+          <td>小規模でも冪等性制御は早めに。状態 DB は中規模以上で必須</td>
+        </tr>
+        <tr>
+          <td>③</td>
+          <td>エラー回復</td>
+          <td>◎</td>
+          <td>◎</td>
+          <td>◎</td>
+          <td>規模問わず必須。無人夜間運転にはリトライとタイムアウトが前提</td>
+        </tr>
+        <tr>
+          <td>④</td>
+          <td>ログ・監査</td>
+          <td>◎</td>
+          <td>◎</td>
+          <td>◎</td>
+          <td>障害解析に必須。小規模はテキストログでも可。大規模は構造化ログ必須</td>
+        </tr>
+        <tr>
+          <td>⑤</td>
+          <td>通知・アラート</td>
+          <td>○</td>
+          <td>◎</td>
+          <td>◎</td>
+          <td>小規模は翌朝確認でもよいケースあり。24h 運転なら必須</td>
+        </tr>
+        <tr>
+          <td>⑥</td>
+          <td>リソース管理</td>
+          <td>△</td>
+          <td>○</td>
+          <td>◎</td>
+          <td>小規模は設定不要なことが多い。大規模で同時実行上限必須</td>
+        </tr>
+        <tr>
+          <td>⑦</td>
+          <td>データ I/O</td>
+          <td>◎</td>
+          <td>◎</td>
+          <td>◎</td>
+          <td>件数が多いほどチャンク処理必須。小規模でも共通 I/O 部品化を推奨</td>
+        </tr>
+        <tr>
+          <td>⑧</td>
+          <td>セキュリティ</td>
+          <td>○</td>
+          <td>◎</td>
+          <td>◎</td>
+          <td>個人情報を扱う場合は規模問わず必須。Secrets 管理は全規模推奨</td>
+        </tr>
+        <tr>
+          <td>⑨</td>
+          <td>運用 UI</td>
+          <td>△</td>
+          <td>○</td>
+          <td>◎</td>
+          <td>小規模はログ確認で代替可。中規模以上で運用コスト削減に効く</td>
+        </tr>
+        <tr>
+          <td>⑩</td>
+          <td>拡張性</td>
+          <td>△</td>
+          <td>○</td>
+          <td>◎</td>
+          <td>REST API は連携先増加とともに必要になる。最初は不要なことが多い</td>
+        </tr>
+        <tr>
+          <td>⑪</td>
+          <td>分散・スケール</td>
+          <td>—</td>
+          <td>△</td>
+          <td>◎</td>
+          <td>小〜中規模は単一ノードで十分。大規模では可用性設計で必須</td>
+        </tr>
+        <tr>
+          <td>⑫</td>
+          <td>バージョン管理</td>
+          <td>○</td>
+          <td>◎</td>
+          <td>◎</td>
+          <td>Git 管理は規模問わず初日から実施。環境差分管理は中規模以上で必須</td>
+        </tr>
+        <tr>
+          <td>⑬</td>
+          <td>時間・カレンダー</td>
+          <td>△</td>
+          <td>○</td>
+          <td>◎</td>
+          <td>金融・製造の月末処理や祝日制御が必要な場合は規模問わず必須</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- 過剰設計の罠 -->
+    <div class="info-box warn">
+      <strong>// 初心者がやりがちな過剰設計の罠</strong>
+      <ul style="margin-top:.5rem;padding-left:1.2rem;">
+        <li>
+          <strong>「Airflow から入って失敗」パターン</strong>:
+          日次 3 本程度のバッチに Airflow を導入 → Docker / Celery / PostgreSQL の運用コストが爆発。
+          メンテできる担当者がいなくなり、最終的にはシンプルな cron + シェルに戻した、という事例は後を絶たない。
+        </li>
+        <li>
+          <strong>「全機能を Sprint 1 に詰め込む」パターン</strong>:
+          分散処理・Blue-Green デプロイ・監査ログまで最初から実装しようとして、
+          コア機能（リトライ・通知）がリリースに間に合わない。
+        </li>
+        <li>
+          <strong>「ダッシュボード先行」パターン</strong>:
+          Grafana ダッシュボードを先に作り込んで、肝心の状態管理 DB 設計が後回しになる。
+          表示するデータがないダッシュボードは意味をなさない。
+        </li>
+      </ul>
+    </div>
+
+    <!-- check-steps -->
+    <div class="check-steps">
+      <div class="check-steps-title">// 自案件の規模測定と必須機能決定 手順</div>
+      <ol>
+        <li><strong>①</strong> Lab-P1B のヒアリング結果から「ジョブ総数」を確認する。小 / 中 / 大の行を選択。</li>
+        <li><strong>②</strong> 決定フロー図に従い、「24h 運転」「SLA あり」「個人情報あり」の YES/NO を決定する。</li>
+        <li><strong>③</strong> マトリクスで規模列の「◎」をすべて拾い出す。これが Sprint 1 の実装対象。</li>
+        <li><strong>④</strong> 「○」は Sprint 2〜3 のバックログに登録。「△」は将来検討リストへ。</li>
+        <li><strong>⑤</strong> 結果を関係者と共有し、「なぜこの機能は今回スコープ外か」を説明できるようにする。</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     Lab-P1E: 製品選定ガイド — 自作 vs OSS vs 商用
+     ============================================================ -->
+<div class="lab" id="lab-p1e">
+  <div class="lab-header">
+    <div class="lab-num">P1-E</div>
+    <h3>製品選定ガイド — 自作 vs OSS vs 商用</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      バッチ基盤の製品選定は「知っているから Airflow」「前の現場で使っていたから JP1」ではなく、
+      <strong>要件ベースで決める</strong>べきだ。
+      選択肢は「自作最小実装」から「商用フルマネージド」まで幅広い。
+      本 Lab では主要 7 製品を比較表と選定フローチャートで整理し、
+      「なんとなく選んだ」後悔を防ぐ。
+    </p>
+
+    <!-- 選定フローチャート ASCII -->
+    <div class="beginner-box">
+      <div class="beginner-box-title">// 製品選定フローチャート（ASCII）</div>
+      <pre class="ascii-art">
+ ┌─────────────────────────────────────────┐
+ │  Start: バッチ基盤製品を選ぶ             │
+ └─────────────────────────────────────────┘
+                    │
+                    ▼
+ ┌──────────────────────────────────────────┐
+ │ クラウドネイティブ前提（AWS/Azure/GCP） ？│
+ └──────────────────────────────────────────┘
+        │                              │
+      YES                             NO
+        │                              │
+        ▼                              ▼
+ ┌──────────────────┐      ┌──────────────────────────────┐
+ │ AWS Batch        │      │ ジョブ間依存関係・DAG が必要 ？│
+ │ Azure Data Factory│      └──────────────────────────────┘
+ │ GCP Cloud Run Jobs│             │                  │
+ └──────────────────┘           YES                 NO
+                                  │                  │
+                                  ▼                  ▼
+                     ┌────────────────────┐  ┌───────────────────────┐
+                     │ チームに Python が │  │ Java / Spring が主体 ？│
+                     │ 書ける人がいる ？   │  └───────────────────────┘
+                     └────────────────────┘         │           │
+                           │          │            YES          NO
+                         YES         NO              │           │
+                           │          │              ▼           ▼
+                           ▼          ▼       ┌───────────┐ ┌────────────────┐
+                      Apache        JP1 /     │Spring Batch│ │Quartz + 自作   │
+                      Airflow       Control-M │+ Spring    │ │シェルスクリプト│
+                                              │Scheduler   │ └────────────────┘
+                                              └───────────┘
+                                    │
+                                    ▼
+                     ┌────────────────────────────┐
+                     │ ジョブ数 &lt; 10 本 かつ       │
+                     │ 依存関係がシンプル ？         │
+                     └────────────────────────────┘
+                                │          │
+                              YES         NO
+                                │          │
+                                ▼          ▼
+                           自作最小    Spring Batch
+                           実装        + 状態 DB
+                           (cron +
+                           シェル)
+      </pre>
+    </div>
+
+    <!-- 製品比較テーブル -->
+    <h4 style="margin-top:1.6rem;margin-bottom:.5rem;color:var(--accent);">▌ 製品比較マトリクス</h4>
+    <table class="summary-table">
+      <thead>
+        <tr>
+          <th>製品</th>
+          <th>得意領域</th>
+          <th>学習コスト</th>
+          <th>ライセンス / 費用</th>
+          <th>運用負荷</th>
+          <th>適正規模</th>
+          <th>向かないケース</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>自作最小実装</strong><br><small>(cron + Shell / VB.NET)</small></td>
+          <td>シンプルなジョブ<br>依存関係なし</td>
+          <td>低<br>（既存スキルで構築）</td>
+          <td>無料</td>
+          <td>中（自前保守）</td>
+          <td>〜10 本<br>日次程度</td>
+          <td>DAG・リトライ・状態管理が必要になったら限界</td>
+        </tr>
+        <tr>
+          <td><strong>Spring Batch</strong><br><small>(OSS, Java)</small></td>
+          <td>チャンク処理<br>リトライ / 再開<br>トランザクション制御</td>
+          <td>中<br>（Spring 知識要）</td>
+          <td>無料（Apache 2.0）</td>
+          <td>低〜中</td>
+          <td>10〜100 本<br>Java 環境</td>
+          <td>DAG・スケジューリングは別途 Quartz が必要</td>
+        </tr>
+        <tr>
+          <td><strong>Quartz Scheduler</strong><br><small>(OSS, Java)</small></td>
+          <td>時刻/cron ベーススケジュール<br>クラスタリング</td>
+          <td>低〜中</td>
+          <td>無料（Apache 2.0）</td>
+          <td>低</td>
+          <td>10〜50 本</td>
+          <td>DAG 形式の依存関係には不向き。Spring Batch と組み合わせが定番</td>
+        </tr>
+        <tr>
+          <td><strong>Apache Airflow</strong><br><small>(OSS, Python)</small></td>
+          <td>DAG 定義<br>豊富なオペレータ<br>Web UI</td>
+          <td>高<br>（Python + インフラ知識）</td>
+          <td>無料（Apache 2.0）<br>マネージドは AWS MWAA で月数万円〜</td>
+          <td>高（Celery/K8s Executor 管理）</td>
+          <td>50 本〜<br>データエンジニアリング</td>
+          <td>5〜10 本程度のシステムに導入するとオーバースペック</td>
+        </tr>
+        <tr>
+          <td><strong>JP1 / AJS3</strong><br><small>(商用, 日立)</small></td>
+          <td>日本語 GUI<br>カレンダー制御<br>大規模ジョブネット</td>
+          <td>中<br>（日立研修あり）</td>
+          <td>商用ライセンス<br>（サーバ台数課金、数百万円〜）</td>
+          <td>低（ベンダーサポートあり）</td>
+          <td>中〜大規模<br>オンプレ重視</td>
+          <td>クラウドネイティブ環境には不向き。コスト高</td>
+        </tr>
+        <tr>
+          <td><strong>AWS Batch</strong><br><small>(フルマネージド)</small></td>
+          <td>コンテナジョブ<br>スポットインスタンス活用<br>自動スケール</td>
+          <td>中<br>（AWS 知識要）</td>
+          <td>実行リソース分のみ課金<br>（Batch 基盤自体は無料）</td>
+          <td>低（マネージド）</td>
+          <td>AWS 環境の中〜大規模</td>
+          <td>オンプレ環境、複雑な依存関係（Step Functions と組合せ必要）</td>
+        </tr>
+        <tr>
+          <td><strong>Control-M</strong><br><small>(商用, BMC Software)</small></td>
+          <td>グローバル標準<br>クロスプラットフォーム<br>SLA 管理</td>
+          <td>高<br>（専任担当が必要）</td>
+          <td>商用ライセンス<br>（大規模向け、数百〜数千万円）</td>
+          <td>低（手厚いサポート）</td>
+          <td>大規模・ミッションクリティカル<br>金融・通信</td>
+          <td>中小システムにはコスト過大。習熟に時間がかかる</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Before/After 比較 -->
+    <h4 style="margin-top:1.6rem;margin-bottom:.5rem;color:var(--accent);">▌ 「なんとなく選定」vs「要件ベース選定」の結末</h4>
+    <div class="verify">
+      <div class="verify-col before">
+        <div class="verify-label">✗ Before（なんとなく Airflow を選んだ）</div>
+        <ul>
+          <li>「Airflow が流行っているから」という理由で採用決定</li>
+          <li>実際のジョブは日次 5 本、依存関係もシンプル</li>
+          <li>Airflow 自体の運用（Docker / PostgreSQL / Celery Worker）のため週 2 時間の作業が発生</li>
+          <li>Python で書けるメンバーが異動し、誰も DAG を書けなくなる</li>
+          <li>Web UI は動くが誰もメンテできないゾンビ基盤に</li>
+          <li>最終的に「やっぱり cron に戻そう」という会議が発生</li>
+        </ul>
+      </div>
+      <div class="verify-col after">
+        <div class="verify-label">✓ After（要件ベースで選定）</div>
+        <ul>
+          <li>ヒアリングシートでジョブ数=5、DAG 不要、Java 環境と確認</li>
+          <li>Quartz + Spring Batch の組み合わせを選定</li>
+          <li>学習コストは週 1 の勉強会 3 回で習熟</li>
+          <li>チャンク処理・リトライ・状態 DB が最初から備わる</li>
+          <li>半年後にジョブが 20 本に増えても同じ基盤で対応可能</li>
+          <li>将来 50 本を超えたら Airflow 移行を検討するロードマップを文書化済み</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 自作が正解 / OSSが正解 -->
+    <div class="info-box info">
+      <strong>// 実案件で"自作が正解"のケース vs "OSS が正解"のケース</strong>
+      <table class="summary-table" style="margin-top:.6rem;">
+        <thead>
+          <tr>
+            <th>ケース</th>
+            <th>"自作が正解"</th>
+            <th>"OSS が正解"</th>
+            <th>"商用が正解"</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>ジョブ数</td>
+            <td>5 本以下</td>
+            <td>10〜100 本</td>
+            <td>100 本以上、ミッションクリティカル</td>
+          </tr>
+          <tr>
+            <td>依存関係</td>
+            <td>A → B だけ</td>
+            <td>複雑な DAG</td>
+            <td>クロスプラットフォーム DAG</td>
+          </tr>
+          <tr>
+            <td>チームスキル</td>
+            <td>専任 OSS 担当がいない</td>
+            <td>Python / Java エンジニアがいる</td>
+            <td>ベンダー依存 OK</td>
+          </tr>
+          <tr>
+            <td>予算</td>
+            <td>ゼロ予算</td>
+            <td>インフラ費のみ</td>
+            <td>年間 300 万円以上確保できる</td>
+          </tr>
+          <tr>
+            <td>運用 SLA</td>
+            <td>翌日確認でよい</td>
+            <td>1〜2 時間以内通知</td>
+            <td>15 分以内の対応が必要</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- check-steps -->
+    <div class="check-steps">
+      <div class="check-steps-title">// 製品選定の実施手順</div>
+      <ol>
+        <li><strong>①</strong> Lab-P1B のヒアリング結果から「ジョブ数」「Java/Python」「クラウド/オンプレ」「予算」の 4 要素を確認する。</li>
+        <li><strong>②</strong> 選定フローチャートに沿って候補製品を 2〜3 本に絞る。</li>
+        <li><strong>③</strong> 絞った候補を比較マトリクスで「学習コスト × 運用負荷 × 適正規模」で評価し、最終候補を 1 本選ぶ。</li>
+        <li><strong>④</strong> 選定根拠を「なぜこの製品か・なぜ他を選ばなかったか」の形式でドキュメント化し、関係者にレビューしてもらう。</li>
+        <li><strong>⑤</strong> 将来のジョブ増加や要件変化で別製品への移行が必要になるシナリオをロードマップに記載する（exit strategy）。</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     Part 2: 段階的実装（VB.NET Phase 0〜8） — 痛みで育てる
+     ============================================================ -->
+
+<!-- ====== Lab 00 ====== -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>全体設計と「痛みで育てる」アプローチ</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      バッチ共通基盤は「最初から全部作る」のではなく、<code>小さく動かして痛みを感じ → 機能を追加</code>する順番が最も理解が深まる。このLabはその全体の流れを整理する。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-box-title">// Phase 進化マップ</div>
+      <pre class="ascii-art">
+Phase 0  ─── 動くだけ（print のみ）
+    │  「何が起きたか分からない」
+Phase 1  ─── ログ管理（Logger.vb）
+    │  「1件エラーで全体が止まる」
+Phase 2  ─── エラーハンドリング（ErrorHandler.vb）
+    │  「再実行したら2重登録になった」
+Phase 3  ─── トランザクション（DbHelper / BatchStateManager）
+    │  「昨日の結果が分からない」
+Phase 4  ─── 実行履歴（BatchHistoryManager）
+    │  「毎日手動実行が面倒・実行し忘れ」
+Phase 5  ─── スケジュール（BusinessCalendar）
+    │  「自動化したら多重起動が怖い」
+Phase 6  ─── 多重起動防止（ProcessLock）
+    │  「失敗しても朝まで誰も気づかない」
+Phase 7  ─── 監視・アラート（AlertNotifier / ExecutionWatcher）
+    │  「環境切替のたびにビルドしている」
+Phase 8  ─── 設定の外部化（AppConfig / batch.config）
+      </pre>
+    </div>
+
+    <table class="summary-table">
+      <thead><tr><th>Phase</th><th>追加ファイル（新規）</th><th>解決する痛み</th><th>終了コード追加</th></tr></thead>
+      <tbody>
+        <tr><td><span class="phase-badge">0</span>最小バッチ</td><td>Program.vb</td><td>とにかく動かす</td><td>—</td></tr>
+        <tr><td><span class="phase-badge">1</span>ログ管理</td><td>Logger.vb</td><td>後から追えない</td><td>—</td></tr>
+        <tr><td><span class="phase-badge">2</span>エラー制御</td><td>ErrorRecord.vb, ErrorHandler.vb</td><td>全件止まる</td><td>0/1/2</td></tr>
+        <tr><td><span class="phase-badge">3</span>トランザクション</td><td>DbHelper.vb, BatchStateManager.vb</td><td>2重登録</td><td>—</td></tr>
+        <tr><td><span class="phase-badge">4</span>実行履歴</td><td>BatchHistoryManager.vb</td><td>過去が見えない</td><td>—</td></tr>
+        <tr><td><span class="phase-badge">5</span>スケジュール</td><td>BusinessCalendar.vb, holidays.csv</td><td>手動実行</td><td>3=SKIP</td></tr>
+        <tr><td><span class="phase-badge">6</span>多重起動防止</td><td>ProcessLock.vb</td><td>2重起動</td><td>4=LOCKED</td></tr>
+        <tr><td><span class="phase-badge">7</span>監視・アラート</td><td>AlertConfig.vb, AlertNotifier.vb, ExecutionWatcher.vb</td><td>無人で気づけない</td><td>—</td></tr>
+        <tr><td><span class="phase-badge">8</span>設定外部化</td><td>AppConfig.vb, batch.config</td><td>毎回ビルド</td><td>—</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info">
+      <strong>// 設計の核心</strong>
+      各Phaseで「痛み」を体感してから機能を追加するため、なぜその機能が必要かが腑に落ちる。Phase 0〜3が「動く」、Phase 4〜6が「自動化」、Phase 7〜8が「保守できる」状態に対応する。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">// 実機確認手順</div>
+      <ol>
+        <li><strong>①</strong> このLabを開いた状態で、左サイドバーの各Phase名をクリックし、該当LabへジャンプできることをブラウザのURLハッシュ変化で確認する</li>
+        <li><strong>②</strong> Phase一覧表を見て「自分のプロジェクトでは何Phaseまで実装済みか」を口頭で言えるか試す</li>
+        <li><strong>③</strong> 「痛みの流れ」ASCII図を隠し、何の痛みが何Phaseで解決されるか、紙に書いて再現できるか確認する</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ====== Lab 01 ====== -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>Phase 0 — 最小バッチ（動くだけ）</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      CSVを読み込んで <code>Console.WriteLine</code> で出力するだけの最小構成。ログもエラー処理もない。まず「動く」状態を作ることが目的。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>VB.NET — Program.vb (Phase 0)</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="cm">' Program.vb — Phase 0: 動くだけ</span>
+<span class="kw">Module</span> <span class="fn">Program</span>
+  <span class="kw">Sub</span> <span class="fn">Main</span>(args <span class="kw">As</span> <span class="fn">String</span>())
+    <span class="kw">Dim</span> csvPath <span class="kw">As</span> <span class="fn">String</span> = <span class="str">"input.csv"</span>
+    <span class="kw">Dim</span> lines() <span class="kw">As</span> <span class="fn">String</span> = File.ReadAllLines(csvPath)
+    <span class="kw">Dim</span> successCount <span class="kw">As</span> <span class="fn">Integer</span> = <span class="num">0</span>
+
+    <span class="kw">For Each</span> line <span class="kw">As</span> <span class="fn">String</span> <span class="kw">In</span> lines
+      <span class="kw">Dim</span> cols() <span class="kw">As</span> <span class="fn">String</span> = line.Split(<span class="str">","</span>c)
+      Console.WriteLine(<span class="str">$"処理中: ID={cols(0)}, 名前={cols(1)}"</span>)
+      successCount += <span class="num">1</span>
+    <span class="kw">Next</span>
+
+    Console.WriteLine(<span class="str">$"完了: {successCount}件"</span>)
+  <span class="kw">End Sub</span>
+<span class="kw">End Module</span></pre>
+    </div>
+
+    <div class="info-box warn">
+      <strong>// Phase 0 で感じる痛み（次Phaseへのきっかけ）</strong>
+      Console.WriteLine は実行後に消える → 「昨日何件処理した？」が答えられない。エラーが起きると例外で落ちる → 「何行目で落ちたか分からない」。毎回手動実行が必要。
+    </div>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="ld-p0">Before（ログなし）を見る</button>
+        <span class="toggle-label" id="ld-p0-label">現在: After（Phase 1以降）</span>
+      </div>
+      <div class="livedemo-stage" id="ld-p0">
+        <div class="ld-panel good ld-after">✓ After（Phase 1以降）: ファイルにログが残り、いつ・何件・何が起きたかが後から確認できる<br><code style="font-family:var(--mono);font-size:.82rem">[2026-04-16 09:00:00] [INFO ] 処理中: ID=1, 名前=田中太郎</code></div>
+        <div class="ld-panel bad ld-before">✗ Before（Phase 0）: Console.WriteLine のみ。実行後にターミナルを閉じると記録が消え、障害調査が不可能になる</div>
+      </div>
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">// 実機確認手順</div>
+      <ol>
+        <li><strong>①</strong> input.csv を作成し（1,田中太郎 等）、Phase 0 のコードをコピーして .vbproj に貼り付け、ビルド → 実行する</li>
+        <li><strong>②</strong> ターミナルに出力が表示されることを確認する。その後ターミナルを閉じ、再度開いて「どこかにログが残っているか」を探す → 何も残っていないことを体感する</li>
+        <li><strong>③</strong> input.csv の1行目を意図的に壊して（例: 列を1つだけにする）再実行し、IndexOutOfRangeException で落ちることを確認する</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ====== Lab 02 ====== -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>Phase 1 — ログ管理（Logger.vb）</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>Console.WriteLine</code> を <code>Logger.Info/Warn/Error</code> に置き換え、タイムスタンプ付きでファイルにも書き出す。<code>Logger.vb</code> を1ファイル追加するだけで実現できる。
+    </p>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before（Phase 0）</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>VB.NET — コンソール出力のみ</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+          <pre>Console.WriteLine(<span class="str">"処理開始"</span>)
+Console.WriteLine(<span class="str">$"処理中: ID={id}"</span>)
+Console.WriteLine(<span class="str">"処理完了"</span>)</pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After（Phase 1）</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>VB.NET — Logger使用</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+          <pre>logger.Info(<span class="str">"処理開始"</span>)
+logger.Info(<span class="str">$"処理中: ID={id}"</span>)
+logger.Info(<span class="str">$"完了: {successCount}件"</span>)
+<span class="cm">' → ファイルにも同時保存</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>VB.NET — Logger.vb（新規追加）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="kw">Public Class</span> <span class="fn">Logger</span>
+  <span class="kw">Public Enum</span> <span class="fn">LogLevel</span>
+    INFO, WARN, [ERROR]
+  <span class="kw">End Enum</span>
+
+  <span class="kw">Private ReadOnly</span> _logFilePath <span class="kw">As</span> <span class="fn">String</span>
+
+  <span class="kw">Public Sub</span> <span class="fn">New</span>(logFilePath <span class="kw">As</span> <span class="fn">String</span>)
+    _logFilePath = logFilePath
+    <span class="cm">' ログフォルダがなければ作成</span>
+    <span class="kw">Dim</span> dir = Path.GetDirectoryName(logFilePath)
+    <span class="kw">If</span> <span class="kw">Not</span> String.IsNullOrEmpty(dir) <span class="kw">AndAlso</span>
+       <span class="kw">Not</span> Directory.Exists(dir) <span class="kw">Then</span>
+      Directory.CreateDirectory(dir)
+    <span class="kw">End If</span>
+  <span class="kw">End Sub</span>
+
+  <span class="kw">Public Sub</span> <span class="fn">Info</span>(msg <span class="kw">As</span> <span class="fn">String</span>)  : Write(LogLevel.INFO, msg)  : <span class="kw">End Sub</span>
+  <span class="kw">Public Sub</span> <span class="fn">Warn</span>(msg <span class="kw">As</span> <span class="fn">String</span>)  : Write(LogLevel.WARN, msg)  : <span class="kw">End Sub</span>
+  <span class="kw">Public Sub</span> [<span class="fn">Error</span>](msg <span class="kw">As</span> <span class="fn">String</span>): Write(LogLevel.[ERROR], msg): <span class="kw">End Sub</span>
+  <span class="kw">Public Sub</span> [<span class="fn">Error</span>](msg <span class="kw">As</span> <span class="fn">String</span>, ex <span class="kw">As</span> Exception)
+    Write(LogLevel.[ERROR], <span class="str">$"{msg} / 例外: {ex.Message}"</span>)
+    Write(LogLevel.[ERROR], <span class="str">$"スタックトレース: {ex.StackTrace}"</span>)
+  <span class="kw">End Sub</span>
+
+  <span class="kw">Private Sub</span> <span class="fn">Write</span>(level <span class="kw">As</span> LogLevel, msg <span class="kw">As</span> <span class="fn">String</span>)
+    <span class="kw">Dim</span> ts  = DateTime.Now.ToString(<span class="str">"yyyy-MM-dd HH:mm:ss"</span>)
+    <span class="kw">Dim</span> lv  = level.ToString().PadRight(<span class="num">5</span>)
+    <span class="kw">Dim</span> line = <span class="str">$"[{ts}] [{lv}] {msg}"</span>
+    Console.WriteLine(line)
+    File.AppendAllText(_logFilePath, line &amp; Environment.NewLine)
+  <span class="kw">End Sub</span>
+<span class="kw">End Class</span></pre>
+    </div>
+
+    <div class="info-box ok">
+      <strong>// ログ出力イメージ</strong>
+      [2026-04-16 09:00:00] [INFO ] ===== バッチ処理 開始 =====<br>
+      [2026-04-16 09:00:00] [INFO ] 読み込み件数: 3件<br>
+      [2026-04-16 09:00:00] [WARN ] [行3] スキップ: 列数不足<br>
+      [2026-04-16 09:00:00] [ERROR] 例外が発生しました / 例外: ...
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">// 実機確認手順</div>
+      <ol>
+        <li><strong>①</strong> Logger.vb を追加してビルド・実行後、<code>logs/</code> フォルダが自動作成されることをエクスプローラーで確認する</li>
+        <li><strong>②</strong> ログファイル（batch_YYYYMMDD.log）をメモ帳で開き、タイムスタンプ・レベル・メッセージが1行ずつ書かれていることを確認する</li>
+        <li><strong>③</strong> 意図的にエラーになる行（列数不足など）を入力し、ログに [WARN] が出力されることを確認する</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ====== Lab 03 ====== -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>Phase 2 — エラーハンドリング（ErrorHandler.vb）</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      1件のエラーでバッチ全体が止まらないようにする。<code>ErrorHandler.vb</code> でスキップ上限・エラーファイル出力・終了コードを管理する。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>VB.NET — エラー記録と上限チェック（ErrorHandler.vb 抜粋）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="cm">' 戻り値: True=継続OK / False=上限超過のため中断</span>
+<span class="kw">Public Function</span> <span class="fn">Record</span>(lineNumber <span class="kw">As</span> <span class="fn">Integer</span>,
+                         rawLine <span class="kw">As</span> <span class="fn">String</span>,
+                         reason <span class="kw">As</span> <span class="fn">String</span>,
+                         <span class="kw">Optional</span> ex <span class="kw">As</span> Exception = <span class="kw">Nothing</span>) <span class="kw">As</span> <span class="fn">Boolean</span>
+  _errorRecords.Add(<span class="kw">New</span> ErrorRecord(lineNumber, rawLine, reason, ex))
+  _logger.Warn(<span class="str">$"[行{lineNumber}] スキップ: {reason} / [{rawLine}]"</span>)
+
+  <span class="kw">If</span> _errorRecords.Count >= _skipLimit <span class="kw">Then</span>
+    _logger.[Error](<span class="str">$"スキップ上限({_skipLimit}件)に達しました。中断します。"</span>)
+    <span class="kw">Return False</span>  <span class="cm">' 中断シグナル</span>
+  <span class="kw">End If</span>
+  <span class="kw">Return True</span>
+<span class="kw">End Function</span></pre>
+    </div>
+
+    <div class="info-box info">
+      <strong>// 終了コード設計（Phase 2 で追加）</strong>
+      0 = 正常終了（エラー件数 0）／ 1 = 警告終了（エラーあり・上限未満）／ 2 = 異常終了（上限超過 or 致命的例外）。タスクスケジューラやシェルスクリプトから終了コードで結果を判断できる。
+    </div>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="ld-p2">Before（上限なし）を見る</button>
+        <span class="toggle-label" id="ld-p2-label">現在: After（上限あり）</span>
+      </div>
+      <div class="livedemo-stage" id="ld-p2">
+        <div class="ld-panel good ld-after">✓ After（上限あり）: 10件エラーに達した時点で自動中断 → 大量エラーが連鎖する前に止まり、エラーファイルに原因が記録される</div>
+        <div class="ld-panel bad ld-before">✗ Before（上限なし）: 全10,000行をスキャンし続け、大量のエラーログが出力されてログファイルが肥大化する。原因に気づくのが遅れる</div>
+      </div>
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">// 実機確認手順</div>
+      <ol>
+        <li><strong>①</strong> input.csv に意図的に不正な行（数値でないID、空の名前など）を3件以上混ぜて実行し、エラーが出ても処理が続くことを確認する</li>
+        <li><strong>②</strong> <code>logs/batch_YYYYMMDD_error.csv</code> がエクスプローラーに生成されることを確認し、メモ帳で開いてエラー内容を確認する</li>
+        <li><strong>③</strong> skipLimit を超える不正行を入力して実行し、プロセスが途中で終了することとログに「スキップ上限に達しました」が出力されることを確認する</li>
+        <li><strong>④</strong> コマンドプロンプトで <code>echo %ERRORLEVEL%</code> を実行し、終了コードが 2 になっていることを確認する</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ====== Lab 04 ====== -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>Phase 3 — トランザクション・再実行安全性</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      DBへの登録に分割コミットを導入し、<code>BatchProcessedKeys</code> テーブルで処理済みキーを管理することで「再実行しても2重登録にならない」冪等性を実現する。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-box-title">// 冪等性（べきとうせい）とは</div>
+      <pre class="ascii-art">
+【冪等性がない場合】
+  1回目の実行: ID=1,2,3 → DBに登録
+  途中でクラッシュ
+  2回目の実行: ID=1,2,3 → DBに2重登録！
+
+【冪等性がある場合】
+  1回目の実行: ID=1,2,3 → DBに登録 + ProcessedKeys に記録
+  途中でクラッシュ
+  2回目の実行: ID=1 → 処理済みのためスキップ
+              ID=2 → 処理済みのためスキップ
+              ID=3 → 未処理 → DBに登録  ← 再開できる！
+      </pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>SQL — 必要テーブル定義</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="cm">-- 処理対象データ</span>
+<span class="kw">CREATE TABLE</span> Members (
+  Id   INTEGER <span class="kw">PRIMARY KEY</span>,
+  Name NVARCHAR(<span class="num">100</span>) <span class="kw">NOT NULL</span>
+);
+
+<span class="cm">-- 処理済みキー管理（冪等性の核心）</span>
+<span class="kw">CREATE TABLE</span> BatchProcessedKeys (
+  BatchName   NVARCHAR(<span class="num">100</span>) <span class="kw">NOT NULL</span>,
+  TargetKey   NVARCHAR(<span class="num">100</span>) <span class="kw">NOT NULL</span>,
+  ProcessedAt DATETIME      <span class="kw">NOT NULL</span>,
+  <span class="kw">PRIMARY KEY</span> (BatchName, TargetKey)
+);</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>VB.NET — 分割コミット（DbHelper.vb 抜粋）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="kw">Public Sub</span> <span class="fn">InsertMember</span>(id <span class="kw">As</span> <span class="fn">Integer</span>, name <span class="kw">As</span> <span class="fn">String</span>)
+  <span class="cm">' ... INSERT 実行 ...</span>
+  _pendingCount += <span class="num">1</span>
+
+  <span class="cm">' N件ごとに中間コミット（メモリ節約・途中再開対応）</span>
+  <span class="kw">If</span> _pendingCount >= _commitInterval <span class="kw">Then</span>
+    Commit(isFinal:=<span class="kw">False</span>)
+  <span class="kw">End If</span>
+<span class="kw">End Sub</span></pre>
+    </div>
+
+    <div class="info-box warn">
+      <strong>// 分割コミットの注意点</strong>
+      commitInterval を小さくしすぎると DB のコミットオーバーヘッドが増える。大きすぎると途中クラッシュ時の再処理範囲が広がる。件数・DB性能に応じて 100〜1000 件の間で調整する。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">// 実機確認手順</div>
+      <ol>
+        <li><strong>①</strong> バッチを正常に1回実行し、BatchProcessedKeys テーブルにレコードが挿入されたことをSQL Management Studio等で確認する</li>
+        <li><strong>②</strong> 同じ input.csv で再度実行し、ログに「スキップ（処理済み）」が出力され、Members テーブルのレコード数が変化しないことを確認する</li>
+        <li><strong>③</strong> commitInterval=3 に変更して100件超のCSVを実行し、ログに「中間コミット完了（3件）」が複数回出力されることを確認する</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ====== Lab 05 ====== -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>Phase 4 — 実行履歴管理（BatchHistoryManager.vb）</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>BatchHistory</code> テーブルに実行結果を蓄積する。ステータスは <code>RUNNING → SUCCESS / WARNING / ERROR</code> と遷移し、SQLで過去の実行状況を一覧できる。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>SQL — BatchHistory テーブル定義</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="kw">CREATE TABLE</span> BatchHistory (
+  HistoryId    INTEGER       <span class="kw">PRIMARY KEY IDENTITY</span>,
+  BatchName    NVARCHAR(<span class="num">100</span>) <span class="kw">NOT NULL</span>,
+  StartedAt    DATETIME      <span class="kw">NOT NULL</span>,
+  FinishedAt   DATETIME,         <span class="cm">-- 終了前は NULL</span>
+  Status       NVARCHAR(<span class="num">20</span>),     <span class="cm">-- RUNNING/SUCCESS/WARNING/ERROR</span>
+  SuccessCount INTEGER       <span class="kw">DEFAULT</span> <span class="num">0</span>,
+  SkipCount    INTEGER       <span class="kw">DEFAULT</span> <span class="num">0</span>,
+  ErrorCount   INTEGER       <span class="kw">DEFAULT</span> <span class="num">0</span>,
+  ErrorMessage NVARCHAR(<span class="num">500</span>)
+);</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>SQL — 運用で使える確認クエリ</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="cm">-- 直近10件の実行結果</span>
+<span class="kw">SELECT TOP</span> <span class="num">10</span> BatchName, StartedAt, Status,
+  SuccessCount, ErrorCount,
+  DATEDIFF(SECOND, StartedAt, FinishedAt) <span class="kw">AS</span> 実行秒数
+<span class="kw">FROM</span> BatchHistory
+<span class="kw">ORDER BY</span> StartedAt <span class="kw">DESC</span>;
+
+<span class="cm">-- 異常終了のみ抽出</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> BatchHistory
+<span class="kw">WHERE</span> Status <span class="kw">IN</span> (<span class="str">'ERROR'</span>, <span class="str">'WARNING'</span>)
+<span class="kw">ORDER BY</span> StartedAt <span class="kw">DESC</span>;
+
+<span class="cm">-- RUNNING 残存（強制終了の検知）</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> BatchHistory
+<span class="kw">WHERE</span> Status = <span class="str">'RUNNING'</span>
+  <span class="kw">AND</span> StartedAt &lt; DATEADD(HOUR, -<span class="num">1</span>, GETDATE());</pre>
+    </div>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="ld-p4">Before（ログのみ）を見る</button>
+        <span class="toggle-label" id="ld-p4-label">現在: After（履歴DB）</span>
+      </div>
+      <div class="livedemo-stage" id="ld-p4">
+        <div class="ld-panel good ld-after">✓ After（履歴DB）: 「先週月曜は何件処理した？」→ SQLで即答。異常終了もStatus列で一目瞭然。運用チームからの問い合わせに数秒で回答できる</div>
+        <div class="ld-panel bad ld-before">✗ Before（ログのみ）: 「先週月曜は？」→ ログファイルを開いて目で探す。ファイルが日付ごとに分割されているため複数ファイルをまたいで調査が必要</div>
+      </div>
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">// 実機確認手順</div>
+      <ol>
+        <li><strong>①</strong> バッチ実行中（処理に時間をかけるため件数を増やす）にSQL Management Studioで BatchHistory を参照し、Status = 'RUNNING' のレコードが存在することを確認する</li>
+        <li><strong>②</strong> バッチ正常終了後にクエリを再実行し、Status が 'SUCCESS' に更新されていること・FinishedAt に値が入っていることを確認する</li>
+        <li><strong>③</strong> 上記の「運用確認クエリ」3本を実行し、それぞれ期待どおりの結果が返ることを確認する</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ====== Lab 06 ====== -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>Phase 5 — スケジュール管理（BusinessCalendar.vb）</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Windowsタスクスケジューラで自動起動し、<code>BusinessCalendar.vb</code> で営業日チェックを行う。<code>--force</code> / <code>--date:YYYY-MM-DD</code> 起動引数でテスト・再処理にも対応する。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>VB.NET — 起動引数の解析（Program.vb 追加部分）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="kw">Dim</span> forceRun   <span class="kw">As</span> <span class="fn">Boolean</span> = <span class="kw">False</span>
+<span class="kw">Dim</span> targetDate <span class="kw">As</span> <span class="fn">Date</span>    = Date.Today
+
+<span class="kw">For Each</span> arg <span class="kw">As</span> <span class="fn">String</span> <span class="kw">In</span> args
+  <span class="kw">If</span> arg.ToLower() = <span class="str">"--force"</span> <span class="kw">Then</span>
+    forceRun = <span class="kw">True</span>
+  <span class="kw">ElseIf</span> arg.ToLower().StartsWith(<span class="str">"--date:"</span>) <span class="kw">Then</span>
+    <span class="kw">Dim</span> parsed <span class="kw">As</span> <span class="fn">Date</span>
+    <span class="kw">If</span> Date.TryParse(arg.Substring(<span class="num">7</span>), parsed) <span class="kw">Then</span>
+      targetDate = parsed
+    <span class="kw">End If</span>
+  <span class="kw">End If</span>
+<span class="kw">Next</span>
+
+<span class="kw">If Not</span> forceRun <span class="kw">AndAlso Not</span> calendar.IsBusinessDay(targetDate) <span class="kw">Then</span>
+  logger.Info(<span class="str">$"{targetDate:yyyy-MM-dd} は営業日でないためスキップします"</span>)
+  Environment.[Exit](EXIT_SKIP)  <span class="cm">' 終了コード 3</span>
+<span class="kw">End If</span></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>コマンド例 — 用途別の起動方法</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="cm"># 通常実行（営業日チェックあり）</span>
+BatchSample.exe
+
+<span class="cm"># 強制実行（祝日でも動かす）</span>
+BatchSample.exe --force
+
+<span class="cm"># 特定日付で再処理</span>
+BatchSample.exe --date:2026-04-01
+
+<span class="cm"># 組み合わせ（祝日の特定日を再処理）</span>
+BatchSample.exe --date:2026-01-01 --force</pre>
+    </div>
+
+    <div class="info-box info">
+      <strong>// 終了コード 3 = SKIP の意味</strong>
+      営業日でない日はバッチを実行しないが「失敗」ではない。タスクスケジューラ側で終了コード 3 を「正常スキップ」として扱うように設定することで、アラートが誤発報しなくなる。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">// 実機確認手順</div>
+      <ol>
+        <li><strong>①</strong> <code>--date:2026-01-01</code>（元日）で実行し、「営業日でないためスキップ」ログが出て終了コード 3 が返ることをコマンドプロンプトで確認する</li>
+        <li><strong>②</strong> <code>--date:2026-01-01 --force</code> で実行し、スキップされず処理が続くことを確認する</li>
+        <li><strong>③</strong> タスクスケジューラを開き（スタートメニューで検索）、新しいタスクを作成して「毎日 00:00」トリガーを設定し、「実行」ボタンで即時実行されることを確認する</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ====== Lab 07 ====== -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>Phase 6 — 多重起動防止（ProcessLock.vb）</h3>
+    <span class="lab-tag tag-advanced">上級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ロックファイル方式とDBロック方式を組み合わせて多重起動を防止する。ロックファイルにはPIDを書き込み、残骸が残った場合はプロセス生存確認で自動削除する。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-box-title">// 多重起動の3パターンと対応</div>
+      <pre class="ascii-art">
+パターン1: 正常ケース
+  09:00 バッチA起動 → ロック取得 → 処理中...
+  09:05 バッチA終了 → ロック解放
+
+パターン2: 多重起動（ブロック対象）
+  09:00 バッチA起動 → ロック取得 → 処理中...
+  09:05 スケジューラが再起動
+        → ロックファイルあり + PID生存確認
+        → 「多重起動検知」→ EXIT_LOCKED(4) で即終了
+
+パターン3: 異常終了後の再起動（ロック残骸）
+  09:00 バッチA起動 → ロック取得 → クラッシュ
+        ロックファイルが残る
+  09:10 手動再起動
+        → ロックファイルあり
+        → PID確認 → プロセスは死んでいる
+        → 「残骸を削除して続行」→ 正常起動
+      </pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>VB.NET — ロック取得の核心部分（ProcessLock.vb 抜粋）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="kw">If</span> File.Exists(_lockFilePath) <span class="kw">Then</span>
+  <span class="kw">Dim</span> pid <span class="kw">As</span> <span class="fn">Integer</span>
+  <span class="kw">If</span> <span class="fn">Integer</span>.TryParse(File.ReadAllText(_lockFilePath).Trim(), pid) <span class="kw">Then</span>
+    <span class="kw">Dim</span> proc = GetProcessById(pid)
+    <span class="kw">If</span> proc <span class="kw">IsNot Nothing Then</span>
+      <span class="cm">' プロセスが生きている → 多重起動ブロック</span>
+      _logger.[Error](<span class="str">$"多重起動検知: PID={pid} が実行中"</span>)
+      <span class="kw">Return False</span>
+    <span class="kw">Else</span>
+      <span class="cm">' プロセスは死んでいる → 残骸削除して続行</span>
+      _logger.Warn(<span class="str">$"ロック残骸を削除: PID={pid} は終了済み"</span>)
+      File.Delete(_lockFilePath)
+    <span class="kw">End If</span>
+  <span class="kw">End If</span>
+<span class="kw">End If</span>
+
+<span class="cm">' 自分のPIDをロックファイルに書き込む</span>
+<span class="kw">Dim</span> myPid = Process.GetCurrentProcess().Id
+File.WriteAllText(_lockFilePath, myPid.ToString())
+_lockAcquired = <span class="kw">True</span>
+<span class="kw">Return True</span></pre>
+    </div>
+
+    <div class="info-box warn">
+      <strong>// Finally でのロック解放を忘れずに</strong>
+      正常終了・異常終了どちらの場合も必ずロックを解放しなければならない。Program.vb の Finally ブロックに processLock.Release() を記述することで、例外が発生しても確実に解放される。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">// 実機確認手順</div>
+      <ol>
+        <li><strong>①</strong> バッチを実行中に <code>locks/</code> フォルダをエクスプローラーで開き、<code>MemberImportBatch.lock</code> ファイルが存在することを確認する</li>
+        <li><strong>②</strong> バッチ実行中に別のコマンドプロンプトを開いて同じバッチを起動し、「多重起動検知」ログが出て即終了することを確認する</li>
+        <li><strong>③</strong> バッチ正常終了後にロックファイルが削除されていることをエクスプローラーで確認する</li>
+        <li><strong>④</strong> ロックファイルを手動で作成（中身に存在しないPID番号を書く）してバッチを起動し、「残骸を削除して続行」ログが出ることを確認する</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ====== Lab 08 ====== -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>Phase 7 — 監視・アラート（AlertNotifier / ExecutionWatcher）</h3>
+    <span class="lab-tag tag-advanced">上級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      異常終了・警告終了・0件終了をメール通知する <code>AlertNotifier.vb</code> と、別スレッドで実行時間を監視して長時間アラートを送る <code>ExecutionWatcher.vb</code> を追加する。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>alert.config — メール通知設定ファイル</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="cm"># アラート設定ファイル</span>
+smtp_host             = smtp.example.com
+smtp_port             = 587
+smtp_user             = batch-user
+smtp_password         = xxxxxxxx
+from_address          = batch@example.com
+to_addresses          = ops@example.com, manager@example.com
+max_execution_minutes = 30
+notify_on_zero_count  = true</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>VB.NET — 実行時間監視（ExecutionWatcher 抜粋）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="cm">' 1分ごとに経過時間をチェックするタイマー</span>
+_timer = <span class="kw">New</span> Timer(
+  <span class="kw">AddressOf</span> CheckElapsedTime,
+  <span class="kw">Nothing</span>,
+  TimeSpan.FromMinutes(<span class="num">1</span>),   <span class="cm">' 初回チェックまでの待機</span>
+  TimeSpan.FromMinutes(<span class="num">1</span>))   <span class="cm">' 以降のチェック間隔</span>
+
+<span class="kw">Private Sub</span> <span class="fn">CheckElapsedTime</span>(state <span class="kw">As</span> Object)
+  <span class="kw">If</span> _alreadyNotified <span class="kw">Then Return</span>
+  <span class="kw">Dim</span> elapsed = CInt((DateTime.Now - _startTime).TotalMinutes)
+  <span class="kw">If</span> elapsed >= _maxMinutes <span class="kw">Then</span>
+    _notifier.NotifyTimeout(elapsed)  <span class="cm">' メール送信</span>
+    _alreadyNotified = <span class="kw">True</span>  <span class="cm">' 重複送信防止</span>
+  <span class="kw">End If</span>
+<span class="kw">End Sub</span></pre>
+    </div>
+
+    <div class="verify">
+      <div class="verify-col before">
+        <div class="verify-label">✗ Before（監視なし）</div>
+        <ul>
+          <li>障害が起きても翌朝まで誰も気づかない</li>
+          <li>長時間実行（デッドロック等）に気づかない</li>
+          <li>0件正常終了が素通りする</li>
+          <li>担当者が毎朝ログを目視確認している</li>
+        </ul>
+      </div>
+      <div class="verify-col after">
+        <div class="verify-label">✓ After（監視あり）</div>
+        <ul>
+          <li>異常終了を即座にメール通知</li>
+          <li>30分超でタイムアウト警告メール</li>
+          <li>0件も異常として通知</li>
+          <li>目視確認が不要になる</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="info-box info">
+      <strong>// メール送信失敗はバッチを止めない</strong>
+      AlertNotifier.vb の SendMail は try-catch で囲み、SMTPエラーはログに残すが例外を上位に伝播させない。アラートの失敗でバッチ本体の終了コードが変わらないようにする。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">// 実機確認手順</div>
+      <ol>
+        <li><strong>①</strong> skipLimit より多い不正行を入力してバッチをERROR終了させ、設定したメールアドレスに「【バッチ異常終了】」メールが届くことを確認する</li>
+        <li><strong>②</strong> max_execution_minutes を 1 に設定し、処理に2分以上かかるCSVを実行して「【バッチ長時間実行警告】」メールが届くことを確認する</li>
+        <li><strong>③</strong> 空の input.csv で実行し、0件正常終了の通知メールが届くことを確認する（notify_on_zero_count = true の場合）</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ====== Lab 09 ====== -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>Phase 8 — 設定の外部化（AppConfig / batch.config）</h3>
+    <span class="lab-tag tag-advanced">上級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      全設定を <code>batch.config</code> に一元化し、<code>AppConfig.vb</code> で読み込む。<code>--config:batch_prod.config</code> 引数で環境を切り替えられ、設定変更にビルドが不要になる。
+    </p>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before（コードに埋め込み）</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>VB.NET — 設定がハードコード</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+          <pre><span class="kw">Dim</span> connStr =
+  <span class="str">"Server=localhost;Database=BatchSample;"</span> &amp;
+  <span class="str">"Integrated Security=True;"</span>
+<span class="kw">Dim</span> skipLimit = <span class="num">10</span>
+<span class="kw">Dim</span> commitInterval = <span class="num">100</span>
+<span class="cm">' 本番に変えるには要ビルド！</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After（設定ファイルから読み込み）</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>VB.NET — AppConfig から読み込み</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+          <pre><span class="kw">Dim</span> cfg = AppConfig.Load(
+  configPath, logger)
+<span class="cm">' cfg.ConnectionString</span>
+<span class="cm">' cfg.SkipLimit</span>
+<span class="cm">' cfg.CommitInterval</span>
+<span class="cm">' → ファイルを差し替えるだけ</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>batch.config — 全設定を一元管理</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="cm"># DB接続</span>
+db_server           = localhost
+db_name             = BatchSample
+db_integrated_auth  = true
+
+<span class="cm"># バッチ動作</span>
+batch_name          = MemberImportBatch
+input_file          = input.csv
+skip_limit          = 10
+commit_interval     = 100
+
+<span class="cm"># ログ・ロック</span>
+log_dir             = logs
+lock_dir            = locks
+
+<span class="cm"># スケジュール</span>
+holiday_file        = holidays.csv
+
+<span class="cm"># 監視</span>
+alert_config_file   = alert.config
+max_execution_minutes = 30</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>環境別ファイル管理 — ディレクトリ構成例</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre>BatchSample/
+├── batch.config          <span class="cm"># 開発用（Git管理する）</span>
+├── batch_prod.config     <span class="cm"># 本番用（Gitに入れない）</span>
+├── batch_staging.config  <span class="cm"># ステージング用</span>
+└── .gitignore
+      batch_prod.config   <span class="cm"># 本番設定はGitに入れない</span>
+      alert.config        <span class="cm"># パスワードを含むため除外</span></pre>
+    </div>
+
+    <div class="info-box ok">
+      <strong>// DumpToLog() で起動時に設定を証跡として残す</strong>
+      AppConfig.vb の DumpToLog() を起動直後に呼ぶことで、実行時にどの設定値が使われたかがログに残る。ただしパスワードはマスク表示（"***"）にして機密情報がログに漏れないようにする。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">// 実機確認手順</div>
+      <ol>
+        <li><strong>①</strong> batch.config の skip_limit を 5 に変更して実行し、ログに「設定内容: スキップ上限: 5件」が出力されることを確認する（ビルドせず設定変更のみで動作が変わることを体感する）</li>
+        <li><strong>②</strong> <code>BatchSample.exe --config:batch_prod.config</code> で実行し、本番用設定が読み込まれることをログの「設定ファイル: batch_prod.config」で確認する</li>
+        <li><strong>③</strong> 存在しない設定ファイル名を --config に指定し、「設定ファイルが見つかりません」WARNログが出てデフォルト設定で続行することを確認する</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     Part 3: 完成チェックと拡張（4 Lab） — マトリクス・設計ミス10選・Phase 9+・設計書テンプレ
+     ============================================================ -->
+
+<!-- ====== Lab P3-F ====== -->
+<div class="lab" id="lab-p3f">
+  <div class="lab-header">
+    <div class="lab-num">P3-F</div>
+    <h3>機能実装マトリクス — 13カテゴリ × 約50機能（完全版）</h3>
+    <span class="lab-tag tag-intermediate">まとめ</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      5つのAI（ChatGPT / DeepSeek / Gemini / Grok / Perplexity）が挙げたバッチ共通基盤の要件を統合し、<strong>13カテゴリ・約50機能</strong>に整理した完全版マトリクス。Phase 0〜8 の実装済みクラスと対応させ、達成状況を可視化する。
+    </p>
+
+    <div class="info-box ok">
+      <strong>// Phase 0〜8 で達成できたこと</strong>
+      実運用に最低限耐えられる「自動化 + 再実行安全 + 障害通知」の基盤が完成した。<code>Logger.vb</code> / <code>ErrorHandler.vb</code> / <code>DbHelper.vb</code> / <code>BatchStateManager.vb</code> / <code>BatchHistoryManager.vb</code> / <code>BusinessCalendar.vb</code> / <code>ProcessLock.vb</code> / <code>AlertNotifier.vb</code> / <code>ExecutionWatcher.vb</code> / <code>AppConfig.vb</code> の10クラス体制で、小〜中規模バッチの主要課題はほぼカバーできる。
+    </div>
+
+    <div class="info-box warn">
+      <strong>// 大規模運用で不足する項目</strong>
+      日次1,000万件超・ノード3台以上・複数チームでの並行開発・金融コンプライアンス対応などのシナリオでは、リトライ制御（指数バックオフ）・DAGジョブネット・チェックポイントリスタート・分散ワーカー・監査ログ・ドライランモードが必須になる。Phase 9 以降のロードマップ（Lab-P3H）を参照して計画的に追加すること。
+    </div>
+
+    <table class="summary-table">
+      <thead>
+        <tr>
+          <th>カテゴリ</th>
+          <th>機能</th>
+          <th>Phase 0-8 状態</th>
+          <th>実装クラス / 手段</th>
+          <th>備考</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- ① 実行制御系 -->
+        <tr><td rowspan="5">① 実行制御</td><td>パラメータ定義・起動引数</td><td class="td-done">✓ 実装済み</td><td>Program.vb</td><td>コマンドライン引数で環境・日付指定</td></tr>
+        <tr><td>多重起動防止（排他制御）</td><td class="td-done">✓ 実装済み</td><td>ProcessLock.vb</td><td>Mutex / ロックファイル方式</td></tr>
+        <tr><td>タイムアウト監視・強制停止</td><td class="td-done">△ 一部実装</td><td>ExecutionWatcher.vb</td><td>通知のみ。強制Kill は未実装</td></tr>
+        <tr><td>ジョブキューイング・優先度制御</td><td class="td-todo">— 未実装</td><td>—</td><td>Spring Batch / Airflow で代替</td></tr>
+        <tr><td>イベントトリガー起動（ファイル到着/API）</td><td class="td-todo">— 未実装</td><td>—</td><td>FileSystemWatcher または Lambda</td></tr>
+
+        <!-- ② 状態管理系 -->
+        <tr><td rowspan="4">② 状態管理</td><td>WAIT/RUNNING/SUCCESS/FAILED 状態遷移</td><td class="td-done">✓ 実装済み</td><td>BatchStateManager.vb</td><td>DB の BatchState テーブルで管理</td></tr>
+        <tr><td>実行履歴（開始/終了/結果コード）</td><td class="td-done">✓ 実装済み</td><td>BatchHistoryManager.vb</td><td>BatchHistory テーブルへ永続化</td></tr>
+        <tr><td>処理済みキーによる冪等性制御</td><td class="td-done">✓ 実装済み</td><td>BatchStateManager.vb</td><td>ProcessedKey テーブル参照で二重防止</td></tr>
+        <tr><td>チェックポイント・リスタート</td><td class="td-todo">— 未実装</td><td>—</td><td>大量データ処理で必須。Phase 11 対象</td></tr>
+
+        <!-- ③ エラーハンドリング・回復 -->
+        <tr><td rowspan="5">③ エラー回復</td><td>例外の分類（一時エラー / 恒久エラー）</td><td class="td-done">✓ 実装済み</td><td>ErrorHandler.vb</td><td>RetryableException 継承で分類</td></tr>
+        <tr><td>スキップ制御（上限件数・閾値）</td><td class="td-done">✓ 実装済み</td><td>ErrorHandler.vb</td><td>MaxSkipCount 設定で制御</td></tr>
+        <tr><td>終了コード設計（0/1/2 区別）</td><td class="td-done">✓ 実装済み</td><td>Program.vb</td><td>0=正常 / 1=警告 / 2=異常</td></tr>
+        <tr><td>リトライ制御（指数バックオフ）</td><td class="td-todo">— 未実装</td><td>—</td><td>Phase 9 で RetryPolicy.vb として追加予定</td></tr>
+        <tr><td>デッドレターキュー（失敗レコード退避）</td><td class="td-todo">— 未実装</td><td>—</td><td>RabbitMQ / DLQ パターン</td></tr>
+
+        <!-- ④ ログ・監査 -->
+        <tr><td rowspan="5">④ ログ・監査</td><td>INFO/WARN/ERROR レベル構造化ログ</td><td class="td-done">✓ 実装済み</td><td>Logger.vb</td><td>テキスト + ローリングファイル</td></tr>
+        <tr><td>処理件数ログ（成功/スキップ/失敗）</td><td class="td-done">✓ 実装済み</td><td>Logger.vb + BatchHistoryManager.vb</td><td>バッチ終了時にサマリー出力</td></tr>
+        <tr><td>ログローテーション・保管期間制御</td><td class="td-todo">— 未実装</td><td>—</td><td>NLog / log4net の policy 設定で対応</td></tr>
+        <tr><td>監査ログ（誰がいつ起動・変更したか）</td><td class="td-todo">— 未実装</td><td>—</td><td>Phase 14 で AuditLogger.vb として追加予定</td></tr>
+        <tr><td>分散トレーシング（ジョブ間関連追跡）</td><td class="td-todo">— 未実装</td><td>—</td><td>OpenTelemetry / Jaeger 連携が必要</td></tr>
+
+        <!-- ⑤ 通知・アラート -->
+        <tr><td rowspan="4">⑤ 通知・アラート</td><td>メール通知（異常終了時）</td><td class="td-done">✓ 実装済み</td><td>AlertNotifier.vb</td><td>SmtpClient 経由でメール送信</td></tr>
+        <tr><td>実行時間超過アラート（しきい値）</td><td class="td-done">✓ 実装済み</td><td>ExecutionWatcher.vb</td><td>MaxMinutes 設定でタイムアウト通知</td></tr>
+        <tr><td>Slack / Teams Webhook 通知</td><td class="td-todo">— 未実装</td><td>—</td><td>AlertNotifier を拡張し HttpClient で対応</td></tr>
+        <tr><td>メトリクスしきい値アラート（エラー率など）</td><td class="td-todo">— 未実装</td><td>—</td><td>Prometheus AlertManager 等と連携</td></tr>
+
+        <!-- ⑥ トランザクション・データ処理 -->
+        <tr><td rowspan="5">⑥ トランザクション</td><td>分割コミット（チャンク処理）</td><td class="td-done">✓ 実装済み</td><td>DbHelper.vb</td><td>CommitInterval=1000件 で制御</td></tr>
+        <tr><td>ロールバック・エラー時の安全停止</td><td class="td-done">✓ 実装済み</td><td>DbHelper.vb</td><td>TransactionScope でスコープ制御</td></tr>
+        <tr><td>バルクインサート（SqlBulkCopy 等）</td><td class="td-done">△ 一部実装</td><td>DbHelper.vb</td><td>DataTable 渡しの BulkCopy は未提供</td></tr>
+        <tr><td>コネクションプーリング</td><td class="td-done">✓ 実装済み</td><td>DbHelper.vb</td><td>ADO.NET デフォルトプール利用</td></tr>
+        <tr><td>差分処理（CDC / タイムスタンプ比較）</td><td class="td-todo">— 未実装</td><td>—</td><td>UpdatedAt カラム比較ロジックで対応</td></tr>
+
+        <!-- ⑦ スケジュール・カレンダー -->
+        <tr><td rowspan="4">⑦ スケジュール</td><td>時刻指定定期実行（cron）</td><td class="td-done">✓ 実装済み</td><td>Windows タスクスケジューラ</td><td>XML スケジュール定義を共通化</td></tr>
+        <tr><td>営業日判定（祝日・月末処理）</td><td class="td-done">✓ 実装済み</td><td>BusinessCalendar.vb</td><td>祝日マスタ DB + 月末計算</td></tr>
+        <tr><td>依存関係制御（DAG / ジョブネット）</td><td class="td-todo">— 未実装</td><td>—</td><td>Phase 10 で DAGRunner.vb 追加予定</td></tr>
+        <tr><td>月次・年次締め処理制御</td><td class="td-done">△ 一部実装</td><td>BusinessCalendar.vb</td><td>月末判定のみ。締め日カスタム未対応</td></tr>
+
+        <!-- ⑧ 設定・環境管理 -->
+        <tr><td rowspan="4">⑧ 設定・環境管理</td><td>設定ファイル外部化（appSettings / env）</td><td class="td-done">✓ 実装済み</td><td>AppConfig.vb</td><td>appsettings.json + 環境変数のオーバーライド</td></tr>
+        <tr><td>環境切り替え（dev / stg / prod）</td><td class="td-done">✓ 実装済み</td><td>AppConfig.vb</td><td>BATCH_ENV 環境変数で切り替え</td></tr>
+        <tr><td>秘密情報管理（Secrets / 暗号化）</td><td class="td-todo">— 未実装</td><td>—</td><td>Azure Key Vault / AWS Secrets Manager</td></tr>
+        <tr><td>ジョブ定義のバージョン管理・ロールバック</td><td class="td-todo">— 未実装</td><td>—</td><td>Git タグ + デプロイスクリプトで対応</td></tr>
+
+        <!-- ⑨ セキュリティ・権限管理 -->
+        <tr><td rowspan="3">⑨ セキュリティ</td><td>実行権限制御（ユーザー/ロール）</td><td class="td-todo">— 未実装</td><td>—</td><td>Phase 14 対象。AD グループ連携推奨</td></tr>
+        <tr><td>データマスキング・暗号化</td><td class="td-todo">— 未実装</td><td>—</td><td>個人情報処理バッチで必須</td></tr>
+        <tr><td>コンプライアンス対応（ログ改ざん防止）</td><td class="td-todo">— 未実装</td><td>—</td><td>WORM ストレージ / ハッシュチェーン</td></tr>
+
+        <!-- ⑩ リソース管理・スケーラビリティ -->
+        <tr><td rowspan="4">⑩ リソース管理</td><td>同時実行数制限（スロットリング）</td><td class="td-done">△ 一部実装</td><td>ProcessLock.vb</td><td>同一ジョブの二重起動防止のみ</td></tr>
+        <tr><td>CPU / メモリ監視・制御</td><td class="td-todo">— 未実装</td><td>—</td><td>PerformanceCounter / cgroups</td></tr>
+        <tr><td>分散ワーカー・クラスタリング</td><td class="td-todo">— 未実装</td><td>—</td><td>Phase 13 対象。Kubernetes Jobs 等</td></tr>
+        <tr><td>ノード障害時フェイルオーバー</td><td class="td-todo">— 未実装</td><td>—</td><td>HA 構成 + ヘルスチェック + 再スケジュール</td></tr>
+
+        <!-- ⑪ テスト・デバッグ支援 -->
+        <tr><td rowspan="3">⑪ テスト支援</td><td>ドライランモード（副作用なし実行）</td><td class="td-todo">— 未実装</td><td>—</td><td>Phase 12 で DryRunMode フラグ追加予定</td></tr>
+        <tr><td>リプレイ実行（過去データで再テスト）</td><td class="td-todo">— 未実装</td><td>—</td><td>BatchDate 引数 + 履歴 DB を組み合わせて疑似対応</td></tr>
+        <tr><td>ステップ単位の部分実行</td><td class="td-todo">— 未実装</td><td>—</td><td>StartStep / EndStep 引数で対応可能</td></tr>
+
+        <!-- ⑫ 運用UI・ダッシュボード -->
+        <tr><td rowspan="3">⑫ 運用UI</td><td>実行状況ダッシュボード</td><td class="td-todo">— 未実装</td><td>—</td><td>Phase 15 対象。Grafana / Kibana でも代替</td></tr>
+        <tr><td>手動操作（強制実行 / 停止 / 再実行）</td><td class="td-todo">— 未実装</td><td>—</td><td>REST API 経由で操作する CLI ツールを作成</td></tr>
+        <tr><td>処理進捗リアルタイム表示</td><td class="td-todo">— 未実装</td><td>—</td><td>SignalR / WebSocket でプッシュ通知</td></tr>
+
+        <!-- ⑬ 拡張性・統合 -->
+        <tr><td rowspan="4">⑬ 拡張性・統合</td><td>REST API 経由のジョブ起動・状態取得</td><td class="td-todo">— 未実装</td><td>—</td><td>ASP.NET Core Web API として別ホスト</td></tr>
+        <tr><td>プラグイン機構（カスタムプロセッサ）</td><td class="td-todo">— 未実装</td><td>—</td><td>Interface + DI で拡張ポイントを定義</td></tr>
+        <tr><td>外部ワークフローエンジン連携（Airflow等）</td><td class="td-todo">— 未実装</td><td>—</td><td>HTTP センサー / REST API で呼び出し</td></tr>
+        <tr><td>メッセージング連携（Kafka / RabbitMQ）</td><td class="td-todo">— 未実装</td><td>—</td><td>イベントドリブンバッチに発展させる場合に必要</td></tr>
+      </tbody>
+    </table>
+
+    <div class="beginner-box">
+      <div class="beginner-box-title">// 「自分の現在地」を判定する チェックフロー</div>
+      <pre class="ascii-art">
+スタート
+   │
+   ▼
+[Q1] Logger / ErrorHandler / DbHelper は実装済みか？
+   ├─ NO ──→ Phase 0〜3 に戻って基礎から実装する
+   └─ YES
+         │
+         ▼
+      [Q2] ProcessLock / BatchHistoryManager は実装済みか？
+         ├─ NO ──→ Phase 4〜5 の多重起動防止・履歴管理を追加
+         └─ YES
+               │
+               ▼
+            [Q3] AlertNotifier / ExecutionWatcher は実装済みか？
+               ├─ NO ──→ Phase 6〜7 の通知・監視を追加
+               └─ YES
+                     │
+                     ▼
+                  [Q4] AppConfig / BusinessCalendar は実装済みか？
+                     ├─ NO ──→ Phase 8 の設定・カレンダーを追加
+                     └─ YES
+                           │
+                           ▼
+                        ★ Phase 0〜8 完了！
+                        次は Lab-P3H のロードマップで
+                        Phase 9 以降を計画する
+</pre>
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">// 実機確認手順</div>
+      <ol>
+        <li><strong>①</strong> このマトリクスを印刷し、自分のプロジェクトで「実装済み」と判定できる行に蛍光ペンを引く</li>
+        <li><strong>②</strong> 「△ 一部実装」の行（ExecutionWatcher の強制Kill、DbHelper の BulkCopy など）を優先改善リストとして別紙にまとめる</li>
+        <li><strong>③</strong> 「未実装」かつ「自分のシステムで今すぐ必要」な行を1〜3つ選び、どのPhaseで実装するかを口頭で説明できるか試す</li>
+        <li><strong>④</strong> Phase 0〜8 の全クラス（10ファイル）を Visual Studio ソリューションエクスプローラーで確認し、対応するカテゴリ行と1対1で紐づけられるか確認する</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ====== Lab P3-G ====== -->
+<div class="lab" id="lab-p3g">
+  <div class="lab-header">
+    <div class="lab-num">P3-G</div>
+    <h3>初心者がやりがちな設計ミス10選</h3>
+    <span class="lab-tag tag-advanced">危険</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      実務のバッチ開発で初心者が繰り返す設計ミスを10パターンに厳選。各パターンに「何が起きるか」「なぜやりがちか」「正しい設計」を対比する。<strong>これを1つでも残したまま本番稼働させると、夜間に電話がかかってくる確率が跳ね上がる。</strong>
+    </p>
+
+    <div class="info-box err">
+      <strong>// 危険：これをやったら本番で必ず事故が起きる</strong>
+      ミス①②③⑤⑥は「低頻度イベント」が発生した瞬間に顕在化する。テスト環境では動いていたのに、本番初日の月末夜間バッチで爆発するパターンが典型。設計レビューでこの10項目を必ずチェックリストに含めること。
+    </div>
+
+    <table class="summary-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>ミス内容</th>
+          <th>実際に起きる結果</th>
+          <th>回避策（正しい設計）</th>
+          <th>対応Phase</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>①</td><td>全エラーで即停止（スキップ戦略なし）</td><td>1件の不正データで100万件の処理が全停止。翌朝に気づく</td><td>ErrorHandler にスキップ上限（MaxSkipCount）を設定。一時エラーと恒久エラーを分類する</td><td>Phase 3</td></tr>
+        <tr><td>②</td><td>リトライなしでネットワーク瞬断に対応しない</td><td>AWS RDS の数秒フェイルオーバーでバッチが異常終了。毎月1〜2回発生</td><td>RetryPolicy を実装し、SqlException / TimeoutException は3回まで指数バックオフでリトライ</td><td>Phase 9</td></tr>
+        <tr><td>③</td><td>終了コード未設計（常に 0 で終了）</td><td>タスクスケジューラ・JP1 が「成功」と誤認。後続ジョブが誤ったデータを処理し続ける</td><td>0=正常 / 1=警告スキップあり / 2=異常終了の3値を必ず定義し、呼び出し元でチェックする</td><td>Phase 0</td></tr>
+        <tr><td>④</td><td>ログが Console.WriteLine のみ</td><td>本番サーバーでは出力が消える。障害調査でログが何も残っておらず原因不明になる</td><td>Logger.vb を使いファイルに書き出す。INFO/WARN/ERROR のレベルと処理件数サマリーを必ず記録</td><td>Phase 1</td></tr>
+        <tr><td>⑤</td><td>多重起動を考慮せず二重登録が発生</td><td>cron 遅延 + 手動再実行のタイミングが重なり、同じデータが2回 INSERT される。DB 整合性が崩れる</td><td>ProcessLock.vb（Mutex / ロックファイル）で排他制御。ProcessedKey テーブルで冪等性を担保する</td><td>Phase 5</td></tr>
+        <tr><td>⑥</td><td>冪等性を考えず再実行で重複データが生じる</td><td>エラー後の再実行で同一レコードが2行 INSERT される。手動での重複削除作業が発生</td><td>MERGE 文（UPSERT）または処理済みフラグを参照して二重処理をスキップする設計にする</td><td>Phase 5</td></tr>
+        <tr><td>⑦</td><td>接続文字列・パスワードをソースにハードコード</td><td>ソースコードが GitHub に push された瞬間に資格情報が漏洩。インシデント対応で数日拘束される</td><td>AppConfig.vb + 環境変数 or Azure Key Vault で外部化。config ファイルは .gitignore に追加</td><td>Phase 8</td></tr>
+        <tr><td>⑧</td><td>営業日判定をカレンダー無視で実装（毎日実行）</td><td>祝日・年末年始にもバッチが稼働し、ゼロ件処理で警告ログが大量発生。監視が疲弊する</td><td>BusinessCalendar.vb で営業日判定を行い、非営業日は正常スキップ（終了コード 0）で終了する</td><td>Phase 8</td></tr>
+        <tr><td>⑨</td><td>監視なしで障害を朝まで誰も知らない</td><td>夜間バッチが23:00に異常終了しても気づかれず、翌日9:00の業務開始時に発覚。データが一日分欠損</td><td>AlertNotifier.vb でメール通知 + ExecutionWatcher.vb で実行時間監視。重要バッチは PagerDuty 連携</td><td>Phase 6/7</td></tr>
+        <tr><td>⑩</td><td>DAG/依存関係を cron の時刻差で無理やり表現</td><td>先行ジョブが遅延すると後続ジョブが「データなし」のまま実行され、空の集計結果がDBに登録される</td><td>Phase 10 で DAGRunner を実装するか、Airflow / JP1 の依存制御機能を使う。時刻差制御は廃止する</td><td>Phase 10</td></tr>
+      </tbody>
+    </table>
+
+    <!-- ミス① -->
+    <p style="margin:24px 0 8px;font-weight:700;font-size:1rem;">ミス① — 全エラーで即停止（スキップ戦略なし）</p>
+    <div class="verify">
+      <div class="verify-col before">
+        <div class="verify-label">✗ Before（悪い設計）</div>
+        <ul>
+          <li>Try〜Catch でエラーを捕捉したら即座に Throw</li>
+          <li>1件でも不正データがあれば全件処理を中断</li>
+          <li>100万件中の1件のエラーで全バッチが異常終了</li>
+          <li>再実行しても同じ不正データで再び停止し続ける</li>
+        </ul>
+      </div>
+      <div class="verify-col after">
+        <div class="verify-label">✓ After（正しい設計）</div>
+        <ul>
+          <li>エラーを「一時的（リトライ可能）」と「恒久的（スキップ）」に分類</li>
+          <li>MaxSkipCount = 100 のように上限を設け、上限以内ならスキップして継続</li>
+          <li>スキップしたレコードはエラーログに詳細を記録（後で手動対応可能にする）</li>
+          <li>上限超過時のみ異常終了（終了コード 2）してアラートを送信</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ミス② -->
+    <p style="margin:24px 0 8px;font-weight:700;font-size:1rem;">ミス② — リトライなしでネットワーク瞬断に対応しない</p>
+    <div class="verify">
+      <div class="verify-col before">
+        <div class="verify-label">✗ Before（悪い設計）</div>
+        <ul>
+          <li>DB 接続エラーが発生したら即座に異常終了</li>
+          <li>AWS RDS のフェイルオーバー（30秒程度）で毎月バッチが落ちる</li>
+          <li>運用担当が深夜に手動で再実行する作業が発生</li>
+          <li>再実行のたびに冪等性が保証されているか確認が必要</li>
+        </ul>
+      </div>
+      <div class="verify-col after">
+        <div class="verify-label">✓ After（正しい設計）</div>
+        <ul>
+          <li>SqlException / TimeoutException を一時エラーと判定</li>
+          <li>1回目: 即リトライ / 2回目: 5秒待機 / 3回目: 30秒待機（指数バックオフ）</li>
+          <li>3回失敗後のみ異常終了してアラート通知</li>
+          <li>RetryPolicy クラスを共通化し全バッチで再利用（Phase 9 で実装）</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ミス③ -->
+    <p style="margin:24px 0 8px;font-weight:700;font-size:1rem;">ミス③ — 終了コード未設計（常に 0 で終了）</p>
+    <div class="verify">
+      <div class="verify-col before">
+        <div class="verify-label">✗ Before（悪い設計）</div>
+        <ul>
+          <li>Try〜Catch でエラーを握り潰して Exit(0) で終了</li>
+          <li>JP1 や cron がバッチ成功と誤認し後続ジョブを起動</li>
+          <li>後続ジョブが不完全なデータを元に集計・送信する</li>
+          <li>「バッチは成功しているのになぜデータがおかしいのか」が謎になる</li>
+        </ul>
+      </div>
+      <div class="verify-col after">
+        <div class="verify-label">✓ After（正しい設計）</div>
+        <ul>
+          <li>Exit(0): 全件正常処理完了</li>
+          <li>Exit(1): スキップあり完了（後続ジョブは起動するが警告通知）</li>
+          <li>Exit(2): 異常終了（後続ジョブ停止 + アラート送信）</li>
+          <li>タスクスケジューラ / JP1 の「前処理成功時のみ起動」条件に終了コードを紐づける</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ミス⑤ -->
+    <p style="margin:24px 0 8px;font-weight:700;font-size:1rem;">ミス⑤ — 多重起動を考慮せず二重登録が発生</p>
+    <div class="verify">
+      <div class="verify-col before">
+        <div class="verify-label">✗ Before（悪い設計）</div>
+        <ul>
+          <li>cron が遅延したまま手動でも実行し、同一バッチが同時に2プロセス動作</li>
+          <li>同じ顧客データを2回 INSERT して主キー制約エラーが大量発生</li>
+          <li>最悪の場合は主キーなしテーブルで重複行が静かに積み上がる</li>
+          <li>発覚は翌月の請求集計時（最悪1ヶ月後）</li>
+        </ul>
+      </div>
+      <div class="verify-col after">
+        <div class="verify-label">✓ After（正しい設計）</div>
+        <ul>
+          <li>ProcessLock.vb でプロセス起動時に Mutex を取得</li>
+          <li>Mutex 取得失敗 = 既に同一バッチが動作中 → 警告ログを出して Exit(1) で終了</li>
+          <li>加えて BatchStateManager で処理済みキーを管理し冪等性を二重に担保</li>
+          <li>重複が起きても MERGE / UPSERT で安全に上書きされる設計にする</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ミス⑨ -->
+    <p style="margin:24px 0 8px;font-weight:700;font-size:1rem;">ミス⑨ — 監視なしで障害を朝まで誰も知らない</p>
+    <div class="verify">
+      <div class="verify-col before">
+        <div class="verify-label">✗ Before（悪い設計）</div>
+        <ul>
+          <li>バッチが異常終了してもログファイルに書かれるだけ</li>
+          <li>翌朝に運用担当がタスクスケジューラを目視確認して初めて気づく</li>
+          <li>「昨夜のバッチ、失敗してたんですね…」という会話が毎月発生</li>
+          <li>データ欠損のリカバリ作業で午前中が潰れる</li>
+        </ul>
+      </div>
+      <div class="verify-col after">
+        <div class="verify-label">✓ After（正しい設計）</div>
+        <ul>
+          <li>AlertNotifier.vb が異常終了時に担当者へメール送信（5分以内に通知）</li>
+          <li>ExecutionWatcher.vb が MaxMinutes を超えた場合にも警告メール送信</li>
+          <li>重要バッチは Slack Webhook または PagerDuty で即時アラート</li>
+          <li>BatchHistory テーブルで翌朝のサマリーレポートを自動生成する</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ミス⑦ コードブロック -->
+    <p style="margin:24px 0 8px;font-weight:700;font-size:1rem;">ミス⑦ — 接続文字列ハードコードの具体例と修正</p>
+    <div class="code-block">
+      <div class="code-block-header"><span>VB.NET — ❌ 危険：ハードコード例</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="cm">' ❌ 絶対にやってはいけない：パスワードがソースに直書き</span>
+<span class="kw">Dim</span> connStr <span class="kw">As</span> <span class="fn">String</span> = <span class="str">"Server=prod-db;Database=Sales;User=sa;Password=P@ssw0rd123;"</span>
+<span class="kw">Dim</span> apiKey <span class="kw">As</span> <span class="fn">String</span> = <span class="str">"sk-prod-AbCdEfGh1234567890"</span>  <span class="cm">' git push で即漏洩</span></pre>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>VB.NET — ✓ 正しい：AppConfig.vb を使った外部化</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="cm">' ✓ 環境変数から取得（本番は OS レベルで設定）</span>
+<span class="kw">Dim</span> connStr <span class="kw">As</span> <span class="fn">String</span> = AppConfig.GetConnectionString(<span class="str">"SalesDb"</span>)
+<span class="kw">Dim</span> apiKey <span class="kw">As</span> <span class="fn">String</span> = AppConfig.GetRequired(<span class="str">"EXTERNAL_API_KEY"</span>)
+
+<span class="cm">' AppConfig.vb の実装例</span>
+<span class="kw">Public Function</span> <span class="fn">GetRequired</span>(key <span class="kw">As</span> <span class="fn">String</span>) <span class="kw">As</span> <span class="fn">String</span>
+    <span class="kw">Dim</span> value <span class="kw">As</span> <span class="fn">String</span> = Environment.GetEnvironmentVariable(key)
+    <span class="kw">If</span> <span class="fn">String</span>.IsNullOrEmpty(value) <span class="kw">Then</span>
+        <span class="kw">Throw New</span> <span class="fn">InvalidOperationException</span>(<span class="str">$"必須設定 '{key}' が環境変数に存在しません"</span>)
+    <span class="kw">End If</span>
+    <span class="kw">Return</span> value
+<span class="kw">End Function</span></pre>
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">// 設計レビューチェックリスト（10項目）</div>
+      <ol>
+        <li><strong>①</strong> ErrorHandler にスキップ上限（MaxSkipCount）が設定されているか？</li>
+        <li><strong>②</strong> DB / HTTP 呼び出しにリトライポリシーが実装されているか？</li>
+        <li><strong>③</strong> 終了コードが 0/1/2 で定義され、スケジューラが参照しているか？</li>
+        <li><strong>④</strong> ログファイルに処理件数サマリーが必ず記録されるか？</li>
+        <li><strong>⑤</strong> ProcessLock で多重起動が防止されているか？</li>
+        <li><strong>⑥</strong> 再実行しても重複データが発生しない冪等性設計か？</li>
+        <li><strong>⑦</strong> 接続文字列・API キーがソースコードに書かれていないか？</li>
+        <li><strong>⑧</strong> 祝日・非営業日に不要なバッチが動かない設計か？</li>
+        <li><strong>⑨</strong> 異常終了時に5分以内に担当者へ通知が届くか？</li>
+        <li><strong>⑩</strong> ジョブ間の依存関係を時刻差ではなく成功確認で制御しているか？</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ====== Lab P3-H ====== -->
+<div class="lab" id="lab-p3h">
+  <div class="lab-header">
+    <div class="lab-num">P3-H</div>
+    <h3>Phase 9+ ロードマップ — 拡張機能</h3>
+    <span class="lab-tag tag-advanced">拡張</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Phase 0〜8 で完成したバッチ共通基盤を、より大規模・高信頼な環境に対応させるための Phase 9〜15 ロードマップ。各 Phase の「解決する痛み」「追加するクラス」「実装難易度」を整理する。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-box-title">// Phase 0〜15 全体ロードマップ（ASCII図）</div>
+      <pre class="ascii-art">
+Phase 0  ─── バッチ最小構成（エントリポイント・設定読み込み）
+Phase 1  ─── ログ基盤（Logger.vb: INFO/WARN/ERROR + ファイル出力）
+Phase 2  ─── エラーハンドリング（ErrorHandler.vb: スキップ・上限）
+Phase 3  ─── DB連携（DbHelper.vb: チャンク処理・ロールバック）
+Phase 4  ─── 状態管理（BatchStateManager.vb: 冪等性・処理済みキー）
+Phase 5  ─── 履歴管理（BatchHistoryManager.vb: 実行履歴永続化）
+Phase 6  ─── アラート通知（AlertNotifier.vb: メール通知）
+Phase 7  ─── 実行監視（ExecutionWatcher.vb: タイムアウト監視）
+Phase 8  ─── カレンダー・設定（BusinessCalendar.vb / AppConfig.vb）
+             │
+             ▼ ─── ここから Phase 9+（拡張フェーズ）───
+             │
+Phase 9  ─── リトライ制御（RetryPolicy.vb: 指数バックオフ）       ★ 優先度: 高
+Phase 10 ─── DAGジョブネット（DAGRunner.vb: 依存関係グラフ）      ★ 優先度: 高
+Phase 11 ─── チェックポイント（CheckpointManager.vb: 途中再開）   ★ 優先度: 中
+Phase 12 ─── ドライランモード（DryRunInterceptor.vb: 副作用なし）  ★ 優先度: 中
+Phase 13 ─── 分散ワーカー（WorkerManager.vb: 並列実行管理）       ★ 優先度: 低〜中
+Phase 14 ─── 監査・セキュリティ（AuditLogger.vb: 権限・暗号化）   ★ 優先度: 中（金融系は高）
+Phase 15 ─── ダッシュボードUI（BatchDashboard: Grafana等で可視化） ★ 優先度: 低
+</pre>
+    </div>
+
+    <table class="summary-table">
+      <thead>
+        <tr>
+          <th>Phase</th>
+          <th>解決する痛み</th>
+          <th>追加する主な機能・クラス</th>
+          <th>実装コスト</th>
+          <th>適正規模</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="phase-badge">9</span></td>
+          <td>ネットワーク瞬断・DB フェイルオーバーで毎月バッチが落ちる</td>
+          <td><code>RetryPolicy.vb</code>（指数バックオフ・最大リトライ回数・ジッター）</td>
+          <td>小（1〜2日）</td>
+          <td>全規模で推奨</td>
+        </tr>
+        <tr>
+          <td><span class="phase-badge">10</span></td>
+          <td>ジョブ間の依存関係を時刻差で管理しており、遅延時に後続が空振り実行される</td>
+          <td><code>DAGRunner.vb</code>（有向非循環グラフ・先行ジョブ成功確認・並列起動）</td>
+          <td>中（3〜5日）</td>
+          <td>ジョブ10本以上の環境</td>
+        </tr>
+        <tr>
+          <td><span class="phase-badge">11</span></td>
+          <td>日次1,000万件処理の途中で失敗すると最初からやり直しで4時間ロス</td>
+          <td><code>CheckpointManager.vb</code>（処理済み件数をDBに保存・再開時にオフセット指定）</td>
+          <td>中（3〜5日）</td>
+          <td>大量データ（100万件/回以上）</td>
+        </tr>
+        <tr>
+          <td><span class="phase-badge">12</span></td>
+          <td>本番DBに直接流してから「やっぱり処理がおかしかった」と気づく</td>
+          <td><code>DryRunInterceptor.vb</code>（INSERT/UPDATE を抑止し件数・内容を検証モードで出力）</td>
+          <td>小（1〜2日）</td>
+          <td>本番直前テストが必要な全環境</td>
+        </tr>
+        <tr>
+          <td><span class="phase-badge">13</span></td>
+          <td>シングルスレッドでは処理時間が足りず、夜間8時間枠に収まらない</td>
+          <td><code>WorkerManager.vb</code>（データ分割・並列ワーカー起動・完了待機・集計）</td>
+          <td>大（1〜2週間）</td>
+          <td>1,000万件/回以上 または 複数ノード環境</td>
+        </tr>
+        <tr>
+          <td><span class="phase-badge">14</span></td>
+          <td>「誰がいつバッチを手動実行したか」が追跡できず内部統制に引っかかる</td>
+          <td><code>AuditLogger.vb</code>（操作者・操作種別・タイムスタンプを改ざん防止ログへ記録）+ Secrets 管理</td>
+          <td>中（3〜5日）</td>
+          <td>金融・医療・個人情報取扱い環境</td>
+        </tr>
+        <tr>
+          <td><span class="phase-badge">15</span></td>
+          <td>ジョブの実行状況を確認するのに毎回ログファイルを SSH で開いている</td>
+          <td>BatchHistory DB + Grafana / Kibana ダッシュボード（成功率・実行時間推移・エラー頻度）</td>
+          <td>中〜大（1週間〜）</td>
+          <td>複数バッチを運用する中〜大規模環境</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Phase 9: RetryPolicy の実装概要 -->
+    <p style="margin:28px 0 8px;font-weight:700;font-size:1rem;">Phase 9 — RetryPolicy.vb 実装概要（指数バックオフ）</p>
+    <div class="code-block">
+      <div class="code-block-header"><span>VB.NET — RetryPolicy.vb（Phase 9 追加クラス）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="kw">Public Class</span> <span class="fn">RetryPolicy</span>
+    <span class="kw">Private ReadOnly</span> _maxRetries <span class="kw">As</span> <span class="fn">Integer</span>
+    <span class="kw">Private ReadOnly</span> _baseDelayMs <span class="kw">As</span> <span class="fn">Integer</span>
+    <span class="kw">Private ReadOnly</span> _logger <span class="kw">As</span> <span class="fn">Logger</span>
+
+    <span class="kw">Public Sub New</span>(maxRetries <span class="kw">As</span> <span class="fn">Integer</span> = <span class="num">3</span>, baseDelayMs <span class="kw">As</span> <span class="fn">Integer</span> = <span class="num">1000</span>, logger <span class="kw">As</span> <span class="fn">Logger</span> = <span class="kw">Nothing</span>)
+        _maxRetries = maxRetries
+        _baseDelayMs = baseDelayMs
+        _logger = logger
+    <span class="kw">End Sub</span>
+
+    <span class="cm">' 指数バックオフ付きリトライ実行（同期版）</span>
+    <span class="kw">Public Sub</span> <span class="fn">Execute</span>(action <span class="kw">As</span> Action, Optional retryableTypes <span class="kw">As</span> Type() = <span class="kw">Nothing</span>)
+        <span class="kw">Dim</span> attempt <span class="kw">As</span> <span class="fn">Integer</span> = <span class="num">0</span>
+        <span class="kw">Do</span>
+            <span class="kw">Try</span>
+                action()
+                <span class="kw">Return</span>  <span class="cm">' 成功</span>
+            <span class="kw">Catch</span> ex <span class="kw">As</span> <span class="fn">Exception</span>
+                attempt += <span class="num">1</span>
+                <span class="kw">Dim</span> isRetryable <span class="kw">As Boolean</span> = IsRetryableException(ex, retryableTypes)
+                <span class="kw">If Not</span> isRetryable <span class="kw">OrElse</span> attempt &gt; _maxRetries <span class="kw">Then Throw</span>
+                <span class="kw">Dim</span> delayMs <span class="kw">As</span> <span class="fn">Integer</span> = _baseDelayMs * CInt(<span class="fn">Math</span>.Pow(<span class="num">2</span>, attempt - <span class="num">1</span>))
+                _logger?.Warn(<span class="str">$"リトライ {attempt}/{_maxRetries} — {delayMs}ms 後に再試行: {ex.Message}"</span>)
+                <span class="fn">Threading.Thread</span>.Sleep(delayMs)
+            <span class="kw">End Try</span>
+        <span class="kw">Loop</span>
+    <span class="kw">End Sub</span>
+
+    <span class="kw">Private Function</span> <span class="fn">IsRetryableException</span>(ex <span class="kw">As</span> <span class="fn">Exception</span>, types <span class="kw">As</span> Type()) <span class="kw">As Boolean</span>
+        <span class="kw">If</span> types <span class="kw">Is Nothing OrElse</span> types.Length = <span class="num">0</span> <span class="kw">Then Return True</span>
+        <span class="kw">Return</span> types.Any(<span class="kw">Function</span>(t) t.IsInstanceOfType(ex))
+    <span class="kw">End Function</span>
+<span class="kw">End Class</span>
+
+<span class="cm">' 使用例: SqlException のみリトライ（最大3回、初回1秒・2秒・4秒と指数増加）</span>
+<span class="kw">Dim</span> policy <span class="kw">As New</span> <span class="fn">RetryPolicy</span>(maxRetries:=<span class="num">3</span>, baseDelayMs:=<span class="num">1000</span>, logger:=_logger)
+policy.Execute(
+    <span class="kw">Sub</span>() DbHelper.BulkUpdate(records),
+    retryableTypes:={ <span class="kw">GetType</span>(<span class="fn">SqlException</span>), <span class="kw">GetType</span>(<span class="fn">TimeoutException</span>) }
+)</pre>
+    </div>
+
+    <!-- Phase 10: DAG図 -->
+    <p style="margin:28px 0 8px;font-weight:700;font-size:1rem;">Phase 10 — DAG ジョブネットのアーキテクチャ図</p>
+    <div class="beginner-box">
+      <div class="beginner-box-title">// DAG（有向非循環グラフ）によるジョブ依存関係の表現</div>
+      <pre class="ascii-art">
+【Before: 時刻差による疑似依存（危険）】
+  00:00 ─── Job_A（データ抽出）    ─── 30分想定
+  00:35 ─── Job_B（集計処理）      ─── A完了前に起動する危険あり
+  01:00 ─── Job_C（レポート送信）  ─── B完了前に起動する危険あり
+
+【After: DAG による正しい依存制御】
+         ┌─── Job_B（集計）─── Job_D（サマリー）───┐
+Job_A ───┤                                           ├─── Job_F（メール送信）
+         └─── Job_C（検証）─────────────────────────┘
+                    │
+                    └─── Job_E（エラーレポート、Job_C 失敗時のみ）
+
+DAGRunner が管理すること:
+  ① 各ジョブの先行条件（predecessors）チェック
+  ② 先行ジョブが SUCCESS になったタイミングで後続を自動起動
+  ③ 並列実行可能なジョブ（B と C）を同時起動
+  ④ いずれかが FAILED になった場合の連鎖停止 or スキップ制御
+</pre>
+    </div>
+
+    <!-- Phase 12: ドライランモード -->
+    <p style="margin:28px 0 8px;font-weight:700;font-size:1rem;">Phase 12 — ドライランモードの設計パターン</p>
+    <div class="code-block">
+      <div class="code-block-header"><span>VB.NET — DryRunInterceptor.vb（Phase 12 追加クラス）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="cm">' 起動引数 --dry-run または 環境変数 DRY_RUN=true で有効化</span>
+<span class="kw">Public Class</span> <span class="fn">DryRunInterceptor</span>
+    <span class="kw">Public Shared ReadOnly</span> IsEnabled <span class="kw">As Boolean</span> =
+        Environment.GetEnvironmentVariable(<span class="str">"DRY_RUN"</span>) = <span class="str">"true"</span> <span class="kw">OrElse</span>
+        Environment.GetCommandLineArgs().Contains(<span class="str">"--dry-run"</span>)
+
+    <span class="cm">' DB 書き込みをインターセプト</span>
+    <span class="kw">Public Shared Sub</span> <span class="fn">ExecuteNonQuery</span>(sql <span class="kw">As</span> <span class="fn">String</span>, params <span class="kw">As</span> Object(), logger <span class="kw">As</span> <span class="fn">Logger</span>)
+        <span class="kw">If</span> IsEnabled <span class="kw">Then</span>
+            logger.Info(<span class="str">$"[DRY-RUN] スキップ: {sql.Substring(0, Math.Min(80, sql.Length))}..."</span>)
+            <span class="kw">Return</span>  <span class="cm">' 実際には実行しない</span>
+        <span class="kw">End If</span>
+        DbHelper.ExecuteNonQuery(sql, params)  <span class="cm">' 本番実行</span>
+    <span class="kw">End Sub</span>
+<span class="kw">End Class</span>
+
+<span class="cm">' 使用例: INSERT/UPDATE 処理をドライランでラップ</span>
+DryRunInterceptor.ExecuteNonQuery(
+    <span class="str">"UPDATE Orders SET Status=@s WHERE OrderId=@id"</span>,
+    { status, orderId }, _logger
+)</pre>
+    </div>
+
+    <!-- Gemini 参考実装 -->
+    <p style="margin:28px 0 8px;font-weight:700;font-size:1rem;">参考実装 — JavaScript BatchEngine（Gemini 提供・ブラウザで動作確認可能）</p>
+    <div class="info-box info">
+      <strong>// この実装の学習価値</strong>
+      以下は Gemini が提供した JavaScript による BatchEngine の参考実装。VB.NET ではなく JS だが、「基盤ロジック（リトライ・順序制御）とビジネスロジックの分離」という設計思想は言語を問わず共通。<strong>ブラウザの開発者ツール（F12）コンソールにそのまま貼り付けて動作確認できる。</strong>VB.NET で RetryPolicy.vb / DAGRunner.vb を設計する前に、この動作を確認して概念を掴むことを推奨する。
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JavaScript — BatchEngine 参考実装（Gemini提供、ブラウザコンソール実行可）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="cm">// ==========================================
+// 1. バッチ基盤の定義 (Infrastructure)
+// ==========================================</span>
+<span class="kw">class</span> <span class="fn">BatchEngine</span> {
+  <span class="fn">constructor</span>() {
+    <span class="kw">this</span>.jobs = []; <span class="cm">// 登録されたジョブのリスト</span>
+  }
+
+  <span class="cm">// ジョブの登録</span>
+  <span class="fn">addJob</span>(name, processFn, maxRetries = <span class="num">0</span>) {
+    <span class="kw">this</span>.jobs.push({ name, processFn, maxRetries });
+  }
+
+  <span class="cm">// ロジックの開始の流れを1本にするエントリポイント</span>
+  <span class="kw">async</span> <span class="fn">runAll</span>(initialData) {
+    console.log(<span class="str">`[Batch Engine] === バッチ処理開始 ===`</span>);
+    <span class="kw">let</span> currentData = [...initialData]; <span class="cm">// 処理用データ配列のコピーを作成</span>
+
+    <span class="kw">for</span> (<span class="kw">const</span> job <span class="kw">of</span> <span class="kw">this</span>.jobs) {
+      console.log(<span class="str">`[Batch Engine] ジョブ [${job.name}] を開始します。`</span>);
+
+      <span class="kw">let</span> attempt = <span class="num">0</span>;
+      <span class="kw">let</span> success = <span class="kw">false</span>;
+
+      <span class="cm">// リトライ制御のループ</span>
+      <span class="kw">while</span> (attempt &lt;= job.maxRetries &amp;&amp; !success) {
+        attempt++;
+        <span class="kw">try</span> {
+          <span class="cm">// ビジネスロジックの実行</span>
+          currentData = <span class="kw">await</span> job.<span class="fn">processFn</span>(currentData);
+          success = <span class="kw">true</span>;
+          console.log(<span class="str">`[Batch Engine] ジョブ [${job.name}] 正常終了 (試行回数: ${attempt})`</span>);
+        } <span class="kw">catch</span> (error) {
+          console.warn(<span class="str">`[Batch Engine] ジョブ [${job.name}] エラー発生: ${error.message} (試行回数: ${attempt})`</span>);
+          <span class="kw">if</span> (attempt &lt;= job.maxRetries) {
+            console.log(<span class="str">`[Batch Engine] ... 1秒後にリトライします ...`</span>);
+            <span class="kw">await new</span> <span class="fn">Promise</span>(resolve =&gt; <span class="fn">setTimeout</span>(resolve, <span class="num">1000</span>));
+          } <span class="kw">else</span> {
+            console.error(<span class="str">`[Batch Engine] ジョブ [${job.name}] 最大リトライ回数を超過し、異常終了しました。`</span>);
+            <span class="kw">throw</span> error; <span class="cm">// 基盤としてエラーを上位に投げて全体を停止</span>
+          }
+        }
+      }
+    }
+
+    console.log(<span class="str">`[Batch Engine] === すべてのバッチ処理が正常終了しました ===`</span>);
+    <span class="kw">return</span> currentData;
+  }
+}
+
+<span class="cm">// ==========================================
+// 2. 利用シーン：ビジネスロジックの定義と実行
+// ==========================================</span>
+
+<span class="cm">// 処理する初期データ (Before)</span>
+<span class="kw">const</span> targetData = [
+  { id: <span class="num">1</span>, amount: <span class="num">100</span>, status: <span class="str">'未処理'</span> },
+  { id: <span class="num">2</span>, amount: <span class="num">200</span>, status: <span class="str">'未処理'</span> },
+  { id: <span class="num">3</span>, amount: <span class="num">300</span>, status: <span class="str">'未処理'</span> }
+];
+
+console.log(<span class="str">"【Before】 処理前のデータ状態:"</span>, JSON.stringify(targetData, <span class="kw">null</span>, <span class="num">2</span>));
+
+<span class="cm">// 基盤のインスタンス化</span>
+<span class="kw">const</span> engine = <span class="kw">new</span> <span class="fn">BatchEngine</span>();
+
+<span class="cm">// ジョブ1: 依存関係の先行ジョブ（金額を2倍にする計算ロジック）</span>
+engine.<span class="fn">addJob</span>(<span class="str">'データ計算ジョブ'</span>, <span class="kw">async</span> (data) =&gt; {
+  <span class="kw">return</span> data.<span class="fn">map</span>(record =&gt; ({
+    ...record,
+    amount: record.amount * <span class="num">2</span>
+  }));
+}, <span class="num">0</span>); <span class="cm">// リトライなし</span>
+
+<span class="cm">// ジョブ2: 依存関係の後続ジョブ（ステータス更新処理。意図的に1回目は失敗させる疑似コード）</span>
+<span class="kw">let</span> isFirstTry = <span class="kw">true</span>;
+engine.<span class="fn">addJob</span>(<span class="str">'ステータス更新ジョブ'</span>, <span class="kw">async</span> (data) =&gt; {
+  <span class="kw">if</span> (isFirstTry) {
+    isFirstTry = <span class="kw">false</span>;
+    <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">'疑似的なネットワークエラー'</span>);
+  }
+  <span class="kw">return</span> data.<span class="fn">map</span>(record =&gt; ({
+    ...record,
+    status: <span class="str">'処理済'</span>
+  }));
+}, <span class="num">2</span>); <span class="cm">// 最大2回までリトライを許可</span>
+
+<span class="cm">// 実行と結果の確認 (After)</span>
+engine.<span class="fn">runAll</span>(targetData)
+  .<span class="fn">then</span>(finalData =&gt; {
+    console.log(<span class="str">"【After】 処理完了後のデータ状態:"</span>, JSON.stringify(finalData, <span class="kw">null</span>, <span class="num">2</span>));
+  })
+  .<span class="fn">catch</span>(err =&gt; {
+    console.error(<span class="str">"バッチ処理全体が失敗しました:"</span>, err);
+  });</pre>
+    </div>
+
+    <div class="info-box info">
+      <strong>// JS BatchEngine から VB.NET RetryPolicy.vb への翻訳ポイント</strong>
+      JS の <code>while (attempt &lt;= job.maxRetries &amp;&amp; !success)</code> ループが VB.NET の <code>RetryPolicy.Execute()</code> の <code>Do〜Loop</code> に対応する。JS の <code>await new Promise(resolve =&gt; setTimeout(resolve, 1000))</code> が VB.NET の <code>Threading.Thread.Sleep(delayMs)</code> に対応する。基盤の構造は言語が違っても同じ。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">// Phase 9+ 導入判断チェックリスト</div>
+      <ol>
+        <li><strong>①</strong> 月に1回以上「ネットワーク瞬断」でバッチが落ちる → Phase 9（RetryPolicy）を優先実装</li>
+        <li><strong>②</strong> ジョブが10本以上あり cron の時刻差で依存管理している → Phase 10（DAG）を計画</li>
+        <li><strong>③</strong> 処理件数が100万件/回を超えており途中失敗後の再実行が30分以上かかる → Phase 11（チェックポイント）を検討</li>
+        <li><strong>④</strong> 本番 DB に流す前に「件数・内容を確認したい」と毎回思う → Phase 12（ドライラン）を今すぐ追加</li>
+        <li><strong>⑤</strong> 監査ログを「誰がいつ実行したか」で求められている → Phase 14（AuditLogger）を先行実装</li>
+        <li><strong>⑥</strong> 運用担当から「ジョブの状況をブラウザで見たい」と言われている → Phase 15（ダッシュボード）を計画</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ====== Lab P3-I ====== -->
+<div class="lab" id="lab-p3i">
+  <div class="lab-header">
+    <div class="lab-num">P3-I</div>
+    <h3>設計書テンプレート — 章立てと記入例</h3>
+    <span class="lab-tag tag-intermediate">テンプレート</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      バッチ共通基盤の設計書をゼロから書くための<strong>標準章構成12章</strong>と記入例。実務でそのままコピーして使えるレベルで作成している。空欄ではなく「完成済みのサンプル記述」を掲載しているため、自分のシステムの数値・制約に置き換えるだけで設計書の骨格が完成する。
+    </p>
+
+    <div class="info-box info">
+      <strong>// レビューチェックポイント（この設計書の何を見ればOKか）</strong>
+      ①「2章 非機能要件」に具体的な数値（件数・時間・成功率）が書かれているか。②「6章 エラー・リトライ設計」にスキップ上限と終了コード定義があるか。③「8章 冪等性設計」に再実行しても二重登録が起きない仕組みの説明があるか。この3点が揃っていれば設計書として最低限合格。
+    </div>
+
+    <table class="summary-table">
+      <thead>
+        <tr>
+          <th>章</th>
+          <th>タイトル</th>
+          <th>必須記載項目</th>
+          <th>目安ページ数</th>
+          <th>記入のコツ</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>1章</td><td>概要・背景</td><td>システム名 / 目的 / 対象業務 / 対象範囲</td><td>1〜2 ページ</td><td>「なぜこのバッチが必要か」を1文で書く。読者が初見でも文脈を掴めるように</td></tr>
+        <tr><td>2章</td><td>非機能要件</td><td>性能目標（件数・時間）/ 可用性（成功率）/ 保守性（ログ保管期間）</td><td>1〜2 ページ</td><td>数値を必ず入れる。「高速に」「安定して」は NG。「日次100万件・30分以内・成功率99.5%」が最低ライン</td></tr>
+        <tr><td>3章</td><td>全体アーキテクチャ図</td><td>クラス構成図 / データフロー / 外部システム連携</td><td>2〜3 ページ</td><td>ASCII 図または UML。Phase 0〜8 のクラス一覧を箱として描き、矢印で依存関係を示す</td></tr>
+        <tr><td>4章</td><td>機能一覧（13カテゴリ採用判定）</td><td>Lab-P3F のマトリクスを転記し「採用 / 対象外」を判定</td><td>2〜3 ページ</td><td>「なぜ対象外にしたか」の理由を1行添える。「規模が小さいため」「代替手段あり」など</td></tr>
+        <tr><td>5章</td><td>実行制御・スケジュール設計</td><td>cron 定義 / 営業日判定ルール / 手動実行手順 / 多重起動防止方式</td><td>2〜3 ページ</td><td>cron 式を必ず記載（例: 0 2 * * 1-5）。営業日マスタのメンテナンス担当者も記載する</td></tr>
+        <tr><td>6章</td><td>エラー・リトライ・回復設計</td><td>エラー分類表 / スキップ上限 / 終了コード定義 / リトライポリシー / アラート条件</td><td>3〜4 ページ</td><td>終了コード表は必ず入れる。0/1/2 の意味と後続ジョブへの影響を明記</td></tr>
+        <tr><td>7章</td><td>ログ・監視・通知設計</td><td>ログレベル定義 / ファイル命名規則 / 保管期間 / 監視しきい値 / 通知先・手段</td><td>2〜3 ページ</td><td>ログファイルのサンプル行を1行載せると読者が理解しやすい</td></tr>
+        <tr><td>8章</td><td>トランザクション・冪等性設計</td><td>コミット単位 / ロールバック条件 / 冪等性保証方式 / 処理済みキーの設計</td><td>2〜3 ページ</td><td>「再実行シナリオ」を1つ図示する。どのテーブルのどの列で二重処理を防ぐかを明記</td></tr>
+        <tr><td>9章</td><td>環境・設定管理</td><td>環境一覧（dev/stg/prod）/ 設定ファイル項目一覧 / 秘密情報の管理方法</td><td>1〜2 ページ</td><td>設定項目を表形式で一覧化。デフォルト値と必須/任意の区別を入れる</td></tr>
+        <tr><td>10章</td><td>運用手順書</td><td>通常起動手順 / 手動実行手順 / 緊急停止手順 / 障害対応フロー</td><td>3〜5 ページ</td><td>コマンドはコードブロックで記載。「誰が・何を・どの順で」が一目でわかるように番号付きリストで書く</td></tr>
+        <tr><td>11章</td><td>テスト計画</td><td>単体テスト / 結合テスト / 異常系テスト（スキップ・リトライ・タイムアウト）/ 性能テスト</td><td>3〜4 ページ</td><td>テストケース表に「入力条件 / 期待結果 / 合否判定方法」を明記。ドライランモードの確認も入れる</td></tr>
+        <tr><td>12章</td><td>移行計画</td><td>移行前後のデータ整合性確認 / 切り戻し手順 / 並行稼働期間</td><td>2〜3 ページ</td><td>「何かあれば旧システムに戻せる期間」を明記。切り戻し判断基準（例: 3日以内にエラー率5%超で切り戻し）を入れる</td></tr>
+      </tbody>
+    </table>
+
+    <!-- 各章の記入例 try-box -->
+    <div class="try-box">
+      <div class="try-box-title">// 2章 非機能要件 — 記入例</div>
+      <div class="try-box-body">
+        「性能 / 可用性 / 保守性」を数値で記述する。<strong>数値なしの記述は設計書として不合格。</strong>
+        <pre class="try-skeleton">【2. 非機能要件】
+
+■ 2-1. 性能要件
+  - 日次処理件数: 最大 100万件 / 回（月末は最大 300万件）
+  - 処理時間目標: 2:00 AM 起動 → 5:00 AM 完了（3時間以内）
+  - ピーク時スループット: 10,000件/分 以上を維持すること
+  - DB コネクション: 最大 10本（コネクションプール 5〜10）
+
+■ 2-2. 可用性要件
+  - 月次成功率目標: 99.5%以上（月20営業日中 0〜1回の異常終了まで許容）
+  - 平均復旧時間（MTTR）: 異常検知から 1時間以内に手動または自動で回復
+  - 計画外停止許容回数: 月1回以下
+
+■ 2-3. 保守性要件
+  - ログ保管期間: 本番ログは 90日間保管（法的要件がある場合は 7年）
+  - 設定変更: 再デプロイなしで AppConfig / 環境変数の変更のみで対応できること
+  - モジュール追加: 新規ビジネスロジックを既存クラスに影響なく追加できること</pre>
+      </div>
+    </div>
+
+    <div class="try-box">
+      <div class="try-box-title">// 6章 エラー・リトライ・回復設計 — 記入例</div>
+      <div class="try-box-body">
+        終了コード表とエラー分類表は必須。スキップ上限は「感覚」ではなく業務上の許容範囲から決定すること。
+        <pre class="try-skeleton">【6. エラー・リトライ・回復設計】
+
+■ 6-1. 終了コード定義
+  コード 0: 全件正常処理完了（後続ジョブ: 起動する）
+  コード 1: スキップあり完了（警告通知 + 後続ジョブ: 起動する）
+  コード 2: 異常終了（エラー通知 + 後続ジョブ: 起動しない）
+
+■ 6-2. エラー分類と対応方針
+  ┌───────────────────┬──────────────────┬──────────────┬──────────────┐
+  │ エラー種別         │ 例               │ 対応方針     │ 最大リトライ │
+  ├───────────────────┼──────────────────┼──────────────┼──────────────┤
+  │ 一時的（ネットワーク）│ SqlException    │ 指数バックオフ│ 3回          │
+  │ データ不正         │ FormatException  │ スキップ     │ 0回          │
+  │ リソース枯渇       │ OutOfMemoryException│ 異常終了   │ 0回          │
+  │ 業務エラー         │ 残高不足等       │ スキップ     │ 0回          │
+  └───────────────────┴──────────────────┴──────────────┴──────────────┘
+
+■ 6-3. スキップ制御
+  - MaxSkipCount: 1,000件（全件の 0.1%）を超えたら異常終了
+  - スキップされたレコードは ErrorLog テーブルへ退避（後日手動対応）
+
+■ 6-4. リトライポリシー
+  - 対象エラー: SqlException / TimeoutException / HttpRequestException
+  - 最大リトライ: 3回
+  - 待機時間: 1秒 → 2秒 → 4秒（指数バックオフ）
+  - 実装クラス: RetryPolicy.vb（Phase 9）</pre>
+      </div>
+    </div>
+
+    <div class="try-box">
+      <div class="try-box-title">// 8章 トランザクション・冪等性設計 — 記入例</div>
+      <div class="try-box-body">
+        冪等性は「再実行シナリオ」を1つ図示することで設計の穴が見つかりやすい。
+        <pre class="try-skeleton">【8. トランザクション・冪等性設計】
+
+■ 8-1. トランザクション方式
+  - コミット単位: 1,000件ごとのチャンクコミット
+  - ロールバック: チャンク単位。チャンク内で恒久エラーが発生したらチャンクをロールバック
+  - 実装クラス: DbHelper.vb（CommitInterval = 1000）
+
+■ 8-2. 冪等性保証方式
+  - ProcessedKeys テーブルに「バッチ日付 + 処理対象ID」のハッシュを記録
+  - 再実行時に ProcessedKeys を参照し、登録済みのキーはスキップ
+  - 月次バッチ完了時に ProcessedKeys をクリーンアップ（当月分のみ保持）
+
+■ 8-3. 再実行シナリオ
+  [正常実行]
+    バッチ起動 → ProcessedKeys 確認（空）→ 1,000件処理 → コミット → ProcessedKeys 登録 → 完了
+
+  [途中失敗 → 再実行]
+    バッチ起動 → ProcessedKeys 確認（700件登録済み）→ 701件目から再開 → 残り300件処理 → 完了
+    ※ 700件は再処理されない（二重登録が起きない）
+
+■ 8-4. 注意事項
+  - ProcessedKeys テーブルのインデックスを (BatchDate, JobName, RecordId) の複合で作成すること
+  - 冪等性を保証できない処理（メール送信・外部API呼び出し）は「一度だけ実行」フラグを別途管理する</pre>
+      </div>
+    </div>
+
+    <div class="try-box">
+      <div class="try-box-title">// 10章 運用手順書 — 障害対応フロー記入例</div>
+      <div class="try-box-body">
+        「誰が・何を・どの順で」が一目でわかるように。コマンドはコードブロック形式で記載すること。
+        <pre class="try-skeleton">【10. 運用手順書 — 障害対応フロー】
+
+■ 10-1. アラートメール受信時の初動対応
+  Step 1: BatchHistory テーブルで終了コードと処理件数を確認
+    SELECT * FROM BatchHistory WHERE BatchDate = GETDATE() ORDER BY StartTime DESC
+
+  Step 2: ログファイルでエラー詳細を確認
+    C:\Batch\Logs\BatchName_YYYYMMDD.log の末尾100行を確認
+
+  Step 3: エラー種別の判定
+    - "SqlException" → DBの状態確認（RDS コンソール / SQL Server ログ）
+    - "FormatException" → 入力データの不正。ソースデータを確認
+    - "ProcessLock: already running" → 前回実行がゾンビプロセスとして残存。タスクマネージャーで確認
+
+■ 10-2. 手動再実行手順
+  Step 1: 前回実行の ProcessLock ファイルが残っている場合は削除
+    C:\Batch\Lock\BatchName.lock を削除
+
+  Step 2: ドライランで実行結果を確認（Phase 12 実装後）
+    BatchName.exe --env prod --date 20260416 --dry-run
+
+  Step 3: 問題なければ本番実行
+    BatchName.exe --env prod --date 20260416
+
+  Step 4: BatchHistory テーブルで実行結果を確認し、終了コード 0 または 1 であることを確認
+
+■ 10-3. 緊急停止手順
+  タスクスケジューラ → 対象タスクを右クリック → 「実行中のタスクを終了」
+  または: taskkill /IM BatchName.exe /F
+  ※ 強制停止後は必ず BatchState テーブルの Status を手動で 'FAILED' に更新すること</pre>
+      </div>
+    </div>
+
+    <div class="try-box">
+      <div class="try-box-title">// 3章 全体アーキテクチャ図 — ASCII図記入例</div>
+      <div class="try-box-body">
+        UML ツールがなくても ASCII 図で十分。クラス間の依存方向を矢印で示すこと。
+        <pre class="try-skeleton">【3. 全体アーキテクチャ図】
+
+┌─────────────────────────────────────────────────────────────────┐
+│  バッチ共通基盤 (Phase 0〜8) — VB.NET コンソールアプリ           │
+│                                                                   │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ Program.vb (エントリポイント)                              │   │
+│  │  ├─ 起動引数パース     ├─ 環境設定読み込み                 │   │
+│  │  └─ 終了コード制御     └─ 全クラス初期化・依存注入         │   │
+│  └────┬─────────────────────────────────────────────────────┘   │
+│       │ uses                                                       │
+│  ┌────▼────────────────────────────────────────────────────────┐ │
+│  │ バッチ共通基盤クラス群                                        │ │
+│  │                                                               │ │
+│  │  Logger.vb          ── 構造化ログ出力（INFO/WARN/ERROR）     │ │
+│  │  ErrorHandler.vb    ── スキップ・上限・エラー分類            │ │
+│  │  DbHelper.vb        ── チャンクコミット・ロールバック         │ │
+│  │  BatchStateManager.vb ─ 状態遷移・冪等性（ProcessedKeys）   │ │
+│  │  BatchHistoryManager.vb ─ 実行履歴永続化（BatchHistory）    │ │
+│  │  BusinessCalendar.vb ── 営業日判定・月末処理                 │ │
+│  │  ProcessLock.vb     ── 多重起動防止（Mutex）                 │ │
+│  │  AlertNotifier.vb   ── メール通知・Webhook 通知              │ │
+│  │  ExecutionWatcher.vb ── タイムアウト監視                     │ │
+│  │  AppConfig.vb       ── 設定外部化・環境切り替え              │ │
+│  └─────────────────────┬─────────────────────────────────────┘ │
+│                         │ access                                   │
+│  ┌──────────────────────▼────────────────────────────────────┐   │
+│  │ 外部リソース                                                │   │
+│  │  SQL Server (BatchHistory / BatchState / ProcessedKeys)    │   │
+│  │  ファイルシステム (入力CSV / ログファイル / ロックファイル) │   │
+│  │  SMTP サーバー (アラートメール)                             │   │
+│  └──────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘</pre>
+      </div>
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">// 設計書レビュー 最終チェックリスト（12章完了確認）</div>
+      <ol>
+        <li><strong>①</strong> 1章: 「なぜこのバッチが必要か」を1文で説明できるか？</li>
+        <li><strong>②</strong> 2章: 性能要件に「件数・時間・成功率」の3数値が揃っているか？</li>
+        <li><strong>③</strong> 3章: クラス一覧と依存関係図があるか？外部リソースが明記されているか？</li>
+        <li><strong>④</strong> 4章: 13カテゴリの採用/対象外と理由が記載されているか？</li>
+        <li><strong>⑤</strong> 5章: cron 式と営業日判定ルールが具体的に書かれているか？</li>
+        <li><strong>⑥</strong> 6章: 終了コード表（0/1/2）とスキップ上限が定義されているか？</li>
+        <li><strong>⑦</strong> 7章: ログファイルのサンプル行と保管期間が記載されているか？</li>
+        <li><strong>⑧</strong> 8章: 「再実行シナリオ」の図があり、二重登録が起きない設計が説明されているか？</li>
+        <li><strong>⑨</strong> 9章: 設定項目一覧と秘密情報の管理方法が記載されているか？</li>
+        <li><strong>⑩</strong> 10章: 障害対応フローに実際のコマンドが記載されているか？</li>
+        <li><strong>⑪</strong> 11章: 異常系テストケース（スキップ・リトライ・タイムアウト）が含まれているか？</li>
+        <li><strong>⑫</strong> 12章: 切り戻し判断基準（数値）と切り戻し手順が記載されているか？</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+
+</div><!-- /container -->
+
+<script>
+function copyCode(btn) {
+  const pre = btn.closest('.code-block').querySelector('pre');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1800);
+  });
+}
+
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const key = btn.dataset.target;
+    const stage = document.getElementById(key);
+    const label = document.getElementById(key + '-label');
+    const isBefore = stage.classList.toggle('is-before');
+    btn.textContent = isBefore ? 'After（推奨）を見る' : 'Before（問題）を見る';
+    if (label) label.textContent = isBefore ? '現在: Before（問題あり）' : '現在: After（推奨）';
+  });
+});
+
+const navItems = document.querySelectorAll('#sidebar .nav-item');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const id = e.target.id;
+      navItems.forEach(a => {
+        a.classList.toggle('active', a.getAttribute('href') === '#' + id);
+      });
+    }
+  });
+}, { threshold: 0.2 });
+document.querySelectorAll('.lab').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
