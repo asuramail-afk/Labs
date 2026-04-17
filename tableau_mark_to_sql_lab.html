@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tableau Mark to SQL WHERE Lab</title>
+<script type="module" src="https://public.tableau.com/javascripts/api/tableau.embedding.3.latest.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #ffffff;
+    --surface: #f5f7fa;
+    --surface2: #ebeef2;
+    --border: #c8cdd3;
+    --accent: #005cc5;
+    --accent2: #22863a;
+    --accent3: #6f42c1;
+    --accent4: #b08800;
+    --text: #1a1a2e;
+    --text-dim: #5c6370;
+    --code-bg: #f0f4f8;
+    --success: #22863a;
+    --error: #cb2431;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'Noto Sans JP', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    min-height: 100vh;
+    padding-left: 240px;
+  }
+
+  /* ── Sidebar ── */
+  #sidebar {
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    width: 240px;
+    background: linear-gradient(180deg, #f5f7fa 0%, #ffffff 100%);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 14px 0 40px;
+    z-index: 50;
+  }
+  #sidebar::-webkit-scrollbar { width: 4px; }
+  #sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  #sidebar .nav-title {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--accent);
+    padding: 6px 16px 10px;
+    letter-spacing: 0.06em;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 8px;
+  }
+  #sidebar .nav-title span { color: var(--text-dim); }
+  #sidebar .nav-section {
+    padding: 10px 16px 4px;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  #sidebar .nav-item {
+    display: block;
+    padding: 7px 16px 7px 20px;
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #sidebar .nav-item:hover {
+    background: var(--surface2);
+    color: var(--text);
+  }
+  #sidebar .nav-item.active {
+    border-left-color: var(--accent);
+    background: rgba(0, 92, 197, 0.08);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  #sidebar .nav-num {
+    font-family: var(--mono);
+    color: var(--accent2);
+    font-size: 0.72rem;
+    margin-right: 8px;
+    opacity: 0.8;
+  }
+
+  /* ── Hero ── */
+  .hero {
+    padding: 60px 40px 40px;
+    text-align: center;
+    background: linear-gradient(160deg, #f5f7fa 0%, #eef3fa 50%, #ffffff 100%);
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -120px; right: -120px;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(0,92,197,0.10) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero .subtitle {
+    color: var(--text-dim);
+    font-size: 1rem;
+    margin-top: 8px;
+  }
+
+  /* ── Layout ── */
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px 80px;
+  }
+
+  /* ── Lab Section ── */
+  .lab {
+    margin-top: 48px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--surface);
+    scroll-margin-top: 20px;
+  }
+  .lab-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 24px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+  .lab-num {
+    font-family: var(--mono);
+    font-weight: 600;
+    color: var(--bg);
+    background: var(--accent);
+    width: 30px; height: 30px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 6px;
+    font-size: 0.85rem;
+  }
+  .lab-header h3 { font-size: 1.15rem; font-weight: 600; }
+  .lab-tag {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid;
+  }
+  .tag-basic { color: var(--accent); border-color: var(--accent); }
+  .tag-intermediate { color: var(--accent2); border-color: var(--accent2); }
+  .tag-advanced { color: var(--accent3); border-color: var(--accent3); }
+  .tag-key { color: var(--error); border-color: var(--error); }
+
+  .lab-body { padding: 24px; }
+  .lab-desc {
+    font-size: 0.92rem;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+    line-height: 1.8;
+  }
+  .lab-desc code {
+    font-family: var(--mono);
+    background: var(--code-bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.84rem;
+    color: var(--accent2);
+  }
+
+  /* ── Code Block ── */
+  .code-block {
+    position: relative;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin: 12px 0;
+    overflow: hidden;
+  }
+  .code-block-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+  }
+  .code-block pre {
+    padding: 12px 16px 14px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    line-height: 1.65;
+    color: var(--text);
+    white-space: pre;
+    tab-size: 2;
+  }
+  .copy-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    padding: 3px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .copy-btn.copied { border-color: var(--success); color: var(--success); }
+
+  /* ── Syntax Highlight ── */
+  .kw { color: #d73a49; }
+  .fn { color: #6f42c1; }
+  .str { color: #032f62; }
+  .cm { color: #6a737d; }
+  .num { color: #b08800; }
+
+  /* ── Diagram ── */
+  .diagram-box {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    line-height: 1.9;
+    overflow-x: auto;
+    white-space: pre;
+    color: var(--text-dim);
+    margin: 12px 0;
+  }
+
+  /* ── info-box ── */
+  .info-box {
+    border-radius: 8px;
+    padding: 12px 14px 12px 16px;
+    font-size: 0.88rem;
+    line-height: 1.75;
+    margin: 14px 0;
+    border-left: 3px solid;
+  }
+  .info-box strong { font-weight: 700; }
+  .info-box.ok   { border-color: var(--success); background: rgba(34,134,58,0.08);  color: #154f1e; }
+  .info-box.info { border-color: var(--accent);  background: rgba(0,92,197,0.08);   color: #003d8f; }
+  .info-box.warn { border-color: var(--accent4); background: rgba(176,136,0,0.08);  color: #7a5c00; }
+  .info-box.err  { border-color: var(--error);   background: rgba(203,36,49,0.08);  color: #9a1320; }
+  .info-box code {
+    font-family: var(--mono);
+    background: rgba(0,0,0,0.06);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 0.82rem;
+    color: var(--accent);
+  }
+
+  /* ── verify Before/After ── */
+  .verify {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 14px 0;
+  }
+  .verify-col {
+    border-radius: 7px;
+    padding: 11px 14px 13px;
+    font-size: 0.84rem;
+    line-height: 1.7;
+    border: 1px solid;
+  }
+  .verify-before { background: rgba(203,36,49,0.05); border-color: rgba(203,36,49,0.25); color: #6b1a22; }
+  .verify-after  { background: rgba(34,134,58,0.05); border-color: rgba(34,134,58,0.25); color: #154f1e; }
+  .verify-label {
+    font-family: var(--mono);
+    font-size: 0.64rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+    font-weight: 700;
+    opacity: 0.85;
+  }
+  .verify-before .verify-label { color: var(--error); }
+  .verify-after  .verify-label { color: var(--success); }
+
+  /* ── check-steps ── */
+  .check-steps {
+    background: rgba(176,136,0,0.06);
+    border: 1px solid rgba(176,136,0,0.30);
+    border-left: 3px solid var(--accent4);
+    border-radius: 7px;
+    padding: 11px 14px 11px 16px;
+    margin: 16px 0 4px;
+    font-size: 0.86rem;
+    line-height: 1.8;
+    color: #5c4400;
+  }
+  .check-steps-title {
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--accent4);
+    margin-bottom: 6px;
+  }
+  .check-steps ol { margin-left: 20px; margin-top: 2px; }
+  .check-steps li { margin-bottom: 3px; }
+  .check-steps code {
+    font-family: var(--mono);
+    background: rgba(0,0,0,0.06);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 0.8rem;
+    color: var(--accent);
+  }
+
+  /* ── beginner box ── */
+  .beginner-box {
+    background: rgba(111,66,193,0.06);
+    border: 1px solid rgba(111,66,193,0.25);
+    border-left: 3px solid var(--accent3);
+    border-radius: 7px;
+    padding: 11px 14px;
+    margin: 14px 0;
+    font-size: 0.86rem;
+    line-height: 1.8;
+    color: #3a1d6e;
+  }
+  .beginner-title {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    color: var(--accent3);
+    font-weight: 700;
+    margin-bottom: 5px;
+  }
+  .beginner-box pre.ascii-art {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    line-height: 1.45;
+    background: rgba(0,0,0,0.05);
+    padding: 10px 12px;
+    border-radius: 5px;
+    margin-top: 8px;
+    color: var(--text);
+    overflow-x: auto;
+  }
+
+  /* ── compare-table ── */
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.84rem;
+    margin: 12px 0 16px;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    overflow: hidden;
+  }
+  .compare-table th {
+    background: var(--surface2);
+    padding: 8px 12px;
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border);
+  }
+  .compare-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: top;
+  }
+  .compare-table tr:last-child td { border-bottom: none; }
+  .compare-table td:first-child { font-family: var(--mono); color: var(--accent2); }
+
+  /* ── Viz container ── */
+  .viz-container {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 16px 0;
+    min-height: 500px;
+    background: #fff;
+  }
+  .viz-container tableau-viz { width: 100%; min-height: 500px; }
+
+  /* ── Buttons ── */
+  .btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+  .btn {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn:active { transform: scale(0.97); }
+  .btn-accent { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
+  .btn-accent:hover { opacity: 0.85; color: var(--bg); }
+
+  /* ── Result area ── */
+  .result-area {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin: 12px 0;
+    min-height: 60px;
+    max-height: 400px;
+    overflow-y: auto;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .result-area .label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── Responsive ── */
+  @media (max-width: 900px) {
+    body { padding-left: 0; }
+    #sidebar {
+      position: static; width: 100%; height: auto;
+      border-right: none; border-bottom: 1px solid var(--border);
+      padding: 8px 0;
+    }
+    #sidebar .nav-item { padding: 6px 14px; font-size: 0.78rem; }
+    .verify { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 1.6rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════ SIDEBAR ════ -->
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// Mark <span>to SQL</span></div>
+  <div class="nav-section">課題と全体像</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>課題: なぜWHERE句が組めない？</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>解決アプローチ全体像</a>
+  <div class="nav-section">Step by Step</div>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>viz取得とワークシート一覧</a>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>getSelectedMarksAsync</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>getVisualSpecificationAsync</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>ディメンション列だけ抽出</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>ユニークタプル生成</a>
+  <div class="nav-section">統合</div>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>フィルタ + マーク統合</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>完成コード &amp; 実行</a>
+</nav>
+
+<!-- ════ HERO ════ -->
+<div class="hero">
+  <h1>Tableau Mark to SQL WHERE Lab</h1>
+  <p class="subtitle">マーク選択からSQL WHERE句を正確に構築する — Step by Step 解説</p>
+</div>
+
+<!-- ════ MAIN ════ -->
+<div class="container">
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- LAB 00 : 課題                                               -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<section class="lab" id="lab0">
+  <div class="lab-header">
+    <span class="lab-num">00</span>
+    <h3>課題: なぜマーク選択からWHERE句が組めないのか？</h3>
+    <span class="lab-tag tag-basic">PROBLEM</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Tableau Embedding API v3 でデータを取得するとき、<strong>フィルタ</strong>は
+      <code>fieldName</code> + <code>values</code> でWHERE句に直結します。
+      しかし<strong>マーク選択</strong>は全カラム（ディメンション＋メジャー）が混在して返るため、
+      どの列がWHERE句の条件になるか判別できません。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">--- 初心者向け: フィルタ vs マーク選択 ---</div>
+      フィルタ = ドロップダウンやスライダーでデータを絞る操作（SQL WHERE に直結）<br>
+      マーク選択 = チャート上のバーや点をCtrl+クリックする操作（行データが返るだけ）
+      <pre class="ascii-art">
+フィルタ API:                        マーク選択 API:
+┌─────────────────────┐              ┌─────────────────────────────────────┐
+│ fieldName: "Region" │              │ Category  | Sales  | Month | Profit│
+│ values: ["East"]    │              │ Furniture | 12345  | 01    | 500   │
+│                     │              │ Office    | 6789   | 02    | 200   │
+│ → WHERE直結!        │              │                                     │
+└─────────────────────┘              │ → どれがWHERE候補？ 全部？          │
+                                     └─────────────────────────────────────┘</pre>
+    </div>
+
+    <div class="verify">
+      <div class="verify-col verify-before">
+        <div class="verify-label">--- 問題: 個別IN方式 ---</div>
+        <code>WHERE Category IN ('A','B','C')</code><br>
+        <code>AND Month IN ('01','02','03')</code><br>
+        → 3x3 = <strong>9件</strong>ヒット（選択したのは3件だけ）<br>
+        存在しない組み合わせも取得してしまう
+      </div>
+      <div class="verify-col verify-after">
+        <div class="verify-label">--- 解決: タプル方式 ---</div>
+        <code>WHERE (Category='A' AND Month='01')</code><br>
+        <code>OR (Category='B' AND Month='02')</code><br>
+        <code>OR (Category='C' AND Month='03')</code><br>
+        → 正確に <strong>3件</strong>のみ
+      </div>
+    </div>
+
+    <div class="info-box warn">
+      <strong>核心的な問題:</strong> <code>getSelectedMarksAsync()</code> は
+      <code>Sales</code>（メジャー）も <code>Category</code>（ディメンション）も
+      区別なく返す。メジャーの集計値をWHEREに入れても意味がない。
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- LAB 01 : 解決アプローチ全体像                                 -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<section class="lab" id="lab1">
+  <div class="lab-header">
+    <span class="lab-num">01</span>
+    <h3>解決アプローチ全体像</h3>
+    <span class="lab-tag tag-intermediate">ARCHITECTURE</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>getVisualSpecificationAsync()</code> を使えば、各フィールドの
+      <code>role</code>（<code>"dimension"</code> / <code>"measure"</code>）と
+      ビジュアルエンコーディング上の配置（row / column / color / detail 等）がわかります。
+      これをマーク選択データのフィルタとして使い、ディメンション列だけ抽出します。
+    </p>
+
+    <div class="diagram-box">
+Step 1: viz取得                    document.getElementById('viz01')
+   │                                        │
+   ▼                                        ▼
+Step 2: マーク選択データ取得        ws.getSelectedMarksAsync()
+   │                              → columns: [Category, Sales, Month, Profit]
+   │                              → data:    [{Category:"A", Sales:100, ...}, ...]
+   │
+Step 3: ビジュアル構造取得          ws.getVisualSpecificationAsync()
+   │                              → rowFields:    [{name:"Category", role:"dimension"}, ...]
+   │                              → columnFields: [{name:"Month",    role:"dimension"}, ...]
+   │                              → encodings:    [{id:"color", field:{name:"Profitable", role:"dimension"}}]
+   │                              → (Sales, Profit は role:"measure" → 除外)
+   │
+Step 4: ディメンション列だけ抽出    columns.filter(c =&gt; dims.has(c.fieldName))
+   │                              → [Category, Month, Profitable]  (Sales, Profit 除外)
+   │
+Step 5: 行単位でユニークタプル      Set で重複排除
+   │                              → [{Category:"A", Month:"01"}, {Category:"B", Month:"02"}, ...]
+   │
+Step 6: WHERE句生成                (Category='A' AND Month='01') OR (Category='B' AND Month='02')
+    </div>
+
+    <table class="compare-table">
+      <tr>
+        <th>API</th>
+        <th>取得できるもの</th>
+        <th>WHERE句での役割</th>
+      </tr>
+      <tr>
+        <td>getFiltersAsync()</td>
+        <td>フィールド名 + 適用値</td>
+        <td>直接WHERE句に変換</td>
+      </tr>
+      <tr>
+        <td>getSelectedMarksAsync()</td>
+        <td>全カラムのデータ行</td>
+        <td>値はあるが列の役割が不明</td>
+      </tr>
+      <tr>
+        <td>getVisualSpecificationAsync()</td>
+        <td>各フィールドの role + 配置</td>
+        <td>ディメンション判定フィルタ</td>
+      </tr>
+    </table>
+
+    <div class="info-box info">
+      <strong>ポイント:</strong> <code>getVisualSpecificationAsync()</code> が返す
+      <code>role: "dimension"</code> が「WHERE候補」、
+      <code>role: "measure"</code> が「除外対象」です。
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- LAB 02 : viz取得とワークシート一覧                             -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<section class="lab" id="lab2">
+  <div class="lab-header">
+    <span class="lab-num">02</span>
+    <h3>Step 1: viz取得とワークシート一覧</h3>
+    <span class="lab-tag tag-basic">BASIC</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      まず <code>&lt;tableau-viz&gt;</code> 要素を取得し、ダッシュボード内のワークシート一覧を確認します。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JAVASCRIPT — F12 Console</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="cm">// Step 1: viz要素を取得</span>
+<span class="kw">const</span> viz = document.<span class="fn">getElementById</span>(<span class="str">'viz01'</span>);
+
+<span class="cm">// workbook が null なら viz がまだロード中</span>
+<span class="kw">if</span> (!viz?.workbook) { console.<span class="fn">error</span>(<span class="str">'viz not ready'</span>); }
+
+<span class="cm">// ダッシュボード内のワークシート一覧</span>
+<span class="kw">const</span> sheets = viz.workbook.activeSheet.worksheets;
+console.<span class="fn">table</span>(sheets.<span class="fn">map</span>(ws =&gt; ({ name: ws.name })));</pre>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">--- 初心者向け: オブジェクト階層 ---</div>
+      <pre class="ascii-art">
+&lt;tableau-viz id="viz01"&gt;     ← DOM要素
+  └── .workbook              ← Workbook オブジェクト
+       └── .activeSheet      ← Dashboard（またはWorksheet）
+            └── .worksheets  ← Worksheet[] の配列
+                 ├── [0] SaleMap
+                 ├── [1] Total Sales
+                 ├── [2] SalesbyProduct
+                 └── [3] SalesbySegment</pre>
+    </div>
+
+    <div class="result-area" id="result02">
+      <div class="label">OUTPUT</div>
+      実行ボタンを押すと結果が表示されます
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-accent" onclick="runStep02()">実行: ワークシート一覧</button>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- LAB 03 : getSelectedMarksAsync                               -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<section class="lab" id="lab3">
+  <div class="lab-header">
+    <span class="lab-num">03</span>
+    <h3>Step 2: getSelectedMarksAsync() — マーク選択データ取得</h3>
+    <span class="lab-tag tag-basic">BASIC</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>getSelectedMarksAsync()</code> はユーザーがCtrl+クリック等で選択したマークのデータを返します。
+      戻り値の <code>data[0]</code> が <code>DataTable</code> で、<code>columns</code> と <code>data</code>（行配列）を持ちます。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JAVASCRIPT — F12 Console</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="cm">// Step 2: マーク選択データを取得</span>
+(<span class="kw">async</span> () =&gt; {
+  <span class="kw">const</span> viz = document.<span class="fn">getElementById</span>(<span class="str">'viz01'</span>);
+  <span class="kw">const</span> sheets = viz.workbook.activeSheet.worksheets;
+
+  <span class="kw">for</span> (<span class="kw">const</span> ws <span class="kw">of</span> sheets) {
+    <span class="kw">const</span> marks = <span class="kw">await</span> ws.<span class="fn">getSelectedMarksAsync</span>();
+    <span class="kw">const</span> dt = marks.data?.[<span class="num">0</span>];
+
+    <span class="kw">if</span> (!dt || dt.totalRowCount === <span class="num">0</span>) <span class="kw">continue</span>;
+
+    <span class="cm">// columns: 全カラム情報（ディメンション+メジャー混在）</span>
+    console.<span class="fn">log</span>(<span class="str">`%c${ws.name}: ${dt.totalRowCount} marks`</span>,
+      <span class="str">'color:#0af;font-weight:bold'</span>);
+    console.<span class="fn">table</span>(dt.columns.<span class="fn">map</span>(c =&gt; ({
+      fieldName: c.fieldName,
+      dataType:  c.dataType,      <span class="cm">// string, float, bool, date-time</span>
+      index:     c.index
+    })));
+
+    <span class="cm">// data: 最初の3行をオブジェクト化して表示</span>
+    <span class="kw">const</span> cols = dt.columns.<span class="fn">map</span>(c =&gt; c.fieldName);
+    <span class="kw">const</span> sample = dt.data.<span class="fn">slice</span>(<span class="num">0</span>, <span class="num">3</span>).<span class="fn">map</span>(row =&gt; {
+      <span class="kw">const</span> r = {};
+      cols.<span class="fn">forEach</span>((c, i) =&gt;
+        r[c] = row[i].formattedValue ?? row[i].value);
+      <span class="kw">return</span> r;
+    });
+    console.<span class="fn">table</span>(sample);
+  }
+})();</pre>
+    </div>
+
+    <div class="info-box warn">
+      <strong>ここが問題:</strong> <code>columns</code> に <code>Sales</code> (float) も
+      <code>Category</code> (string) も並んでおり、
+      <strong>dataType だけでは判別不可能</strong>（日付ディメンションも float のメジャーも混在するため）。
+    </div>
+
+    <div class="result-area" id="result03">
+      <div class="label">OUTPUT</div>
+      チャート上でマークをCtrl+クリックしてから実行してください
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-accent" onclick="runStep03()">実行: マーク選択データ</button>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- LAB 04 : getVisualSpecificationAsync                         -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<section class="lab" id="lab4">
+  <div class="lab-header">
+    <span class="lab-num">04</span>
+    <h3>Step 3: getVisualSpecificationAsync() — ビジュアル構造取得</h3>
+    <span class="lab-tag tag-key">KEY API</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>getVisualSpecificationAsync()</code> が返すオブジェクトには
+      <code>rowFields</code>、<code>columnFields</code>、<code>marksSpecifications[n].encodings</code> があり、
+      各フィールドの <code>role</code>（<code>"dimension"</code> / <code>"measure"</code>）がわかります。
+      <strong>これが dimension/measure を判別する唯一の方法です。</strong>
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JAVASCRIPT — F12 Console</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="cm">// Step 3: ビジュアルエンコーディング構造を確認</span>
+(<span class="kw">async</span> () =&gt; {
+  <span class="kw">const</span> viz = document.<span class="fn">getElementById</span>(<span class="str">'viz01'</span>);
+  <span class="kw">const</span> sheets = viz.workbook.activeSheet.worksheets;
+
+  <span class="kw">for</span> (<span class="kw">const</span> ws <span class="kw">of</span> sheets) {
+    <span class="kw">const</span> spec = <span class="kw">await</span> ws.<span class="fn">getVisualSpecificationAsync</span>();
+    <span class="kw">const</span> ms = spec.marksSpecifications[spec.activeMarksSpecificationIndex];
+
+    <span class="cm">// rowFields / columnFields の role を確認</span>
+    <span class="kw">const</span> rows = spec.rowFields.<span class="fn">map</span>(f =&gt;
+      `${f.role === <span class="str">'dimension'</span> ? <span class="str">'&#x1f511;'</span> : <span class="str">'&#x1f4ca;'</span>} ${f.name}`);
+    <span class="kw">const</span> cols = spec.columnFields.<span class="fn">map</span>(f =&gt;
+      `${f.role === <span class="str">'dimension'</span> ? <span class="str">'&#x1f511;'</span> : <span class="str">'&#x1f4ca;'</span>} ${f.name}`);
+
+    <span class="cm">// encodings（color, detail, tooltip 等）</span>
+    <span class="kw">const</span> encs = ms.encodings.<span class="fn">map</span>(e =&gt;
+      `${e.field.role === <span class="str">'dimension'</span> ? <span class="str">'&#x1f511;'</span> : <span class="str">'&#x1f4ca;'</span>} ${e.field.name} [${e.id}]`);
+
+    console.<span class="fn">log</span>(<span class="str">`%c${ws.name} (${ms.primitiveType})`</span>,
+      <span class="str">'color:#0af;font-size:13px;font-weight:bold'</span>);
+    console.<span class="fn">log</span>(<span class="str">'  Rows:     '</span>, rows.join(<span class="str">' | '</span>) || <span class="str">'(none)'</span>);
+    console.<span class="fn">log</span>(<span class="str">'  Columns:  '</span>, cols.join(<span class="str">' | '</span>) || <span class="str">'(none)'</span>);
+    console.<span class="fn">log</span>(<span class="str">'  Encodings:'</span>, encs.join(<span class="str">' | '</span>) || <span class="str">'(none)'</span>);
+
+    <span class="cm">// WHERE候補 = dimension だけ</span>
+    <span class="kw">const</span> dims = [];
+    spec.rowFields.<span class="fn">filter</span>(f =&gt; f.role === <span class="str">'dimension'</span>).<span class="fn">forEach</span>(f =&gt; dims.<span class="fn">push</span>(f.name));
+    spec.columnFields.<span class="fn">filter</span>(f =&gt; f.role === <span class="str">'dimension'</span>).<span class="fn">forEach</span>(f =&gt; dims.<span class="fn">push</span>(f.name));
+    ms.encodings.<span class="fn">filter</span>(e =&gt; e.field.role === <span class="str">'dimension'</span>).<span class="fn">forEach</span>(e =&gt; dims.<span class="fn">push</span>(e.field.name));
+    console.<span class="fn">log</span>(<span class="str">`  %cWHERE&#20505;&#35036;: ${[...<span class="kw">new</span> Set(dims)].join(<span class="str">', '</span>)}`</span>, <span class="str">'color:#ff0'</span>);
+    console.<span class="fn">log</span>(<span class="str">''</span>);
+  }
+})();</pre>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">--- 初心者向け: VisualSpecification の構造 ---</div>
+      Tableauのチャートは「行(Row)」「列(Column)」「マークカード(Encodings)」で構成されます。
+      各フィールドには <code>role</code> プロパティがあり、ディメンションかメジャーかを判別できます。
+      <pre class="ascii-art">
+getVisualSpecificationAsync() の戻り値:
+┌──────────────────────────────────────────────┐
+│ rowFields:     [{name, role, dataType}, ...]  │  ← 行シェルフ
+│ columnFields:  [{name, role, dataType}, ...]  │  ← 列シェルフ
+│ marksSpecifications[n]:                       │
+│   primitiveType: "bar" | "area" | "circle"... │
+│   encodings:                                  │
+│     ├── {id:"color",   field:{name, role}}    │  ← 色
+│     ├── {id:"detail",  field:{name, role}}    │  ← 詳細
+│     └── {id:"tooltip", field:{name, role}}    │  ← ツールチップ
+└──────────────────────────────────────────────┘
+  role: "dimension" → WHERE候補
+  role: "measure"   → 除外（集計値）</pre>
+    </div>
+
+    <div class="result-area" id="result04">
+      <div class="label">OUTPUT</div>
+      実行ボタンを押すと結果が表示されます
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-accent" onclick="runStep04()">実行: ビジュアル構造確認</button>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- LAB 05 : ディメンション列だけ抽出                              -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<section class="lab" id="lab5">
+  <div class="lab-header">
+    <span class="lab-num">05</span>
+    <h3>Step 4: マークデータからディメンション列だけ抽出</h3>
+    <span class="lab-tag tag-intermediate">FILTER</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Step 3 で得たディメンション名の <code>Set</code> を使って、
+      Step 2 のマークデータの <code>columns</code> をフィルタし、
+      ディメンション列だけを残します。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JAVASCRIPT — ディメンション列フィルタ</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="cm">// Step 4: マークデータのカラムをディメンションだけに絞る</span>
+
+<span class="cm">// dimNames: Step 3 で取得した dimension 名の Set</span>
+<span class="cm">// dt:       Step 2 で取得した DataTable (marks.data[0])</span>
+
+<span class="kw">const</span> dimCols = dt.columns.<span class="fn">filter</span>(c =&gt; dimNames.<span class="fn">has</span>(c.fieldName));
+
+<span class="cm">// 結果確認</span>
+console.<span class="fn">table</span>(dimCols.<span class="fn">map</span>(c =&gt; ({
+  fieldName: c.fieldName,
+  index: c.index,
+  status: <span class="str">'WHERE候補'</span>
+})));
+
+<span class="cm">// 除外されたメジャー列も確認</span>
+<span class="kw">const</span> excluded = dt.columns.<span class="fn">filter</span>(c =&gt; !dimNames.<span class="fn">has</span>(c.fieldName));
+console.<span class="fn">table</span>(excluded.<span class="fn">map</span>(c =&gt; ({
+  fieldName: c.fieldName,
+  index: c.index,
+  status: <span class="str">'除外（メジャー）'</span>
+})));</pre>
+    </div>
+
+    <div class="verify">
+      <div class="verify-col verify-before">
+        <div class="verify-label">--- Before: 全カラム ---</div>
+        Order Profitable? (bool)<br>
+        Category (string)<br>
+        <strong>Sales (float) ← メジャー</strong><br>
+        <strong>Profit (float) ← メジャー</strong><br>
+        Month (date-time)<br>
+        Sub-Category (string)
+      </div>
+      <div class="verify-col verify-after">
+        <div class="verify-label">--- After: ディメンションのみ ---</div>
+        Order Profitable? (bool)<br>
+        Category (string)<br>
+        Month (date-time)<br>
+        Sub-Category (string)<br>
+        <br>
+        <em>Sales, Profit は除外済み</em>
+      </div>
+    </div>
+
+    <div class="result-area" id="result05">
+      <div class="label">OUTPUT</div>
+      実行ボタンを押すと結果が表示されます
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-accent" onclick="runStep05()">実行: ディメンション列フィルタ</button>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- LAB 06 : ユニークタプル生成                                    -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<section class="lab" id="lab6">
+  <div class="lab-header">
+    <span class="lab-num">06</span>
+    <h3>Step 5: 行単位でユニークタプルを生成</h3>
+    <span class="lab-tag tag-key">KEY STEP</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ディメンション列だけに絞ったデータを<strong>行単位</strong>で処理し、
+      <code>Set</code> で重複を排除してユニークな組み合わせ（タプル）の配列にします。
+      これが最終的にSQL WHERE句の各条件になります。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JAVASCRIPT — タプル生成</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="cm">// Step 5: 行単位でユニークタプルを抽出</span>
+
+<span class="kw">const</span> seen = <span class="kw">new</span> Set();
+<span class="kw">const</span> tuples = [];
+
+<span class="kw">for</span> (<span class="kw">const</span> row <span class="kw">of</span> dt.data) {
+  <span class="cm">// ディメンション列だけでオブジェクトを構築</span>
+  <span class="kw">const</span> obj = {};
+  dimCols.<span class="fn">forEach</span>(c =&gt;
+    obj[c.fieldName] = row[c.index].formattedValue
+                     ?? String(row[c.index].value));
+
+  <span class="cm">// JSON文字列化してSetで重複チェック</span>
+  <span class="kw">const</span> key = JSON.<span class="fn">stringify</span>(obj);
+  <span class="kw">if</span> (!seen.<span class="fn">has</span>(key)) {
+    seen.<span class="fn">add</span>(key);
+    tuples.<span class="fn">push</span>(obj);
+  }
+}
+
+console.<span class="fn">log</span>(<span class="str">`${tuples.length} unique tuples`</span>);
+console.<span class="fn">table</span>(tuples.<span class="fn">slice</span>(<span class="num">0</span>, <span class="num">10</span>));</pre>
+    </div>
+
+    <div class="info-box info">
+      <strong>なぜ行単位か？</strong>
+      個別INだと <code>Category IN ('A','B') AND Month IN ('01','02')</code> は
+      4件ヒット（A-01, A-02, B-01, B-02）。行単位なら
+      <code>(A, 01) OR (B, 02)</code> で正確に2件だけヒット。
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">--- 初心者向け: 交差積の罠 ---</div>
+      <pre class="ascii-art">
+【個別IN方式】 各列を独立に IN → 交差積（実際にない組み合わせも含む）
+  Category IN (A, B)  ×  Month IN (01, 02)  = 4パターン
+   A-01 ← 選択あり
+   A-02 ← 選択なし!  ← 不要データ
+   B-01 ← 選択なし!  ← 不要データ
+   B-02 ← 選択あり
+
+【タプル方式】 行ごとの組み合わせで OR → 正確
+  (A AND 01) OR (B AND 02)  = 2パターン
+   A-01 ← 選択あり
+   B-02 ← 選択あり</pre>
+    </div>
+
+    <div class="result-area" id="result06">
+      <div class="label">OUTPUT</div>
+      マークを選択してから実行してください
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-accent" onclick="runStep06()">実行: タプル生成</button>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- LAB 07 : フィルタ + マーク統合                                 -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<section class="lab" id="lab7">
+  <div class="lab-header">
+    <span class="lab-num">07</span>
+    <h3>Step 6: フィルタ条件とマーク条件の統合</h3>
+    <span class="lab-tag tag-advanced">COMBINE</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      実際のアプリケーションでは、<strong>フィルタ（ドロップダウン等）</strong>と
+      <strong>マーク選択（Ctrl+クリック）</strong>が同時に適用されます。
+      フィルタは個別AND、マークはタプルOR、この2つを統合してWHERE句を生成します。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JAVASCRIPT — 統合ロジック</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="cm">// フィルタ → WHERE パーツ</span>
+<span class="kw">const</span> filterClauses = [];
+<span class="kw">for</span> (<span class="kw">const</span> f <span class="kw">of</span> <span class="kw">await</span> ws.<span class="fn">getFiltersAsync</span>()) {
+  <span class="cm">// Actionフィルタ（ダッシュボード連携）は除外</span>
+  <span class="kw">if</span> (/^(Action|アクション)\s*\(/.test(f.fieldName)) <span class="kw">continue</span>;
+
+  <span class="kw">if</span> (f.filterType === <span class="str">'categorical'</span> &amp;&amp; !f.isAllSelected) {
+    <span class="kw">const</span> vals = f.appliedValues.<span class="fn">map</span>(a =&gt; a.value);
+    filterClauses.<span class="fn">push</span>(
+      vals.length === <span class="num">1</span>
+        ? <span class="str">`[${f.fieldName}] = '${vals[0]}'`</span>
+        : <span class="str">`[${f.fieldName}] IN (${vals.<span class="fn">map</span>(v =&gt; `'${v}'`).join(<span class="str">', '</span>)})`</span>
+    );
+  } <span class="kw">else if</span> (f.filterType === <span class="str">'range'</span>) {
+    <span class="kw">if</span> (f.minValue?.value != <span class="kw">null</span>)
+      filterClauses.<span class="fn">push</span>(<span class="str">`[${f.fieldName}] >= '${f.minValue.value}'`</span>);
+    <span class="kw">if</span> (f.maxValue?.value != <span class="kw">null</span>)
+      filterClauses.<span class="fn">push</span>(<span class="str">`[${f.fieldName}] <= '${f.maxValue.value}'`</span>);
+  }
+}
+
+<span class="cm">// マークタプル → WHERE パーツ</span>
+<span class="kw">const</span> markClause = tuples.<span class="fn">map</span>(t =&gt; {
+  <span class="kw">const</span> parts = Object.<span class="fn">entries</span>(t)
+    .<span class="fn">map</span>(([k, v]) =&gt; <span class="str">`[${k}] = '${v}'`</span>);
+  <span class="kw">return</span> <span class="str">`(${parts.join(<span class="str">' AND '</span>)})`</span>;
+}).join(<span class="str">'\n   OR '</span>);
+
+<span class="cm">// 統合</span>
+<span class="kw">let</span> where = <span class="str">'WHERE '</span>;
+<span class="kw">if</span> (filterClauses.length &gt; <span class="num">0</span>)
+  where += filterClauses.join(<span class="str">'\n  AND '</span>);
+<span class="kw">if</span> (filterClauses.length &gt; <span class="num">0</span> &amp;&amp; markClause)
+  where += <span class="str">'\n  AND '</span>;
+<span class="kw">if</span> (markClause)
+  where += <span class="str">`(\n   ${markClause}\n  )`</span>;</pre>
+    </div>
+
+    <div class="diagram-box">
+統合後のWHERE句:
+
+WHERE [Region] = 'East'                            ← フィルタ由来
+  AND [Order Date] >= '2011-01-01'                 ← フィルタ由来（range）
+  AND [Order Date] <= '2014-12-31'                 ← フィルタ由来（range）
+  AND (                                            ← マーク選択由来（タプル）
+    ([Category] = 'Furniture'  AND [Sub-Category] = 'Tables'      AND [Month] = '2011-01')
+    OR ([Category] = 'Office'  AND [Sub-Category] = 'Binders'     AND [Month] = '2011-02')
+    OR ([Category] = 'Tech'    AND [Sub-Category] = 'Accessories' AND [Month] = '2011-03')
+  )
+    </div>
+
+    <div class="info-box ok">
+      <strong>フィルタ AND (マーク OR マーク OR ...)</strong> の構造で、
+      フィルタの絞り込みとマーク選択の正確な組み合わせが両立します。
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- LAB 08 : 完成コード & 実行                                    -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<section class="lab" id="lab8">
+  <div class="lab-header">
+    <span class="lab-num">08</span>
+    <h3>完成コード: マーク選択 → タプル配列取得</h3>
+    <span class="lab-tag tag-advanced">COMPLETE</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Step 1〜5 を統合した完成コードです。マーク選択があるシートからディメンションのみの
+      ユニークなレコードオブジェクト配列を返します。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JAVASCRIPT — 完成版（F12コンソールに貼り付け）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre id="finalCode"><span class="cm">// マーク選択 → ディメンションタプル配列を取得</span>
+(<span class="kw">async</span> () =&gt; {
+  <span class="kw">const</span> viz = document.<span class="fn">getElementById</span>(<span class="str">'viz01'</span>);
+  <span class="kw">if</span> (!viz?.workbook) { console.<span class="fn">error</span>(<span class="str">'viz not ready'</span>); <span class="kw">return</span>; }
+
+  <span class="kw">const</span> sheets = viz.workbook.activeSheet.worksheets
+               || [viz.workbook.activeSheet];
+  <span class="kw">const</span> allResults = {};
+
+  <span class="kw">for</span> (<span class="kw">const</span> ws <span class="kw">of</span> sheets) {
+    <span class="cm">// Step 2: マーク選択データ取得</span>
+    <span class="kw">const</span> dt = (<span class="kw">await</span> ws.<span class="fn">getSelectedMarksAsync</span>()).data?.[<span class="num">0</span>];
+    <span class="kw">if</span> (!dt || dt.totalRowCount === <span class="num">0</span>) <span class="kw">continue</span>;
+
+    <span class="cm">// Step 3: VisualSpec → dimension列だけ特定</span>
+    <span class="kw">const</span> spec = <span class="kw">await</span> ws.<span class="fn">getVisualSpecificationAsync</span>();
+    <span class="kw">const</span> ms = spec.marksSpecifications[
+                  spec.activeMarksSpecificationIndex];
+    <span class="kw">const</span> dimNames = <span class="kw">new</span> Set();
+    spec.rowFields
+      .<span class="fn">filter</span>(f =&gt; f.role === <span class="str">'dimension'</span>)
+      .<span class="fn">forEach</span>(f =&gt; dimNames.<span class="fn">add</span>(f.name));
+    spec.columnFields
+      .<span class="fn">filter</span>(f =&gt; f.role === <span class="str">'dimension'</span>)
+      .<span class="fn">forEach</span>(f =&gt; dimNames.<span class="fn">add</span>(f.name));
+    ms.encodings
+      .<span class="fn">filter</span>(e =&gt; e.field.role === <span class="str">'dimension'</span>)
+      .<span class="fn">forEach</span>(e =&gt; dimNames.<span class="fn">add</span>(e.field.name));
+
+    <span class="cm">// Step 4: マークデータからディメンション列だけ抽出</span>
+    <span class="kw">const</span> dimCols = dt.columns
+      .<span class="fn">filter</span>(c =&gt; dimNames.<span class="fn">has</span>(c.fieldName));
+
+    <span class="cm">// Step 5: 行単位でユニークタプル</span>
+    <span class="kw">const</span> seen = <span class="kw">new</span> Set();
+    <span class="kw">const</span> tuples = [];
+    <span class="kw">for</span> (<span class="kw">const</span> row <span class="kw">of</span> dt.data) {
+      <span class="kw">const</span> obj = {};
+      dimCols.<span class="fn">forEach</span>(c =&gt;
+        obj[c.fieldName] = row[c.index].formattedValue
+                         ?? String(row[c.index].value));
+      <span class="kw">const</span> key = JSON.<span class="fn">stringify</span>(obj);
+      <span class="kw">if</span> (!seen.<span class="fn">has</span>(key)) {
+        seen.<span class="fn">add</span>(key);
+        tuples.<span class="fn">push</span>(obj);
+      }
+    }
+
+    allResults[ws.name] = tuples;
+  }
+
+  console.<span class="fn">log</span>(allResults);
+  <span class="kw">return</span> allResults;
+})();</pre>
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">動作確認手順</div>
+      <ol>
+        <li>下のTableauダッシュボードが表示されるまで待つ</li>
+        <li>チャート上のバーや地図のマークを <strong>Ctrl+クリック</strong> で複数選択</li>
+        <li>「実行: タプル配列取得」ボタンを押す</li>
+        <li>OUTPUT にディメンションのみのレコード配列が表示される</li>
+        <li>Sales / Profit 等のメジャー列が <strong>含まれていないこと</strong> を確認</li>
+      </ol>
+    </div>
+
+    <!-- Tableau Viz -->
+    <div class="viz-container">
+      <tableau-viz id="viz01"
+        src="https://public.tableau.com/views/Superstore_embedded_800x800/Overview"
+        toolbar="bottom"
+        hide-tabs>
+      </tableau-viz>
+    </div>
+
+    <div class="result-area" id="result08">
+      <div class="label">OUTPUT</div>
+      マークを選択してから実行してください
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-accent" onclick="runFinal()">実行: タプル配列取得</button>
+      <button class="btn" onclick="clearMarks()">マーク選択クリア</button>
+    </div>
+  </div>
+</section>
+
+</div><!-- /container -->
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- SCRIPTS                                                     -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<script>
+// ── Copy button ──
+function copyCode(btn) {
+  const pre = btn.closest('.code-block').querySelector('pre');
+  navigator.clipboard.writeText(pre.textContent).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+// ── Helper: get viz ──
+function getViz() {
+  const viz = document.getElementById('viz01');
+  if (!viz?.workbook) { alert('Tableau vizがまだロードされていません。少し待ってから再実行してください。'); return null; }
+  return viz;
+}
+function show(id, text) {
+  document.getElementById(id).innerHTML = '<div class="label">OUTPUT</div>' + text;
+}
+
+// ── Step 02: ワークシート一覧 ──
+async function runStep02() {
+  const viz = getViz(); if (!viz) return;
+  const sheets = viz.workbook.activeSheet.worksheets;
+  const lines = sheets.map(ws => `  - ${ws.name}`).join('\n');
+  show('result02', `Dashboard: ${viz.workbook.activeSheet.name}\nWorksheets (${sheets.length}):\n${lines}`);
+}
+
+// ── Step 03: マーク選択データ ──
+async function runStep03() {
+  const viz = getViz(); if (!viz) return;
+  const sheets = viz.workbook.activeSheet.worksheets;
+  let out = '';
+  for (const ws of sheets) {
+    const dt = (await ws.getSelectedMarksAsync()).data?.[0];
+    if (!dt || dt.totalRowCount === 0) continue;
+    out += `\n[${ws.name}] ${dt.totalRowCount} marks selected\n`;
+    out += 'Columns:\n';
+    dt.columns.forEach(c => out += `  ${c.fieldName} (${c.dataType})\n`);
+    const cols = dt.columns.map(c => c.fieldName);
+    out += 'Sample rows:\n';
+    dt.data.slice(0, 3).forEach(row => {
+      const r = {};
+      cols.forEach((c, i) => r[c] = row[i].formattedValue ?? row[i].value);
+      out += '  ' + JSON.stringify(r) + '\n';
+    });
+  }
+  show('result03', out || 'No marks selected. Ctrl+click marks on the chart first.');
+}
+
+// ── Step 04: VisualSpec ──
+async function runStep04() {
+  const viz = getViz(); if (!viz) return;
+  const sheets = viz.workbook.activeSheet.worksheets;
+  let out = '';
+  for (const ws of sheets) {
+    const spec = await ws.getVisualSpecificationAsync();
+    const ms = spec.marksSpecifications[spec.activeMarksSpecificationIndex];
+    out += `\n[${ws.name}] markType: ${ms.primitiveType}\n`;
+    const rows = spec.rowFields.map(f => `${f.role === 'dimension' ? '\u{1f511}' : '\u{1f4ca}'} ${f.name}`);
+    const cols = spec.columnFields.map(f => `${f.role === 'dimension' ? '\u{1f511}' : '\u{1f4ca}'} ${f.name}`);
+    const encs = ms.encodings.map(e => `${e.field.role === 'dimension' ? '\u{1f511}' : '\u{1f4ca}'} ${e.field.name} [${e.id}]`);
+    out += `  Rows:      ${rows.join(' | ') || '(none)'}\n`;
+    out += `  Columns:   ${cols.join(' | ') || '(none)'}\n`;
+    out += `  Encodings: ${encs.join(' | ') || '(none)'}\n`;
+    const dims = [];
+    spec.rowFields.filter(f => f.role === 'dimension').forEach(f => dims.push(f.name));
+    spec.columnFields.filter(f => f.role === 'dimension').forEach(f => dims.push(f.name));
+    ms.encodings.filter(e => e.field.role === 'dimension').forEach(e => dims.push(e.field.name));
+    out += `  WHERE\u5019\u88DC: ${[...new Set(dims)].join(', ') || '(none)'}\n`;
+  }
+  show('result04', out);
+}
+
+// ── Step 05: ディメンション列フィルタ ──
+async function runStep05() {
+  const viz = getViz(); if (!viz) return;
+  const sheets = viz.workbook.activeSheet.worksheets;
+  let out = '';
+  for (const ws of sheets) {
+    const dt = (await ws.getSelectedMarksAsync()).data?.[0];
+    if (!dt || dt.totalRowCount === 0) continue;
+    const spec = await ws.getVisualSpecificationAsync();
+    const ms = spec.marksSpecifications[spec.activeMarksSpecificationIndex];
+    const dimNames = new Set();
+    spec.rowFields.filter(f => f.role === 'dimension').forEach(f => dimNames.add(f.name));
+    spec.columnFields.filter(f => f.role === 'dimension').forEach(f => dimNames.add(f.name));
+    ms.encodings.filter(e => e.field.role === 'dimension').forEach(e => dimNames.add(e.field.name));
+    const dimCols = dt.columns.filter(c => dimNames.has(c.fieldName));
+    const excluded = dt.columns.filter(c => !dimNames.has(c.fieldName));
+    out += `\n[${ws.name}]\n`;
+    out += `  WHERE\u5019\u88DC (dimension):\n`;
+    dimCols.forEach(c => out += `    \u2713 ${c.fieldName} (${c.dataType})\n`);
+    out += `  \u9664\u5916 (measure):\n`;
+    excluded.forEach(c => out += `    \u2717 ${c.fieldName} (${c.dataType})\n`);
+  }
+  show('result05', out || 'No marks selected.');
+}
+
+// ── Step 06: タプル生成 ──
+async function runStep06() {
+  const viz = getViz(); if (!viz) return;
+  const sheets = viz.workbook.activeSheet.worksheets;
+  let out = '';
+  for (const ws of sheets) {
+    const dt = (await ws.getSelectedMarksAsync()).data?.[0];
+    if (!dt || dt.totalRowCount === 0) continue;
+    const spec = await ws.getVisualSpecificationAsync();
+    const ms = spec.marksSpecifications[spec.activeMarksSpecificationIndex];
+    const dimNames = new Set();
+    spec.rowFields.filter(f => f.role === 'dimension').forEach(f => dimNames.add(f.name));
+    spec.columnFields.filter(f => f.role === 'dimension').forEach(f => dimNames.add(f.name));
+    ms.encodings.filter(e => e.field.role === 'dimension').forEach(e => dimNames.add(e.field.name));
+    const dimCols = dt.columns.filter(c => dimNames.has(c.fieldName));
+    const seen = new Set();
+    const tuples = [];
+    for (const row of dt.data) {
+      const obj = {};
+      dimCols.forEach(c => obj[c.fieldName] = row[c.index].formattedValue ?? String(row[c.index].value));
+      const key = JSON.stringify(obj);
+      if (!seen.has(key)) { seen.add(key); tuples.push(obj); }
+    }
+    out += `\n[${ws.name}] ${tuples.length} unique tuples (from ${dt.totalRowCount} marks)\n`;
+    tuples.slice(0, 10).forEach((t, i) => out += `  ${i + 1}. ${JSON.stringify(t)}\n`);
+    if (tuples.length > 10) out += `  ... +${tuples.length - 10} more\n`;
+  }
+  show('result06', out || 'No marks selected.');
+}
+
+// ── Step 08: 完成版 ──
+async function runFinal() {
+  const viz = getViz(); if (!viz) return;
+  const sheets = viz.workbook.activeSheet.worksheets || [viz.workbook.activeSheet];
+  const allResults = {};
+  for (const ws of sheets) {
+    const dt = (await ws.getSelectedMarksAsync()).data?.[0];
+    if (!dt || dt.totalRowCount === 0) continue;
+    const spec = await ws.getVisualSpecificationAsync();
+    const ms = spec.marksSpecifications[spec.activeMarksSpecificationIndex];
+    const dimNames = new Set();
+    spec.rowFields.filter(f => f.role === 'dimension').forEach(f => dimNames.add(f.name));
+    spec.columnFields.filter(f => f.role === 'dimension').forEach(f => dimNames.add(f.name));
+    ms.encodings.filter(e => e.field.role === 'dimension').forEach(e => dimNames.add(e.field.name));
+    const dimCols = dt.columns.filter(c => dimNames.has(c.fieldName));
+    const seen = new Set();
+    const tuples = [];
+    for (const row of dt.data) {
+      const obj = {};
+      dimCols.forEach(c => obj[c.fieldName] = row[c.index].formattedValue ?? String(row[c.index].value));
+      const key = JSON.stringify(obj);
+      if (!seen.has(key)) { seen.add(key); tuples.push(obj); }
+    }
+    allResults[ws.name] = tuples;
+  }
+  const keys = Object.keys(allResults);
+  if (keys.length === 0) {
+    show('result08', 'No marks selected. Ctrl+click marks on the chart first.');
+    return;
+  }
+  let out = '';
+  for (const [sheet, tuples] of Object.entries(allResults)) {
+    out += `[${sheet}] ${tuples.length} tuples\n`;
+    out += JSON.stringify(tuples, null, 2) + '\n';
+  }
+  show('result08', out);
+}
+
+// ── Clear marks ──
+async function clearMarks() {
+  const viz = getViz(); if (!viz) return;
+  const sheets = viz.workbook.activeSheet.worksheets;
+  for (const ws of sheets) {
+    try { await ws.clearSelectedMarksAsync(); } catch (e) { /* ignore */ }
+  }
+  show('result08', 'All marks cleared.');
+}
+
+// ── Sidebar active tracking ──
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    const id = entry.target.id;
+    const link = document.querySelector(`#sidebar .nav-item[href="#${id}"]`);
+    if (link) link.classList.toggle('active', entry.isIntersecting);
+  });
+}, { rootMargin: '-20% 0px -70% 0px' });
+document.querySelectorAll('.lab[id]').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
