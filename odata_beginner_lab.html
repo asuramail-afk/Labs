@@ -1,0 +1,1510 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OData 入門 Lab — 初心者向け網羅実機確認</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+/* Sidebar */
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+/* Hero */
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+/* TOC */
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+/* Container & Lab cards */
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+/* Code block */
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+/* Syntax token colors */
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+.op { color:#d73a49; } .url-part { color:#005cc5; font-weight:600; }
+
+/* info-box */
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+/* verify */
+.verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+  line-height:1.7; border:1px solid; }
+.verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+.verify-before .verify-label { color:var(--error); }
+.verify-after  .verify-label { color:var(--success); }
+
+/* check-steps */
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+/* compare-table */
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+.compare-table .yes { color:var(--success); } .compare-table .no { color:var(--error); }
+
+/* beginner-box */
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+/* usecase-box */
+.usecase-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:6px; }
+.usecase-list { margin-left:20px; margin-bottom:10px; }
+.usecase-list li { margin-bottom:4px; }
+.usecase-trigger { background:rgba(0,92,197,.05); border-left:3px solid var(--accent);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#003d8f; margin-top:8px; }
+.usecase-trigger ul { margin:4px 0 0 20px; }
+
+/* livedemo */
+.livedemo { margin:14px 0; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+.livedemo-bar { display:flex; align-items:center; gap:12px; padding:8px 12px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.toggle-btn { font-family:var(--mono); font-size:.78rem; padding:5px 14px;
+  border-radius:6px; border:1px solid var(--accent); background:var(--accent);
+  color:#fff; cursor:pointer; transition:all .15s; }
+.toggle-btn:hover { opacity:.85; }
+.toggle-btn.is-before { background:var(--error); border-color:var(--error); }
+.toggle-label { font-family:var(--mono); font-size:.78rem; color:var(--text-dim); }
+.livedemo-stage { padding:16px; background:var(--bg); }
+.livedemo-stage.is-before { outline:2px dashed var(--error); outline-offset:-8px; }
+.livedemo-stage .ld-before { display:none; }
+.livedemo-stage.is-before .ld-before { display:block; }
+.livedemo-stage.is-before .ld-after { display:none; }
+.ld-panel { padding:12px; border-radius:6px; font-family:var(--mono); font-size:11px; line-height:1.6; white-space:pre-wrap; word-break:break-all; }
+.ld-panel.bad { background:#fee2e2; border:1px solid #cb2431; color:#6b1a22; }
+.ld-panel.good { background:#dcfce7; border:1px solid #22863a; color:#166534; }
+
+/* try-box */
+.try-box { background:rgba(34,134,58,.06); border:1px solid rgba(34,134,58,.30);
+  border-left:3px solid var(--success); border-radius:7px;
+  padding:12px 14px; margin:14px 0; font-size:.86rem; line-height:1.8; color:#154f1e; }
+.try-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--success); font-weight:700; margin-bottom:6px; }
+.try-box ol { margin-left:20px; margin-top:4px; }
+.try-box ol li { margin-bottom:4px; }
+.try-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--success); }
+.try-tip { background:rgba(176,136,0,.06); border-left:3px solid var(--accent4);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#5c4400; margin-top:8px; }
+.try-tip strong { color:var(--accent4); }
+.try-skeleton { background:#f0f4f8; border:1px solid var(--border); border-radius:5px;
+  padding:10px 12px; margin-top:8px; font-family:var(--mono); font-size:.78rem;
+  color:var(--text); white-space:pre; overflow-x:auto; line-height:1.5; }
+
+/* code-pair */
+.code-pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; }
+.code-pair-col { display:flex; flex-direction:column; min-width:0; }
+.code-pair-label { font-family:var(--mono); font-size:.72rem; letter-spacing:.05em;
+  font-weight:700; padding:6px 10px; border-radius:6px 6px 0 0; }
+.code-pair-before .code-pair-label { background:rgba(203,36,49,.10); color:#9a1320;
+  border:1px solid rgba(203,36,49,.30); border-bottom:none; }
+.code-pair-after  .code-pair-label { background:rgba(34,134,58,.10); color:#154f1e;
+  border:1px solid rgba(34,134,58,.30); border-bottom:none; }
+.code-pair-col .code-block { margin:0; border-radius:0 0 8px 8px; flex:1; }
+.code-pair-before .code-block { border-color:rgba(203,36,49,.30); }
+.code-pair-after  .code-block { border-color:rgba(34,134,58,.30); }
+@media (max-width:900px){ .code-pair { grid-template-columns:1fr; } }
+
+/* url-builder (このLab独自) */
+.url-builder { background:var(--code-bg); border:1px solid var(--border);
+  border-radius:8px; padding:14px; margin:12px 0; font-family:var(--mono); font-size:.84rem; line-height:1.9; }
+.url-builder .url-line { word-break:break-all; }
+.url-builder .url-base { color:var(--text-dim); }
+.url-builder .url-entity { color:var(--accent2); font-weight:600; }
+.url-builder .url-query { color:var(--accent); font-weight:600; }
+.url-builder .url-note { display:block; font-family:var(--sans); font-size:.78rem;
+  color:var(--text-dim); margin-top:6px; padding-left:16px; border-left:2px solid var(--border); }
+
+/* external-try (外部URLを新規タブで開く) */
+.external-try { display:inline-block; margin:6px 4px 6px 0; padding:6px 12px;
+  background:var(--accent); color:#fff; text-decoration:none; border-radius:5px;
+  font-family:var(--mono); font-size:.78rem; transition:all .15s; }
+.external-try:hover { background:var(--accent2); }
+.external-try::before { content:'🌐 '; }
+
+/* Responsive */
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .verify { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// OData 入門 Lab <span>v1.0</span></div>
+  <div class="nav-section">基礎概念</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>ODataとは何か</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>サービスルート</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>メタデータ</a>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>Entity取得</a>
+  <div class="nav-section">クエリオプション</div>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>$filter 条件絞込</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>$select 列指定</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>$orderby 並び順</a>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>$top / $skip</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>$count 件数</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>$expand 関連取得</a>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>$search 全文検索</a>
+  <div class="nav-section">CRUD操作</div>
+  <a class="nav-item" href="#lab11"><span class="nav-num">11</span>POST 作成</a>
+  <a class="nav-item" href="#lab12"><span class="nav-num">12</span>PATCH 更新</a>
+  <a class="nav-item" href="#lab13"><span class="nav-num">13</span>DELETE 削除</a>
+  <div class="nav-section">応用</div>
+  <a class="nav-item" href="#lab14"><span class="nav-num">14</span>関数とラムダ式</a>
+  <a class="nav-item" href="#lab15"><span class="nav-num">15</span>Excelで接続</a>
+</nav>
+
+<div class="hero">
+  <h1>OData 入門 Lab</h1>
+  <p class="subtitle">ブラウザのURLバーだけでも試せる、初心者向け網羅実機確認ラボ</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次 — 16 Labs</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>ODataとは何か</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>サービスルートURL</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>$metadataでスキーマ参照</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>Entity単体とコレクション取得</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>$filter で条件絞込</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>$select で列を指定</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>$orderby で並び替え</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>$top / $skip でページング</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>$count で件数取得</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>$expand で関連データ取得</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">10</span>$search で全文検索</a>
+    <a class="toc-item" href="#lab11"><span class="toc-num">11</span>POST で新規作成</a>
+    <a class="toc-item" href="#lab12"><span class="toc-num">12</span>PATCH で部分更新</a>
+    <a class="toc-item" href="#lab13"><span class="toc-num">13</span>DELETE で削除</a>
+    <a class="toc-item" href="#lab14"><span class="toc-num">14</span>OData関数とラムダ式</a>
+    <a class="toc-item" href="#lab15"><span class="toc-num">15</span>ExcelでOData接続</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ============== Lab 0: ODataとは何か ============== -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>ODataとは何か — URLでSQLが書けるREST API規格</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      OData (Open Data Protocol) は、REST API を<strong>標準化</strong>するプロトコル。URLに <code>$filter</code> <code>$select</code> などのクエリオプションを付けることで、SQLのような操作ができる。本Labでは公開サンプル <code>services.odata.org</code> を使って実機確認する。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 ざっくりイメージ</div>
+      普通のREST APIは「設計者ごとにバラバラ」。ODataは「世界共通の作法」。一度覚えれば、SAP / Dynamics 365 / SharePoint / OutSystems など、あらゆるODataサーバに同じクエリが通じる。
+      <pre class="ascii-art">
+普通のREST              OData
+──────────              ─────
+/api/products           /Products
+/api/product_list       /Products
+/api/v2/items           /Products        ← 全部同じ書き方になる
+
+絞込も:
+?keyword=coffee         ?$filter=contains(Name,'coffee')
+?search_word=coffee     ?$filter=contains(Name,'coffee')
+?q=coffee               ?$filter=contains(Name,'coffee')
+      </pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>構成要素</th><th>SQL/RDBでの呼称</th><th>ODataでの呼称</th></tr></thead>
+      <tbody>
+        <tr><td>データベース</td><td>DB</td><td>Service</td></tr>
+        <tr><td>テーブル</td><td>Table</td><td>Entity Set</td></tr>
+        <tr><td>1行のレコード</td><td>Row</td><td>Entity</td></tr>
+        <tr><td>列</td><td>Column</td><td>Property</td></tr>
+        <tr><td>主キー</td><td>Primary Key</td><td>Key</td></tr>
+        <tr><td>外部キー・関連</td><td>Foreign Key</td><td>Navigation Property</td></tr>
+      </tbody>
+    </table>
+
+    <a class="external-try" href="https://services.odata.org/V4/Northwind/Northwind.svc/" target="_blank" rel="noopener">公開ODataサービスを開いてみる</a>
+  </div>
+</div>
+
+<!-- ============== Lab 1: サービスルート ============== -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>サービスルートURL — ODataサーバの入口</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ODataサーバは「サービスルートURL」を持つ。このURLを開くと、そのサーバが公開している <strong>Entity Setの一覧</strong>(=テーブル一覧相当) が返る。本Labでは公開サンプル <code>Northwind</code> を使う。
+    </p>
+
+    <div class="url-builder">
+      <div class="url-line">
+        <span class="url-base">https://services.odata.org/V4/Northwind/Northwind.svc</span><span class="url-query">/</span>
+      </div>
+      <span class="url-note">末尾のスラッシュが「ここがサービスルートですよ」の合図。</span>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>レスポンスJSON(抜粋)</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// GET https://services.odata.org/V4/Northwind/Northwind.svc/</span>
+{
+  <span class="str">"@odata.context"</span>: <span class="str">"https://services.odata.org/V4/Northwind/Northwind.svc/$metadata"</span>,
+  <span class="str">"value"</span>: [
+    { <span class="str">"name"</span>: <span class="str">"Categories"</span>,  <span class="str">"kind"</span>: <span class="str">"EntitySet"</span>, <span class="str">"url"</span>: <span class="str">"Categories"</span>  },
+    { <span class="str">"name"</span>: <span class="str">"Customers"</span>,   <span class="str">"kind"</span>: <span class="str">"EntitySet"</span>, <span class="str">"url"</span>: <span class="str">"Customers"</span>   },
+    { <span class="str">"name"</span>: <span class="str">"Products"</span>,    <span class="str">"kind"</span>: <span class="str">"EntitySet"</span>, <span class="str">"url"</span>: <span class="str">"Products"</span>    },
+    { <span class="str">"name"</span>: <span class="str">"Orders"</span>,      <span class="str">"kind"</span>: <span class="str">"EntitySet"</span>, <span class="str">"url"</span>: <span class="str">"Orders"</span>      }
+    <span class="cm">// ... 他にも多数</span>
+  ]
+}</pre>
+    </div>
+
+    <a class="external-try" href="https://services.odata.org/V4/Northwind/Northwind.svc/" target="_blank" rel="noopener">Northwindサービスルートを開く</a>
+  </div>
+</div>
+
+<!-- ============== Lab 2: メタデータ ============== -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>$metadata — スキーマを機械可読に公開</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ODataの最大の強み。<code>/$metadata</code> エンドポイントでサーバが自分のスキーマ (テーブル/列/関連) を <strong>XML形式</strong>で公開する。Excel/Power BI/Tableau などのツールはこれを読んで自動的にスキーマを認識する。
+    </p>
+
+    <div class="url-builder">
+      <div class="url-line">
+        <span class="url-base">https://services.odata.org/V4/Northwind/Northwind.svc</span><span class="url-query">/$metadata</span>
+      </div>
+      <span class="url-note"><code>$metadata</code> は固定語。どのODataサーバでも同じ場所にある。</span>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>$metadata XML(抜粋)</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">&lt;!-- GET .../Northwind.svc/$metadata --&gt;</span>
+&lt;<span class="tag">EntityType</span> <span class="attr">Name</span>=<span class="val">"Product"</span>&gt;
+  &lt;<span class="tag">Key</span>&gt;&lt;<span class="tag">PropertyRef</span> <span class="attr">Name</span>=<span class="val">"ProductID"</span>/&gt;&lt;/<span class="tag">Key</span>&gt;
+  &lt;<span class="tag">Property</span> <span class="attr">Name</span>=<span class="val">"ProductID"</span>   <span class="attr">Type</span>=<span class="val">"Edm.Int32"</span>  <span class="attr">Nullable</span>=<span class="val">"false"</span>/&gt;
+  &lt;<span class="tag">Property</span> <span class="attr">Name</span>=<span class="val">"ProductName"</span> <span class="attr">Type</span>=<span class="val">"Edm.String"</span> <span class="attr">Nullable</span>=<span class="val">"false"</span>/&gt;
+  &lt;<span class="tag">Property</span> <span class="attr">Name</span>=<span class="val">"UnitPrice"</span>   <span class="attr">Type</span>=<span class="val">"Edm.Decimal"</span>/&gt;
+  &lt;<span class="tag">NavigationProperty</span> <span class="attr">Name</span>=<span class="val">"Category"</span> <span class="attr">Type</span>=<span class="val">"NorthwindModel.Category"</span>/&gt;
+&lt;/<span class="tag">EntityType</span>&gt;</pre>
+    </div>
+
+    <a class="external-try" href="https://services.odata.org/V4/Northwind/Northwind.svc/$metadata" target="_blank" rel="noopener">$metadataを開く</a>
+  </div>
+</div>
+
+<!-- ============== Lab 3: Entity取得 ============== -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>Entity取得 — コレクションと単体</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      EntitySet名をURLに付けて <code>GET</code> すれば一覧取得、末尾にキー値を括弧で付けると単体取得になる。文字列キーは <code>'シングルクォート'</code> で囲む。
+    </p>
+
+    <div class="url-builder">
+      <div class="url-line">
+        <span class="url-base">.../Northwind.svc</span><span class="url-entity">/Products</span>
+        <span class="url-note">→ Products の一覧 (全件 or 先頭N件)</span>
+      </div>
+      <div class="url-line" style="margin-top:10px;">
+        <span class="url-base">.../Northwind.svc</span><span class="url-entity">/Products(1)</span>
+        <span class="url-note">→ ProductID=1 の単体取得</span>
+      </div>
+      <div class="url-line" style="margin-top:10px;">
+        <span class="url-base">.../Northwind.svc</span><span class="url-entity">/Customers('ALFKI')</span>
+        <span class="url-note">→ 文字列キーはシングルクォートで囲む</span>
+      </div>
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ よくある誤り</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>文字列キーを素で書く</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># 400 Bad Request になる</span>
+.../Customers(<span class="num">ALFKI</span>)</pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ 正しい</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>シングルクォートで囲む</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># 200 OK</span>
+.../Customers(<span class="str">'ALFKI'</span>)</pre>
+        </div>
+      </div>
+    </div>
+
+    <a class="external-try" href="https://services.odata.org/V4/Northwind/Northwind.svc/Products" target="_blank" rel="noopener">Products一覧</a>
+    <a class="external-try" href="https://services.odata.org/V4/Northwind/Northwind.svc/Products(1)" target="_blank" rel="noopener">Products(1) 単体</a>
+    <a class="external-try" href="https://services.odata.org/V4/Northwind/Northwind.svc/Customers('ALFKI')" target="_blank" rel="noopener">Customers('ALFKI') 単体</a>
+  </div>
+</div>
+
+<!-- ============== Lab 4: $filter ============== -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>$filter — 条件で絞り込む (WHERE句相当)</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ODataの中で<strong>最も頻出</strong>のクエリオプション。SQLのWHERE句に相当する。演算子が <code>=</code>ではなく<code>eq</code>など独特なので注意。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>意味</th><th>SQL</th><th>OData</th><th>例</th></tr></thead>
+      <tbody>
+        <tr><td>等しい</td><td>=</td><td>eq</td><td>Country eq 'JP'</td></tr>
+        <tr><td>等しくない</td><td>&lt;&gt;</td><td>ne</td><td>Status ne 'Cancelled'</td></tr>
+        <tr><td>より大きい</td><td>&gt;</td><td>gt</td><td>Price gt 100</td></tr>
+        <tr><td>以上</td><td>&gt;=</td><td>ge</td><td>Price ge 100</td></tr>
+        <tr><td>より小さい</td><td>&lt;</td><td>lt</td><td>Stock lt 10</td></tr>
+        <tr><td>以下</td><td>&lt;=</td><td>le</td><td>Stock le 10</td></tr>
+        <tr><td>かつ</td><td>AND</td><td>and</td><td>A and B</td></tr>
+        <tr><td>または</td><td>OR</td><td>or</td><td>A or B</td></tr>
+        <tr><td>否定</td><td>NOT</td><td>not</td><td>not (A)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="url-builder">
+      <div class="url-line">
+        <span class="url-base">.../Northwind.svc</span><span class="url-entity">/Products</span><span class="url-query">?$filter=UnitPrice gt 20</span>
+      </div>
+      <span class="url-note">→ 単価が20より大きい商品のみ</span>
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ SQL感覚で書く</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>演算子を間違える</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>?$filter=UnitPrice &gt; <span class="num">20</span>
+?$filter=Country = <span class="str">'JP'</span>
+<span class="cm"># どちらも構文エラー</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ OData流</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>演算子は英字</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>?$filter=UnitPrice <span class="op">gt</span> <span class="num">20</span>
+?$filter=Country <span class="op">eq</span> <span class="str">'JP'</span>
+<span class="cm"># eq / ne / gt / ge / lt / le</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <a class="external-try" href="https://services.odata.org/V4/Northwind/Northwind.svc/Products?$filter=UnitPrice gt 20" target="_blank" rel="noopener">単価&gt;20で絞込</a>
+    <a class="external-try" href="https://services.odata.org/V4/Northwind/Northwind.svc/Customers?$filter=Country eq 'Germany'" target="_blank" rel="noopener">ドイツの顧客のみ</a>
+    <a class="external-try" href="https://services.odata.org/V4/Northwind/Northwind.svc/Products?$filter=UnitPrice gt 20 and UnitsInStock lt 10" target="_blank" rel="noopener">高額かつ在庫薄</a>
+  </div>
+</div>
+
+<!-- ============== Lab 5: $select ============== -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>$select — 欲しい列だけを取得 (SELECT句相当)</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      デフォルトだとEntityの<strong>全列</strong>が返る。必要な列だけ絞ることで、転送量とレスポンス時間を大幅削減できる。
+    </p>
+
+    <div class="url-builder">
+      <div class="url-line">
+        <span class="url-base">.../Products</span><span class="url-query">?$select=ProductName,UnitPrice</span>
+      </div>
+      <span class="url-note">→ 商品名と単価だけ返す。カンマで複数指定。</span>
+    </div>
+
+    <div class="verify">
+      <div class="verify-col verify-before">
+        <div class="verify-label">Before ▶︎ $select なし</div>
+        <pre style="font-family:var(--mono); font-size:11px; white-space:pre-wrap;">{ "ProductID": 1,
+  "ProductName": "Chai",
+  "SupplierID": 1,
+  "CategoryID": 1,
+  "QuantityPerUnit": "10 boxes x 20 bags",
+  "UnitPrice": 18.0000,
+  "UnitsInStock": 39,
+  "UnitsOnOrder": 0,
+  "ReorderLevel": 10,
+  "Discontinued": false }</pre>
+      </div>
+      <div class="verify-col verify-after">
+        <div class="verify-label">After ▶︎ $select=ProductName,UnitPrice</div>
+        <pre style="font-family:var(--mono); font-size:11px;">{ "ProductName": "Chai",
+  "UnitPrice": 18.0000 }
+
+→ 転送量 約1/5</pre>
+      </div>
+    </div>
+
+    <a class="external-try" href="https://services.odata.org/V4/Northwind/Northwind.svc/Products?$select=ProductName,UnitPrice" target="_blank" rel="noopener">商品名と単価のみ</a>
+  </div>
+</div>
+
+<!-- ============== Lab 6: $orderby ============== -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>$orderby — 並び順の指定 (ORDER BY相当)</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      昇順は <code>asc</code>、降順は <code>desc</code>。省略時は昇順。カンマ区切りで複数キーのソート (第1キー→第2キー) も可能。
+    </p>
+
+    <div class="url-builder">
+      <div class="url-line">
+        <span class="url-base">.../Products</span><span class="url-query">?$orderby=UnitPrice desc</span>
+      </div>
+      <span class="url-note">→ 高い順</span>
+      <div class="url-line" style="margin-top:10px;">
+        <span class="url-base">.../Products</span><span class="url-query">?$orderby=CategoryID asc,UnitPrice desc</span>
+      </div>
+      <span class="url-note">→ カテゴリ昇順 → 各カテゴリ内で価格降順</span>
+    </div>
+
+    <a class="external-try" href="https://services.odata.org/V4/Northwind/Northwind.svc/Products?$orderby=UnitPrice desc" target="_blank" rel="noopener">高い順</a>
+    <a class="external-try" href="https://services.odata.org/V4/Northwind/Northwind.svc/Products?$orderby=UnitPrice asc" target="_blank" rel="noopener">安い順</a>
+  </div>
+</div>
+
+<!-- ============== Lab 7: $top / $skip ============== -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>$top / $skip — ページング (LIMIT/OFFSET相当)</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>$top=N</code> で先頭N件、<code>$skip=M</code> でM件スキップ。組合わせると<strong>ページング</strong>になる。必ず <code>$orderby</code> と併用すること (順序がランダムだとページ境界で重複/欠落する)。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 ページング計算式</div>
+      <pre class="ascii-art">
+1ページ = pageSize 件
+
+ページ番号 → $skip の値
+────────    ───────────
+  1ページ目  $skip=0,  $top=pageSize
+  2ページ目  $skip=pageSize,   $top=pageSize
+  3ページ目  $skip=pageSize*2, $top=pageSize
+  Nページ目  $skip=pageSize*(N-1), $top=pageSize
+      </pre>
+    </div>
+
+    <div class="url-builder">
+      <div class="url-line">
+        <span class="url-base">.../Products</span><span class="url-query">?$orderby=ProductID&$top=5</span>
+      </div>
+      <span class="url-note">→ 1ページ目(先頭5件)</span>
+      <div class="url-line" style="margin-top:10px;">
+        <span class="url-base">.../Products</span><span class="url-query">?$orderby=ProductID&$skip=5&$top=5</span>
+      </div>
+      <span class="url-note">→ 2ページ目(6〜10件目)</span>
+    </div>
+
+    <a class="external-try" href="https://services.odata.org/V4/Northwind/Northwind.svc/Products?$orderby=ProductID&$top=5" target="_blank" rel="noopener">1ページ目</a>
+    <a class="external-try" href="https://services.odata.org/V4/Northwind/Northwind.svc/Products?$orderby=ProductID&$skip=5&$top=5" target="_blank" rel="noopener">2ページ目</a>
+  </div>
+</div>
+
+<!-- ============== Lab 8: $count ============== -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>$count — 件数取得 (COUNT(*)相当)</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      2つの書き方がある。<strong>(A)</strong> データと一緒に総件数を含める <code>?$count=true</code>。<strong>(B)</strong> 件数のみを数値で返す <code>/$count</code>。ページングのUIで「全体で何件中、今ここ」を表示するときに必須。
+    </p>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">方式A: データ + 件数</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>?$count=true</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># URL</span>
+/Products?$filter=UnitPrice gt 20&amp;$count=true
+
+<span class="cm"># レスポンス</span>
+{
+  <span class="str">"@odata.count"</span>: <span class="num">35</span>,
+  <span class="str">"value"</span>: [ <span class="cm">/* データ配列 */</span> ]
+}</pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">方式B: 件数のみ</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>/$count</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># URL</span>
+/Products/$count?$filter=UnitPrice gt 20
+
+<span class="cm"># レスポンス (text/plain)</span>
+<span class="num">35</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <a class="external-try" href="https://services.odata.org/V4/Northwind/Northwind.svc/Products/$count" target="_blank" rel="noopener">全Products件数</a>
+    <a class="external-try" href="https://services.odata.org/V4/Northwind/Northwind.svc/Products?$count=true&$top=3" target="_blank" rel="noopener">データ+件数(先頭3件)</a>
+  </div>
+</div>
+
+<!-- ============== Lab 9: $expand ============== -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>$expand — 関連Entity同時取得 (JOIN相当)</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Navigation Property (外部キー関連) を辿って、関連するEntityのデータも同時に取得できる。SQLの <code>JOIN</code> や ORM の Eager Loading に相当する。過剰な<code>$expand</code>はN+1問題の原因になるので注意。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 イメージ</div>
+      <pre class="ascii-art">
+Products テーブル          Categories テーブル
+┌─────────────┐           ┌───────────────┐
+│ ProductID   │           │ CategoryID    │
+│ ProductName │           │ CategoryName  │
+│ CategoryID  │──関連────→│ Description   │
+└─────────────┘           └───────────────┘
+
+$expand=Category を付けると、
+ProductのレスポンスにCategoryオブジェクトも同梱される:
+{
+  "ProductName": "Chai",
+  "Category": { "CategoryName": "Beverages", ... }
+}
+      </pre>
+    </div>
+
+    <div class="url-builder">
+      <div class="url-line">
+        <span class="url-base">.../Products(1)</span><span class="url-query">?$expand=Category</span>
+      </div>
+      <span class="url-note">→ 商品1件 + そのカテゴリ</span>
+      <div class="url-line" style="margin-top:10px;">
+        <span class="url-base">.../Categories(1)</span><span class="url-query">?$expand=Products</span>
+      </div>
+      <span class="url-note">→ カテゴリ1件 + 配下の全商品 (1対多の逆方向)</span>
+      <div class="url-line" style="margin-top:10px;">
+        <span class="url-base">.../Products</span><span class="url-query">?$expand=Category($select=CategoryName)&$select=ProductName</span>
+      </div>
+      <span class="url-note">→ $expand内にも $select を入れ子可能 (v4)</span>
+    </div>
+
+    <a class="external-try" href="https://services.odata.org/V4/Northwind/Northwind.svc/Products(1)?$expand=Category" target="_blank" rel="noopener">商品+カテゴリ</a>
+    <a class="external-try" href="https://services.odata.org/V4/Northwind/Northwind.svc/Categories(1)?$expand=Products" target="_blank" rel="noopener">カテゴリ+商品群</a>
+  </div>
+</div>
+
+<!-- ============== Lab 10: $search ============== -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>$search — 全文検索 (LIKE ではない)</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>$filter</code> は「どの列が何の値か」を厳密指定する構造化検索。<code>$search</code> は「どこでもいいから単語が含まれる行」を探す全文検索。実装の有無はサーバ依存 (Northwindは $search 未対応)。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>観点</th><th>$filter</th><th>$search</th></tr></thead>
+      <tbody>
+        <tr><td>指定内容</td><td>列名と値</td><td>検索語句のみ</td></tr>
+        <tr><td>検索対象</td><td>指定した列</td><td>サーバが決めた全列</td></tr>
+        <tr><td>例</td><td><code>$filter=contains(Name,'tea')</code></td><td><code>$search=tea</code></td></tr>
+        <tr><td>論理演算</td><td>and/or/not</td><td>AND/OR/NOT (大文字)</td></tr>
+        <tr><td>実装</td><td>必須</td><td>任意 (サーバ次第)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="url-builder">
+      <div class="url-line">
+        <span class="url-base">.../Products</span><span class="url-query">?$search=tea</span>
+      </div>
+      <span class="url-note">→ "tea" を含むあらゆる列の商品</span>
+      <div class="url-line" style="margin-top:10px;">
+        <span class="url-base">.../Products</span><span class="url-query">?$search="green tea" AND NOT bottle</span>
+      </div>
+      <span class="url-note">→ フレーズ検索と否定</span>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ 公開サンプルのNorthwindは $search 未対応。部分一致は Lab04 の <code>contains()</code> 関数を使うこと。
+    </div>
+  </div>
+</div>
+
+<!-- ============== Lab 11: POST 作成 ============== -->
+<div class="lab" id="lab11">
+  <div class="lab-header">
+    <div class="lab-num">11</div>
+    <h3>POST — 新規Entity作成 (Create)</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      HTTPメソッド <code>POST</code> + EntitySetのURL + JSONボディ で新規作成。成功時は <code>201 Created</code> と作成されたEntityが返る。サーバで自動付与されるID等も含まれる。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>HTTPリクエスト</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">POST</span> /odata/Products <span class="cm">HTTP/1.1</span>
+<span class="prop">Content-Type</span>: application/json
+
+{
+  <span class="str">"ProductName"</span>: <span class="str">"Onigiri Tuna"</span>,
+  <span class="str">"UnitPrice"</span>: <span class="num">180</span>,
+  <span class="str">"CategoryID"</span>: <span class="num">3</span>
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>HTTPレスポンス (201 Created)</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">HTTP/1.1 201 Created</span>
+<span class="prop">Content-Type</span>: application/json
+
+{
+  <span class="str">"@odata.context"</span>: <span class="str">"$metadata#Products/$entity"</span>,
+  <span class="str">"ProductID"</span>: <span class="num">101</span>,    <span class="cm">// サーバが自動採番</span>
+  <span class="str">"ProductName"</span>: <span class="str">"Onigiri Tuna"</span>,
+  <span class="str">"UnitPrice"</span>: <span class="num">180</span>,
+  <span class="str">"CategoryID"</span>: <span class="num">3</span>
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JavaScript fetch で試す</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'/odata/Products'</span>, {
+  method: <span class="str">'POST'</span>,
+  headers: { <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
+  body: <span class="fn">JSON</span>.stringify({
+    ProductName: <span class="str">'Onigiri Tuna'</span>,
+    UnitPrice: <span class="num">180</span>,
+    CategoryID: <span class="num">3</span>
+  })
+});
+<span class="kw">const</span> created = <span class="kw">await</span> res.<span class="fn">json</span>();
+<span class="fn">console</span>.<span class="fn">log</span>(created.ProductID); <span class="cm">// 自動採番されたID</span></pre>
+    </div>
+
+    <div class="info-box info">
+      📘 公開Northwindは読み取り専用のため、POST/PATCH/DELETEは実機では試せない。自社のOData APIか、下の練習用サイトで試そう。
+    </div>
+    <a class="external-try" href="https://services.odata.org/V4/(S(readwrite))/OData/OData.svc/" target="_blank" rel="noopener">OData.org 読み書き可能サンプル</a>
+  </div>
+</div>
+
+<!-- ============== Lab 12: PATCH 更新 ============== -->
+<div class="lab" id="lab12">
+  <div class="lab-header">
+    <div class="lab-num">12</div>
+    <h3>PATCH — 部分更新 (Update)</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      更新には <code>PUT</code> と <code>PATCH</code> の2種類。<strong>実務ではPATCHが主流</strong>。PUTは「指定しなかった列がクリアされる」危険があるため。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>メソッド</th><th>挙動</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr><td>PUT</td><td>全置換。送らなかった列は<span class="no">デフォルト値/NULLになる</span></td><td>Entity全体を差し替えたい時</td></tr>
+        <tr><td>PATCH</td><td>部分更新。送った列<span class="yes">だけ</span>が変わる</td><td>1〜数項目の変更 (主流)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ PUT の落とし穴</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>価格だけ変えたいのに</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">PUT</span> /Products(101)
+{ <span class="str">"UnitPrice"</span>: <span class="num">200</span> }
+
+<span class="cm"># ProductName や CategoryID が</span>
+<span class="cm"># NULL になる可能性！</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ PATCH で安全に</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>送った列だけ更新</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">PATCH</span> /Products(101)
+{ <span class="str">"UnitPrice"</span>: <span class="num">200</span> }
+
+<span class="cm"># UnitPrice だけ 200 になる</span>
+<span class="cm"># 他の列はそのまま</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box ok">
+      ✅ 成功時は <code>204 No Content</code> (ボディなし) が標準。更新後の値が欲しい場合は<code>Prefer: return=representation</code>ヘッダを付ける。
+    </div>
+  </div>
+</div>
+
+<!-- ============== Lab 13: DELETE 削除 ============== -->
+<div class="lab" id="lab13">
+  <div class="lab-header">
+    <div class="lab-num">13</div>
+    <h3>DELETE — Entity削除</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      HTTPメソッド <code>DELETE</code> + キー指定URLで削除。ボディなし。成功時 <code>204 No Content</code>。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>HTTPリクエスト</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">DELETE</span> /odata/Products(<span class="num">101</span>) <span class="cm">HTTP/1.1</span>
+<span class="cm"># ボディは不要</span></pre>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>楽観的排他制御</strong>: <code>If-Match: W/"etag値"</code> ヘッダを付けると、他者が更新済みの場合 <code>412 Precondition Failed</code> で防がれる。重要データの削除時は必ず付けること。
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>fetchで試す</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'/odata/Products(101)'</span>, {
+  method: <span class="str">'DELETE'</span>
+});
+<span class="kw">if</span> (res.status === <span class="num">204</span>) {
+  <span class="fn">console</span>.<span class="fn">log</span>(<span class="str">'削除成功'</span>);
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ============== Lab 14: 関数とラムダ式 ============== -->
+<div class="lab" id="lab14">
+  <div class="lab-header">
+    <div class="lab-num">14</div>
+    <h3>OData関数とラムダ式 — 高度な絞込</h3>
+    <span class="lab-tag tag-advanced">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      $filter の中で使える<strong>組み込み関数</strong>と、コレクション (関連の多側) に対する<strong>ラムダ式</strong> <code>any/all</code>。複雑な検索要件はほぼこれで実装できる。
+    </p>
+
+    <h4 style="margin:16px 0 8px; font-family:var(--mono); font-size:.9rem; color:var(--accent);">文字列関数</h4>
+    <table class="compare-table">
+      <thead><tr><th>関数</th><th>意味</th><th>例</th></tr></thead>
+      <tbody>
+        <tr><td>contains(s, t)</td><td>t を含む</td><td>contains(ProductName,'tea')</td></tr>
+        <tr><td>startswith(s, t)</td><td>t で始まる</td><td>startswith(ProductName,'Ch')</td></tr>
+        <tr><td>endswith(s, t)</td><td>t で終わる</td><td>endswith(Email,'@gmail.com')</td></tr>
+        <tr><td>tolower(s)</td><td>小文字化</td><td>tolower(Name) eq 'chai'</td></tr>
+        <tr><td>toupper(s)</td><td>大文字化</td><td>toupper(Code) eq 'ABC'</td></tr>
+        <tr><td>length(s)</td><td>文字長</td><td>length(Name) gt 10</td></tr>
+      </tbody>
+    </table>
+
+    <h4 style="margin:16px 0 8px; font-family:var(--mono); font-size:.9rem; color:var(--accent);">日付関数</h4>
+    <table class="compare-table">
+      <thead><tr><th>関数</th><th>意味</th><th>例</th></tr></thead>
+      <tbody>
+        <tr><td>year(d)</td><td>年</td><td>year(OrderDate) eq 2026</td></tr>
+        <tr><td>month(d)</td><td>月</td><td>month(OrderDate) eq 4</td></tr>
+        <tr><td>day(d)</td><td>日</td><td>day(OrderDate) eq 15</td></tr>
+        <tr><td>now()</td><td>現在日時</td><td>OrderDate lt now()</td></tr>
+      </tbody>
+    </table>
+
+    <h4 style="margin:16px 0 8px; font-family:var(--mono); font-size:.9rem; color:var(--accent);">ラムダ式 (コレクション判定)</h4>
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 any と all の違い</div>
+      <pre class="ascii-art">
+any: 配下に「1件でも」条件を満たすレコードがあるか
+all: 配下の「すべて」が条件を満たすか
+
+例: CategoriesのProducts (1対多) を条件に
+────────────────────────────────────────
+Products/any(p: p/UnitPrice gt 100)
+  → 商品が1つでも100超ならtrue (高額商品あり)
+
+Products/all(p: p/Discontinued eq false)
+  → 全商品が廃盤でない (現役カテゴリ)
+      </pre>
+    </div>
+
+    <div class="url-builder">
+      <div class="url-line">
+        <span class="url-base">.../Products</span><span class="url-query">?$filter=contains(ProductName,'Chai')</span>
+      </div>
+      <span class="url-note">→ 部分一致検索</span>
+      <div class="url-line" style="margin-top:10px;">
+        <span class="url-base">.../Categories</span><span class="url-query">?$filter=Products/any(p: p/UnitPrice gt 100)</span>
+      </div>
+      <span class="url-note">→ 高額商品を1つ以上持つカテゴリのみ</span>
+    </div>
+
+    <a class="external-try" href="https://services.odata.org/V4/Northwind/Northwind.svc/Products?$filter=contains(ProductName,'Chai')" target="_blank" rel="noopener">Chai を含む商品</a>
+    <a class="external-try" href="https://services.odata.org/V4/Northwind/Northwind.svc/Products?$filter=startswith(ProductName,'Ch')" target="_blank" rel="noopener">Ch で始まる商品</a>
+  </div>
+</div>
+
+<!-- ============== Lab 15: Excelで接続 ============== -->
+<div class="lab" id="lab15">
+  <div class="lab-header">
+    <div class="lab-num">15</div>
+    <h3>ExcelでOData接続 — コードを書かずに試す</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ExcelはODataをネイティブサポート。<code>$metadata</code>を自動解析して列や関連を認識する。ツールにとって「繋いだ瞬間にスキーマが分かる」ODataの強みを体感できる。
+    </p>
+
+    <div class="info-box info">
+      📘 <strong>手順</strong>: Excel → [データ] タブ → [データの取得] → [その他のデータソースから] → [OData フィードから]
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>Excelに貼り付けるURL</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>https://services.odata.org/V4/Northwind/Northwind.svc/</pre>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 Excelが裏で何をしているか</div>
+      <pre class="ascii-art">
+① Excel → GET /Northwind.svc/$metadata
+          ↓ XML返却
+② Excel がスキーマを解析してテーブル一覧表示
+          ↓ 選択
+③ Excel → GET /Northwind.svc/Products
+          ↓ JSON返却
+④ Excel がセルに展開
+          ↓ 集計
+⑤ [更新] ボタンで再度GET → 最新データ反映
+      </pre>
+    </div>
+
+    <div class="info-box ok">
+      ✅ Power BI / Tableau / Power Query も同じ仕組み。接続した瞬間に列名・型・関連が分かるのがODataの真価。
+    </div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<script>
+function copyCode(btn) {
+  const block = btn.closest('.code-block') || btn.parentElement;
+  const pre = block.querySelector('pre');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+const LAB_META = {
+  lab0: {
+    info: { type:'info', html:'📘 <strong>覚え方</strong>: 「OData = URL で SQL が書ける REST API」。公開サンプル <code>services.odata.org/V4/Northwind/Northwind.svc/</code> はブラウザから直接叩けるため、JS も認証も不要で試せる。' },
+    usecase: {
+      scenes: [
+        'SAP S/4HANA や Dynamics 365 とアプリを連携する',
+        'Excel / Power BI のデータソースとして社内APIを公開する',
+        'OutSystems Integration Builder で外部システムと接続する',
+        'Microsoft Graph API (Office 365) を使って予定表やメールを操作する'
+      ],
+      triggers: [
+        'URLに <code>$filter=...</code> や <code>$select=...</code> を見たら → ODataサーバ',
+        '<code>/$metadata</code> エンドポイントが存在する → ODataサーバ確定',
+        'レスポンスJSONに <code>@odata.context</code> がある → ODataサーバ'
+      ]
+    },
+    check: [
+      '①「公開ODataサービスを開いてみる」ボタンを押して、EntitySet一覧のJSONが表示されることを確認',
+      '② URLバーを見て、サービスルートが <code>/</code> で終わっていることを目視確認',
+      '③ レスポンスJSONの <code>value</code> 配列の各要素に <code>name / kind / url</code> があることを確認',
+      '④ 別ブラウザ (Edge / Firefox) で同じURLを開いても同じJSONが返ることを確認 (APIの互換性)'
+    ],
+    try: 'ブラウザの URLバーに直接 ODataのURLを貼り付けるだけで試せる。開発ツールもfetchも不要。'
+  },
+  lab1: {
+    info: { type:'info', html:'📘 サービスルートURLは末尾が <code>/</code> で終わる。これが「OData サービスの入口」。開くと EntitySet (=テーブル) 一覧が JSON で返る。' },
+    usecase: {
+      scenes: [
+        '新しいODataサーバに接続する際、まずサービスルートで公開EntitySetを確認',
+        'APIドキュメントを読まずに利用可能なデータを調査',
+        'OutSystems Integration Builder で接続テスト'
+      ],
+      triggers: [
+        'URL末尾が <code>.svc/</code> や <code>/odata/</code> → サービスルート',
+        'JSON に <code>"kind": "EntitySet"</code> の配列 → サービスルートレスポンス'
+      ]
+    },
+    check: [
+      '①「Northwindサービスルートを開く」ボタンでJSON取得を確認',
+      '② <code>value</code> 配列内に Products / Customers / Orders などのEntitySet名があることを確認',
+      '③ 各要素の <code>url</code> フィールドを次のLabで使うパスとして認識',
+      '④ Firefox/Edge でも同じレスポンスになることを目視で比較'
+    ],
+    try: 'JSONが読みにくければブラウザ拡張「JSON Viewer」を入れると整形表示される。'
+  },
+  lab2: {
+    info: { type:'ok', html:'✨ <strong>ODataの最大の強み</strong>: <code>$metadata</code> でスキーマが機械可読に公開される。これにより Excel / Power BI / Tableau がコードなしで接続できる。' },
+    usecase: {
+      scenes: [
+        '接続先ODataサーバのスキーマ全体を把握する',
+        '型情報 (Edm.Int32 / Edm.String など) を確認して正しいクエリを組む',
+        'Navigation Property (関連) の存在を確認して $expand のターゲットを決める',
+        'BIツールが自動コード生成する元情報として利用'
+      ],
+      triggers: [
+        'URL末尾が <code>/$metadata</code> → スキーマ定義XML',
+        '<code>&lt;EntityType&gt;</code> や <code>&lt;NavigationProperty&gt;</code> を見たら → ODataスキーマ'
+      ]
+    },
+    check: [
+      '①「$metadataを開く」でXMLが表示されることを確認',
+      '② <code>&lt;EntityType Name="Product"&gt;</code> を見つけ、Product の列構造を把握',
+      '③ <code>&lt;Key&gt;&lt;PropertyRef Name="ProductID"/&gt;</code> で主キー名を確認',
+      '④ <code>&lt;NavigationProperty Name="Category"&gt;</code> で関連の存在を確認',
+      '⑤ ページ内検索 (Ctrl+F) で "Customer" を検索し、Customer の主キーが文字列型 (ID='ALFKI' のような) であることを確認'
+    ],
+    try: 'XMLが長いので Ctrl+F で <code>EntityType Name="</code> を検索すると各Entityの定義にジャンプできる。'
+  },
+  lab3: {
+    info: { type:'info', html:'📘 Entity取得の基本2パターン: <strong>コレクション</strong> (<code>/Products</code>) と <strong>単体</strong> (<code>/Products(1)</code>)。文字列キーはシングルクォートで囲む。' },
+    usecase: {
+      scenes: [
+        '全商品一覧を画面に表示する (コレクション)',
+        '特定商品の詳細画面で1件だけ取得 (単体)',
+        'URLに ID を埋め込んだパーマリンクで特定レコードを共有'
+      ],
+      triggers: [
+        'URLに <code>(数字)</code> → 単体取得',
+        'URLに <code>(\'文字列\')</code> → 文字列キーでの単体取得',
+        'レスポンスに <code>value</code> 配列あり → コレクション、なし → 単体'
+      ]
+    },
+    check: [
+      '①「Products一覧」を開いて <code>value</code> 配列が存在することを確認',
+      '②「Products(1)」を開いて <code>value</code> 配列がなく、1レコードが直接返ることを確認',
+      '③「Customers(\'ALFKI\')」を開いて文字列キーで取得できることを確認',
+      '④ 存在しないID <code>/Products(99999)</code> を開いて 404 エラーになることを確認'
+    ],
+    try: 'ブラウザURLバーで末尾の (1) を (2)(3)(4)... と変えて連続して開くと、単体取得の挙動が体感できる。'
+  },
+  lab4: {
+    info: { type:'warn', html:'⚠️ SQL の <code>=</code> <code>&gt;</code> <code>&lt;</code> は OData では<strong>使えない</strong>。<code>eq / gt / lt</code> など英字演算子に置き換えること。ここが最大のつまずきポイント。' },
+    verify: {
+      before: '<strong>$filter なし</strong>: <code>/Products</code><br>→ 全77件が返る',
+      after: '<strong>$filter=UnitPrice gt 20</strong><br>→ 単価20より大きい35件に絞られる'
+    },
+    usecase: {
+      scenes: [
+        '検索画面の入力欄を $filter に変換',
+        '「アクティブなユーザのみ」など業務ロジックでの絞込',
+        '日付範囲指定 (本日〜30日前 など)',
+        'OutSystems Integration Builder の AdvancedFilters に直接書く'
+      ],
+      triggers: [
+        'URLに <code>?$filter=</code> → 条件絞込中',
+        '<code>eq \'JP\'</code> のような英字演算子 → OData風',
+        '<code>and</code> <code>or</code> <code>not</code> を URL に見たら → $filter 式'
+      ]
+    },
+    check: [
+      '①「単価>20で絞込」を開いて件数を確認',
+      '② URLの <code>gt</code> を <code>lt</code> に変えて開き直し、逆の結果になることを確認',
+      '③ <code>and</code> を <code>or</code> に変えて結果件数が変わることを確認',
+      '④ 無効な演算子 <code>$filter=UnitPrice &gt; 20</code> を URL に入れて 400 エラーが返ることを確認',
+      '⑤ 文字列比較 <code>Country eq \'Japan\'</code> で大文字小文字が区別されるか確認 (サーバ実装依存)'
+    ],
+    try: 'URLバーの <code>gt 20</code> の数字を 10/30/50 と変えて、件数が変わるのを目視で。日本語値を使う場合はURLエンコード必須。'
+  },
+  lab5: {
+    info: { type:'ok', html:'✅ <code>$select</code> は<strong>ネットワーク転送量削減の第一手段</strong>。大規模データでは必ず使うこと。カンマ区切りで複数指定。' },
+    usecase: {
+      scenes: [
+        'モバイルアプリで通信量を削減',
+        '一覧画面で列数を絞って高速化',
+        '機密カラム (給与、パスワードハッシュ等) を誤送信しないガード',
+        'DataGridの列定義と合わせて、表示するカラムだけ取得'
+      ],
+      triggers: [
+        'URLに <code>?$select=...</code> → 列絞込中',
+        'レスポンスJSONが普段より少ないキー数 → $select 効いている',
+        'BI / 一覧ページ用クエリで必ず見かけるパターン'
+      ]
+    },
+    check: [
+      '①「商品名と単価のみ」を開いて、レスポンスが ProductName と UnitPrice だけになっていることを確認',
+      '② 同じURLから <code>?$select=...</code> を削除して開き、列数が大幅に増えることを確認 (差分を比較)',
+      '③ 存在しない列名 <code>?$select=FooBar</code> で 400 エラーが返ることを確認',
+      '④ <code>?$select=*</code> のようなワイルドカードは OData v4 で使えないこと (Northwind は対応) を確認'
+    ],
+    try: '「Before (絞込なし) / After (絞込あり)」のJSONをテキストファイルに保存してサイズを比較すると効果が定量的に分かる。'
+  },
+  lab6: {
+    info: { type:'info', html:'📘 ODataの並び替え記法は<strong>SQL に近い</strong>。<code>asc</code>/<code>desc</code> を明示的に書く。省略時は昇順。' },
+    usecase: {
+      scenes: [
+        '「新着順」「価格が安い順」などユーザ指定のソート',
+        'ページング時の順序保証 (必ず $orderby 付ける)',
+        '複数キー (部門 → 役職 → 入社日) でのソート'
+      ],
+      triggers: [
+        'URLに <code>?$orderby=</code> → 並び替え指定',
+        '<code>desc</code> 明示 → 降順',
+        'ページング URL で必ずセットで見かける'
+      ]
+    },
+    check: [
+      '①「高い順」を開いて先頭に高額商品 (Côte de Blaye 263.5) が来ることを確認',
+      '②「安い順」に切り替えて先頭が変わることを確認',
+      '③ URLを手動で <code>$orderby=ProductName</code> に変えてアルファベット順に並ぶことを確認',
+      '④ 複数キー <code>?$orderby=CategoryID,UnitPrice desc</code> を試して、CategoryID で群化されることを確認'
+    ],
+    try: '$filter と $orderby を組合わせて「カテゴリ1の商品を安い順」のような現実的クエリを URL で作ってみる。'
+  },
+  lab7: {
+    info: { type:'warn', html:'⚠️ <code>$skip</code> 使用時は <strong>必ず $orderby を併用</strong>。順序がランダムだとページ境界でレコードの重複・欠落が発生する。' },
+    usecase: {
+      scenes: [
+        '一覧画面のページャ (20件ずつ表示)',
+        '無限スクロール (スクロール到達で次ページ取得)',
+        'バッチ処理で大量データを分割取得',
+        'OutSystems DataGrid のサーバサイドページング'
+      ],
+      triggers: [
+        'URLに <code>?$top=</code> のみ → 先頭N件',
+        'URLに <code>$skip=</code> と <code>$top=</code> ペア → ページング',
+        '<code>@odata.nextLink</code> がレスポンスに → サーバ側ページング'
+      ]
+    },
+    check: [
+      '①「1ページ目」を開いて ProductID 1〜5 が返ることを確認',
+      '②「2ページ目」を開いて ProductID 6〜10 が返ることを確認',
+      '③ URLから $orderby を外して <code>?$skip=5&$top=5</code> だけにして開き、結果がブレないか何度かリロードして確認 (実装依存)',
+      '④ <code>$top=100000</code> のような巨大値を試して、サーバ側の上限が効くか確認 (Northwindは既定で最大件数制限あり)'
+    ],
+    try: 'URLバーで $skip の値を 0, 5, 10, 15... と進めていくとページを手動でめくる感覚が掴める。'
+  },
+  lab8: {
+    info: { type:'info', html:'📘 ページング UI で「全体で35件中、今1〜5件を表示」のような表示を作る際は<strong>必ず $count=true</strong> を付ける。別クエリにすると2往復になるため。' },
+    usecase: {
+      scenes: [
+        'ページャで総ページ数を計算',
+        '検索結果画面の「件数ヒット表示」',
+        '管理画面のダッシュボードで総レコード数を表示',
+        'データ移行時の件数突合'
+      ],
+      triggers: [
+        'レスポンスに <code>@odata.count</code> → $count=true 使用中',
+        'URL末尾が <code>/$count</code> → 件数のみレスポンス (text/plain)'
+      ]
+    },
+    check: [
+      '①「全Products件数」を開いて数値 (例: 77) が返ることを確認',
+      '②「データ+件数(先頭3件)」を開いてJSON内に <code>@odata.count</code> と <code>value</code> 配列が両方あることを確認',
+      '③ <code>$filter</code> と $count=true を組合せて <code>/Products?$count=true&$filter=UnitPrice gt 20&$top=3</code> で絞込件数を確認',
+      '④ <code>/$count</code> のレスポンスが JSON ではなく数値だけ (Content-Type: text/plain) であることを確認'
+    ],
+    try: '<code>/Customers/$count</code> <code>/Orders/$count</code> と切り替えて各テーブルのレコード数を数える。'
+  },
+  lab9: {
+    info: { type:'warn', html:'⚠️ <code>$expand</code> は便利だが、多段ネストや大量関連を無制限に展開するとレスポンスが巨大化する。<code>$expand=関連($select=列,$top=N)</code> で中も絞るのがコツ。' },
+    usecase: {
+      scenes: [
+        '商品詳細画面で、商品 + カテゴリ + 仕入先を1リクエストで取得',
+        '注文一覧で、注文 + 顧客 + 明細 を同時取得',
+        'SQLのJOINを複数回書く代わりに、1URLで全部取る',
+        'OutSystems DataGrid の親子行表示'
+      ],
+      triggers: [
+        'URLに <code>?$expand=</code> → 関連Entity同時取得',
+        'レスポンスの列値が <code>{...}</code> オブジェクトや配列になる → $expand 効いてる',
+        'Navigation Property の名前を $metadata で調べて $expand に指定'
+      ]
+    },
+    check: [
+      '①「商品+カテゴリ」を開いて、Productの中に <code>Category: {...}</code> オブジェクトが同梱されていることを確認',
+      '②「カテゴリ+商品群」を開いて、Categoryの中に <code>Products: [...]</code> 配列が同梱されていることを確認 (1対多の逆向き)',
+      '③ 多段 <code>?$expand=Order_Details($expand=Product)</code> を試してネストが効くことを確認',
+      '④ <code>$expand</code> なしのURLと比べてレスポンスサイズが大きくなることを確認'
+    ],
+    try: 'ブラウザのネットワークタブでレスポンスサイズを比較すると、$expand のコストが実感できる。'
+  },
+  lab10: {
+    info: { type:'info', html:'📘 <strong>$filter vs $search の使い分け</strong>: 列を明示して厳密検索なら $filter、「どこでもいいから単語」なら $search。実装は任意なのでサーバが対応しているか要確認。' },
+    usecase: {
+      scenes: [
+        '検索ボックス1つで全列横断検索 (Gmail の検索バーのような)',
+        'ユーザが列を意識せずにキーワードだけで探したい場合',
+        'Elasticsearch / Azure Search 連携のODataラッパ'
+      ],
+      triggers: [
+        'URLに <code>?$search=</code> → 全文検索',
+        '検索語に AND/OR/NOT (大文字) → $search 専用構文',
+        'ダブルクォートでフレーズ指定 <code>"green tea"</code>'
+      ]
+    },
+    check: [
+      '① Northwind では $search が未対応なので、代わりに <code>?$filter=contains(ProductName,\'tea\')</code> で近い結果を出す',
+      '② Microsoft Graph API (要認証) では <code>$search</code> がメール本文検索に使える',
+      '③ $filter と $search を併用したURL (対応サーバで) を試す'
+    ],
+    try: 'Northwind では試せないので、自社のOData APIまたは Microsoft Graph で試すこと。$filter の contains() で代用できる。'
+  },
+  lab11: {
+    info: { type:'info', html:'📘 POST リクエストは <strong>ブラウザのURLバーでは試せない</strong> (GET しか送れないため)。JSのfetch、Postman、curl を使う。ContentType: application/json を必ず指定。' },
+    usecase: {
+      scenes: [
+        '登録フォームの送信処理',
+        'バッチ取り込みで大量レコード作成 (1件ずつPOST、または $batch)',
+        '他システムからODataで流入するデータの受け口'
+      ],
+      triggers: [
+        'HTTPメソッドがPOST → 新規作成',
+        'レスポンスが 201 Created → 作成成功',
+        'レスポンスにサーバ自動採番IDが含まれる → 作成成功+IDパス'
+      ]
+    },
+    check: [
+      '① OData.org の読み書き可能サンプルを開き、EntitySet一覧を確認',
+      '② Chrome DevTools の [Network] タブを開いてから、ブラウザで /Products URL を開き、GETリクエストが記録されることを確認',
+      '③ Postman で同じURLに POST +JSONボディを送り、201 レスポンスを確認',
+      '④ 作成後に /Products(新ID) を GET で開き、作成されたレコードが取得できることを確認'
+    ],
+    try: 'Postman の代わりに VS Code の REST Client 拡張を使うと、.http ファイルに書いたリクエストを1クリックで送れて便利。'
+  },
+  lab12: {
+    info: { type:'warn', html:'⚠️ <strong>PUT と PATCH の使い分けは最重要</strong>。PUT は全置換で未指定列がNULL化されるリスク。実務では <strong>PATCH を既定にする</strong>こと。' },
+    usecase: {
+      scenes: [
+        '編集画面で変更した項目だけ送る (PATCH)',
+        '在庫数の +1 / -1 のような単一項目更新 (PATCH)',
+        '管理画面のEntity完全書き換え (PUT、慎重に)'
+      ],
+      triggers: [
+        'HTTPメソッドが PATCH → 部分更新',
+        'HTTPメソッドが PUT → 全置換 (注意)',
+        'レスポンス 204 No Content → 更新成功'
+      ]
+    },
+    check: [
+      '① Postman で PATCH /Products(ID) に1項目だけ含むJSONを送信、204が返ることを確認',
+      '② 直後に同じ /Products(ID) を GET で開き、他の列が元の値のまま保持されていることを確認',
+      '③ 同じエンドポイントに PUT で同じ1項目だけ送り、他の列がNULL/デフォルト値に変わる(サーバによる)ことを確認',
+      '④ <code>Prefer: return=representation</code> ヘッダ付きで PATCH を送り、レスポンスボディで更新後の全Entityが返ることを確認'
+    ],
+    try: '社内のOData APIがPUTとPATCHで挙動どう違うか、事前にテスト環境で必ず検証する。本番で試すと事故る。'
+  },
+  lab13: {
+    info: { type:'err', html:'🚨 本番データのDELETEは<strong>必ず If-Match ヘッダ付き</strong>で。楽観排他制御なしだと他者の更新を見ずに上書き削除して事故る。' },
+    usecase: {
+      scenes: [
+        '管理画面の [削除] ボタン',
+        '論理削除でなく物理削除が必要なレコード',
+        '関連データのカスケード削除トリガー'
+      ],
+      triggers: [
+        'HTTPメソッド DELETE → 削除',
+        'レスポンス 204 No Content → 削除成功',
+        'レスポンス 412 Precondition Failed → ETag不一致で削除失敗'
+      ]
+    },
+    check: [
+      '① Postmanで DELETE /Products(ID) を送信、204 が返ることを確認',
+      '② 直後に GET /Products(ID) で 404 Not Found が返ることを確認',
+      '③ 存在しないIDへのDELETEで 404 が返ることを確認',
+      '④ If-Match ヘッダに不正なETag値を付けてDELETEを送り、412 が返ることを確認 (対応サーバで)'
+    ],
+    try: '本番データで試す前に、必ず開発環境の読み書き可能サンプルで挙動を確認する。'
+  },
+  lab14: {
+    info: { type:'info', html:'📘 関数とラムダ式を使いこなせると、サーバ側に複雑なクエリを一発で投げられる。クライアントで後処理する必要がなくなる。' },
+    usecase: {
+      scenes: [
+        '部分一致検索 (contains) でインクリメンタルサーチ',
+        '日付関数で「今月の注文」「昨年同期」を抽出',
+        'any でマスタ検索「注文を1件でも持つ顧客」',
+        'all で品質検査「全商品が現役のカテゴリ」'
+      ],
+      triggers: [
+        'URLに <code>contains(</code> <code>startswith(</code> など → 文字列関数',
+        'URLに <code>year(</code> <code>now()</code> など → 日付関数',
+        'URLに <code>/any(</code> <code>/all(</code> → ラムダ式 (コレクション判定)'
+      ]
+    },
+    check: [
+      '①「Chai を含む商品」を開いて、ProductName に Chai を含むレコードが返ることを確認',
+      '②「Ch で始まる商品」を開いて、先頭が Ch のレコード群が返ることを確認',
+      '③ URLを手動で <code>?$filter=year(OrderDate) eq 1997</code> に編集して /Orders に適用し、1997年の注文のみになることを確認',
+      '④ <code>?$filter=Products/any(p: p/UnitPrice gt 100)</code> を /Categories に適用し、高額商品を持つカテゴリのみになることを確認'
+    ],
+    try: 'Ctrl+C/Ctrl+V でURLをブラウザに貼る → 関数名だけ変えて再実行 を繰り返すと、どの関数が何をするか体感で覚えられる。'
+  },
+  lab15: {
+    info: { type:'ok', html:'✅ Excel / Power BI / Tableau などのBIツールは ODataの $metadata を自動解析するため、<strong>URLを貼るだけ</strong>でテーブル構造・関連まで認識する。これがODataの最大の価値の1つ。' },
+    usecase: {
+      scenes: [
+        '経営層向けダッシュボードをODataデータ源から構築',
+        '社内APIをExcelで直接利用して属人化した抽出作業を廃止',
+        'Power BI で定期更新するレポート',
+        'Tableauでのアドホック分析'
+      ],
+      triggers: [
+        '社内で「ExcelでAPIから直接取り込みたい」要件 → OData提供を検討',
+        'BI管理者から「スキーマ自動認識できるAPIを」要望 → OData',
+        'OutSystems Expose REST API が OData互換 → Excel接続可能'
+      ]
+    },
+    check: [
+      '① Excel → データタブ → データの取得 → その他のデータソースから → ODataフィードから',
+      '② URL入力欄にNorthwindのサービスルート (末尾 /) を貼り付けて [OK]',
+      '③ ナビゲーター画面で Products / Categories / Customers などのテーブルが一覧表示されることを確認',
+      '④ Products を選択して [読み込み] すると、列名と型がExcelのシートに自動展開されることを確認',
+      '⑤ Excelの [データ] → [更新] ボタンでサーバから最新データが再取得されることを確認'
+    ],
+    try: 'ExcelがないWeb環境では、Power BI Service (Web版) でも同じ手順でODataに接続できる。登録すれば無料で試せる。'
+  }
+};
+
+function infoHTML(m){ return m?.info ? `<div class="info-box ${m.info.type||'info'}">${m.info.html}</div>` : ''; }
+function verifyHTML(m){ if (!m?.verify) return '';
+  const {before, after} = m.verify;
+  return `<div class="verify">
+    <div class="verify-col verify-before"><div class="verify-label">Before ▶︎ 適用前</div>${before||''}</div>
+    <div class="verify-col verify-after"><div class="verify-label">After ▶︎ 適用後</div>${after||''}</div>
+  </div>`; }
+function checkHTML(m){ if (!m?.check?.length) return '';
+  return `<div class="check-steps">
+    <div class="check-steps-title">🔍 ブラウザ実機チェック</div>
+    <ol>${m.check.map(s=>`<li>${s}</li>`).join('')}</ol>
+  </div>`; }
+function usecaseHTML(m){
+  if (!m?.usecase) return '';
+  const scenes = (m.usecase.scenes||[]).map(s=>`<li>${s}</li>`).join('');
+  const triggers = (m.usecase.triggers||[]).map(s=>`<li>${s}</li>`).join('');
+  return `<div class="usecase-box">
+    <div class="usecase-title">💡 利用シーン</div>
+    <ul class="usecase-list">${scenes}</ul>
+    ${triggers ? `<div class="usecase-trigger"><strong>🔔 こう見えたらこのLabが効く:</strong><ul>${triggers}</ul></div>` : ''}
+  </div>`;
+}
+function tryHTML(m){
+  const tip = m?.try ? `<div class="try-tip"><strong>💡 このラボのコツ:</strong> ${m.try}</div>` : '';
+  return `<div class="try-box">
+    <div class="try-title">💻 コード例を試す手順</div>
+    <ol>
+      <li>上のコードブロックの <strong>Copy</strong> ボタンでURL/コードをクリップボードへ</li>
+      <li><strong>GET系のURL</strong>はブラウザのURLバーに直接貼って開くだけでJSON/XMLが返る (認証不要)</li>
+      <li><strong>POST/PATCH/DELETE</strong>はPostman/curl/VS Code REST Client などのツールが必要</li>
+      <li>下の「🔍 ブラウザ実機チェック」を順に確認して想定通りの挙動になるかチェック</li>
+    </ol>
+    ${tip}
+  </div>`;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.lab').forEach(lab => {
+    const meta = LAB_META[lab.id]; const body = lab.querySelector('.lab-body');
+    if (!body || !meta) return;
+    const frag = document.createElement('div');
+    frag.innerHTML = infoHTML(meta) + usecaseHTML(meta) + verifyHTML(meta) + tryHTML(meta) + checkHTML(meta);
+    while (frag.firstChild) body.appendChild(frag.firstChild);
+  });
+
+  const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+  const map = new Map();
+  links.forEach(a => { const el = document.getElementById(a.getAttribute('href').slice(1)); if (el) map.set(el, a); });
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) { const l = map.get(e.target);
+      if (l) { links.forEach(n=>n.classList.remove('active')); l.classList.add('active'); } }
+  }), { rootMargin:'-30% 0px -60% 0px' });
+  document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+  document.querySelectorAll('.code-block').forEach((cb, i) => {
+    if (cb.querySelector('.code-block-header')) return;
+    const existing = cb.querySelector('.code-label');
+    const labelText = existing ? existing.textContent.trim() : `Code #${i+1}`;
+    if (existing) existing.remove();
+    const header = document.createElement('div');
+    header.className = 'code-block-header';
+    header.innerHTML = `<span>${labelText}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+    cb.insertBefore(header, cb.firstChild);
+  });
+});
+
+document.addEventListener('click', (e) => {
+  if (!e.target.matches('.toggle-btn')) return;
+  const btn = e.target;
+  const stage = document.getElementById(btn.dataset.target);
+  if (!stage) return;
+  const isBefore = stage.classList.toggle('is-before');
+  btn.classList.toggle('is-before', isBefore);
+  const label = document.getElementById(btn.dataset.target + '-label');
+  if (label) label.textContent = isBefore ? '現在: Before' : '現在: After';
+});
+</script>
+
+</body>
+</html>

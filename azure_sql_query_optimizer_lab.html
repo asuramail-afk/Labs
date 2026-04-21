@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Azure SQL Query Optimizer Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+.verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+  line-height:1.7; border:1px solid; }
+.verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+.verify-before .verify-label { color:var(--error); }
+.verify-after  .verify-label { color:var(--success); }
+
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+.compare-table .yes { color:var(--success); } .compare-table .no { color:var(--error); }
+
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+.usecase-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:6px; }
+.usecase-list { margin-left:20px; margin-bottom:10px; }
+.usecase-list li { margin-bottom:4px; }
+.usecase-trigger { background:rgba(0,92,197,.05); border-left:3px solid var(--accent);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#003d8f; margin-top:8px; }
+.usecase-trigger ul { margin:4px 0 0 20px; }
+
+.livedemo { margin:14px 0; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+.livedemo-bar { display:flex; align-items:center; gap:12px; padding:8px 12px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.toggle-btn { font-family:var(--mono); font-size:.78rem; padding:5px 14px;
+  border-radius:6px; border:1px solid var(--accent); background:var(--accent);
+  color:#fff; cursor:pointer; transition:all .15s; }
+.toggle-btn:hover { opacity:.85; }
+.toggle-btn.is-before { background:var(--error); border-color:var(--error); }
+.toggle-label { font-family:var(--mono); font-size:.78rem; color:var(--text-dim); }
+.livedemo-stage { padding:16px; background:var(--bg); }
+.livedemo-stage.is-before { outline:2px dashed var(--error); outline-offset:-8px; }
+.livedemo-stage .ld-before { display:none; }
+.livedemo-stage.is-before .ld-before { display:block; }
+.livedemo-stage.is-before .ld-after { display:none; }
+.ld-panel { padding:12px; border-radius:6px; font-family:var(--mono); font-size:11px; line-height:1.6; white-space:pre; overflow-x:auto; }
+.ld-panel.bad { background:#fee2e2; border:1px solid #cb2431; color:#6b1a22; }
+.ld-panel.good { background:#dcfce7; border:1px solid #22863a; color:#166534; }
+
+.try-box { background:rgba(34,134,58,.06); border:1px solid rgba(34,134,58,.30);
+  border-left:3px solid var(--success); border-radius:7px;
+  padding:12px 14px; margin:14px 0; font-size:.86rem; line-height:1.8; color:#154f1e; }
+.try-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--success); font-weight:700; margin-bottom:6px; }
+.try-box ol { margin-left:20px; margin-top:4px; }
+.try-box ol li { margin-bottom:4px; }
+.try-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--success); }
+.try-tip { background:rgba(176,136,0,.06); border-left:3px solid var(--accent4);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#5c4400; margin-top:8px; }
+.try-tip strong { color:var(--accent4); }
+.try-skeleton { background:#f0f4f8; border:1px solid var(--border); border-radius:5px;
+  padding:10px 12px; margin-top:8px; font-family:var(--mono); font-size:.78rem;
+  color:var(--text); white-space:pre; overflow-x:auto; line-height:1.5; }
+
+.code-pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; }
+.code-pair-col { display:flex; flex-direction:column; min-width:0; }
+.code-pair-label { font-family:var(--mono); font-size:.72rem; letter-spacing:.05em;
+  font-weight:700; padding:6px 10px; border-radius:6px 6px 0 0; }
+.code-pair-before .code-pair-label { background:rgba(203,36,49,.10); color:#9a1320;
+  border:1px solid rgba(203,36,49,.30); border-bottom:none; }
+.code-pair-after  .code-pair-label { background:rgba(34,134,58,.10); color:#154f1e;
+  border:1px solid rgba(34,134,58,.30); border-bottom:none; }
+.code-pair-col .code-block { margin:0; border-radius:0 0 8px 8px; flex:1; }
+.code-pair-before .code-block { border-color:rgba(203,36,49,.30); }
+.code-pair-after  .code-block { border-color:rgba(34,134,58,.30); }
+@media (max-width:900px){ .code-pair { grid-template-columns:1fr; } }
+
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .verify { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// Query Optimizer Lab</div>
+  <div class="nav-section">基礎</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>オプティマイザ全体像</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>実行プランの読み方</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>スキャン vs シーク</a>
+  <div class="nav-section">推定</div>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>統計情報と推定行数</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>SARGable 述語</a>
+  <div class="nav-section">結合と索引</div>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>JOIN アルゴリズム</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>カバリング索引</a>
+  <div class="nav-section">再利用と制御</div>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>パラメータスニッフ</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>プランキャッシュ</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>ヒントと最終手段</a>
+</nav>
+
+<div class="hero">
+  <h1>Azure SQL Query Optimizer Lab</h1>
+  <p class="subtitle">シンプルな 1,000 行の Orders テーブルで、クエリオプティマイザの意思決定を追体験する</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>オプティマイザの全体像</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>実行プランの読み方</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>テーブルスキャン vs インデックスシーク</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>統計情報とカーディナリティ推定</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>SARGable 述語で索引を活かす</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>JOIN アルゴリズム3種</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>カバリングインデックス</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>パラメータスニッフィング</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>プランキャッシュと再利用</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>ヒントと最終手段</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ====================== LAB 0 ====================== -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>オプティマイザ全体像 — SQL は「何を」、最適化は「どう取るか」</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      SQL は<strong>宣言的</strong>な言語で「欲しい結果」を書く。実際の取得手順（プラン）を組み立てるのが<code>クエリオプティマイザ</code>。Azure SQL は<strong>コストベース</strong>で候補プランを評価し、最も低コストと推定したプランを選ぶ。本Labで使う共通データも先に用意する。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 パイプライン: SQL → プラン → 行</div>
+      <pre class="ascii-art">┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐
+│ T-SQL文  │→→│ Parser   │→→│Optimizer │→→│ Executor │→→│  結果行  │
+│SELECT...│   │構文解析  │   │プラン生成│   │プラン実行│   │クライアント│
+└──────────┘   └──────────┘   └──────────┘   └──────────┘   └──────────┘
+                                   ↑↓
+                              ┌──────────┐
+                              │統計情報/ │   ← ヒストグラム・密度
+                              │メタデータ│     行数・索引構造
+                              └──────────┘</pre>
+    </div>
+
+    <p class="lab-desc">以降すべてのラボで使う共通セットアップ。Azure Data Studio か SSMS で Azure SQL Database に接続し、テスト用DBで実行する。</p>
+
+    <div class="code-block">
+      <pre><span class="cm">-- 共通セットアップ: Customers 100件 / Orders 1,000件</span>
+<span class="kw">IF OBJECT_ID</span>(<span class="str">'dbo.Orders'</span>,<span class="str">'U'</span>) <span class="kw">IS NOT NULL</span> <span class="kw">DROP TABLE</span> dbo.Orders;
+<span class="kw">IF OBJECT_ID</span>(<span class="str">'dbo.Customers'</span>,<span class="str">'U'</span>) <span class="kw">IS NOT NULL</span> <span class="kw">DROP TABLE</span> dbo.Customers;
+
+<span class="kw">CREATE TABLE</span> dbo.Customers (
+  CustomerId  <span class="kw">INT</span>          <span class="kw">NOT NULL PRIMARY KEY</span>,
+  CustomerName <span class="kw">NVARCHAR</span>(<span class="num">50</span>) <span class="kw">NOT NULL</span>,
+  Region      <span class="kw">NVARCHAR</span>(<span class="num">20</span>) <span class="kw">NOT NULL</span>   <span class="cm">-- 'East'/'West'/'North'/'South'</span>
+);
+
+<span class="kw">CREATE TABLE</span> dbo.Orders (
+  OrderId     <span class="kw">INT</span>          <span class="kw">NOT NULL IDENTITY PRIMARY KEY</span>,
+  CustomerId  <span class="kw">INT</span>          <span class="kw">NOT NULL</span>,
+  OrderDate   <span class="kw">DATE</span>         <span class="kw">NOT NULL</span>,
+  Amount      <span class="kw">DECIMAL</span>(<span class="num">10</span>,<span class="num">2</span>) <span class="kw">NOT NULL</span>,
+  Status      <span class="kw">NVARCHAR</span>(<span class="num">10</span>) <span class="kw">NOT NULL</span>   <span class="cm">-- 'Paid' 95% / 'Pending' 5%</span>
+);
+
+<span class="cm">-- 100 Customers</span>
+<span class="kw">INSERT INTO</span> dbo.Customers(CustomerId,CustomerName,Region)
+<span class="kw">SELECT TOP</span>(<span class="num">100</span>) n,<span class="kw">CONCAT</span>(<span class="str">'Cust_'</span>,n),
+  <span class="kw">CHOOSE</span>((n%<span class="num">4</span>)+<span class="num">1</span>,<span class="str">'East'</span>,<span class="str">'West'</span>,<span class="str">'North'</span>,<span class="str">'South'</span>)
+<span class="kw">FROM</span> (<span class="kw">SELECT TOP</span>(<span class="num">100</span>) n=<span class="kw">ROW_NUMBER</span>()<span class="kw">OVER</span>(<span class="kw">ORDER BY</span>(<span class="kw">SELECT</span> <span class="num">1</span>)) <span class="kw">FROM</span> sys.all_objects) x;
+
+<span class="cm">-- 1,000 Orders (Status はわざと偏らせる)</span>
+<span class="kw">INSERT INTO</span> dbo.Orders(CustomerId,OrderDate,Amount,Status)
+<span class="kw">SELECT TOP</span>(<span class="num">1000</span>)
+  (<span class="kw">ABS</span>(<span class="kw">CHECKSUM</span>(<span class="kw">NEWID</span>()))%<span class="num">100</span>)+<span class="num">1</span>,
+  <span class="kw">DATEADD</span>(<span class="kw">DAY</span>,-(<span class="kw">ABS</span>(<span class="kw">CHECKSUM</span>(<span class="kw">NEWID</span>()))%<span class="num">365</span>),<span class="kw">CAST</span>(<span class="kw">GETDATE</span>() <span class="kw">AS DATE</span>)),
+  (<span class="kw">ABS</span>(<span class="kw">CHECKSUM</span>(<span class="kw">NEWID</span>()))%<span class="num">10000</span>)/<span class="num">100.0</span>,
+  <span class="kw">CASE WHEN</span> <span class="kw">ABS</span>(<span class="kw">CHECKSUM</span>(<span class="kw">NEWID</span>()))%<span class="num">100</span> &lt; <span class="num">95</span> <span class="kw">THEN</span> <span class="str">'Paid'</span> <span class="kw">ELSE</span> <span class="str">'Pending'</span> <span class="kw">END</span>
+<span class="kw">FROM</span> sys.all_objects a, sys.all_objects b;
+
+<span class="kw">SELECT COUNT</span>(*) <span class="kw">AS</span> OrdersRows <span class="kw">FROM</span> dbo.Orders;  <span class="cm">-- 1000</span></pre>
+    </div>
+  </div>
+</div>
+
+<!-- ====================== LAB 1 ====================== -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>実行プランの読み方 — 推定/実測 と 右→左 ルール</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      プランには<code>推定</code>(Estimated)と<code>実測</code>(Actual)の2種類がある。<strong>推定</strong>はオプティマイザが統計情報だけを根拠に作った予測、<strong>実測</strong>は実行結果が反映されたもの。問題調査では常に<strong>実測プラン</strong>を見る。プランは<strong>右端が最初に読む入力</strong>、左端に結果が向かって流れる。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 プラン演算子の流れ（右から左）</div>
+      <pre class="ascii-art">  [結果]       ← 最終結果 (SELECT)
+    ↑
+  [Hash Match] ← 結合
+   ↙     ↘
+[Seek]  [Scan]  ← 右端が「入力」= 最初に読むもの
+  ↓       ↓
+Orders  Customers
+
+矢印の「太さ」= 行数(推定/実測)、演算子の「%」= このノードの推定コスト割合</pre>
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">推定プランのみ(軽い・実行しない)</div>
+        <div class="code-block">
+          <pre><span class="cm">-- SSMS/Azure Data Studio: Ctrl+L</span>
+<span class="kw">SET SHOWPLAN_XML ON</span>;
+<span class="kw">GO</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> dbo.Orders <span class="kw">WHERE</span> Status=<span class="str">'Paid'</span>;
+<span class="kw">GO</span>
+<span class="kw">SET SHOWPLAN_XML OFF</span>;</pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">実測プラン(Actual)を取る</div>
+        <div class="code-block">
+          <pre><span class="cm">-- SSMS/Azure Data Studio: Ctrl+M してから実行</span>
+<span class="kw">SET STATISTICS XML ON</span>;
+<span class="kw">SET STATISTICS IO ON</span>;   <span class="cm">-- 論理読み取り数</span>
+<span class="kw">SET STATISTICS TIME ON</span>; <span class="cm">-- CPU/経過時間</span>
+
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> dbo.Orders <span class="kw">WHERE</span> Status=<span class="str">'Paid'</span>;
+
+<span class="kw">SET STATISTICS XML OFF</span>;</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm">-- メッセージタブの例 (STATISTICS IO ON)</span>
+Table <span class="str">'Orders'</span>. Scan count <span class="num">1</span>, logical reads <span class="num">8</span>, physical reads <span class="num">0</span>, ...
+<span class="cm">-- Scan count   : 基本1(インデックス参照回数)</span>
+<span class="cm">-- logical reads: バッファから読んだ「8KBページ」の数。小さいほど高速</span></pre>
+    </div>
+  </div>
+</div>
+
+<!-- ====================== LAB 2 ====================== -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>テーブルスキャン vs インデックスシーク</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      オプティマイザは「<strong>何行返すか</strong>」を推定し、行数が多ければ<code>Scan</code>(全走査)、少なければ<code>Seek</code>(B-tree の枝をたどる)を選ぶ。<strong>Tipping Point</strong>(臨界点)の体感として、テーブルの 30〜40% を超える選択性になるとScan の方が安くなる、と言われる。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm">-- 索引を作る: CustomerId で検索用</span>
+<span class="kw">CREATE NONCLUSTERED INDEX</span> IX_Orders_CustomerId
+  <span class="kw">ON</span> dbo.Orders(CustomerId);
+
+<span class="cm">-- A: CustomerId=5 → 統計上 約10行しか該当しない → Seek 有利</span>
+<span class="kw">SELECT</span> OrderId,CustomerId,Amount <span class="kw">FROM</span> dbo.Orders <span class="kw">WHERE</span> CustomerId=<span class="num">5</span>;
+
+<span class="cm">-- B: Status='Paid' → 約950行該当 → Clustered Index Scan 有利</span>
+<span class="kw">SELECT</span> OrderId,CustomerId,Amount <span class="kw">FROM</span> dbo.Orders <span class="kw">WHERE</span> Status=<span class="str">'Paid'</span>;</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>演算子</th><th>動作</th><th>得意な状況</th><th>苦手な状況</th></tr></thead>
+      <tbody>
+        <tr><td>Index Seek</td><td>B-tree の枝をたどって該当範囲のみ読む</td><td>ヒット行数が少ない(数%以下)</td><td>広い範囲で Key Lookup が多発</td></tr>
+        <tr><td>Index Scan</td><td>非クラスタ索引のリーフを端から端まで読む</td><td>必要列が索引に揃っている+広範囲</td><td>不要列が多く別参照が必要</td></tr>
+        <tr><td>Clustered Index Scan</td><td>実表を順に全件読む (=テーブルスキャン)</td><td>ほぼ全行を返す集計・ETL</td><td>ごく少量しか返らないのにScanになっている時(赤信号)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="ld-scan-seek">Before を見る</button>
+        <span class="toggle-label" id="ld-scan-seek-label">現在: After（Seek が選ばれた状態）</span>
+      </div>
+      <div class="livedemo-stage" id="ld-scan-seek">
+        <div class="ld-panel good ld-after">✓ After: CustomerId=5 (約10行)
+  [SELECT] ← [Key Lookup: Orders] ← [Index Seek: IX_Orders_CustomerId]
+  logical reads: 約2  CPU: 0 ms  → 速い
+  オプティマイザの判断: 少量なのでSeekの方が安い</div>
+        <div class="ld-panel bad  ld-before">✗ Before: Status='Paid' (約950行)
+  [SELECT] ← [Clustered Index Scan: PK_Orders (=全件)]
+  logical reads: 約8  → 全件走査
+  IX_Orders_CustomerId は Status 列を持たないので使えない
+  仮に Status 索引があっても Key Lookup 950回で逆に重くなりScan選択</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================== LAB 3 ====================== -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>統計情報とカーディナリティ推定 — 推定行数が命</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      オプティマイザは列ごとの<code>統計情報</code>(ヒストグラム+密度ベクトル)を使って「条件に合う行数」を推定する。この推定が外れると<strong>プラン選択を間違える</strong>。Azure SQL では<code>AUTO_UPDATE_STATISTICS=ON</code>が既定だが、テーブルが急に大量更新された直後などに古い統計で判断してしまうことがある。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm">-- 統計情報の確認</span>
+<span class="kw">SELECT</span> s.name, s.stats_id, sp.rows, sp.rows_sampled, sp.modification_counter,
+       sp.last_updated
+<span class="kw">FROM</span>   sys.stats s
+<span class="kw">CROSS APPLY</span> sys.dm_db_stats_properties(s.<span class="kw">object_id</span>,s.stats_id) sp
+<span class="kw">WHERE</span>  s.<span class="kw">object_id</span> = <span class="kw">OBJECT_ID</span>(<span class="str">'dbo.Orders'</span>);
+
+<span class="cm">-- ヒストグラム(列値の分布)を見る</span>
+<span class="kw">DBCC SHOW_STATISTICS</span>(<span class="str">'dbo.Orders'</span>, IX_Orders_CustomerId);</pre>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 ヒストグラムの読み方(CustomerId の例・簡略)</div>
+      <pre class="ascii-art">RANGE_HI_KEY  EQ_ROWS  RANGE_ROWS   ← 列値の「バケット」
+         10        9         35      CustomerId=10 はちょうど 9 行
+         25       12        140      11〜24 の範囲は合計 140 行
+         ...
+→ WHERE CustomerId=10 なら「9行」と推定 → Seek 選択
+→ WHERE CustomerId BETWEEN 11 AND 24 なら「140行」と推定 → Seek or Scan 判断</pre>
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">古い統計で判断が狂う</div>
+        <div class="code-block">
+          <pre><span class="cm">-- 統計更新前に大量INSERT</span>
+<span class="kw">INSERT INTO</span> dbo.Orders(CustomerId,OrderDate,Amount,Status)
+<span class="kw">SELECT TOP</span>(<span class="num">100000</span>) <span class="num">5</span>, <span class="kw">GETDATE</span>(),<span class="num">1</span>,<span class="str">'Paid'</span>
+<span class="kw">FROM</span> sys.all_objects a, sys.all_objects b;
+
+<span class="cm">-- 統計は「CustomerId=5 は10行」と信じたままなので Seek+Lookup</span>
+<span class="cm">-- 実際は10万件→遅い</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> dbo.Orders <span class="kw">WHERE</span> CustomerId=<span class="num">5</span>;</pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">手動更新で推定を直す</div>
+        <div class="code-block">
+          <pre><span class="cm">-- フルスキャンで統計更新</span>
+<span class="kw">UPDATE STATISTICS</span> dbo.Orders <span class="kw">WITH FULLSCAN</span>;
+
+<span class="cm">-- 再実行: 10万件推定 → Clustered Index Scan に切替わる</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> dbo.Orders <span class="kw">WHERE</span> CustomerId=<span class="num">5</span>;
+
+<span class="cm">-- 定期メンテ案(ジョブ):</span>
+<span class="cm">-- 断片化20%以上 + 変更率10%以上 の対象のみ UPDATE STATISTICS</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>バッチで大量INSERT/DELETEした直後のオンラインクエリが急に遅くなった</li>
+        <li>本番リストア直後や分割表入れ替え後の初回クエリ</li>
+        <li>分布が偏る列(Status='Pending' が5%だけ等)での選択性判断ミス</li>
+        <li>pg_stats 相当の「なぜこの行数推定?」を突き止める時</li>
+      </ul>
+      <div class="usecase-trigger">🔍 こういう兆候を見たら疑う:
+        <ul>
+          <li>実測プランの「推定行数」と「実測行数」が桁違い(例:推定10,実測10,000)</li>
+          <li><code>modification_counter</code> が rows の20%を超えている</li>
+          <li><code>last_updated</code> が古い</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================== LAB 4 ====================== -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>SARGable 述語 — 索引を活かす書き方</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>SARGable</code> = Search ARGument able。<strong>列を単独で左辺に置き、関数や計算で包まない</strong>書き方のこと。非SARGableだとオプティマイザは索引の枝をたどれず<code>Scan</code>に落ちる。これは索引設計よりも、<strong>開発者の書き方</strong>で決まる。
+    </p>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ 非SARGable(全てScan)</div>
+        <div class="code-block">
+          <pre><span class="cm">-- 関数で列を包む</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> dbo.Orders
+<span class="kw">WHERE</span> <span class="kw">YEAR</span>(OrderDate)=<span class="num">2026</span>;
+
+<span class="cm">-- 列に計算をかける</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> dbo.Orders
+<span class="kw">WHERE</span> Amount*<span class="num">1.1</span> &gt; <span class="num">1000</span>;
+
+<span class="cm">-- 先頭ワイルドカード</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> dbo.Customers
+<span class="kw">WHERE</span> CustomerName <span class="kw">LIKE</span> <span class="str">'%ust_5'</span>;
+
+<span class="cm">-- 暗黙型変換 (NVARCHAR列にINT)</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> dbo.Customers <span class="kw">WHERE</span> Region=<span class="num">1</span>;</pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ SARGable(Seek候補)</div>
+        <div class="code-block">
+          <pre><span class="cm">-- 範囲に書き換え</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> dbo.Orders
+<span class="kw">WHERE</span> OrderDate &gt;= <span class="str">'2026-01-01'</span>
+  <span class="kw">AND</span> OrderDate &lt;  <span class="str">'2027-01-01'</span>;
+
+<span class="cm">-- 計算を定数側に寄せる</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> dbo.Orders
+<span class="kw">WHERE</span> Amount &gt; <span class="num">1000</span>/<span class="num">1.1</span>;
+
+<span class="cm">-- 後方一致のみ</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> dbo.Customers
+<span class="kw">WHERE</span> CustomerName <span class="kw">LIKE</span> <span class="str">'Cust_5%'</span>;
+
+<span class="cm">-- 型を一致させる</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> dbo.Customers <span class="kw">WHERE</span> Region=<span class="kw">N</span><span class="str">'East'</span>;</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box warn">
+      ⚠ <strong>特に注意</strong>: <code>Region=1</code>(INT) と書くと NVARCHAR 列側が全行 <code>CONVERT</code> され、索引シークができなくなる。実測プランの<strong>予測警告(黄色三角)</strong>に「CONVERT_IMPLICIT」と表示されたらこれ。
+    </div>
+  </div>
+</div>
+
+<!-- ====================== LAB 5 ====================== -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>JOIN アルゴリズム — Nested Loops / Hash / Merge</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      オプティマイザは結合の<strong>左右の行数</strong>と<strong>索引の有無</strong>で3種のアルゴリズムを使い分ける。小さい結果どうしなら<code>Nested Loops</code>、大規模どうしなら<code>Hash Match</code>、両側がソート済みなら<code>Merge</code>。どれが選ばれるかは推定行数次第で、推定が外れると<strong>メモリ枯渇や TempDB あふれ</strong>の原因になる。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>アルゴリズム</th><th>仕組み</th><th>選ばれる条件</th><th>メモリ</th><th>弱点</th></tr></thead>
+      <tbody>
+        <tr><td>Nested Loops</td><td>外側1行ごと内側を探す(索引があれば高速)</td><td>外側が小さい&amp;内側に索引あり</td><td>少量</td><td>両側大だと O(N×M)</td></tr>
+        <tr><td>Hash Match</td><td>片側でハッシュ表を作り他方を探す</td><td>大規模どうし&amp;等価結合</td><td>多い(メモリ付与)</td><td>推定不足で TempDB へ漏れ</td></tr>
+        <tr><td>Merge Join</td><td>両側ソート済みを端から合流</td><td>両側がソート済みかキー単調</td><td>少量</td><td>ソート必要なら高コスト</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+      <pre><span class="cm">-- Nested Loops が有利: Customers 1件だけを Orders と結合</span>
+<span class="kw">SELECT</span> o.OrderId,o.Amount,c.CustomerName
+<span class="kw">FROM</span>   dbo.Customers c
+<span class="kw">INNER JOIN</span> dbo.Orders    o <span class="kw">ON</span> o.CustomerId=c.CustomerId
+<span class="kw">WHERE</span>  c.CustomerId=<span class="num">5</span>;   <span class="cm">-- 外側1行 → 内側Seek ×1</span>
+
+<span class="cm">-- Hash Match が有利: 全Customers × 全Orders</span>
+<span class="kw">SELECT</span> c.Region, <span class="kw">COUNT</span>(*) AS orders
+<span class="kw">FROM</span>   dbo.Customers c
+<span class="kw">INNER JOIN</span> dbo.Orders    o <span class="kw">ON</span> o.CustomerId=c.CustomerId
+<span class="kw">GROUP BY</span> c.Region;  <span class="cm">-- 両側全件 → Hash</span>
+
+<span class="cm">-- 強制してプラン比較(通常は使わない。学習用)</span>
+<span class="kw">SELECT</span> c.Region, <span class="kw">COUNT</span>(*)
+<span class="kw">FROM</span>   dbo.Customers c
+<span class="kw">INNER LOOP JOIN</span> dbo.Orders o <span class="kw">ON</span> o.CustomerId=c.CustomerId
+<span class="kw">GROUP BY</span> c.Region
+<span class="kw">OPTION</span> (<span class="kw">MAXDOP</span> <span class="num">1</span>);</pre>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 Nested Loops の動き(外側=Customers 1件 / 内側=Orders)</div>
+      <pre class="ascii-art">[Customers]                 [IX_Orders_CustomerId]
+CustId=5 ──┐                   5 → RowId a,b,c,...
+           │  ┌──────────┐
+           └─→│ for each │→ Seek(CustId=5) → (a,b,c) → 3行取得
+              │  outer   │
+              └──────────┘
+外側が少ない時だけ、合計コスト = 外側行数 × 内側Seek で済む</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ====================== LAB 6 ====================== -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>カバリングインデックス — Key Lookup をゼロに</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      非クラスタ索引でSeekしても、<strong>索引に載ってない列</strong>が<code>SELECT</code>句に入っていると<code>Key Lookup</code>(クラスタード索引への追加アクセス)が発生する。Lookupは1行ごとに発生する<strong>ランダムI/O</strong>なので、数百行Seekしたつもりが実は重い、ということが起きる。<code>INCLUDE</code>句で必要列を索引のリーフに乗せれば消える。
+    </p>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Key Lookup 発生</div>
+        <div class="code-block">
+          <pre><span class="cm">-- 索引: (CustomerId) のみ</span>
+<span class="kw">CREATE NONCLUSTERED INDEX</span> IX_Orders_CustomerId
+  <span class="kw">ON</span> dbo.Orders(CustomerId);
+
+<span class="cm">-- SELECT に Amount,OrderDate 必要 → Lookup が行ごとに走る</span>
+<span class="kw">SELECT</span> OrderId,OrderDate,Amount
+<span class="kw">FROM</span>   dbo.Orders
+<span class="kw">WHERE</span>  CustomerId=<span class="num">5</span>;
+
+<span class="cm">-- プラン: Index Seek → Nested Loops → Key Lookup (RID/Key)</span>
+<span class="cm">-- Tipping point: 数百行ヒットで Scan に切替わる</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ カバリング化で Lookup 消滅</div>
+        <div class="code-block">
+          <pre><span class="kw">DROP INDEX</span> IX_Orders_CustomerId <span class="kw">ON</span> dbo.Orders;
+
+<span class="cm">-- キー列に CustomerId, 非キー列に OrderDate,Amount</span>
+<span class="kw">CREATE NONCLUSTERED INDEX</span> IX_Orders_Cust_Cover
+  <span class="kw">ON</span> dbo.Orders(CustomerId)
+  <span class="kw">INCLUDE</span>(OrderDate,Amount);
+
+<span class="kw">SELECT</span> OrderId,OrderDate,Amount
+<span class="kw">FROM</span>   dbo.Orders
+<span class="kw">WHERE</span>  CustomerId=<span class="num">5</span>;
+<span class="cm">-- プラン: Index Seek のみ (Lookup なし)</span>
+<span class="cm">-- logical reads が大幅減</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 Key Lookup とは(B-treeの図)</div>
+      <pre class="ascii-art">Before: IX(CustomerId) のみ
+  IX_Orders_CustomerId           Clustered Index (実表)
+  ┌─────┬──────┐              ┌─────────────────────────────┐
+  │Cust │OrderId│              │OrderId=101 date=... amt=...│
+  │  5  │ 101   │──Lookup─→  │OrderId=102 date=... amt=...│
+  │  5  │ 102   │──Lookup─→  │OrderId=103 date=... amt=...│
+  │  5  │ 103   │──Lookup─→  │...                         │
+  └─────┴──────┘              └─────────────────────────────┘
+              行ごとにランダムI/O発生
+
+After: IX(CustomerId) INCLUDE(date,amt)
+  ┌─────┬──────┬──────┬──────┐   ← 索引のリーフに全部載っている
+  │Cust │OrdId │ date │ amt  │   → Lookup 不要で完結
+  │  5  │ 101  │ ...  │ ...  │
+  └─────┴──────┴──────┴──────┘</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>設計指針</strong>: キー列は<code>WHERE/JOIN/ORDER BY</code>の列、<code>INCLUDE</code>は<code>SELECT</code>にだけ出る列。<code>INCLUDE</code> はリーフに置くだけなので「等値の順序付け」を壊さず、かつB-tree枝のサイズを肥大化させない。
+    </div>
+  </div>
+</div>
+
+<!-- ====================== LAB 7 ====================== -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>パラメータスニッフィング — 最初のパラメータで決まるプラン</h3>
+    <span class="lab-tag tag-advanced">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ストアドやパラメタライズされたクエリは<strong>初回実行時のパラメータ</strong>を元にプランを作り、キャッシュして<strong>以後使い回す</strong>。これが<code>パラメータスニッフィング</code>。適切なら高速、だが分布が偏る列で<strong>極端な値</strong>をキャッシュしてしまうと、別の値で呼ばれたときに遅くなる。Statusは偏り列(Paid 95% / Pending 5%)の典型例。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm">-- ストアドで Status による検索</span>
+<span class="kw">CREATE OR ALTER PROCEDURE</span> dbo.GetOrdersByStatus @s <span class="kw">NVARCHAR</span>(<span class="num">10</span>) <span class="kw">AS</span>
+<span class="kw">SELECT</span> OrderId,CustomerId,Amount
+<span class="kw">FROM</span>   dbo.Orders <span class="kw">WHERE</span> Status=@s;
+<span class="kw">GO</span>
+
+<span class="kw">DBCC FREEPROCCACHE</span>;             <span class="cm">-- キャッシュ消去(開発環境のみ)</span>
+
+<span class="cm">-- 初回を 'Pending' で: 「50行しか来ない」前提のSeek計画がキャッシュ</span>
+<span class="kw">EXEC</span> dbo.GetOrdersByStatus @s=<span class="str">'Pending'</span>;
+
+<span class="cm">-- 次に 'Paid' で: 実際は950行 → キャッシュのSeekプランで Key Lookup 950回</span>
+<span class="kw">EXEC</span> dbo.GetOrdersByStatus @s=<span class="str">'Paid'</span>;    <span class="cm">-- 遅い!</span></pre>
+    </div>
+
+    <div class="compare-table">
+      <table class="compare-table" style="margin:0">
+        <thead><tr><th>対策</th><th>書き方</th><th>効果</th><th>注意</th></tr></thead>
+        <tbody>
+          <tr><td>RECOMPILE</td><td><code>OPTION(RECOMPILE)</code></td><td>毎回プラン作成</td><td>CPU増。高頻度クエリは避ける</td></tr>
+          <tr><td>OPTIMIZE FOR</td><td><code>OPTION(OPTIMIZE FOR(@s=<span class="str">'Paid'</span>))</code></td><td>代表値で固定</td><td>代表値選定ミスると元の木阿弥</td></tr>
+          <tr><td>OPTIMIZE FOR UNKNOWN</td><td><code>OPTION(OPTIMIZE FOR UNKNOWN)</code></td><td>ヒストグラム無視で平均密度</td><td>偏りが大きい場合は平凡な解に</td></tr>
+          <tr><td>ローカル変数代入</td><td><code>DECLARE @x=@s;</code>を使う</td><td>実質 UNKNOWN 相当</td><td>旧来の手癖。明示句の方が読める</td></tr>
+          <tr><td>Query Store + Force Plan</td><td>良かったプランを明示固定</td><td>Azure SQL で標準</td><td>固定解除のガバナンスが必要</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="info-box warn">
+      ⚠ <strong>本番の勘所</strong>: Azure SQL の <code>Query Store</code> は既定ON。<strong>「突然遅くなった」</strong>は多くの場合これが原因。Query Store の「回帰したクエリ」ビューで前回の良プランを見つけ、<code>sp_query_store_force_plan</code> で固定するのが定石。
+    </div>
+  </div>
+</div>
+
+<!-- ====================== LAB 8 ====================== -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>プランキャッシュと再利用 — ad-hoc の罠</h3>
+    <span class="lab-tag tag-advanced">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      SQL Server/Azure SQL はコンパイル済みプランをキャッシュし再利用する。<strong>完全一致のSQL文</strong>だけが再利用されるため、値を直書きした ad-hoc SQL は毎回コンパイルされ、キャッシュが肥大化し、統計判断もばらつく。<strong>パラメータ化</strong>(sp_executesql/ORM のプリペアド)が原則。
+    </p>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ ad-hoc: 値ごとに別プラン</div>
+        <div class="code-block">
+          <pre><span class="cm">-- これは毎回違うSQL文として扱われる</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> dbo.Orders <span class="kw">WHERE</span> CustomerId=<span class="num">5</span>;
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> dbo.Orders <span class="kw">WHERE</span> CustomerId=<span class="num">6</span>;
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> dbo.Orders <span class="kw">WHERE</span> CustomerId=<span class="num">7</span>;
+<span class="cm">-- プランキャッシュに3エントリ / コンパイル3回</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ parameterized: 1プランで再利用</div>
+        <div class="code-block">
+          <pre><span class="kw">EXEC</span> sp_executesql
+  <span class="kw">N</span><span class="str">'SELECT * FROM dbo.Orders WHERE CustomerId=@id'</span>,
+  <span class="kw">N</span><span class="str">'@id INT'</span>, @id=<span class="num">5</span>;
+
+<span class="kw">EXEC</span> sp_executesql
+  <span class="kw">N</span><span class="str">'SELECT * FROM dbo.Orders WHERE CustomerId=@id'</span>,
+  <span class="kw">N</span><span class="str">'@id INT'</span>, @id=<span class="num">6</span>;
+<span class="cm">-- プランキャッシュ1エントリ / コンパイル1回</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm">-- キャッシュの中を覗く(同じ文が何プランあるか)</span>
+<span class="kw">SELECT TOP</span>(<span class="num">20</span>) cp.usecounts, cp.objtype, cp.size_in_bytes,
+       <span class="kw">SUBSTRING</span>(st.text,<span class="num">1</span>,<span class="num">120</span>) AS sql_text
+<span class="kw">FROM</span>   sys.dm_exec_cached_plans cp
+<span class="kw">CROSS APPLY</span> sys.dm_exec_sql_text(cp.plan_handle) st
+<span class="kw">WHERE</span>  st.text <span class="kw">LIKE</span> <span class="str">'%Orders%'</span>
+<span class="kw">ORDER BY</span> cp.usecounts <span class="kw">DESC</span>;</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>Azure SQL の既定</strong>: <code>PARAMETERIZATION=SIMPLE</code>。単純クエリは自動でパラメータ化されるが、複雑な式は対象外。<code>FORCED</code> に切り替えれば広くパラメータ化されるが、意図しない共有が起きる副作用もあるので慎重に。
+    </div>
+  </div>
+</div>
+
+<!-- ====================== LAB 9 ====================== -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>ヒントと最終手段 — OPTION句は「最後の札」</h3>
+    <span class="lab-tag tag-advanced">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      オプティマイザの判断をどうしても上書きしたい時、<code>OPTION</code>句や<code>JOIN</code>ヒントで強制できる。ただし将来の統計/データ変化に追従できなくなる<strong>「凍結」</strong>なので、最初に使うものではなく<strong>最後の札</strong>。まず統計・索引・書き方を直す。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>ヒント</th><th>意味</th><th>使い所</th><th>副作用</th></tr></thead>
+      <tbody>
+        <tr><td>OPTION(RECOMPILE)</td><td>毎回コンパイル</td><td>パラメータスニッフの一時回避</td><td>CPUコスト増</td></tr>
+        <tr><td>OPTION(MAXDOP n)</td><td>並列度固定</td><td>小規模クエリを並列化させない</td><td>大規模でスループット落ちる</td></tr>
+        <tr><td>OPTION(LOOP JOIN)</td><td>全結合をNLに固定</td><td>検証用・緊急回避</td><td>大規模で破綻</td></tr>
+        <tr><td>WITH(INDEX(...))</td><td>索引を指名</td><td>誤った索引選択への応急処置</td><td>索引名変更で壊れる</td></tr>
+        <tr><td>USE PLAN</td><td>XMLプランそのもの強制</td><td>ほぼ非常用</td><td>スキーマ変更で無効化</td></tr>
+        <tr><td>Query Store Force Plan</td><td>過去の良プランを固定</td><td>運用で標準</td><td>固定解除の判断が必要</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+      <pre><span class="cm">-- 1) 書き方/索引で解決できないか先に検討</span>
+<span class="cm">--    → 統計更新・SARGable化・INCLUDE追加</span>
+
+<span class="cm">-- 2) それでもダメなら限定的にヒント</span>
+<span class="kw">SELECT</span> OrderId,Amount <span class="kw">FROM</span> dbo.Orders <span class="kw">WHERE</span> CustomerId=@id
+<span class="kw">OPTION</span> (<span class="kw">RECOMPILE</span>);    <span class="cm">-- 頻度が低い検索のみ</span>
+
+<span class="cm">-- 3) Azure SQL なら Query Store で実測ベースの固定</span>
+<span class="kw">SELECT</span> query_id, plan_id, avg_duration, last_execution_time
+<span class="kw">FROM</span>   sys.query_store_plan p
+<span class="kw">JOIN</span>   sys.query_store_runtime_stats r <span class="kw">ON</span> p.plan_id=r.plan_id
+<span class="kw">ORDER BY</span> avg_duration <span class="kw">DESC</span>;
+
+<span class="kw">EXEC</span> sp_query_store_force_plan @query_id=<span class="num">42</span>, @plan_id=<span class="num">17</span>;</pre>
+    </div>
+
+    <div class="info-box err">
+      🚫 <strong>やってはいけない順</strong>: ①問題を見ずにいきなり<code>WITH(NOLOCK)</code>貼る → ダーティリード発生、②全クエリに<code>MAXDOP 1</code> → スループット壊滅、③<code>INDEX()</code>で索引指名 → 索引名リネーム/削除で即エラー。<strong>原則は書き方・索引・統計で直す</strong>。
+    </div>
+
+    <div class="info-box ok">
+      ✓ <strong>総まとめ</strong>: オプティマイザは (1)<strong>統計情報</strong>で行数を推定し、(2)<strong>索引と結合方式</strong>を選び、(3)<strong>キャッシュ</strong>で再利用する。つまづくのはほぼ「推定ズレ」か「非SARGable」か「不足索引」。本Labの9ラボはその3系統の見取り図になっている。
+    </div>
+  </div>
+</div>
+
+</div><!-- /.container -->
+
+<script>
+  function copyCode(btn) {
+    const block = btn.closest('.code-block') || btn.parentElement;
+    const pre = block.querySelector('pre');
+    if (!pre) return;
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    });
+  }
+
+  const LAB_META = {
+    lab0: {
+      info:  { type:'info', html:'📘 <strong>要点</strong>: SQLは「何を」、オプティマイザは「どう取るか」を決める。入力は(1)書かれたクエリ(2)テーブル構造(3)索引(4)統計情報(5)メモリ/CPUなどのリソース推定。出力は1つの「実行プラン」。' },
+      check: [
+        '① Azure Data Studio か SSMS で Azure SQL Database に接続する',
+        '② 共通セットアップSQL を実行し <code>SELECT COUNT(*) FROM dbo.Orders</code> が <strong>1000</strong> になる',
+        '③ <code>sys.tables</code> に Customers と Orders があることを確認',
+        '④ テーブルは<strong>各Labで使い回す</strong>ので消さない'
+      ]
+    },
+    lab1: {
+      info:  { type:'info', html:'📘 <strong>推定</strong>=統計情報だけで作られた予測値。<strong>実測</strong>=実行結果を反映した値。両者の乖離がパフォーマンス問題のほとんどの出発点。' },
+      check: [
+        '① Ctrl+M で「実際の実行プランを含める」を有効化してからクエリ実行',
+        '② プランタブで一番右の演算子(最初に読む対象)を指差し確認',
+        '③ 各演算子にカーソルを当て、<code>推定行数</code> と <code>実測行数</code> を読む',
+        '④ メッセージタブで <code>logical reads</code> の数字を控える(後の比較の基準になる)',
+        '⑤ 矢印の太さ(行数)と演算子下の<strong>%</strong>表示(このノードの推定コスト割合)を確認'
+      ],
+      try: 'プランタブの演算子を右クリック→「プロパティ」を開くと、推定/実測行数・推定CPU・推定I/Oコストが全部見られる'
+    },
+    lab2: {
+      info:  { type:'info', html:'📘 <strong>Tipping Point</strong>: ヒット率が概ね 30〜40% を超えると、Seek+Lookup より Scan のほうが安くなる分水嶺。Customer別検索(1%)はSeek、Status=Paid(95%)はScanが選ばれる。' },
+      check: [
+        '① A の CustomerId=5 を実行 → プランに <strong>Index Seek</strong> + <strong>Key Lookup</strong> が出る',
+        '② B の Status=<code>\'Paid\'</code> を実行 → プランは <strong>Clustered Index Scan</strong>',
+        '③ メッセージタブで両者の <code>logical reads</code> を比較(AよりBのほうが多い)',
+        '④ A のプランで矢印を指差し、Seek→Lookup→SELECT の流れを目で追う',
+        '⑤ 索引を DROP してから A を再実行すると、A も Scan になることを確認'
+      ]
+    },
+    lab3: {
+      info:  { type:'info', html:'📘 <strong>統計情報の3点セット</strong>: (1)ヒストグラム=200バケットに区切った値分布、(2)密度ベクトル=重複率、(3)更新トリガは「件数の20%+500行」変動で自動更新。' },
+      check: [
+        '① <code>DBCC SHOW_STATISTICS</code> の結果で RANGE_HI_KEY / EQ_ROWS を読む',
+        '② <code>dm_db_stats_properties</code> の <code>modification_counter</code> をメモ',
+        '③ 10万行 INSERT 後、統計更新前にクエリを実行しプランタブの<strong>推定行数 vs 実測行数</strong>を比較',
+        '④ <code>UPDATE STATISTICS ... WITH FULLSCAN</code> 後、同じクエリでプランが変わること',
+        '⑤ 実験後は <code>DELETE FROM dbo.Orders WHERE OrderId &gt; 1000</code> で元に戻す'
+      ],
+      try: '推定と実測が10倍以上ズレたら、プランの他の部分も信用できなくなっている可能性が高い'
+    },
+    lab4: {
+      info:  { type:'info', html:'📘 <strong>SARGable 判定の覚え方</strong>: WHERE句で「列名がそのまま等号/不等号の左辺」にいればSARGable。<code>YEAR(col)</code>・<code>col*1.1</code>・<code>ISNULL(col,0)</code> はすべて非SARGable。' },
+      check: [
+        '① 非SARGable版を実行しプランで<strong>Index Scan</strong>(または Clustered Index Scan)を確認',
+        '② SARGable版に書き換えて実行し<strong>Index Seek</strong>に変わることを確認',
+        '③ <code>Region=1</code>(INT比較)のプランに<strong>黄色三角警告</strong>が出ることを目視',
+        '④ 警告にカーソルを当て「CONVERT_IMPLICIT」の文字列を確認',
+        '⑤ 両版の <code>logical reads</code> の桁違いを比較する'
+      ]
+    },
+    lab5: {
+      info:  { type:'info', html:'📘 <strong>JOIN選択のざっくり法則</strong>: 外側小&amp;内側に索引→<strong>Nested Loops</strong>、両側大&amp;等価結合→<strong>Hash Match</strong>、両側ソート済み→<strong>Merge</strong>。推定行数が少なめに外れると本来Hashにすべき所をNLが選ばれて激遅になる。' },
+      check: [
+        '① Customers.CustomerId=5 の結合プランで <strong>Nested Loops</strong> を確認',
+        '② 集計版(GROUP BY Region)のプランで <strong>Hash Match</strong> を確認',
+        '③ <code>INNER LOOP JOIN</code> ヒントをつけて集計版を実行、プランがNLに変わり遅くなることを観察',
+        '④ メッセージタブで CPU time と elapsed time を比較',
+        '⑤ Hash Match の演算子プロパティで「Memory Grant」の数値を控える'
+      ]
+    },
+    lab6: {
+      info:  { type:'info', html:'📘 <strong>Key Lookup</strong> は1行あたり1回のランダムI/O。100行Seekしても裏で100回Lookupが走れば、Scanより重くなる。Azure Data Studio/SSMS のプランに「Key Lookup (Clustered)」という演算子が見えたら要検討サイン。' },
+      check: [
+        '① 非カバリング版で実行し、プランに <strong>Key Lookup</strong> 演算子があることを確認',
+        '② <code>logical reads</code> の数値を控える',
+        '③ カバリング索引を作成後、同じクエリを実行し Key Lookup が<strong>消える</strong>ことを確認',
+        '④ カバリング版の <code>logical reads</code> が大幅に減っていることを確認',
+        '⑤ <code>sys.dm_db_index_usage_stats</code> で新索引が user_seeks にカウントされているか確認'
+      ],
+      try: 'INCLUDE列は増やすほど索引が重くなる。<strong>SELECT句の実需列だけ</strong>に絞るのがコツ'
+    },
+    lab7: {
+      info:  { type:'warn', html:'⚠ <strong>Azure SQL あるある</strong>: 本番のストアドが突然遅くなった時、<strong>インデックスを追加する前に</strong>「最近再コンパイルされたか?」「初回パラメータは何だったか?」を疑う。' },
+      check: [
+        '① <code>DBCC FREEPROCCACHE</code> 後、<code>\'Pending\'</code> で先に実行しプランを取得',
+        '② 続けて <code>\'Paid\'</code> で実行、プランタブで「キャッシュされたプラン」と「推定行数」を確認',
+        '③ <code>Paid</code> 実行時の<strong>推定行数と実測行数の乖離</strong>を記録',
+        '④ <code>OPTION(RECOMPILE)</code> を付けて再実行、プランが切り替わることを確認',
+        '⑤ <code>sys.dm_exec_query_stats</code> で同じ plan_handle が複数回使われているか確認'
+      ],
+      try: '本番では FREEPROCCACHE は絶対に打たない。代わりに <code>sp_recompile</code> で対象ストアドだけリセット'
+    },
+    lab8: {
+      info:  { type:'info', html:'📘 <strong>再利用ルール</strong>: プラン再利用の鍵はSQL文の<strong>テキスト完全一致</strong>(空白・コメント含む)。<code>id=5</code> と <code>id = 5</code> は別プラン。ORMがよくやるパラメタライズはこれを回避する正攻法。' },
+      check: [
+        '① ad-hoc版を <code>id=5/6/7/8/9</code> で5回実行',
+        '② <code>sys.dm_exec_cached_plans</code> を照会し、同じ形の別プランが5個あることを確認',
+        '③ sp_executesql版を 5回実行後、同じ照会でエントリが1個(<code>usecounts=5</code>)に収まることを確認',
+        '④ <code>objtype</code> 列が <strong>Prepared</strong> vs <strong>Adhoc</strong> で分かれることを確認',
+        '⑤ <code>DBCC FREEPROCCACHE</code> でクリアし、パラメタライズの効果を再度確認'
+      ]
+    },
+    lab9: {
+      info:  { type:'err', html:'🚫 <strong>ヒントは「痛み止め」で「治療」ではない</strong>。根本原因(統計古い・索引不足・SQLの書き方)を直した方がほぼ確実に速くなり、かつ長持ちする。Query Store の Force Plan は運用寄り、OPTION句は個別救済。' },
+      check: [
+        '① Query Store が有効か確認: <code>SELECT actual_state_desc FROM sys.database_query_store_options</code>',
+        '② Query Store の「回帰したクエリ」レポート(SSMSならDBツリーのQuery Store)を開いて眺める',
+        '③ <code>OPTION(RECOMPILE)</code>/<code>OPTION(MAXDOP 1)</code>/<code>OPTION(LOOP JOIN)</code>をそれぞれ試してプラン変化を観察',
+        '④ 本Lab全体を振り返り、「推定ズレ」「非SARGable」「不足索引」のどれに該当した失敗パターンかを分類してみる',
+        '⑤ 実験テーブル削除: <code>DROP TABLE dbo.Orders; DROP TABLE dbo.Customers;</code>'
+      ],
+      try: '実務では「推定と実測の乖離」をまず見る。乖離がなければ索引設計、あれば統計・パラメータスニッフを疑う順序で'
+    }
+  };
+
+  function infoHTML(m){ return m?.info ? `<div class="info-box ${m.info.type||'info'}">${m.info.html}</div>` : ''; }
+  function verifyHTML(m){ if (!m?.verify) return '';
+    const {before, after} = m.verify;
+    return `<div class="verify">
+      <div class="verify-col verify-before"><div class="verify-label">Before ▶︎ 実行前</div>${before||''}</div>
+      <div class="verify-col verify-after"><div class="verify-label">After ▶︎ 実行後</div>${after||''}</div>
+    </div>`; }
+  function checkHTML(m){ if (!m?.check?.length) return '';
+    return `<div class="check-steps">
+      <div class="check-steps-title">🔍 Azure SQL 実機チェック(SSMS / Azure Data Studio)</div>
+      <ol>${m.check.map(s=>`<li>${s}</li>`).join('')}</ol>
+    </div>`; }
+  function tryHTML(m){
+    const tip = m?.try ? `<div class="try-tip"><strong>💡 このラボのコツ:</strong> ${m.try}</div>` : '';
+    return `<div class="try-box">
+      <div class="try-title">💻 実機で試す手順(Azure SQL Database)</div>
+      <ol>
+        <li>上のコードブロックの <strong>Copy</strong> ボタンでSQLをコピー</li>
+        <li>Azure Data Studio または SSMS で<strong>テスト用Azure SQL Database</strong>に接続</li>
+        <li>新しいクエリウィンドウに貼り付け、<strong>Ctrl+M</strong> で「実際の実行プランを含める」を有効化</li>
+        <li>F5 で実行し、結果タブ・メッセージタブ・<strong>プランタブ</strong>の3つを見比べる</li>
+        <li>下の「🔍 Azure SQL 実機チェック」の項目を順に確認</li>
+      </ol>
+      ${tip}
+    </div>`;
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.lab').forEach(lab => {
+      const meta = LAB_META[lab.id]; const body = lab.querySelector('.lab-body');
+      if (!body || !meta) return;
+      const frag = document.createElement('div');
+      frag.innerHTML = infoHTML(meta) + verifyHTML(meta) + tryHTML(meta) + checkHTML(meta);
+      while (frag.firstChild) body.appendChild(frag.firstChild);
+    });
+
+    const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+    const map = new Map();
+    links.forEach(a => { const el = document.getElementById(a.getAttribute('href').slice(1)); if (el) map.set(el, a); });
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting) { const l = map.get(e.target);
+        if (l) { links.forEach(n=>n.classList.remove('active')); l.classList.add('active'); } }
+    }), { rootMargin:'-30% 0px -60% 0px' });
+    document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+    document.querySelectorAll('.code-block').forEach((cb, i) => {
+      if (cb.querySelector('.code-block-header')) return;
+      const header = document.createElement('div');
+      header.className = 'code-block-header';
+      header.innerHTML = `<span>SQL #${i+1}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+      cb.insertBefore(header, cb.firstChild);
+    });
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.matches('.toggle-btn')) return;
+    const btn = e.target;
+    const stage = document.getElementById(btn.dataset.target);
+    if (!stage) return;
+    const isBefore = stage.classList.toggle('is-before');
+    btn.classList.toggle('is-before', isBefore);
+    const label = document.getElementById(btn.dataset.target + '-label');
+    if (label) label.textContent = isBefore ? '現在: Before（Scan選択）' : '現在: After（Seek選択）';
+  });
+</script>
+</body>
+</html>
