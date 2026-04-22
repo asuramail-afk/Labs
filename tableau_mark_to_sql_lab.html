@@ -1523,68 +1523,151 @@ User clicks mark in iframe
     </table>
 
     <div class="info-box info">
-      <strong>使い分け:</strong>
-      blur 方式は「<strong>何かクリックされた</strong>」を最速で検知し、ローディングUI の即時表示などに最適です。
-      その後 <code>postMessage</code> で「<strong>どのワークシートか</strong>」を特定し、
-      必要に応じて <code>getMarksAsync()</code> で「<strong>何が選択されたか</strong>」を取得する 3段階構成が理想的です。
+      <strong>実用パターン: ボタンガード</strong>
+      blur で<strong>即座にボタンを非活性</strong>にし、VizQL通信中の不整合データ出力を防止します。
+      postMessage で<strong>mark/filter 通知が来たら非活性を維持</strong>し、
+      <code>summary-data-changed</code> が全シート分到着したら<strong>再活性</strong>にします。
+      通知が来なければ（ズーム・パン等）<strong>2秒後に自動で再活性</strong>にします。
+    </div>
+
+    <div class="diagram-box">
+ボタンガードのフロー（実測）
+
+【マーククリック時】
+t=0ms     blur → ★即座にボタン非活性（VizQL通信前！安全確保）
+t=0~700ms   VizQL通信中 → ボタンは非活性のまま → 安全
+t=700ms   postMessage (selected-marks-changed) → 非活性を維持
+t=700ms   postMessage (filter-changed × N)
+t=700ms   postMessage (summary-data-changed × N) → 全完了で再活性
+
+【ズーム・パン等（無害操作）】
+t=0ms     blur → ★即座にボタン非活性
+t=2000ms  タイムアウト → mark/filter 通知なし → 自動で再活性
+
+【ダブルクリック（地図ズーム）】
+t=0ms     blur 1回のみ → ★即座にボタン非活性
+          selected-marks-changed 発火なし（ズーム操作のため）
+t=2000ms  タイムアウト → 自動で再活性
+
+【右クリック / Tabキー（無害操作）】
+t=0ms     blur → ★即座にボタン非活性
+          selected-marks-changed / filter-changed 発火なし
+t=2000ms  タイムアウト → 自動で再活性
+
+【連続クリック（auto-refocus 前に2回目）】
+t=0ms       blur (1回目) → ★即座にボタン非活性
+t=+700ms    summary完了 → ボタン再活性
+t=+1000ms   2回目クリック → blur 発火しない（iframe がフォーカス保持中）
+t=+1700ms   postMessage → ★postMessage でもボタン非活性（blur のバックアップ）
+t=+1700ms   summary完了 → ボタン再活性
+t=+2500ms   auto-refocus
+
+【キーボード操作（iframe 内で矢印/Enter）】
+t=0ms       Tab → blur → ★即座にボタン非活性
+t=+2000ms   タイムアウト → 再活性
+t=+2500ms   auto-refocus → 矢印キーは親ウィンドウが受信（iframe に届かない）
+            ※ auto-refocus 前に矢印/Enter → iframe 内処理 → postMessage バックアップ
     </div>
 
     <div class="code-block">
-      <div class="code-block-header"><span>JAVASCRIPT — blur + auto-refocus 方式</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-      <pre><span class="cm">// ★ VizQL通信前にクリックを検知する方法</span>
-<span class="cm">// blur は iframe クリック時に親ウィンドウのフォーカス喪失で発火</span>
+      <div class="code-block-header"><span>JAVASCRIPT — ボタンガード完成版</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="cm">// ボタンガード: blur で即座に非活性、処理完了で再活性</span>
+<span class="kw">const</span> exportBtn = document.<span class="fn">querySelector</span>(<span class="str">'#exportBtn'</span>);
+<span class="kw">let</span> blurTimeout = <span class="kw">null</span>;
+<span class="kw">let</span> dataChanging = <span class="kw">false</span>;
+<span class="kw">let</span> summaryCount = <span class="num">0</span>;
+<span class="kw">let</span> expectedSummaries = <span class="num">0</span>;
 
-<span class="kw">let</span> blurT0 = <span class="num">0</span>;
-
+<span class="cm">// Phase 1: blur → 即座にボタン非活性（VizQL通信前）</span>
 window.<span class="fn">addEventListener</span>(<span class="str">'blur'</span>, () =&gt; {
-  blurT0 = performance.<span class="fn">now</span>();
+  <span class="fn">setTimeout</span>(() =&gt; {
+    <span class="kw">const</span> active = document.activeElement;
+    <span class="kw">if</span> (active?.tagName !== <span class="str">'TABLEAU-VIZ'</span>
+     &amp;&amp; active?.tagName !== <span class="str">'IFRAME'</span>) <span class="kw">return</span>;
 
-  <span class="cm">// ★ Phase 1: VizQL通信前 — 即座にUI反応（t=0ms）</span>
-  console.<span class="fn">log</span>(<span class="str">'PRE-VIZQL: iframe clicked!'</span>);
-  <span class="fn">showLoadingSpinner</span>();
+    <span class="cm">// ★ 即座にボタン非活性（データ不整合を防止）</span>
+    exportBtn.disabled = <span class="kw">true</span>;
+    dataChanging = <span class="kw">false</span>;
+    summaryCount = <span class="num">0</span>;
+    expectedSummaries = <span class="num">0</span>;
 
-  <span class="cm">// auto-refocus: 次のblur検知に備えてフォーカスを戻す</span>
-  <span class="fn">setTimeout</span>(() =&gt; window.<span class="fn">focus</span>(), <span class="num">2000</span>);
+    <span class="cm">// タイムアウト: mark/filter 通知が来なければ再活性</span>
+    blurTimeout = <span class="fn">setTimeout</span>(() =&gt; {
+      <span class="kw">if</span> (!dataChanging) exportBtn.disabled = <span class="kw">false</span>;
+    }, <span class="num">2000</span>);
+
+    <span class="cm">// auto-refocus</span>
+    <span class="fn">setTimeout</span>(() =&gt; window.<span class="fn">focus</span>(), <span class="num">2500</span>);
+  }, <span class="num">10</span>);
 });
 
+<span class="cm">// Phase 2: postMessage でデータ変更を検知</span>
 window.<span class="fn">addEventListener</span>(<span class="str">'message'</span>, (event) =&gt; {
   <span class="kw">const</span> d = event.data;
-  <span class="kw">if</span> (d?.notificationId === <span class="str">'selected-marks-changed'</span>) {
-    <span class="kw">const</span> delta = Math.<span class="fn">round</span>(performance.<span class="fn">now</span>() - blurT0);
+  <span class="kw">if</span> (!d || d.msgType !== <span class="str">'notification'</span>) <span class="kw">return</span>;
 
-    <span class="cm">// ★ Phase 2: VizQL通信後 — ワークシート特定（t=+700ms）</span>
-    console.<span class="fn">log</span>(<span class="str">`POST-VIZQL: ${d.data.worksheet} (+${delta}ms)`</span>);
-    <span class="fn">updateWorksheetLabel</span>(d.data.worksheet);
+  <span class="kw">if</span> (d.notificationId === <span class="str">'selected-marks-changed'</span>) {
+    <span class="cm">// マーク選択確定 → タイムアウトをキャンセル</span>
+    <span class="cm">// ★ blur が発火しなかった場合のバックアップ（連続クリック対策）</span>
+    exportBtn.disabled = <span class="kw">true</span>;
+    dataChanging = <span class="kw">true</span>;
+    summaryCount = <span class="num">0</span>;
+    expectedSummaries = <span class="num">0</span>;
+    <span class="fn">clearTimeout</span>(blurTimeout);
+  }
+  <span class="kw">if</span> (d.notificationId === <span class="str">'filter-changed'</span>) {
+    exportBtn.disabled = <span class="kw">true</span>;
+    dataChanging = <span class="kw">true</span>;
+    <span class="fn">clearTimeout</span>(blurTimeout);
+    expectedSummaries++;
+  }
+  <span class="kw">if</span> (d.notificationId === <span class="str">'summary-data-changed'</span>) {
+    summaryCount++;
+    <span class="cm">// 全シートのデータ更新完了 → ボタン再活性</span>
+    <span class="kw">if</span> (summaryCount &gt;= expectedSummaries
+     &amp;&amp; expectedSummaries &gt; <span class="num">0</span>) {
+      exportBtn.disabled = <span class="kw">false</span>;
+      dataChanging = <span class="kw">false</span>;
+    }
   }
 });</pre>
     </div>
 
-    <div class="code-block">
-      <div class="code-block-header"><span>JAVASCRIPT — 3段階構成（blur → postMessage → getMarksAsync）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-      <pre><span class="cm">// 最速の3段階パターン: 即応 → 特定 → 詳細取得</span>
+    <div class="verify">
+      <div class="verify-col verify-before">
+        <div class="verify-label">--- postMessage だけでガード ---</div>
+        <code>t=0ms</code> blur（クリック検知）<br>
+        <code>t=0~700ms</code> <strong style="color:var(--error)">ボタン活性 → 危険!</strong><br>
+        <code>t=700ms</code> postMessage → ようやく非活性<br>
+        <em>700ms の危険期間あり</em>
+      </div>
+      <div class="verify-col verify-after">
+        <div class="verify-label">--- blur + postMessage 併用（本パターン） ---</div>
+        <code>t=0ms</code> blur → <strong style="color:var(--success)">即座にボタン非活性</strong><br>
+        <code>t=0~700ms</code> 非活性のまま → 安全<br>
+        <code>t=700ms</code> summary完了 → 再活性<br>
+        <em>連続クリック時: postMessage がバックアップ</em>
+      </div>
+    </div>
 
-<span class="kw">let</span> t0 = <span class="num">0</span>;
+    <div class="info-box warn">
+      <strong>連続クリック・キーボード操作時の注意:</strong>
+      1回目のクリック（または Tab キー）でフォーカスが iframe に移ると、
+      <strong>auto-refocus（2.5秒後）の前に行われた操作では blur が発火しません</strong>。
+      対象: 連続クリック（2回目以降）、ダブルクリック（2打目）、iframe 内での矢印キー・Enter 等。
+      この場合、<code>postMessage</code>（<code>selected-marks-changed</code> / <code>filter-changed</code>）
+      でも <code>exportBtn.disabled = true</code> を設定します（blur のバックアップ）。
+      blur が使えない操作では <strong>postMessage 到着まで最大700ms の危険期間</strong>が残りますが、
+      blur が使えない状況下での最善策です。
+    </div>
 
-<span class="cm">// Phase 1: blur — VizQL通信前（t=0ms）</span>
-window.<span class="fn">addEventListener</span>(<span class="str">'blur'</span>, () =&gt; {
-  t0 = performance.<span class="fn">now</span>();
-  <span class="fn">showLoadingSpinner</span>();        <span class="cm">// 即座にUI反応</span>
-  <span class="fn">setTimeout</span>(() =&gt; window.<span class="fn">focus</span>(), <span class="num">2000</span>);
-});
-
-<span class="cm">// Phase 2: postMessage — VizQL通信後（t=+700ms）</span>
-window.<span class="fn">addEventListener</span>(<span class="str">'message'</span>, (event) =&gt; {
-  <span class="kw">const</span> d = event.data;
-  <span class="kw">if</span> (d?.notificationId !== <span class="str">'selected-marks-changed'</span>) <span class="kw">return</span>;
-  <span class="fn">updateStatus</span>(<span class="str">`${d.data.worksheet} selected`</span>);
-});
-
-<span class="cm">// Phase 3: markselectionchanged — 詳細取得（t=+930ms）</span>
-viz.<span class="fn">addEventListener</span>(<span class="str">'markselectionchanged'</span>, <span class="kw">async</span> (e) =&gt; {
-  <span class="kw">const</span> marks = <span class="kw">await</span> e.detail.<span class="fn">getMarksAsync</span>();
-  <span class="fn">hideLoadingSpinner</span>();
-  <span class="fn">renderMarkDetails</span>(marks);  <span class="cm">// 完全なデータでUI更新</span>
-});</pre>
+    <div class="info-box err">
+      <strong>アクセシビリティ副作用:</strong>
+      <code>auto-refocus</code> は約2.5秒後にフォーカスを親ウィンドウに強制的に戻すため、
+      <strong>キーボードだけで Tableau を操作するユーザー</strong>（矢印キーでのマーク移動、
+      Tab でのコントロール巡回等）の操作が中断されます。
+      アクセシビリティ要件がある場合は、auto-refocus の間隔を長くするか、
+      blur 方式を使わず <code>postMessage</code> のみのガードに切り替えてください。
     </div>
 
     <div class="beginner-box">
@@ -1604,6 +1687,100 @@ viz.<span class="fn">addEventListener</span>(<span class="str">'markselectioncha
   └── postMessage で親ページに通知
         └── selected-marks-changed ← （t=+700ms）</pre>
     </div>
+
+    <div class="info-box ok">
+      <strong>誤検知は少ない:</strong>
+      実機テストの結果、<code>window.blur</code> は<strong>ページ内のボタン・リンク・テキストのクリックでは発火しません</strong>。
+      iframe 内クリック時のみ発火します。
+      さらに <code>document.activeElement</code> をチェックすれば、タブ切替等の誤検知も排除できます。
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JAVASCRIPT — 誤検知排除ガード付き blur</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="cm">// タブ切替・Alt+Tab 等の誤検知を排除</span>
+window.<span class="fn">addEventListener</span>(<span class="str">'blur'</span>, () =&gt; {
+  <span class="fn">setTimeout</span>(() =&gt; {
+    <span class="kw">const</span> active = document.activeElement;
+    <span class="kw">const</span> isVizClick = active?.tagName === <span class="str">'TABLEAU-VIZ'</span>
+                     || active?.tagName === <span class="str">'IFRAME'</span>;
+
+    <span class="kw">if</span> (!isVizClick) <span class="kw">return</span>; <span class="cm">// タブ切替等 → 無視</span>
+
+    <span class="cm">// ★ iframe クリック確定 → PRE-VIZQL 処理</span>
+    <span class="fn">showLoadingSpinner</span>();
+    <span class="fn">setTimeout</span>(() =&gt; window.<span class="fn">focus</span>(), <span class="num">2000</span>);
+  }, <span class="num">10</span>); <span class="cm">// activeElement が確定するまで少し待つ</span>
+});</pre>
+    </div>
+
+    <table class="compare-table">
+      <tr>
+        <th>操作</th>
+        <th>blur 発火</th>
+        <th>activeElement</th>
+        <th>判定</th>
+      </tr>
+      <tr>
+        <td>ページ内ボタンクリック</td>
+        <td style="color:var(--success)">NO</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>ページ内リンククリック</td>
+        <td style="color:var(--success)">NO</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>ページ内テキストクリック</td>
+        <td style="color:var(--success)">NO</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>Tableau iframe クリック</td>
+        <td style="color:var(--error);font-weight:600">YES</td>
+        <td><code>TABLEAU-VIZ#viz01</code></td>
+        <td style="color:var(--success)">iframe クリック</td>
+      </tr>
+      <tr>
+        <td>右クリック（iframe内）</td>
+        <td style="color:var(--error);font-weight:600">YES</td>
+        <td><code>TABLEAU-VIZ#viz01</code></td>
+        <td style="color:var(--text-dim)">無害（タイムアウトで再活性）</td>
+      </tr>
+      <tr>
+        <td>ダブルクリック（地図ズーム）</td>
+        <td style="color:var(--error);font-weight:600">YES（1回のみ）</td>
+        <td><code>TABLEAU-VIZ#viz01</code></td>
+        <td style="color:var(--text-dim)">無害（タイムアウトで再活性）</td>
+      </tr>
+      <tr>
+        <td>連続クリック（refocus前）</td>
+        <td style="color:var(--success)">2回目は NO</td>
+        <td>-</td>
+        <td style="color:var(--accent4)">postMessage バックアップ</td>
+      </tr>
+      <tr>
+        <td>Tabキー → iframe へ</td>
+        <td style="color:var(--error);font-weight:600">YES</td>
+        <td><code>TABLEAU-VIZ#viz01</code></td>
+        <td style="color:var(--text-dim)">無害（タイムアウトで再活性）</td>
+      </tr>
+      <tr>
+        <td>矢印キー / Enter（iframe内）</td>
+        <td style="color:var(--success)">NO</td>
+        <td>-</td>
+        <td style="color:var(--accent4)">postMessage バックアップ</td>
+      </tr>
+      <tr>
+        <td>タブ切替 / Alt+Tab</td>
+        <td style="color:var(--error);font-weight:600">YES</td>
+        <td><code>BODY</code> (hasFocus: false)</td>
+        <td style="color:var(--text-dim)">無視（activeElement ガード）</td>
+      </tr>
+    </table>
 
     <div class="info-box warn">
       <strong>制約:</strong>
@@ -1931,39 +2108,88 @@ function clearResult10() {
   show('result10', 'ログクリア済み。マークをクリックしてください\n');
 }
 
-// ── Step 11: blur + auto-refocus ──
+// ── Step 11: blur + postMessage ボタンガード ──
 let _blur11Handler = null;
 let _pm11Handler = null;
 let _blur11T0 = 0;
 let _blur11RunCount = 0;
+let _blur11Timeout = null;
+let _blur11DataChanging = false;
+let _blur11SummaryCount = 0;
+let _blur11ExpectedSummaries = 0;
 
 function runStep11() {
   _blur11RunCount = 0;
-  show('result11', 'blur検知起動中... まず iframe 外（テキスト部分等）をクリックしてフォーカスを親ウィンドウに戻してから、マークをクリックしてください\n');
+  show('result11', 'ボタンガード起動中... まず iframe 外をクリックしてフォーカスを戻してから、マークやズームをクリックしてください\n');
   stopStep11();
 
   _blur11Handler = function() {
-    _blur11T0 = performance.now();
-    _blur11RunCount++;
-    const el = document.getElementById('result11');
-    el.innerHTML += `\n<span style="color:var(--accent);font-weight:600">── Click #${_blur11RunCount} ──</span>\n`;
-    el.innerHTML += `<span style="color:var(--error);font-weight:600">[PRE-VIZQL]   t=0ms     window.blur — iframe クリック検知！</span>\n`;
-    el.scrollTop = el.scrollHeight;
+    setTimeout(() => {
+      const active = document.activeElement;
+      const isVizClick = active && (active.tagName === 'TABLEAU-VIZ' || active.tagName === 'IFRAME');
 
-    // auto-refocus
-    setTimeout(() => { window.focus(); }, 2000);
+      if (!isVizClick) {
+        const el = document.getElementById('result11');
+        el.innerHTML += `<span style="color:var(--text-dim)">[IGNORED] blur: activeElement=${active?.tagName} (not iframe)</span>\n`;
+        el.scrollTop = el.scrollHeight;
+        return;
+      }
+
+      _blur11T0 = performance.now();
+      _blur11RunCount++;
+      _blur11DataChanging = false;
+      _blur11SummaryCount = 0;
+      _blur11ExpectedSummaries = 0;
+
+      const el = document.getElementById('result11');
+      el.innerHTML += `\n<span style="color:var(--accent);font-weight:600">── Click #${_blur11RunCount} ──</span>\n`;
+      el.innerHTML += `<span style="color:var(--error);font-weight:600">[t=0ms]  DISABLED — blur で即座にボタン非活性（PRE-VIZQL）</span>\n`;
+      el.scrollTop = el.scrollHeight;
+
+      // Timeout: mark/filter通知がなければ再活性
+      _blur11Timeout = setTimeout(() => {
+        if (!_blur11DataChanging) {
+          const el = document.getElementById('result11');
+          const delta = Math.round(performance.now() - _blur11T0);
+          el.innerHTML += `<span style="color:var(--success)">[t=+${delta}ms]  ENABLED — mark/filter通知なし → 無害操作（ズーム/パン等）</span>\n`;
+          el.scrollTop = el.scrollHeight;
+        }
+      }, 2000);
+
+      // auto-refocus
+      setTimeout(() => { window.focus(); }, 2500);
+    }, 10);
   };
   window.addEventListener('blur', _blur11Handler);
 
   _pm11Handler = function(event) {
-    if (event.data && event.data.notificationId === 'selected-marks-changed') {
-      const delta = Math.round(performance.now() - _blur11T0);
-      const el = document.getElementById('result11');
-      el.innerHTML += `<span style="color:var(--success)">[POST-VIZQL]  t=+${delta}ms  postMessage — ${event.data.data.worksheet}</span>\n`;
-      el.innerHTML += `<span style="color:var(--accent4)">→ blur は postMessage より ${delta}ms 早く検知</span>\n`;
-      el.innerHTML += `<span style="color:var(--text-dim)">(auto-refocus まで 2s 待機中...)</span>\n`;
-      el.scrollTop = el.scrollHeight;
+    const d = event.data;
+    if (!d || d.msgType !== 'notification') return;
+    const el = document.getElementById('result11');
+    const delta = Math.round(performance.now() - _blur11T0);
+
+    if (d.notificationId === 'selected-marks-changed') {
+      _blur11DataChanging = true;
+      _blur11SummaryCount = 0;
+      _blur11ExpectedSummaries = 0;
+      clearTimeout(_blur11Timeout);
+      const wasBlurred = _blur11T0 > 0;
+      el.innerHTML += `<span style="color:var(--accent4)">[t=+${delta}ms]  DISABLED — mark selection${wasBlurred ? '（blur で既に非活性）' : '（blur なし → postMessage でバックアップ非活性）'}</span>\n`;
     }
+    if (d.notificationId === 'filter-changed') {
+      _blur11DataChanging = true;
+      clearTimeout(_blur11Timeout);
+      _blur11ExpectedSummaries++;
+    }
+    if (d.notificationId === 'summary-data-changed') {
+      _blur11SummaryCount++;
+      el.innerHTML += `<span style="color:var(--accent5)">[t=+${delta}ms]  summary-data-changed (${_blur11SummaryCount}/${_blur11ExpectedSummaries})</span>\n`;
+      if (_blur11SummaryCount >= _blur11ExpectedSummaries && _blur11ExpectedSummaries > 0) {
+        el.innerHTML += `<span style="color:var(--success);font-weight:600">[t=+${delta}ms]  ENABLED — 全データ更新完了 → ボタン再活性</span>\n`;
+        _blur11DataChanging = false;
+      }
+    }
+    el.scrollTop = el.scrollHeight;
   };
   window.addEventListener('message', _pm11Handler);
 }
@@ -1971,6 +2197,7 @@ function runStep11() {
 function stopStep11() {
   if (_blur11Handler) { window.removeEventListener('blur', _blur11Handler); _blur11Handler = null; }
   if (_pm11Handler) { window.removeEventListener('message', _pm11Handler); _pm11Handler = null; }
+  clearTimeout(_blur11Timeout);
 }
 
 // ── Sidebar active tracking ──
