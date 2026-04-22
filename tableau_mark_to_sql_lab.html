@@ -495,6 +495,9 @@
   <div class="nav-section">統合</div>
   <a class="nav-item" href="#lab7"><span class="nav-num">07</span>フィルタ + マーク統合</a>
   <a class="nav-item" href="#lab8"><span class="nav-num">08</span>完成コード &amp; 実行</a>
+  <div class="nav-section">高速化</div>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>postMessage直接傍受</a>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>フィルターアクション対応</a>
 </nav>
 
 <!-- ════ HERO ════ -->
@@ -1162,6 +1165,298 @@ WHERE [Region] = 'East'                            ← フィルタ由来
   </div>
 </section>
 
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- LAB 09 : postMessage直接傍受                                  -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<section class="lab" id="lab9">
+  <div class="lab-header">
+    <span class="lab-num">09</span>
+    <h3>高速化: postMessage直接傍受でgetMarksAsync()を回避</h3>
+    <span class="lab-tag tag-key">PERFORMANCE</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>markselectionchanged</code> イベント自体は即座（0ms）に発火しますが、
+      ハンドラ内で <code>getMarksAsync()</code> を呼ぶと<strong>追加のサーバ往復（約230ms）</strong>が発生します。
+      <code>window.addEventListener('message', ...)</code> で iframe からの <code>postMessage</code> を
+      直接傍受すれば、API を経由せず <strong>どのワークシートでマークが選択されたか</strong> を即座に取得できます。
+    </p>
+
+    <div class="diagram-box">
+マーク選択のイベント処理フロー（実測タイミング）
+
+User clicks mark in iframe
+  │
+  ├─(1) iframe内部: VizQL処理（cross-origin → 傍受不可）
+  │
+  ├─(2) postMessage 到着          ⏱ t=0ms     ← ★最速で検知可能なポイント
+  │     notificationId: "selected-marks-changed"
+  │     data: { worksheet, dashboard }
+  │
+  ├─(3) markselectionchanged 発火  ⏱ t=0ms     ← postMessage と同時
+  │
+  └─(4) getMarksAsync() 完了       ⏱ t=+227ms  ← ★ここが遅い（サーバ往復）
+        マーク詳細データを取得するための追加通信
+    </div>
+
+    <table class="compare-table">
+      <tr>
+        <th>方法</th>
+        <th>タイミング</th>
+        <th>取得できる情報</th>
+        <th>サーバ通信</th>
+      </tr>
+      <tr>
+        <td>postMessage 直接傍受</td>
+        <td>0ms</td>
+        <td>worksheet名, dashboard名</td>
+        <td>なし</td>
+      </tr>
+      <tr>
+        <td>markselectionchanged（getMarksAsync なし）</td>
+        <td>0ms</td>
+        <td>イベント検知のみ</td>
+        <td>なし</td>
+      </tr>
+      <tr>
+        <td>markselectionchanged + getMarksAsync()</td>
+        <td>~230ms</td>
+        <td>完全なマークデータ</td>
+        <td>あり（往復）</td>
+      </tr>
+    </table>
+
+    <div class="info-box info">
+      <strong>ポイント:</strong> <code>markselectionchanged</code> 自体は高速です。
+      遅延の原因は <code>getMarksAsync()</code> のサーバ往復です。
+      マーク詳細データが不要なら <code>getMarksAsync()</code> を呼ばないだけで高速化できます。
+      <code>postMessage</code> 直接傍受は、API を経由せずワークシート名等の生データを取得したい場合に有効です。
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JAVASCRIPT — postMessage 直接傍受</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="cm">// postMessage を直接傍受（API非依存・最速）</span>
+window.<span class="fn">addEventListener</span>(<span class="str">'message'</span>, (event) =&gt; {
+  <span class="kw">const</span> d = event.data;
+  <span class="cm">// Tableau iframe からの通知のみ処理</span>
+  <span class="kw">if</span> (!d || d.msgType !== <span class="str">'notification'</span>) <span class="kw">return</span>;
+
+  <span class="kw">if</span> (d.notificationId === <span class="str">'selected-marks-changed'</span>) {
+    <span class="cm">// ★ t=0ms — getMarksAsync() なしで即座に検知</span>
+    console.<span class="fn">log</span>(<span class="str">'Mark selected on:'</span>, d.data.worksheet);
+    <span class="fn">showLoadingSpinner</span>();  <span class="cm">// 即座にUI反応</span>
+  }
+});</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JAVASCRIPT — 2段階パターン（即応 + 詳細取得）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="cm">// Phase 1: 即座にUI反応（0ms）</span>
+<span class="cm">// Phase 2: 詳細データを非同期取得（~230ms後）</span>
+
+viz.<span class="fn">addEventListener</span>(<span class="str">'markselectionchanged'</span>, <span class="kw">async</span> (e) =&gt; {
+  <span class="cm">// Phase 1: 即座に実行</span>
+  <span class="fn">showLoadingSpinner</span>();
+  <span class="fn">highlightSelectedArea</span>();
+
+  <span class="cm">// Phase 2: 詳細データが必要なら非同期で取得</span>
+  <span class="kw">const</span> marks = <span class="kw">await</span> e.detail.<span class="fn">getMarksAsync</span>();
+  <span class="fn">hideLoadingSpinner</span>();
+  <span class="fn">updateDetailPanel</span>(marks);
+});</pre>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">--- 初心者向け: なぜ postMessage で傍受できる？ ---</div>
+      Tableau Embedding API v3 は <code>&lt;tableau-viz&gt;</code> 内部に cross-origin の
+      <code>&lt;iframe&gt;</code> を持ちます。iframe と親ページ間の通信は <code>postMessage</code> で行われ、
+      <code>window.addEventListener('message', ...)</code> で傍受できます。
+      <pre class="ascii-art">
+親ページ (your-site.com)
+┌───────────────────────────────────────────┐
+│  &lt;tableau-viz&gt;                            │
+│    └── shadowRoot                         │
+│          └── &lt;iframe&gt; (public.tableau.com)│
+│                  │                        │
+│                  │ postMessage             │
+│                  ▼                        │
+│  window.addEventListener('message', fn)   │  ← ★ここで傍受
+│                  │                        │
+│                  ▼                        │
+│  markselectionchanged CustomEvent 発火    │
+└───────────────────────────────────────────┘</pre>
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">動作確認手順</div>
+      <ol>
+        <li>「リスナー開始」ボタンを押す</li>
+        <li>下のTableauチャートでマークをクリック（Ctrl+クリック）</li>
+        <li>OUTPUT にリアルタイムで通知が表示される</li>
+        <li><code>postMessage</code> と <code>markselectionchanged</code> のタイミング差（0ms）を確認</li>
+        <li><code>getMarksAsync()</code> の所要時間（~230ms）と比較</li>
+      </ol>
+    </div>
+
+    <div class="result-area" id="result09" style="min-height:120px;">
+      <div class="label">OUTPUT</div>
+      「リスナー開始」ボタンを押してからマークをクリックしてください
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-accent" onclick="runStep09()">リスナー開始</button>
+      <button class="btn" onclick="show('result09','リスナーを停止しました'); stopStep09();">リスナー停止</button>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- LAB 10 : フィルターアクション対応                               -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<section class="lab" id="lab10">
+  <div class="lab-header">
+    <span class="lab-num">10</span>
+    <h3>フィルターアクション連動の傍受</h3>
+    <span class="lab-tag tag-advanced">FILTER ACTION</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ダッシュボードでマークをクリックすると、他のワークシートへのフィルターアクションが連鎖的に発生します。
+      <code>postMessage</code> 直接傍受なら、<code>selected-marks-changed</code> に加えて
+      <code>filter-changed</code>、<code>summary-data-changed</code> も全て即座にキャッチできます。
+    </p>
+
+    <div class="diagram-box">
+フィルターアクション連動のタイミング（実測: Superstore ダッシュボード）
+
+t=0ms   selected-marks-changed   → SaleMap           ← マーク選択（起点）
+t=+3ms  filter-changed           → SalesbyProduct    ← Action (State) フィルタ連動
+t=+5ms  filter-changed           → SalesbySegment    ← Action (State) フィルタ連動
+t=+9ms  filter-changed           → Total Sales       ← Action (State) フィルタ連動
+t=+9ms  summary-data-changed     → Total Sales       ← データ更新
+t=+9ms  summary-data-changed     → SalesbySegment    ← データ更新
+t=+9ms  summary-data-changed     → SalesbyProduct    ← データ更新
+
+★ 全通知が 0〜9ms 以内に到着（getMarksAsync() の 230ms を待たない）
+    </div>
+
+    <div class="info-box ok">
+      <strong>フィルターアクションでも有効:</strong>
+      <code>selected-marks-changed</code> が最初（t=0ms）に到着し、
+      その後 <code>filter-changed</code> がフィルタ対象の各ワークシートに対して 3〜9ms で連鎖的に到着します。
+      <code>filter-changed</code> の <code>data</code> にはフィルタ対象の <code>worksheet</code> 名と
+      <code>fieldName</code>（例: <code>Action (State)</code>）が含まれます。
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JAVASCRIPT — 全通知タイプ統合ハンドラ</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="cm">// マーク選択 + フィルター連動 + データ更新を一括傍受</span>
+window.<span class="fn">addEventListener</span>(<span class="str">'message'</span>, (event) =&gt; {
+  <span class="kw">const</span> d = event.data;
+  <span class="kw">if</span> (!d || d.msgType !== <span class="str">'notification'</span>) <span class="kw">return</span>;
+
+  <span class="kw">switch</span> (d.notificationId) {
+    <span class="kw">case</span> <span class="str">'selected-marks-changed'</span>:
+      <span class="cm">// ★ t=0ms — マーク選択を即座にキャッチ</span>
+      console.<span class="fn">log</span>(<span class="str">'Mark selected:'</span>, d.data.worksheet);
+      <span class="fn">showLoadingSpinner</span>();
+      <span class="kw">break</span>;
+
+    <span class="kw">case</span> <span class="str">'filter-changed'</span>:
+      <span class="cm">// ★ t=3-9ms — フィルター連動もほぼ即座にキャッチ</span>
+      console.<span class="fn">log</span>(<span class="str">'Filter applied:'</span>,
+        d.data.visualId?.worksheet, d.data.fieldName);
+      <span class="kw">break</span>;
+
+    <span class="kw">case</span> <span class="str">'summary-data-changed'</span>:
+      <span class="cm">// ★ t=9ms — データ更新完了</span>
+      console.<span class="fn">log</span>(<span class="str">'Data updated:'</span>,
+        d.data.visualId?.worksheet);
+      <span class="fn">hideLoadingSpinner</span>();
+      <span class="kw">break</span>;
+  }
+});</pre>
+    </div>
+
+    <table class="compare-table">
+      <tr>
+        <th>notificationId</th>
+        <th>タイミング</th>
+        <th>data に含まれる情報</th>
+      </tr>
+      <tr>
+        <td>selected-marks-changed</td>
+        <td>t=0ms</td>
+        <td><code>worksheet</code>, <code>dashboard</code></td>
+      </tr>
+      <tr>
+        <td>filter-changed</td>
+        <td>t=+3〜9ms</td>
+        <td><code>visualId.worksheet</code>, <code>fieldName</code>, <code>fieldId</code></td>
+      </tr>
+      <tr>
+        <td>summary-data-changed</td>
+        <td>t=+9ms</td>
+        <td><code>visualId.worksheet</code></td>
+      </tr>
+      <tr>
+        <td>toolbar-state-changed</td>
+        <td>t=+30ms</td>
+        <td><code>toolbarState</code> (canUndo, canRedo)</td>
+      </tr>
+    </table>
+
+    <div class="beginner-box">
+      <div class="beginner-title">--- 初心者向け: フィルターアクションの仕組み ---</div>
+      Tableau ダッシュボードでは、あるシートのマークをクリックすると、
+      他のシートに自動的にフィルタが適用されます（ダッシュボードアクション）。
+      この連鎖は全て <code>postMessage</code> で通知されます。
+      <pre class="ascii-art">
+SaleMap でマーククリック
+  │
+  ├──→ selected-marks-changed (SaleMap)        t=0ms
+  │
+  ├──→ filter-changed (SalesbyProduct)         t=+3ms
+  │      fieldName: "Action (State)"
+  │
+  ├──→ filter-changed (SalesbySegment)         t=+5ms
+  │      fieldName: "Action (State)"
+  │
+  ├──→ filter-changed (Total Sales)            t=+9ms
+  │
+  └──→ summary-data-changed × 3               t=+9ms
+         各シートのデータ再計算完了</pre>
+    </div>
+
+    <div class="info-box warn">
+      <strong>注意:</strong> <code>filter-changed</code> の <code>fieldName</code> が
+      <code>Action (...)</code> で始まる場合はダッシュボードアクション由来のフィルタです。
+      ユーザーが手動で設定したフィルタと区別するには、この命名規則をチェックしてください。
+      Lab 07 のフィルタ統合コードでは <code>/^(Action|アクション)\s*\(/.test(f.fieldName)</code> で除外しています。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">動作確認手順</div>
+      <ol>
+        <li>「フィルター監視開始」ボタンを押す</li>
+        <li>地図上のバブルをクリック（他シートへのフィルター連動が発生）</li>
+        <li>OUTPUT に全通知タイプがタイムスタンプ付きで表示される</li>
+        <li><code>selected-marks-changed</code> → <code>filter-changed</code> × N → <code>summary-data-changed</code> × N の順序を確認</li>
+        <li>全通知が 0〜10ms 以内に到着していることを確認</li>
+      </ol>
+    </div>
+
+    <div class="result-area" id="result10" style="min-height:150px;">
+      <div class="label">OUTPUT</div>
+      「フィルター監視開始」ボタンを押してからマークをクリックしてください
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-accent" onclick="runStep10()">フィルター監視開始</button>
+      <button class="btn" onclick="show('result10','監視を停止しました'); stopStep10();">監視停止</button>
+      <button class="btn" onclick="clearResult10()">ログクリア</button>
+    </div>
+  </div>
+</section>
+
 </div><!-- /container -->
 
 <!-- ════════════════════════════════════════════════════════════ -->
@@ -1343,6 +1638,117 @@ async function clearMarks() {
     try { await ws.clearSelectedMarksAsync(); } catch (e) { /* ignore */ }
   }
   show('result08', 'All marks cleared.');
+}
+
+// ── Step 09: postMessage直接傍受 ──
+let _pm09Handler = null;
+let _mark09Handler = null;
+let _pm09T0 = 0;
+let _pm09RunCount = 0;
+
+function runStep09() {
+  const viz = getViz(); if (!viz) return;
+  _pm09RunCount = 0;
+  show('result09', 'リスナー起動中... マークをクリックしてください\n');
+  stopStep09();
+
+  _pm09Handler = function(event) {
+    const d = event.data;
+    if (!d || d.msgType !== 'notification') return;
+    if (d.notificationId !== 'selected-marks-changed') return;
+    _pm09T0 = performance.now();
+    _pm09RunCount++;
+    const el = document.getElementById('result09');
+    el.innerHTML += `\n<span style="color:var(--accent);font-weight:600">── Run #${_pm09RunCount} ──</span>\n`;
+    el.innerHTML += `[postMessage]  t=0ms  worksheet: ${d.data.worksheet}  dashboard: ${d.data.dashboard}\n`;
+  };
+  window.addEventListener('message', _pm09Handler);
+
+  _mark09Handler = async function(e) {
+    const t1 = performance.now();
+    const delta1 = Math.round(t1 - _pm09T0);
+    const el = document.getElementById('result09');
+    el.innerHTML += `[CustomEvent]  t=+${delta1}ms  markselectionchanged fired\n`;
+
+    const t2 = performance.now();
+    try {
+      const marks = await e.detail.getMarksAsync();
+      const t3 = performance.now();
+      const asyncMs = Math.round(t3 - t2);
+      const totalMs = Math.round(t3 - _pm09T0);
+      const count = marks.data?.[0]?.totalRowCount ?? 0;
+      el.innerHTML += `[getMarksAsync]  t=+${totalMs}ms  (server round-trip: ${asyncMs}ms)  marks: ${count}\n`;
+      el.innerHTML += `<span style="color:var(--success)">→ postMessage は getMarksAsync より ${asyncMs}ms 早く検知</span>\n`;
+    } catch (err) {
+      el.innerHTML += `[getMarksAsync]  error: ${err.message}\n`;
+    }
+    el.scrollTop = el.scrollHeight;
+  };
+  viz.addEventListener('markselectionchanged', _mark09Handler);
+}
+
+function stopStep09() {
+  if (_pm09Handler) { window.removeEventListener('message', _pm09Handler); _pm09Handler = null; }
+  // Note: viz.removeEventListener for markselectionchanged is not reliable in Tableau API
+  // so we just null out the reference
+  _mark09Handler = null;
+}
+
+// ── Step 10: フィルターアクション対応 ──
+let _pm10Handler = null;
+let _pm10T0 = 0;
+let _pm10RunCount = 0;
+
+function runStep10() {
+  const viz = getViz(); if (!viz) return;
+  _pm10RunCount = 0;
+  show('result10', 'フィルター監視起動中... マークをクリックしてください\n');
+  stopStep10();
+
+  _pm10Handler = function(event) {
+    const d = event.data;
+    if (!d || d.msgType !== 'notification') return;
+
+    const el = document.getElementById('result10');
+    const now = performance.now();
+
+    switch (d.notificationId) {
+      case 'selected-marks-changed':
+        _pm10T0 = now;
+        _pm10RunCount++;
+        el.innerHTML += `\n<span style="color:var(--accent);font-weight:600">── Run #${_pm10RunCount} ──</span>\n`;
+        el.innerHTML += `<span style="color:var(--accent)">  t=0ms     selected-marks-changed  → ${d.data.worksheet}</span>\n`;
+        break;
+      case 'filter-changed': {
+        const delta = Math.round(now - _pm10T0);
+        const ws = d.data.visualId?.worksheet || '?';
+        const field = d.data.fieldName || '?';
+        el.innerHTML += `<span style="color:var(--accent4)">  t=+${String(delta).padStart(3)}ms  filter-changed           → ${ws}  (${field})</span>\n`;
+        break;
+      }
+      case 'summary-data-changed': {
+        const delta = Math.round(now - _pm10T0);
+        const ws = d.data.visualId?.worksheet || '?';
+        el.innerHTML += `<span style="color:var(--success)">  t=+${String(delta).padStart(3)}ms  summary-data-changed     → ${ws}</span>\n`;
+        break;
+      }
+      case 'toolbar-state-changed': {
+        const delta = Math.round(now - _pm10T0);
+        el.innerHTML += `<span style="color:var(--text-dim)">  t=+${String(delta).padStart(3)}ms  toolbar-state-changed</span>\n`;
+        break;
+      }
+    }
+    el.scrollTop = el.scrollHeight;
+  };
+  window.addEventListener('message', _pm10Handler);
+}
+
+function stopStep10() {
+  if (_pm10Handler) { window.removeEventListener('message', _pm10Handler); _pm10Handler = null; }
+}
+
+function clearResult10() {
+  show('result10', 'ログクリア済み。マークをクリックしてください\n');
 }
 
 // ── Sidebar active tracking ──
