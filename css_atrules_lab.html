@@ -1,0 +1,1807 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSS At-Rules Lab — アットルール網羅実機確認</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+/* Sidebar */
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+/* Hero */
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+/* TOC */
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+/* Container & Lab cards */
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+/* Code block */
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+/* Syntax token colors (GitHub light) */
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+.atr { color:#d73a49; font-weight:600; }
+
+/* info-box */
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+/* verify Before / After */
+.verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+  line-height:1.7; border:1px solid; }
+.verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+.verify-before .verify-label { color:var(--error); }
+.verify-after  .verify-label { color:var(--success); }
+
+/* check-steps */
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+/* compare-table */
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+.compare-table .yes { color:var(--success); } .compare-table .no { color:var(--error); }
+
+/* 🔰 beginner-box */
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+/* 💡 usecase-box */
+.usecase-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:6px; }
+.usecase-list { margin-left:20px; margin-bottom:10px; }
+.usecase-list li { margin-bottom:4px; }
+.usecase-trigger { background:rgba(0,92,197,.05); border-left:3px solid var(--accent);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#003d8f; margin-top:8px; }
+.usecase-trigger ul { margin:4px 0 0 20px; }
+
+/* 🎛 livedemo */
+.livedemo { margin:14px 0; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+.livedemo-bar { display:flex; align-items:center; gap:12px; padding:8px 12px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.toggle-btn { font-family:var(--mono); font-size:.78rem; padding:5px 14px;
+  border-radius:6px; border:1px solid var(--accent); background:var(--accent);
+  color:#fff; cursor:pointer; transition:all .15s; }
+.toggle-btn:hover { opacity:.85; }
+.toggle-btn.is-before { background:var(--error); border-color:var(--error); }
+.toggle-label { font-family:var(--mono); font-size:.78rem; color:var(--text-dim); }
+.livedemo-stage { padding:16px; background:var(--bg); }
+.livedemo-stage.is-before { outline:2px dashed var(--error); outline-offset:-8px; }
+.livedemo-stage .ld-before { display:none; }
+.livedemo-stage.is-before .ld-before { display:block; }
+.livedemo-stage.is-before .ld-after { display:none; }
+.ld-panel { padding:12px; border-radius:6px; font-family:var(--mono); font-size:11px; line-height:1.6; }
+.ld-panel.bad { background:#fee2e2; border:1px solid #cb2431; color:#6b1a22; }
+.ld-panel.good { background:#dcfce7; border:1px solid #22863a; color:#166534; }
+
+/* 💻 try-box */
+.try-box { background:rgba(34,134,58,.06); border:1px solid rgba(34,134,58,.30);
+  border-left:3px solid var(--success); border-radius:7px;
+  padding:12px 14px; margin:14px 0; font-size:.86rem; line-height:1.8; color:#154f1e; }
+.try-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--success); font-weight:700; margin-bottom:6px; }
+.try-box ol { margin-left:20px; margin-top:4px; }
+.try-box ol li { margin-bottom:4px; }
+.try-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--success); }
+.try-tip { background:rgba(176,136,0,.06); border-left:3px solid var(--accent4);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#5c4400; margin-top:8px; }
+.try-tip strong { color:var(--accent4); }
+.try-skeleton { background:#f0f4f8; border:1px solid var(--border); border-radius:5px;
+  padding:10px 12px; margin-top:8px; font-family:var(--mono); font-size:.78rem;
+  color:var(--text); white-space:pre; overflow-x:auto; line-height:1.5; }
+
+/* 📑 code-pair */
+.code-pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; }
+.code-pair-col { display:flex; flex-direction:column; min-width:0; }
+.code-pair-label { font-family:var(--mono); font-size:.72rem; letter-spacing:.05em;
+  font-weight:700; padding:6px 10px; border-radius:6px 6px 0 0; }
+.code-pair-before .code-pair-label { background:rgba(203,36,49,.10); color:#9a1320;
+  border:1px solid rgba(203,36,49,.30); border-bottom:none; }
+.code-pair-after  .code-pair-label { background:rgba(34,134,58,.10); color:#154f1e;
+  border:1px solid rgba(34,134,58,.30); border-bottom:none; }
+.code-pair-col .code-block { margin:0; border-radius:0 0 8px 8px; flex:1; }
+.code-pair-before .code-block { border-color:rgba(203,36,49,.30); }
+.code-pair-after  .code-block { border-color:rgba(34,134,58,.30); }
+@media (max-width:900px){ .code-pair { grid-template-columns:1fr; } }
+
+/* === ラボ内で実際に動作するデモ用スタイル === */
+/* @keyframes デモ */
+@keyframes lab-pulse {
+  0%   { transform: scale(1);   background:#005cc5; }
+  50%  { transform: scale(1.2); background:#22863a; }
+  100% { transform: scale(1);   background:#005cc5; }
+}
+.demo-pulse-box { width:80px; height:80px; border-radius:12px; background:#005cc5;
+  color:#fff; display:flex; align-items:center; justify-content:center;
+  font-family:var(--mono); font-size:.75rem;
+  animation: lab-pulse 2s ease-in-out infinite; }
+
+/* @media デモ */
+.demo-media-box { padding:20px; border-radius:8px; color:#fff; font-family:var(--mono);
+  font-size:.85rem; text-align:center;
+  background:#005cc5; }
+@media (max-width:700px) { .demo-media-box { background:#cb2431; } }
+@media (max-width:500px) { .demo-media-box { background:#b08800; } }
+
+/* @supports デモ */
+.demo-supports-box { padding:16px; border-radius:8px; font-family:var(--mono);
+  font-size:.85rem; background:#fee2e2; color:#6b1a22;
+  border:1px solid #cb2431; }
+@supports (display: grid) {
+  .demo-supports-box { background:#dcfce7; color:#154f1e; border-color:#22863a; }
+}
+
+/* @container デモ */
+.demo-container-wrap { container-type: inline-size; border:2px dashed #6f42c1;
+  padding:12px; border-radius:8px; resize:horizontal; overflow:auto; max-width:100%; min-width:200px; width:500px; }
+.demo-container-box { padding:16px; background:#005cc5; color:#fff;
+  font-family:var(--mono); font-size:.85rem; border-radius:6px; text-align:center; }
+@container (max-width: 400px) {
+  .demo-container-box { background:#b08800; }
+  .demo-container-box::after { content:" (container < 400px)"; }
+}
+@container (max-width: 250px) {
+  .demo-container-box { background:#cb2431; }
+}
+
+/* @layer デモ */
+@layer base, theme, override;
+@layer base    { .demo-layer-box { color:#005cc5; border:2px solid #005cc5; } }
+@layer theme   { .demo-layer-box { color:#22863a; border:2px solid #22863a; } }
+@layer override{ .demo-layer-box { color:#6f42c1; border:2px solid #6f42c1; } }
+.demo-layer-box { padding:14px; border-radius:8px; font-family:var(--mono);
+  font-size:.85rem; background:var(--bg); text-align:center; }
+
+/* @property デモ */
+@property --demo-grad-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+.demo-property-box { padding:20px; border-radius:8px; font-family:var(--mono);
+  font-size:.85rem; text-align:center; color:#fff;
+  background: linear-gradient(var(--demo-grad-angle), #005cc5, #22863a);
+  animation: demo-rotate 4s linear infinite;
+}
+@keyframes demo-rotate {
+  to { --demo-grad-angle: 360deg; }
+}
+
+/* @starting-style デモ */
+.demo-starting-box {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity .6s ease, transform .6s ease;
+  padding:14px; border-radius:8px; font-family:var(--mono); font-size:.85rem;
+  background:#22863a; color:#fff; text-align:center;
+}
+@starting-style {
+  .demo-starting-box { opacity: 0; transform: translateY(20px); }
+}
+
+/* @font-face デモ（Webセーフフォントで疑似） */
+.demo-fontface-box { padding:14px; border-radius:8px;
+  background:var(--code-bg); border:1px solid var(--border);
+  font-family: 'Courier New', monospace; font-size:1.05rem; text-align:center; }
+
+/* Responsive */
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .verify { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// CSS At-Rules Lab</div>
+  <div class="nav-section">基礎・必須</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>アットルール入門</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>@charset</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>@import</a>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>@media</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>@font-face</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>@keyframes</a>
+  <div class="nav-section">モダン・頻出</div>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>@supports</a>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>@container</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>@layer</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>@scope</a>
+  <div class="nav-section">発展・特殊</div>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>@page (印刷)</a>
+  <a class="nav-item" href="#lab11"><span class="nav-num">11</span>@property</a>
+  <a class="nav-item" href="#lab12"><span class="nav-num">12</span>@starting-style</a>
+  <a class="nav-item" href="#lab13"><span class="nav-num">13</span>@counter-style</a>
+  <a class="nav-item" href="#lab14"><span class="nav-num">14</span>@namespace</a>
+  <a class="nav-item" href="#lab15"><span class="nav-num">15</span>総まとめ早見表</a>
+</nav>
+
+<div class="hero">
+  <h1>CSS At-Rules Lab</h1>
+  <p class="subtitle">アットルール (@-rules) を初心者向けに網羅・ブラウザ実機で確認</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>アットルールって何？</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>@charset — 文字コード宣言</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>@import — 外部CSS取り込み</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>@media — メディアクエリ</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>@font-face — カスタムフォント</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>@keyframes — アニメーション</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>@supports — 機能検出</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>@container — コンテナクエリ</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>@layer — カスケードレイヤー</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>@scope — スコープ限定</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">10</span>@page — 印刷ページ</a>
+    <a class="toc-item" href="#lab11"><span class="toc-num">11</span>@property — 変数型定義</a>
+    <a class="toc-item" href="#lab12"><span class="toc-num">12</span>@starting-style — 初期状態</a>
+    <a class="toc-item" href="#lab13"><span class="toc-num">13</span>@counter-style — カウンタ</a>
+    <a class="toc-item" href="#lab14"><span class="toc-num">14</span>@namespace — 名前空間</a>
+    <a class="toc-item" href="#lab15"><span class="toc-num">15</span>総まとめ早見表</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ===================== LAB 0 ===================== -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>アットルールって何？（導入）</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      CSS の <code>@xxx</code> で始まる特別な命令を「アットルール (at-rule)」と呼ぶ。
+      普通のCSS規則（<code>.box { color:red; }</code>）が<strong>個別の要素にスタイルを当てる</strong>のに対し、
+      アットルールは <strong>CSS全体の挙動</strong>（文字コード・読込・条件分岐・アニメ定義など）を宣言する。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 はじめに覚えること</div>
+      アットルールは大きく2タイプ：<br>
+      <strong>① 文だけ（statement）</strong>…<code>@charset "UTF-8";</code> のように <code>;</code> で終わる1行命令<br>
+      <strong>② ブロック付き</strong>…<code>@media (max-width:700px) { ... }</code> のように <code>{ }</code> で囲んで中にCSSを書く
+<pre class="ascii-art">
+  ┌─────────────────────── 普通のCSS規則 ───────────────────────┐
+  │  .box { color: red; }     → 要素にスタイルを当てる            │
+  └────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────── アットルール ───────────────────────┐
+  │  ① 文だけ      @charset "UTF-8";                            │
+  │  ② ブロック付き @media (max-width:700px) {                  │
+  │                   .box { font-size: 14px; }    ← 中にCSS    │
+  │                 }                                           │
+  └────────────────────────────────────────────────────────────┘
+</pre>
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm">/* ① 文タイプ：1行で終わる */</span>
+<span class="atr">@charset</span> <span class="str">"UTF-8"</span>;
+<span class="atr">@import</span> <span class="str">"reset.css"</span>;
+
+<span class="cm">/* ② ブロックタイプ：中にCSS規則を入れる */</span>
+<span class="atr">@media</span> (<span class="prop">max-width</span>: <span class="num">700px</span>) {
+  <span class="sel">.box</span> { <span class="prop">color</span>: <span class="val">red</span>; }
+}</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>カテゴリ</th><th>アットルール</th><th>用途ざっくり</th></tr></thead>
+      <tbody>
+        <tr><td>必須宣言系</td><td>@charset / @import / @namespace</td><td>ファイルの基本設定</td></tr>
+        <tr><td>条件分岐</td><td>@media / @supports / @container</td><td>「〜の時だけスタイル適用」</td></tr>
+        <tr><td>リソース定義</td><td>@font-face / @counter-style</td><td>外部フォント・カウンタ定義</td></tr>
+        <tr><td>動き</td><td>@keyframes / @starting-style</td><td>アニメーション・初期状態</td></tr>
+        <tr><td>カスケード制御</td><td>@layer / @scope</td><td>優先順位・適用範囲の整理</td></tr>
+        <tr><td>印刷</td><td>@page</td><td>紙に出すときだけの設定</td></tr>
+        <tr><td>変数の型</td><td>@property</td><td>CSS変数に型と初期値</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===================== LAB 1: @charset ===================== -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>@charset — CSSファイルの文字コード宣言</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      外部CSSファイルの文字エンコーディングを宣言する。日本語コメントや <code>content: "あ"</code> などが文字化けするのを防ぐ。
+      <strong>必ずファイル先頭の1行目</strong>に書く。前に何か（空行・BOM・コメント）があると無効化される。
+    </p>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before（無効になるパターン）</div>
+        <div class="code-block">
+          <pre><span class="cm">/* このコメントで @charset が無効になる */</span>
+<span class="atr">@charset</span> <span class="str">"UTF-8"</span>;
+<span class="sel">body</span> { <span class="prop">content</span>: <span class="str">"あいうえお"</span>; }</pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After（正しい書き方）</div>
+        <div class="code-block">
+          <pre><span class="atr">@charset</span> <span class="str">"UTF-8"</span>;
+<span class="cm">/* 宣言の後にコメントや他のルール */</span>
+<span class="sel">body</span> { <span class="prop">content</span>: <span class="str">"あいうえお"</span>; }</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>外部 <code>.css</code> ファイルに日本語コメントを含むプロジェクト</li>
+        <li><code>content: "→"</code> や <code>"●"</code> など非ASCII記号を擬似要素で使う</li>
+        <li>チームで複数OS（Windows/Mac/Linux）混在の開発環境</li>
+        <li>古いブラウザやレガシー環境でのサポートが必要なプロジェクト</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>🎯 こう見えたら @charset を疑う</strong>
+        <ul>
+          <li><code>::before</code> の <code>content</code> で入れた日本語が「文字化け」になる</li>
+          <li>CSS ファイル冒頭が意図せず空行になっている（BOMや余白）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== LAB 2: @import ===================== -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>@import — 外部CSSファイルの取り込み</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      別のCSSファイルを現在のCSSに取り込む。Google Fonts の読み込みや、機能別に分けたCSSの結合に使う。
+      ただしパフォーマンス面で不利（<strong>HTTPリクエストが直列化</strong>する）ため、
+      <code>&lt;link rel="stylesheet"&gt;</code> を並列に並べる方が一般には推奨される。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm">/* 基本形 */</span>
+<span class="atr">@import</span> <span class="str">"reset.css"</span>;
+<span class="atr">@import</span> <span class="fn">url</span>(<span class="str">"theme.css"</span>);
+
+<span class="cm">/* メディアクエリ付き：条件にマッチした時だけ読み込み */</span>
+<span class="atr">@import</span> <span class="str">"print.css"</span> <span class="kw">print</span>;
+<span class="atr">@import</span> <span class="str">"mobile.css"</span> (<span class="prop">max-width</span>: <span class="num">700px</span>);
+
+<span class="cm">/* Google Fonts（よく見るパターン） */</span>
+<span class="atr">@import</span> <span class="fn">url</span>(<span class="str">"https://fonts.googleapis.com/css2?family=Noto+Sans+JP"</span>);
+
+<span class="cm">/* @layer 付き（後述の lab8 参照） */</span>
+<span class="atr">@import</span> <span class="str">"vendor.css"</span> <span class="fn">layer</span>(base);</pre>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>@import は CSS の先頭に書く</strong>必要がある（<code>@charset</code> のすぐ後、通常ルールより前）。
+      中盤に書くと無視される。
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before（直列で遅い）</div>
+        <div class="code-block">
+          <pre><span class="cm">/* main.css の中 */</span>
+<span class="atr">@import</span> <span class="str">"a.css"</span>;
+<span class="atr">@import</span> <span class="str">"b.css"</span>;
+<span class="cm">/* main→a→b と順に読むため体感が遅い */</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After（HTMLで並列読み）</div>
+        <div class="code-block">
+          <pre><span class="cm">&lt;!-- index.html --&gt;</span>
+&lt;<span class="tag">link</span> <span class="attr">rel</span>=<span class="val">"stylesheet"</span> <span class="attr">href</span>=<span class="val">"a.css"</span>&gt;
+&lt;<span class="tag">link</span> <span class="attr">rel</span>=<span class="val">"stylesheet"</span> <span class="attr">href</span>=<span class="val">"b.css"</span>&gt;
+<span class="cm">&lt;!-- ブラウザが同時に取得できる --&gt;</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>Google Fonts などの外部フォント CDN を取り込む</li>
+        <li>CSS の機能を小分けにして保守（reset / base / components / utilities）</li>
+        <li>印刷専用 CSS を <code>@import "print.css" print;</code> で分離</li>
+        <li>ライブラリ (Bootstrap/Tailwind) を読み込んで上書きする場合</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>🎯 こう見えたら @import を疑う</strong>
+        <ul>
+          <li>ページの CSS 適用が遅れてチラつく（FOUC）→ @import 直列化が原因かも</li>
+          <li>外部フォントが効かない → @import の位置が先頭でない可能性</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== LAB 3: @media ===================== -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>@media — 画面サイズ・印刷・環境での切替</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      レスポンシブデザインの中心。ビューポート幅・印刷時・ダークモード・モーション設定など「端末/環境の状態」で
+      CSSを切替える。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm">/* ① ビューポート幅 */</span>
+<span class="atr">@media</span> (<span class="prop">max-width</span>: <span class="num">700px</span>) { <span class="sel">.menu</span> { <span class="prop">display</span>: <span class="val">none</span>; } }
+
+<span class="cm">/* ② 印刷時だけ */</span>
+<span class="atr">@media</span> <span class="kw">print</span> { <span class="sel">.no-print</span> { <span class="prop">display</span>: <span class="val">none</span>; } }
+
+<span class="cm">/* ③ ダークモード（OS設定に追従） */</span>
+<span class="atr">@media</span> (<span class="prop">prefers-color-scheme</span>: <span class="val">dark</span>) {
+  <span class="sel">body</span> { <span class="prop">background</span>: <span class="val">#111</span>; <span class="prop">color</span>: <span class="val">#eee</span>; }
+}
+
+<span class="cm">/* ④ モーション削減（アクセシビリティ） */</span>
+<span class="atr">@media</span> (<span class="prop">prefers-reduced-motion</span>: <span class="val">reduce</span>) {
+  <span class="sel">*</span> { <span class="prop">animation</span>: <span class="val">none</span> !important; }
+}
+
+<span class="cm">/* ⑤ 複数条件 AND / OR */</span>
+<span class="atr">@media</span> (<span class="prop">min-width</span>: <span class="num">700px</span>) <span class="kw">and</span> (<span class="prop">orientation</span>: <span class="val">landscape</span>) { <span class="cm">/* ... */</span> }
+<span class="atr">@media</span> (<span class="prop">max-width</span>: <span class="num">500px</span>), (<span class="prop">orientation</span>: <span class="val">portrait</span>) { <span class="cm">/* ... */</span> }</pre>
+    </div>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <span class="toggle-label">📐 ウィンドウ幅を変えると色が変わります</span>
+      </div>
+      <div class="livedemo-stage">
+        <div class="demo-media-box">
+          現在の色 = 画面幅の条件で決まる<br>
+          <small>青: 701px以上 / 赤: 501〜700px / 黄: 500px以下</small>
+        </div>
+      </div>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>よく使うメディア特性</th><th>意味</th><th>値の例</th></tr></thead>
+      <tbody>
+        <tr><td>min-width / max-width</td><td>ビューポート幅</td><td>768px, 1024px</td></tr>
+        <tr><td>orientation</td><td>縦/横</td><td>portrait, landscape</td></tr>
+        <tr><td>prefers-color-scheme</td><td>OSテーマ</td><td>light, dark</td></tr>
+        <tr><td>prefers-reduced-motion</td><td>モーション削減</td><td>reduce, no-preference</td></tr>
+        <tr><td>hover</td><td>ホバー可能か</td><td>hover, none</td></tr>
+        <tr><td>pointer</td><td>入力精度</td><td>fine (マウス), coarse (指)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>スマホでハンバーガーメニュー、PCで横並びナビを切替</li>
+        <li>印刷時に広告・ナビを隠してA4用レイアウト</li>
+        <li>ユーザーのOSがダークモードならサイトも暗く</li>
+        <li>タッチ端末 (<code>hover: none</code>) ではホバー装飾をやめる</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>🎯 こう見えたら @media を疑う</strong>
+        <ul>
+          <li>スマホで文字が小さすぎる／レイアウトが崩れる</li>
+          <li>印刷すると広告やヘッダーまで紙に載ってしまう</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== LAB 4: @font-face ===================== -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>@font-face — カスタムフォントの定義</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Webフォント（.woff2 / .woff / .ttf など）を<strong>自前で配置</strong>して使えるようにする宣言。
+      <code>font-family</code> プロパティに渡す「名前」をここで定義し、<code>src</code> で実ファイルを指定する。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="atr">@font-face</span> {
+  <span class="prop">font-family</span>: <span class="str">"MyFont"</span>;             <span class="cm">/* 好きな名前 */</span>
+  <span class="prop">src</span>: <span class="fn">url</span>(<span class="str">"/fonts/myfont.woff2"</span>) <span class="fn">format</span>(<span class="str">"woff2"</span>),
+       <span class="fn">url</span>(<span class="str">"/fonts/myfont.woff"</span>)  <span class="fn">format</span>(<span class="str">"woff"</span>);
+  <span class="prop">font-weight</span>: <span class="num">400</span>;
+  <span class="prop">font-style</span>: <span class="val">normal</span>;
+  <span class="prop">font-display</span>: <span class="val">swap</span>;                <span class="cm">/* 読込中は代替→完了で差し替え */</span>
+}
+
+<span class="cm">/* 使用側 */</span>
+<span class="sel">body</span> { <span class="prop">font-family</span>: <span class="str">"MyFont"</span>, <span class="val">sans-serif</span>; }</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>font-display の主な値</strong><br>
+      <code>swap</code>（推奨）: すぐ代替フォント表示→読込完了で差替え（FOUT）<br>
+      <code>block</code>: 最大3秒は何も表示しない（FOIT）<br>
+      <code>optional</code>: 読込が遅ければ諦めて代替フォントのまま
+    </div>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <span class="toggle-label">📝 @font-face で定義した family="Courier New" を表示</span>
+      </div>
+      <div class="livedemo-stage">
+        <div class="demo-fontface-box">
+          The quick brown fox jumps over the lazy dog 0123
+        </div>
+      </div>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>ブランド独自フォント（ロゴ用書体など）を全ページ統一</li>
+        <li>日本語Webフォント（源ノ角ゴシック等）をセルフホスト</li>
+        <li>アイコンフォント（Font Awesome などの自前ホスト版）</li>
+        <li>Google Fonts を CDN ではなく自社ドメインから配信して高速化</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>🎯 こう見えたら @font-face を疑う</strong>
+        <ul>
+          <li>見出しだけカスタム書体にしたい → <code>@font-face</code> で family 定義</li>
+          <li>Webフォント読込中にテキストが一瞬消える（FOIT）→ <code>font-display: swap</code></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== LAB 5: @keyframes ===================== -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>@keyframes — アニメーションの振付定義</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      アニメーションの「途中の状態」を <code>0%</code> / <code>50%</code> / <code>100%</code>（または <code>from</code> / <code>to</code>）で定義する。
+      定義した名前を要素の <code>animation</code> プロパティで呼び出して動かす。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="atr">@keyframes</span> <span class="fn">pulse</span> {
+  <span class="num">0%</span>   { <span class="prop">transform</span>: <span class="fn">scale</span>(<span class="num">1</span>);   <span class="prop">background</span>: <span class="val">#005cc5</span>; }
+  <span class="num">50%</span>  { <span class="prop">transform</span>: <span class="fn">scale</span>(<span class="num">1.2</span>); <span class="prop">background</span>: <span class="val">#22863a</span>; }
+  <span class="num">100%</span> { <span class="prop">transform</span>: <span class="fn">scale</span>(<span class="num">1</span>);   <span class="prop">background</span>: <span class="val">#005cc5</span>; }
+}
+
+<span class="cm">/* 呼び出し側 */</span>
+<span class="sel">.box</span> {
+  <span class="prop">animation</span>: <span class="fn">pulse</span> <span class="num">2s</span> <span class="val">ease-in-out</span> <span class="val">infinite</span>;
+  <span class="cm">/*         名前  時間 イージング 繰返し */</span>
+}</pre>
+    </div>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <span class="toggle-label">💓 @keyframes pulse が 2秒ごとに反復中</span>
+      </div>
+      <div class="livedemo-stage" style="display:flex;justify-content:center;">
+        <div class="demo-pulse-box">pulse</div>
+      </div>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 @keyframes vs animation</div>
+<pre class="ascii-art">
+  @keyframes         animation プロパティ
+  ┌─────────┐        ┌─────────┐
+  │ 振付を  │  ──→   │ 誰が・  │
+  │ 定義    │        │ いつ・  │
+  │ (なに)  │        │ どう踊る│
+  └─────────┘        └─────────┘
+   "台本"              "出演者への指示"
+</pre>
+      <code>@keyframes</code> は<strong>台本を書くだけ</strong>で、要素には何も起きない。
+      要素を動かすには <code>animation: 名前 時間 ...</code> を書く必要がある。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>読み込み中のスピナー（<code>spin 1s linear infinite</code>）</li>
+        <li>ボタンホバー時のパルス・押し込み表現</li>
+        <li>モーダル表示時のフェードイン＋スライドイン</li>
+        <li>通知バッジの点滅でユーザーの注意を引く</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>🎯 こう見えたら @keyframes を疑う</strong>
+        <ul>
+          <li>「ふわっと出てくる」「ずっと点滅する」要素があるデザイン</li>
+          <li>CSSに <code>animation: xxx ...</code> があるのに何も動かない → @keyframes 定義漏れ</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===================== LAB 6: @supports ===================== -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>@supports — ブラウザの機能検出</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      「このプロパティ/値をブラウザがサポートしているなら、このCSSを適用する」条件分岐。
+      新しいCSS機能を使いつつ、古いブラウザには代替表示を提供する <strong>プログレッシブエンハンスメント</strong> の中核。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm">/* ① サポートされている場合だけ適用 */</span>
+<span class="atr">@supports</span> (<span class="prop">display</span>: <span class="val">grid</span>) {
+  <span class="sel">.layout</span> { <span class="prop">display</span>: <span class="val">grid</span>; }
+}
+
+<span class="cm">/* ② サポートされていない場合（not） */</span>
+<span class="atr">@supports</span> <span class="kw">not</span> (<span class="prop">display</span>: <span class="val">grid</span>) {
+  <span class="sel">.layout</span> { <span class="prop">display</span>: <span class="val">flex</span>; }
+}
+
+<span class="cm">/* ③ 複数条件 AND / OR */</span>
+<span class="atr">@supports</span> (<span class="prop">display</span>: <span class="val">grid</span>) <span class="kw">and</span> (<span class="prop">gap</span>: <span class="num">1rem</span>) { <span class="cm">/* ... */</span> }
+<span class="atr">@supports</span> (<span class="prop">-webkit-backdrop-filter</span>: <span class="fn">blur</span>(<span class="num">10px</span>)) <span class="kw">or</span>
+          (<span class="prop">backdrop-filter</span>: <span class="fn">blur</span>(<span class="num">10px</span>)) {
+  <span class="sel">.glass</span> { <span class="prop">backdrop-filter</span>: <span class="fn">blur</span>(<span class="num">10px</span>); }
+}
+
+<span class="cm">/* ④ セレクタの対応チェック（モダン） */</span>
+<span class="atr">@supports</span> <span class="fn">selector</span>(<span class="sel">:has(*)</span>) {
+  <span class="sel">li:has(&gt; a.active)</span> { <span class="prop">font-weight</span>: <span class="val">bold</span>; }
+}</pre>
+    </div>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <span class="toggle-label">✅ あなたのブラウザが <code>display: grid</code> に対応していれば緑、未対応なら赤</span>
+      </div>
+      <div class="livedemo-stage">
+        <div class="demo-supports-box">
+          @supports (display: grid) で分岐中<br>
+          <small>緑=対応 / 赤=未対応</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>JSの <code>CSS.supports()</code> と役割が同じ</strong>。CSSだけで完結するのが @supports、JSから判定するのが前者。
+      <code>CSS.supports('display', 'grid')</code> → <code>true/false</code>。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>新機能 (<code>:has()</code>, <code>aspect-ratio</code>, <code>container-type</code>) を段階的導入</li>
+        <li>ベンダープレフィックス付きと無しを両方試す</li>
+        <li>Safari だけ未対応な機能をフォールバック</li>
+        <li>IE 対応の古い案件で Flexbox と Grid を使い分け（※IE自体はサポート外）</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>🎯 こう見えたら @supports を疑う</strong>
+        <ul>
+          <li>新しめのCSS機能を使いたいが、一部ブラウザで崩れるのを防ぎたい</li>
+          <li>特定プロパティが効くブラウザだけにスタイルを当てたい（条件付きCSS）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== LAB 7: @container ===================== -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>@container — コンテナクエリ（親要素のサイズで分岐）</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>@media</code> が「画面全体の幅」で分岐するのに対し、<code>@container</code> は
+      <strong>親コンテナのサイズ</strong>で分岐する。カードコンポーネントをどこに置いても正しく可変にできる
+      「真のコンポーネント指向レスポンシブ」。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 @media と @container のちがい</div>
+<pre class="ascii-art">
+  @media (max-width: 700px)          @container (max-width: 400px)
+  ┌─────────────────────────────┐    ┌─────────────────────────────┐
+  │ ブラウザ全体の幅で判定       │    │ 「containerに指定した親」で  │
+  │                              │    │  判定                        │
+  │  画面 (viewport) = 判定基準  │    │  親要素の幅 = 判定基準       │
+  └─────────────────────────────┘    └─────────────────────────────┘
+  例: スマホ全体で文字縮小         例: サイドバー内のカードだけ縮小
+</pre>
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm">/* ① 親に「containerである」と宣言 */</span>
+<span class="sel">.wrap</span> { <span class="prop">container-type</span>: <span class="val">inline-size</span>; }
+
+<span class="cm">/* ② その親が 400px 以下になったら子に適用 */</span>
+<span class="atr">@container</span> (<span class="prop">max-width</span>: <span class="num">400px</span>) {
+  <span class="sel">.card</span> { <span class="prop">flex-direction</span>: <span class="val">column</span>; }
+}
+
+<span class="cm">/* ③ 名前付きコンテナで階層を区別 */</span>
+<span class="sel">.sidebar</span> { <span class="prop">container-name</span>: <span class="val">side</span>; <span class="prop">container-type</span>: <span class="val">inline-size</span>; }
+<span class="atr">@container</span> side (<span class="prop">max-width</span>: <span class="num">250px</span>) {
+  <span class="sel">.card</span> { <span class="prop">display</span>: <span class="val">none</span>; }
+}</pre>
+    </div>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <span class="toggle-label">🎚 点線の枠を<strong>右下の三角ハンドルでドラッグ</strong>して横幅を変えてください</span>
+      </div>
+      <div class="livedemo-stage">
+        <div class="demo-container-wrap">
+          <div class="demo-container-box">
+            この箱の色は「親(点線枠)の幅」で決まる<br>
+            <small>青: 401px以上 / 黄: 251〜400px / 赤: 250px以下</small>
+          </div>
+        </div>
+        <p style="margin-top:8px;font-size:.8rem;color:#5c6370;">
+          ※ ウィンドウ全体のサイズは変えない（変えたら @container ではなく @media の話）
+        </p>
+      </div>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <code>container-type: inline-size</code> を親に<strong>必ず</strong>付ける。付け忘れると <code>@container</code> ルールが黙って効かない。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>同じカードコンポーネントをメイン・サイドバー・モーダル内で使い回す</li>
+        <li>ダッシュボードのウィジェットを「自分の枠の広さ」で中身を切替</li>
+        <li>デザインシステムで「コンポーネント単位のレスポンシブ」を実現</li>
+        <li>CMS の配置自由度が高い場合（どの幅で置かれるか事前に分からない）</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>🎯 こう見えたら @container を疑う</strong>
+        <ul>
+          <li>同じカードなのに「置かれる場所」で見た目を変えたい</li>
+          <li>@media で書いたが、実は画面幅ではなく親要素の幅で切替えたかった</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== LAB 8: @layer ===================== -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>@layer — カスケードレイヤー（優先順位を明示的に管理）</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      CSSの優先順位争い（詳細度・記述順・<code>!important</code>）を、<strong>レイヤーで明示的にグルーピング</strong>して制御する。
+      「ライブラリCSS → 自社テーマ → 個別上書き」のような層を宣言できる。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm">/* ① レイヤーの順序を先頭で宣言（後ろほど優先度高） */</span>
+<span class="atr">@layer</span> base, theme, override;
+
+<span class="cm">/* ② 各レイヤーにCSSを入れる */</span>
+<span class="atr">@layer</span> base {
+  <span class="sel">.btn</span> { <span class="prop">color</span>: <span class="val">blue</span>; }
+}
+<span class="atr">@layer</span> theme {
+  <span class="sel">.btn</span> { <span class="prop">color</span>: <span class="val">green</span>; }   <span class="cm">/* これが勝つ */</span>
+}
+<span class="atr">@layer</span> override {
+  <span class="sel">.btn</span> { <span class="prop">color</span>: <span class="val">purple</span>; } <span class="cm">/* これがさらに勝つ */</span>
+}
+
+<span class="cm">/* ③ レイヤー無しは「全レイヤーより強い」 */</span>
+<span class="sel">.btn</span> { <span class="prop">color</span>: <span class="val">red</span>; }         <span class="cm">/* 最終的にこれが勝つ */</span></pre>
+    </div>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <span class="toggle-label">🎨 3レイヤーで同じセレクタを競わせた結果（紫=override が勝っている）</span>
+      </div>
+      <div class="livedemo-stage">
+        <div class="demo-layer-box">.demo-layer-box（結果の色=勝ったレイヤー）</div>
+      </div>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 優先順位のイメージ</div>
+<pre class="ascii-art">
+  強
+   ▲   !important
+   │   ─────────────
+   │   レイヤー無し         ← 普通に書いたCSS
+   │   ─────────────
+   │   @layer override     ← 後ろに書いたレイヤーほど
+   │   @layer theme           優先度が高い
+   │   @layer base         ← 最初のレイヤーは最弱
+   │
+   弱
+</pre>
+      <strong>覚え方</strong>: 「@layer で宣言した順序の<strong>後ろほど勝つ</strong>」「レイヤー無しは全レイヤーより強い」。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>Bootstrap / Tailwind を <code>@layer</code> に閉じ込めて、自社CSSで安全に上書き</li>
+        <li>デザインシステム（reset → base → components → utilities）の階層化</li>
+        <li><code>!important</code> の乱用をやめるための代替手段</li>
+        <li>チーム開発で「この層は触らない／ここは自由に上書きOK」のルール化</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>🎯 こう見えたら @layer を疑う</strong>
+        <ul>
+          <li>ライブラリCSSを <code>!important</code> 地獄で上書きしている</li>
+          <li>詳細度（セレクタの具体度）バトルでCSSが肥大化している</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== LAB 9: @scope ===================== -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>@scope — スタイルの適用範囲を限定</h3>
+    <span class="lab-tag tag-advanced">発展</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      「この親要素の中でだけ有効、さらにこの子孫からは除外」という<strong>範囲限定</strong>をCSSだけで記述する仕組み。
+      コンポーネントCSSの漏れ出しを防ぐ（Vue の <code>&lt;style scoped&gt;</code> の標準CSS版）。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm">/* ① .card の中だけに適用 */</span>
+<span class="atr">@scope</span> (<span class="sel">.card</span>) {
+  <span class="sel">a</span> { <span class="prop">color</span>: <span class="val">red</span>; }  <span class="cm">/* .card の中の &lt;a&gt; だけ赤 */</span>
+}
+
+<span class="cm">/* ② .card から .card .footer より内側は除外 */</span>
+<span class="atr">@scope</span> (<span class="sel">.card</span>) <span class="kw">to</span> (<span class="sel">.footer</span>) {
+  <span class="sel">a</span> { <span class="prop">color</span>: <span class="val">red</span>; }  <span class="cm">/* .card 内だが .footer より外の &lt;a&gt; */</span>
+}
+
+<span class="cm">/* ③ HTML側に直接書くインライン @scope */</span>
+&lt;<span class="tag">div</span> <span class="attr">class</span>=<span class="val">"widget"</span>&gt;
+  &lt;<span class="tag">style</span>&gt;
+    <span class="atr">@scope</span> {                    <span class="cm">/* この &lt;style&gt; の親がスコープ基点 */</span>
+      <span class="sel">h2</span> { <span class="prop">color</span>: <span class="val">purple</span>; }
+    }
+  &lt;/<span class="tag">style</span>&gt;
+&lt;/<span class="tag">div</span>&gt;</pre>
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before（従来：ネスト必須）</div>
+        <div class="code-block">
+          <pre><span class="sel">.card a</span> { <span class="prop">color</span>: <span class="val">red</span>; }
+<span class="sel">.card .footer a</span> { <span class="prop">color</span>: <span class="val">inherit</span>; }
+<span class="cm">/* 「除外」を手動で打消しが必要 */</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After（@scope で宣言的）</div>
+        <div class="code-block">
+          <pre><span class="atr">@scope</span> (<span class="sel">.card</span>) <span class="kw">to</span> (<span class="sel">.footer</span>) {
+  <span class="sel">a</span> { <span class="prop">color</span>: <span class="val">red</span>; }
+}
+<span class="cm">/* 除外範囲を to で明示できる */</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>対応ブラウザに注意</strong>。Chrome/Edge/Safari は対応済み、Firefox は新しめのバージョンが必要。
+      本番導入前に <code>caniuse.com</code> で確認すること。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>ユーザー投稿HTML (CMS/Markdown) を特定コンテナ内だけスタイリング</li>
+        <li>ネストしたコンポーネント（カード内カード）でスタイルを親から切り離す</li>
+        <li>ダークモードエリアをページの一部だけに限定</li>
+        <li>メールテンプレートのようにインラインCSSを使いたいが上書きもしたい場面</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>🎯 こう見えたら @scope を疑う</strong>
+        <ul>
+          <li>「あるコンポーネント内だけ」にCSSを適用したいが、詳細度を上げたくない</li>
+          <li>子コンポーネントに親のスタイルが意図せず漏れている</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== LAB 10: @page ===================== -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>@page — 印刷時のページ設定</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ブラウザで <strong>Ctrl+P (印刷)</strong> または PDF 出力したときの、紙1枚1枚のサイズ・余白・向きを指定する。
+      請求書・レポート・チケット印刷のある業務系Webで使う。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm">/* ① 全ページ共通：A4縦・余白20mm */</span>
+<span class="atr">@page</span> {
+  <span class="prop">size</span>: <span class="val">A4 portrait</span>;
+  <span class="prop">margin</span>: <span class="num">20mm</span>;
+}
+
+<span class="cm">/* ② 最初のページだけ余白を広く */</span>
+<span class="atr">@page</span> <span class="sel">:first</span> {
+  <span class="prop">margin-top</span>: <span class="num">40mm</span>;
+}
+
+<span class="cm">/* ③ 左右ページで余白を変える（書籍風） */</span>
+<span class="atr">@page</span> <span class="sel">:left</span>  { <span class="prop">margin-left</span>: <span class="num">30mm</span>; }
+<span class="atr">@page</span> <span class="sel">:right</span> { <span class="prop">margin-right</span>: <span class="num">30mm</span>; }
+
+<span class="cm">/* ④ 名前付き page：特定要素に割当 */</span>
+<span class="atr">@page</span> landscape-page {
+  <span class="prop">size</span>: <span class="val">A4 landscape</span>;
+}
+<span class="sel">.chart-section</span> { <span class="prop">page</span>: landscape-page; }</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>印刷専用CSSは @media print と組み合わせる</strong>のが定番：
+      <code>@media print { .no-print { display:none; } @page { margin: 15mm; } }</code>
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before（印刷崩れの例）</div>
+        <div class="code-block">
+          <pre><span class="cm">/* CSSなし = ブラウザデフォルトの余白 */</span>
+<span class="cm">/* 広告・ナビ・サイドバーも紙に載る */</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After（業務レポート用）</div>
+        <div class="code-block">
+          <pre><span class="atr">@media</span> <span class="kw">print</span> {
+  <span class="sel">header</span>, <span class="sel">nav</span>, <span class="sel">.ads</span> { <span class="prop">display</span>: <span class="val">none</span>; }
+  <span class="atr">@page</span> { <span class="prop">size</span>: <span class="val">A4</span>; <span class="prop">margin</span>: <span class="num">15mm</span>; }
+  <span class="sel">h2</span> { <span class="prop">page-break-before</span>: <span class="val">always</span>; }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>請求書・領収書・納品書の印刷フォーマット調整</li>
+        <li>社内レポート（ダッシュボード→PDF化）のA4最適化</li>
+        <li>イベントチケット・バウチャーの用紙サイズ指定</li>
+        <li>会員証・名刺プリント（カスタムsizeで定義）</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>🎯 こう見えたら @page を疑う</strong>
+        <ul>
+          <li>「印刷すると余白がおかしい」「ヘッダーが毎ページに入ってしまう」</li>
+          <li>PDF保存時に画像が切れる／2ページ目に1行だけ残る</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===================== LAB 11: @property ===================== -->
+<div class="lab" id="lab11">
+  <div class="lab-header">
+    <div class="lab-num">11</div>
+    <h3>@property — カスタムプロパティに型と初期値</h3>
+    <span class="lab-tag tag-advanced">発展</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      CSS変数（<code>--xxx</code>）を <strong>型・初期値・継承の有無</strong>付きで宣言する。
+      「色」「角度」「長さ」などの型を明示すると、<strong>アニメーションが可能になる</strong>（通常の CSS 変数はアニメできない）。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="atr">@property</span> <span class="prop">--grad-angle</span> {
+  <span class="prop">syntax</span>: <span class="str">'&lt;angle&gt;'</span>;     <span class="cm">/* 型を指定：&lt;color&gt;, &lt;length&gt;, &lt;number&gt; など */</span>
+  <span class="prop">inherits</span>: <span class="val">false</span>;      <span class="cm">/* 子に継承するか */</span>
+  <span class="prop">initial-value</span>: <span class="num">0deg</span>; <span class="cm">/* 初期値（必須） */</span>
+}
+
+<span class="cm">/* これで --grad-angle をアニメーションできる */</span>
+<span class="sel">.box</span> {
+  <span class="prop">background</span>: <span class="fn">linear-gradient</span>(<span class="fn">var</span>(<span class="prop">--grad-angle</span>), <span class="val">#005cc5</span>, <span class="val">#22863a</span>);
+  <span class="prop">animation</span>: rotate <span class="num">4s</span> <span class="val">linear</span> <span class="val">infinite</span>;
+}
+<span class="atr">@keyframes</span> rotate {
+  <span class="kw">to</span> { <span class="prop">--grad-angle</span>: <span class="num">360deg</span>; }
+}</pre>
+    </div>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <span class="toggle-label">🌈 グラデーションの角度 (--demo-grad-angle) が 0deg → 360deg でアニメ</span>
+      </div>
+      <div class="livedemo-stage">
+        <div class="demo-property-box">@property でアニメするグラデ</div>
+      </div>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>syntax の主な値</th><th>例</th></tr></thead>
+      <tbody>
+        <tr><td>&lt;color&gt;</td><td>#ff0000, rgb(255,0,0)</td></tr>
+        <tr><td>&lt;length&gt;</td><td>10px, 2em, 100%</td></tr>
+        <tr><td>&lt;angle&gt;</td><td>45deg, 0.5turn</td></tr>
+        <tr><td>&lt;number&gt;</td><td>1, 0.5</td></tr>
+        <tr><td>&lt;integer&gt;</td><td>1, 100</td></tr>
+        <tr><td>&lt;percentage&gt;</td><td>50%</td></tr>
+        <tr><td>*</td><td>何でも（型チェック無し）</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before（通常変数：アニメ不可）</div>
+        <div class="code-block">
+          <pre><span class="sel">:root</span> { <span class="prop">--angle</span>: <span class="num">0deg</span>; }
+<span class="sel">.box</span> {
+  <span class="prop">background</span>: <span class="fn">linear-gradient</span>(<span class="fn">var</span>(<span class="prop">--angle</span>),red,blue);
+  <span class="prop">animation</span>: spin <span class="num">2s</span>;
+}
+<span class="atr">@keyframes</span> spin { <span class="kw">to</span> { <span class="prop">--angle</span>: <span class="num">360deg</span>; } }
+<span class="cm">/* → 補間されず瞬間的に切替わるだけ */</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After（@property でアニメ可）</div>
+        <div class="code-block">
+          <pre><span class="atr">@property</span> <span class="prop">--angle</span> {
+  <span class="prop">syntax</span>: <span class="str">'&lt;angle&gt;'</span>;
+  <span class="prop">inherits</span>: <span class="val">false</span>;
+  <span class="prop">initial-value</span>: <span class="num">0deg</span>;
+}
+<span class="cm">/* → なめらかに 0deg→360deg へ補間される */</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>グラデーションの角度アニメーション（回転するグラデ）</li>
+        <li>カラースキーム切替時に色をフェードで補間</li>
+        <li>マウス追従グラデ（JSで <code>--mx/--my</code> を更新→CSSで補間）</li>
+        <li>デザイントークンに型を持たせて誤設定を防ぐ</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>🎯 こう見えたら @property を疑う</strong>
+        <ul>
+          <li>CSS変数でアニメを書いたのに「パッと切替わるだけ」でなめらかにならない</li>
+          <li>グラデーションや回転角をアニメで動かしたい</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== LAB 12: @starting-style ===================== -->
+<div class="lab" id="lab12">
+  <div class="lab-header">
+    <div class="lab-num">12</div>
+    <h3>@starting-style — 要素の「登場時」だけのスタイル</h3>
+    <span class="lab-tag tag-advanced">発展</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      要素が<strong>DOMに追加された直後（最初の1フレーム）の状態</strong>を定義する。
+      これにより「出現時にふわっとフェードイン」などを<strong>CSSだけで</strong>記述できる（以前は JS が必要だった）。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm">/* ① 通常状態（登場後のスタイル） */</span>
+<span class="sel">.fade-in</span> {
+  <span class="prop">opacity</span>: <span class="num">1</span>;
+  <span class="prop">transform</span>: <span class="fn">translateY</span>(<span class="num">0</span>);
+  <span class="prop">transition</span>: <span class="prop">opacity</span> <span class="num">.6s</span>, <span class="prop">transform</span> <span class="num">.6s</span>;
+}
+
+<span class="cm">/* ② 登場の瞬間だけ opacity:0 / 下にズレた状態 */</span>
+<span class="atr">@starting-style</span> {
+  <span class="sel">.fade-in</span> {
+    <span class="prop">opacity</span>: <span class="num">0</span>;
+    <span class="prop">transform</span>: <span class="fn">translateY</span>(<span class="num">20px</span>);
+  }
+}
+<span class="cm">/* → 追加後すぐに transition で ①へ遷移＝フェードインする */</span></pre>
+    </div>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <span class="toggle-label">✨ ページロード直後にフェードイン（リロードで再観察）</span>
+      </div>
+      <div class="livedemo-stage">
+        <div class="demo-starting-box">ページを開いた瞬間だけ下からフワッと登場</div>
+      </div>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>特に相性がいい</strong>: <code>&lt;dialog&gt;</code> のモーダル・ポップオーバー (<code>popover</code> 属性)・
+      DOMに動的追加する通知トーストなど「表示←→非表示が切替わる要素」。
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 なぜこれが必要だったか</div>
+      以前は「登場時フェードイン」を実現するには、JSで要素を追加後 <code>requestAnimationFrame</code> でクラスを付け替える必要があった。
+      <code>@starting-style</code> はこの「出現時の初期状態」をCSSの一機能として宣言できる。JSレスになるのが大きい。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>通知トースト・スナックバーの登場アニメーション</li>
+        <li><code>&lt;dialog&gt;</code> モーダルのフェードイン＋スケール</li>
+        <li>Popover API で開くドロップダウンの滑らかな表示</li>
+        <li>タブ切替時に新しいパネルを下からスライドイン</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>🎯 こう見えたら @starting-style を疑う</strong>
+        <ul>
+          <li>「要素が<strong>追加された瞬間</strong>だけのスタイル」を書きたい</li>
+          <li>登場アニメを JS で書いているが CSS だけで済ませたい</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== LAB 13: @counter-style ===================== -->
+<div class="lab" id="lab13">
+  <div class="lab-header">
+    <div class="lab-num">13</div>
+    <h3>@counter-style — リストの記号を自作</h3>
+    <span class="lab-tag tag-advanced">発展</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>&lt;ol&gt;</code> / <code>&lt;ul&gt;</code> の番号・マーカーを自由にカスタマイズする。
+      <code>list-style-type</code> に渡せる「独自スタイル」を定義できる。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="atr">@counter-style</span> emoji-list {
+  <span class="prop">system</span>: <span class="val">cyclic</span>;              <span class="cm">/* cyclic = 巡回 */</span>
+  <span class="prop">symbols</span>: <span class="str">"🍎"</span> <span class="str">"🍊"</span> <span class="str">"🍋"</span>;    <span class="cm">/* 使う記号 */</span>
+  <span class="prop">suffix</span>: <span class="str">" "</span>;                 <span class="cm">/* 記号の後ろ */</span>
+}
+
+<span class="sel">ul.fruits</span> { <span class="prop">list-style</span>: emoji-list; }
+
+<span class="cm">/* system の主な値 */</span>
+<span class="cm">/* cyclic     → 記号を繰り返す (🍎 🍊 🍋 🍎 🍊 🍋)       */</span>
+<span class="cm">/* numeric    → 数字 N進法 (0-9, A-Z のような)              */</span>
+<span class="cm">/* alphabetic → 辞書順    (A, B, ... Z, AA, AB, ...)        */</span>
+<span class="cm">/* fixed      → 固定記号の後、通常の連番へフォールバック    */</span></pre>
+    </div>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <span class="toggle-label">🍎 絵文字リストのデモ（下のHTMLをコピペで試せる）</span>
+      </div>
+      <div class="livedemo-stage">
+        <style scoped>
+          @counter-style demo-emoji {
+            system: cyclic;
+            symbols: "🍎" "🍊" "🍋";
+            suffix: " ";
+          }
+          .demo-fruits-list { list-style: demo-emoji; padding-left: 2em; }
+          .demo-fruits-list li { margin-bottom: 4px; }
+        </style>
+        <ul class="demo-fruits-list">
+          <li>りんご</li>
+          <li>みかん</li>
+          <li>レモン</li>
+          <li>りんご (巡回して再び)</li>
+          <li>みかん</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>FAQ ページで「Q1. / Q2. / ...」のような独自マーカー</li>
+        <li>チェックリスト UI で「□ / ✓」を記号化</li>
+        <li>日本語の「一、二、三...」風番号（<code>cjk-ideographic</code>）を独自調整</li>
+        <li>デザインシステムで統一された絵文字リスト</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>🎯 こう見えたら @counter-style を疑う</strong>
+        <ul>
+          <li><code>list-style-type: "✅"</code> よりもっと複雑なパターンが欲しい</li>
+          <li><code>::before</code> でカウンタ疑似するより素直にリストで書きたい</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== LAB 14: @namespace ===================== -->
+<div class="lab" id="lab14">
+  <div class="lab-header">
+    <div class="lab-num">14</div>
+    <h3>@namespace — XML名前空間（SVG要素を個別指定）</h3>
+    <span class="lab-tag tag-advanced">発展</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      HTML内のSVG / MathML のような別の名前空間の要素をCSSから明示的に区別する宣言。
+      通常のWeb制作ではほぼ不要で、<strong>SVG編集ツール・特殊な混在文書</strong>でだけ使う。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm">/* ① デフォルトの名前空間を HTML に */</span>
+<span class="atr">@namespace</span> <span class="fn">url</span>(<span class="str">"http://www.w3.org/1999/xhtml"</span>);
+
+<span class="cm">/* ② SVG に別名を付ける */</span>
+<span class="atr">@namespace</span> svg <span class="fn">url</span>(<span class="str">"http://www.w3.org/2000/svg"</span>);
+
+<span class="cm">/* ③ SVGのcircleだけ赤に（HTMLにcircle要素は無いので本来は不要だが教科書例） */</span>
+<span class="sel">svg|circle</span> { <span class="prop">fill</span>: <span class="val">red</span>; }
+
+<span class="cm">/* ④ 任意の名前空間 = * で表す */</span>
+<span class="sel">*|a</span> { <span class="prop">color</span>: <span class="val">blue</span>; }   <span class="cm">/* HTML の &lt;a&gt; も SVG の &lt;a&gt; も */</span></pre>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>実務で使う場面はかなり限定的</strong>。普通のWebアプリ制作では一度も書かずに済むことが多い。
+      「こういう機能が存在する」という知識として押さえておけば十分。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>SVGエディタや図表編集ツール内部のスタイリング</li>
+        <li>MathML（数式）を含む学術系コンテンツ</li>
+        <li>XMLベースのドキュメントエディタ</li>
+        <li>EPUB / XHTML 厳格モードでの組版</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>🎯 こう見えたら @namespace を疑う</strong>
+        <ul>
+          <li>HTML と SVG / MathML が混在し、同じタグ名で別物を指したい</li>
+          <li>通常のWeb制作では、ほぼ出番なし（知識として持つだけでOK）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== LAB 15: 総まとめ早見表 ===================== -->
+<div class="lab" id="lab15">
+  <div class="lab-header">
+    <div class="lab-num">15</div>
+    <h3>総まとめ早見表 — いつ何を使う？</h3>
+    <span class="lab-tag tag-basic">まとめ</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      学んだアットルールを「目的」から逆引きできる一覧。ブックマーク推奨。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>アットルール</th><th>一言で</th><th>頻度</th><th>対応</th></tr></thead>
+      <tbody>
+        <tr><td>@charset</td><td>CSSファイルの文字コード宣言</td><td>全ブラウザで必要な時のみ</td><td class="yes">◎</td></tr>
+        <tr><td>@import</td><td>他のCSSを取り込む</td><td>中</td><td class="yes">◎</td></tr>
+        <tr><td>@media</td><td>画面サイズ・印刷・環境で分岐</td><td class="yes">超頻出</td><td class="yes">◎</td></tr>
+        <tr><td>@font-face</td><td>Webフォントを定義</td><td>中</td><td class="yes">◎</td></tr>
+        <tr><td>@keyframes</td><td>アニメの振付定義</td><td class="yes">頻出</td><td class="yes">◎</td></tr>
+        <tr><td>@supports</td><td>ブラウザ機能検出で分岐</td><td>中</td><td class="yes">◎</td></tr>
+        <tr><td>@container</td><td>親要素の幅で分岐（真のレスポンシブ）</td><td>増加中</td><td class="yes">○</td></tr>
+        <tr><td>@layer</td><td>優先順位をレイヤーで管理</td><td>増加中</td><td class="yes">○</td></tr>
+        <tr><td>@scope</td><td>スタイル適用範囲を限定</td><td>これから</td><td>△（Firefox新しめ要）</td></tr>
+        <tr><td>@page</td><td>印刷時のページ設定</td><td>業務系のみ</td><td class="yes">◎</td></tr>
+        <tr><td>@property</td><td>CSS変数に型と初期値（アニメ可能に）</td><td>中</td><td class="yes">○</td></tr>
+        <tr><td>@starting-style</td><td>要素登場時の初期状態</td><td>これから</td><td class="yes">○</td></tr>
+        <tr><td>@counter-style</td><td>リストマーカーのカスタム</td><td>低</td><td class="yes">○</td></tr>
+        <tr><td>@namespace</td><td>XML名前空間の宣言</td><td>ほぼ不要</td><td class="yes">○</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box ok">
+      ✅ <strong>学習の優先順位</strong><br>
+      まず習得 → <code>@media / @keyframes / @font-face / @supports / @import</code><br>
+      モダン開発で覚える → <code>@container / @layer / @property</code><br>
+      用途がきたら → <code>@page / @scope / @starting-style / @counter-style / @charset</code><br>
+      知識だけでOK → <code>@namespace</code>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 アットルールの見分け方（記憶術）</div>
+<pre class="ascii-art">
+  @で始まる   →  アットルール（CSS全体の動き・条件・定義）
+  .や#で始まる →  通常の規則（個別の要素スタイル）
+  @xxx  "..."  ;    ← 文タイプ（1行で終わる）
+  @xxx  (...)  { } ← ブロックタイプ（中にCSS入れる）
+</pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 次にやるべきこと</div>
+      <ul class="usecase-list">
+        <li>各ラボの「💻 試し方ガイド」を順に触って1個ずつ動かしてみる</li>
+        <li>自分のプロジェクトのCSSに <code>@layer</code> / <code>@container</code> を導入してみる</li>
+        <li>caniuse.com で対応状況を確認しながら段階的導入</li>
+        <li>MDN でそれぞれの詳細な構文オプションを確認（特に <code>@page</code> と <code>@counter-style</code>）</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+</div><!-- /.container -->
+
+
+<script>
+function copyCode(btn) {
+  const block = btn.closest('.code-block') || btn.parentElement;
+  const pre = block.querySelector('pre');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+const LAB_META = {
+  lab0: {
+    info:  { type:'info', html:'📘 <strong>覚えるコツ</strong>: @で始まる行は「CSS全体の動きを決める命令」、セレクタから始まる行は「要素のスタイル」。この2つが混ざっているのがCSS。' },
+    check: [
+      '①ページ右クリック→<strong>ページのソースを表示</strong>して、冒頭の<code>&lt;style&gt;</code>内で<code>@</code>で始まる行を探す',
+      '②見つけた <code>@</code>行 が「① 文タイプ(;で終わる)」か「② ブロックタイプ({で囲む)」か分類する',
+      '③目次と見比べて、どのアットルールが実際に使われているか確認'
+    ],
+    try: 'まずこのラボを読むだけでOK。次の lab1 以降で実機試行していく'
+  },
+  lab1: {
+    info:  { type:'warn', html:'⚠️ <strong>@charset は必ず外部CSSファイルの1行目</strong>。HTML内の <code>&lt;style&gt;</code> タグ内では無効（<code>&lt;meta charset&gt;</code> が優先される）。' },
+    check: [
+      '①<code>utf8-test.css</code> という外部CSSを作り、1行目に <code>@charset "UTF-8";</code> を書く',
+      '②<code>body::after { content: "あいうえお●"; }</code> を追加',
+      '③HTMLで <code>&lt;link rel="stylesheet" href="utf8-test.css"&gt;</code> して開き、日本語が化けていないか確認',
+      '④試しに1行目より前に空行やコメントを入れて保存→リロードすると効かなくなるのを観察'
+    ],
+    try: 'ファイル先頭にBOMや空行が入りやすいので、VSCodeなどで「UTF-8 (BOMなし)」で保存すること'
+  },
+  lab2: {
+    info:  { type:'info', html:'📘 <strong>@importは直列読込</strong>。main.cssからa.cssをimport→a.cssからb.cssをimport…と連鎖すると、HTTPリクエストが順番になり体感が遅くなる。可能な限り <code>&lt;link&gt;</code> 並列を選ぶこと。' },
+    check: [
+      '①<code>sub.css</code> を作り <code>body { background: #ffefd5; }</code> を書く',
+      '②メインCSSの先頭に <code>@import "sub.css";</code> を書く',
+      '③HTMLを開いて背景色が適用されていれば成功',
+      '④試しに <code>@import</code> をCSSの中盤（他のルールの後）に移動→リロード→効かなくなることを確認'
+    ],
+    try: '開発中は @import でOKだが、本番デプロイ前に link 並列読込への書換えを検討'
+  },
+  lab3: {
+    info:  { type:'ok', html:'✅ <strong>モバイルファースト戦略</strong>: まず小さい画面用のCSSを書き、<code>@media (min-width: ...)</code> で徐々に拡張していくと保守しやすい。' },
+    verify: {
+      before: '<code>@media</code> なしではウィンドウ幅を変えても表示は一切変わらない',
+      after:  'ウィンドウ幅を縮めると上のデモボックスが<strong>青→赤→黄</strong>と色が段階的に変化する'
+    },
+    check: [
+      '①試行.html を開き、ブラウザウィンドウを最大化→デモボックス確認',
+      '②ウィンドウを横幅だけ縮めて <strong>700px付近</strong>で赤に変わることを観察',
+      '③さらに縮めて <strong>500px付近</strong>で黄色になることを観察',
+      '④<code>@media print</code> を試すには <strong>Ctrl+P</strong> で印刷プレビューを開いてレイアウトを確認',
+      '⑤OS設定のダークモードをON/OFFして <code>prefers-color-scheme</code> が効くか確認（対応サイトで）'
+    ],
+    try: 'Chromeの「デバイスツールバー」(Ctrl+Shift+M)を使えばスマホサイズをエミュレートできる'
+  },
+  lab4: {
+    info:  { type:'warn', html:'⚠️ <strong>font-display の指定は必須</strong>。未指定だと最大3秒間テキストが見えない(FOIT)のがデフォルト。ユーザー体験のため <code>swap</code> か <code>optional</code> を推奨。' },
+    check: [
+      '①試行.html を作り <code>@font-face { font-family: "Test"; src: url("https://fonts.gstatic.com/s/notosansjp/v52/nKKF-GM_FYFRJvXzVXaAPe9ZUHp1MOv2ObB7.woff2") format("woff2"); }</code> を書く',
+      '②<code>body { font-family: "Test", sans-serif; }</code> を追加',
+      '③ページを開いて、テキストのフォントがデフォルトと違うことを確認',
+      '④回線が遅い環境で <code>font-display: swap</code> の有無で体感差を観察（デフォルトは block）'
+    ],
+    try: 'Google Fonts の <code>&lt;link rel="stylesheet"&gt;</code> 経由 も内部では @font-face を使っている。ダウンロードしたフォントURLから上のように手書きする方が制御できる'
+  },
+  lab5: {
+    info:  { type:'ok', html:'✅ <strong>animation は短縮プロパティ</strong>で「名前・時間・イージング・遅延・繰返し回数・方向」を一気に指定できる。例: <code>animation: pulse 2s ease-in-out .5s infinite alternate;</code>' },
+    verify: {
+      before: '<code>@keyframes</code> だけ書いても、要素の <code>animation</code> プロパティで呼ばないと何も起きない',
+      after:  '<code>animation: pulse 2s infinite</code> を指定した瞬間から、要素が2秒周期で拡縮＋色変化'
+    },
+    check: [
+      '①上のデモボックスが2秒周期で「大きく・緑」「小さく・青」を繰り返すことを確認',
+      '②試行.html で <code>animation-play-state: paused</code> を追加→再生が止まる',
+      '③<code>animation-iteration-count: 3</code> にすると3回で止まるのを確認',
+      '④<code>animation-direction: alternate</code> で往復するようになるのを観察'
+    ],
+    try: '複数のアニメは <code>animation: spin 1s, pulse 2s;</code> のようにカンマ区切りで同時適用できる'
+  },
+  lab6: {
+    info:  { type:'info', html:'📘 <strong>「後勝ち」の原則</strong>を利用して、先にフォールバック（古い書き方）を書き、後に <code>@supports</code> で新機能を上書きするパターンが実務で頻出。' },
+    check: [
+      '①デモボックスが<strong>緑色</strong>なら、あなたのブラウザは <code>display: grid</code> に対応している',
+      '②赤色なら未対応（現代では非常に稀）',
+      '③試行.html で <code>@supports (display: frob-nicate) { body { background: hotpink; } }</code> を書く→適用されない（存在しないプロパティ）',
+      '④<code>@supports not (display: grid)</code> に変えると逆転するのを観察',
+      '⑤別ブラウザ（Edge / Firefox / Safari）で開いて対応度を比較'
+    ],
+    try: '<code>@supports selector(:has(*))</code> は「セレクタが効くかどうか」まで検出できる。:has() のフォールバックに便利'
+  },
+  lab7: {
+    info:  { type:'warn', html:'⚠️ <strong>container-type を親に付け忘れると無反応</strong>。これが @container の最大の落とし穴。まず親に <code>container-type: inline-size</code>。' },
+    verify: {
+      before: '点線枠の右下のハンドルをドラッグする前（幅 500px）→ 青色',
+      after:  '幅を 400px 以下にすると黄色、250px 以下で赤色に切替わる'
+    },
+    check: [
+      '①上のデモの点線枠の<strong>右下の三角ハンドル</strong>をドラッグして幅を変える',
+      '②<strong>400px付近</strong>で中のボックスが青→黄に切替わる',
+      '③さらに縮めて<strong>250px付近</strong>で黄→赤に切替わる',
+      '④<strong>ウィンドウ全体の幅は変えていない</strong>のに色が変わることを確認（=@media と違う）',
+      '⑤試行.html で <code>.wrap</code> から <code>container-type: inline-size</code> を外す→@container ルールが効かなくなるのを観察'
+    ],
+    try: '名前付き container <code>container-name: card</code> を使えば、入れ子のコンテナから「どの親を基準にするか」選べる'
+  },
+  lab8: {
+    info:  { type:'info', html:'📘 <strong>@layer 内は詳細度が「層の順序」で決まる</strong>。同じセレクタでも後ろの層が勝つ。<code>!important</code> は層の順序が<strong>逆転</strong>する特殊ルールあり。' },
+    verify: {
+      before: '@layer なし → 「最後に書かれたルール」が勝つ（記述順と詳細度の争い）',
+      after:  '@layer あり → 「宣言した層の後ろ」が勝つ。層の順序は先頭で明示的に決められる'
+    },
+    check: [
+      '①上のデモボックスの枠と文字色が<strong>紫色</strong>（override レイヤーが勝っている）であることを確認',
+      '②試行.html で <code>@layer base, theme, override</code> の順序を <code>@layer override, theme, base</code> に変えて保存→リロード',
+      '③色が <strong>青 (base)</strong> に変わる（一番後ろに宣言された層が勝つため）',
+      '④レイヤー外に <code>.demo-layer-box { color: red; }</code> を追加するとすべての層より強くなり赤に'
+    ],
+    try: 'Bootstrap などの大型ライブラリを <code>@import url("bootstrap.css") layer(vendor)</code> で取り込むと、自社CSSで安全に上書きできる'
+  },
+  lab9: {
+    info:  { type:'warn', html:'⚠️ <strong>@scope は比較的新しい機能</strong>。2024年以降 Chrome/Safari は対応、Firefox は 2024年後半のバージョンから。使用前に対応状況を確認。' },
+    check: [
+      '①試行.html に <code>&lt;div class="card"&gt;&lt;a&gt;親A&lt;/a&gt;&lt;div class="footer"&gt;&lt;a&gt;子A&lt;/a&gt;&lt;/div&gt;&lt;/div&gt;</code> を書く',
+      '②<code>@scope (.card) to (.footer) { a { color: red; } }</code> を追加',
+      '③「親A」が赤、「子A」が通常色（除外範囲）になることを確認',
+      '④対応していないブラウザで開くと全部赤のまま（スコープが効かない）→ブラウザ対応の違いを体感'
+    ],
+    try: '<code>&lt;style&gt;</code>タグをdiv内に置いて <code>@scope { ... }</code>（範囲無し）と書くと、そのタグの親が自動的にスコープ基点になる'
+  },
+  lab10: {
+    info:  { type:'ok', html:'✅ <strong>Ctrl+P（印刷プレビュー）で即確認できる</strong>のが @page の良いところ。印刷しなくても、プレビュー画面で見た目がわかる。' },
+    check: [
+      '①試行.html に <code>@page { size: A4; margin: 20mm; }</code> と <code>@media print { .no-print { display: none; } }</code> を書く',
+      '②<code>&lt;nav class="no-print"&gt;...&lt;/nav&gt;</code> と本文を用意',
+      '③Windowsは <strong>Ctrl+P</strong>、Macは <strong>⌘+P</strong> で印刷プレビューを開く',
+      '④プレビューで「nav が消えている」「A4余白20mmが効いている」ことを確認',
+      '⑤プレビューの「用紙サイズ」を変えても @page size が優先されるか観察'
+    ],
+    try: 'プレビュー画面の「詳細設定」で余白を「なし」にすると @page margin が効くかが分かりやすい'
+  },
+  lab11: {
+    info:  { type:'info', html:'📘 <strong>@property の本命用途はグラデ・回転のアニメ</strong>。通常のCSS変数は数値として補間できず、<code>@property</code>で型を付けて初めてアニメ対応する。' },
+    verify: {
+      before: '通常の <code>:root { --angle: 0deg }</code> でアニメ→角度が瞬間的に切替わるだけ（補間なし）',
+      after:  '<code>@property --angle { syntax: "&lt;angle&gt;" ... }</code> で型付け→なめらかに回転'
+    },
+    check: [
+      '①上のデモの四角いボックスのグラデーションが滑らかに回転していることを確認',
+      '②試行.html で <code>syntax: "&lt;angle&gt;"</code> を <code>syntax: "*"</code> に変える→補間されなくなるのを観察',
+      '③<code>initial-value</code> を消すと @property が無効化される（必須フィールド）',
+      '④<code>inherits: true</code> に変えて子要素に <code>var(--angle)</code> が継承されるか確認'
+    ],
+    try: 'マウス追従グラデ例: JSで <code>element.style.setProperty("--mx", `${e.clientX}px`)</code> → CSSで <code>@property --mx { syntax: "&lt;length&gt;" ... }</code> → transition が効く'
+  },
+  lab12: {
+    info:  { type:'info', html:'📘 <strong>@starting-style は transition 専用</strong>。animation ではなく transition と組み合わせる。登場時の「初期値」を書く場所と覚える。' },
+    verify: {
+      before: '通常の CSS だけでは、要素が追加された瞬間の状態を定義する手段がなく、JSが必要だった',
+      after:  '<code>@starting-style { .x { opacity: 0 } }</code> で要素追加の初フレームの状態を定義できる'
+    },
+    check: [
+      '①上のデモボックスが<strong>ページロード直後</strong>に下からフェードインすることを確認',
+      '②ページをリロード（F5）して再観察',
+      '③試行.html に <code>@starting-style</code> を書いたダイアログや popover 要素を用意して、開閉アニメを確認',
+      '④<code>transition</code> プロパティを消す→@starting-style だけでは動かない（瞬間切替になる）のを観察'
+    ],
+    try: '<code>&lt;dialog&gt;</code>要素や <code>popover</code> 属性の要素と相性最高。<code>dialog[open] { opacity: 1 }</code> + <code>@starting-style { dialog[open] { opacity: 0 } }</code>'
+  },
+  lab13: {
+    info:  { type:'info', html:'📘 <strong>system の種類を覚える</strong>: cyclic(巡回) / numeric(数字) / alphabetic(文字) / symbolic(記号+連番) / fixed(固定) / additive(ローマ数字風)。最初は cyclic で遊ぶのが分かりやすい。' },
+    check: [
+      '①上のデモリストが「🍎 みかん 🍊 レモン 🍋 巡回」となっていることを確認',
+      '②試行.html に <code>@counter-style my { system: cyclic; symbols: "▶" "▷"; suffix: " "; }</code> を書く',
+      '③<code>&lt;ul style="list-style: my"&gt;&lt;li&gt;A&lt;/li&gt;&lt;li&gt;B&lt;/li&gt;&lt;li&gt;C&lt;/li&gt;&lt;/ul&gt;</code> を表示',
+      '④マーカーが ▶ ▷ ▶ と交互になるのを確認',
+      '⑤<code>system: numeric</code> に変えて N進法も試す'
+    ],
+    try: '日本語番号「一、二、三」は <code>list-style-type: cjk-ideographic</code> で既に使える。@counter-style は既存にない独自スタイルを作りたいときに使う'
+  },
+  lab14: {
+    info:  { type:'warn', html:'⚠️ <strong>通常のWeb制作では使わない</strong>と思って良い。「見たことがある」程度の知識で十分。SVGエディタなど特殊用途以外では登場しない。' },
+    check: [
+      '①知識チェック：@namespace は何のためのものか答える（答え: SVG/MathMLのような別の名前空間の要素を区別するため）',
+      '②通常のHTMLで <code>&lt;svg&gt;&lt;circle&gt;&lt;/circle&gt;&lt;/svg&gt;</code> を書き、<code>circle { fill: red; }</code> だけでも効くことを確認',
+      '③つまり @namespace を書かなくても普通は動く → 実務で出番が少ない理由を実感',
+      '④「こういう機能がある」と覚えるだけでOK'
+    ],
+    try: '実装せずに仕様を知るだけで十分。MDNで "@namespace" を検索して斜め読みする程度で良い'
+  },
+  lab15: {
+    info:  { type:'ok', html:'🎓 <strong>おめでとう！</strong> ここまでで主要なCSSアットルール15種を網羅。実務では @media / @keyframes / @font-face を日常使い、@layer / @container / @property でモダンCSSに進化できる。' },
+    check: [
+      '①自分のプロジェクトの既存CSSを見て、<code>@</code>で始まる行を全てリストアップ',
+      '②使われていないが便利そうなアットルール（@layer, @container など）を1つ選び導入計画を立てる',
+      '③各アットルールをMDNで1つずつ確認し、自分用チートシートを作る',
+      '④このラボのHTMLをブックマークして、迷った時に戻ってくる'
+    ],
+    try: '次のステップ: <strong>@layer でBootstrap/Tailwindを整理</strong> or <strong>@container でコンポーネント設計</strong>。この2つが最も実務インパクトが大きい'
+  }
+};
+
+function infoHTML(m){ return m?.info ? `<div class="info-box ${m.info.type||'info'}">${m.info.html}</div>` : ''; }
+function verifyHTML(m){ if (!m?.verify) return '';
+  const {before, after} = m.verify;
+  return `<div class="verify">
+    <div class="verify-col verify-before"><div class="verify-label">Before ▶︎ 実行前</div>${before||''}</div>
+    <div class="verify-col verify-after"><div class="verify-label">After ▶︎ 実行後</div>${after||''}</div>
+  </div>`; }
+function checkHTML(m){ if (!m?.check?.length) return '';
+  return `<div class="check-steps">
+    <div class="check-steps-title">🔍 ブラウザ実機チェック</div>
+    <ol>${m.check.map(s=>`<li>${s}</li>`).join('')}</ol>
+  </div>`; }
+function tryHTML(m){
+  const tip = m?.try ? `<div class="try-tip"><strong>💡 このラボのコツ:</strong> ${m.try}</div>` : '';
+  return `<div class="try-box">
+    <div class="try-title">💻 コード例を試す手順（コピペで動かす）</div>
+    <ol>
+      <li>上のコードブロックの <strong>Copy</strong> ボタンを押してクリップボードにコピー</li>
+      <li>テキストエディタで <code>試行.html</code> を新規作成し、下の<strong>HTML雛形</strong>の <code>&lt;!-- ここに貼る --&gt;</code> 部分にペースト（CSSは<code>&lt;style&gt;</code>内へ）</li>
+      <li>保存して、ファイルを<strong>ダブルクリック</strong>するかブラウザにドラッグ&amp;ドロップで開く</li>
+      <li>下の「🔍 ブラウザ実機チェック」の項目を順に試して、想定通りの挙動になるか確認する</li>
+    </ol>
+    <pre class="try-skeleton">&lt;!DOCTYPE html&gt;
+&lt;html lang="ja"&gt;
+&lt;head&gt;
+  &lt;meta charset="UTF-8"&gt;
+  &lt;title&gt;試行&lt;/title&gt;
+  &lt;style&gt;
+    /* ここにCSSを貼る */
+  &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;!-- ここにHTMLを貼る --&gt;
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+    ${tip}
+  </div>`;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // (1) 各ラボに info + usecase(既存) + verify + try + check を自動挿入
+  document.querySelectorAll('.lab').forEach(lab => {
+    const meta = LAB_META[lab.id]; const body = lab.querySelector('.lab-body');
+    if (!body || !meta) return;
+    const frag = document.createElement('div');
+    frag.innerHTML = infoHTML(meta) + verifyHTML(meta) + tryHTML(meta) + checkHTML(meta);
+    while (frag.firstChild) body.appendChild(frag.firstChild);
+  });
+
+  // (2) サイドバー active ハイライト
+  const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+  const map = new Map();
+  links.forEach(a => { const el = document.getElementById(a.getAttribute('href').slice(1)); if (el) map.set(el, a); });
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) { const l = map.get(e.target);
+      if (l) { links.forEach(n=>n.classList.remove('active')); l.classList.add('active'); } }
+  }), { rootMargin:'-30% 0px -60% 0px' });
+  document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+  // (3) 既存 .code-block に header + Copy を自動付与
+  document.querySelectorAll('.code-block').forEach((cb, i) => {
+    if (cb.querySelector('.code-block-header')) return;
+    const existing = cb.querySelector('.code-label');
+    const labelText = existing ? existing.textContent.trim() : `Code #${i+1}`;
+    if (existing) existing.remove();
+    const header = document.createElement('div');
+    header.className = 'code-block-header';
+    header.innerHTML = `<span>${labelText}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+    cb.insertBefore(header, cb.firstChild);
+  });
+});
+
+// (4) Livedemo トグル
+document.addEventListener('click', (e) => {
+  if (!e.target.matches('.toggle-btn')) return;
+  const btn = e.target;
+  const stage = document.getElementById(btn.dataset.target);
+  if (!stage) return;
+  const isBefore = stage.classList.toggle('is-before');
+  btn.classList.toggle('is-before', isBefore);
+  const label = document.getElementById(btn.dataset.target + '-label');
+  if (label) label.textContent = isBefore ? '現在: Before（機能OFF／問題あり）' : '現在: After（機能ON／修正済み）';
+});
+</script>
+
+</body>
+</html>

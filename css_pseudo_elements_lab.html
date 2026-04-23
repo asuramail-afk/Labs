@@ -1,0 +1,1379 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSS 擬似要素 実機確認 Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+/* Sidebar */
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+/* Hero */
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+/* TOC */
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+/* Container & Lab cards */
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+/* Code block */
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+/* Syntax token colors (GitHub light) */
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+
+/* info-box */
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+/* verify Before / After */
+.verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+  line-height:1.7; border:1px solid; }
+.verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+.verify-before .verify-label { color:var(--error); }
+.verify-after  .verify-label { color:var(--success); }
+
+/* check-steps */
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+/* compare-table */
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+.compare-table .yes { color:var(--success); } .compare-table .no { color:var(--error); }
+
+/* beginner-box */
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+/* usecase-box */
+.usecase-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:6px; }
+.usecase-list { margin-left:20px; margin-bottom:10px; }
+.usecase-list li { margin-bottom:4px; }
+.usecase-trigger { background:rgba(0,92,197,.05); border-left:3px solid var(--accent);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#003d8f; margin-top:8px; }
+.usecase-trigger ul { margin:4px 0 0 20px; }
+
+/* livedemo */
+.livedemo { margin:14px 0; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+.livedemo-bar { display:flex; align-items:center; gap:12px; padding:8px 12px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.toggle-btn { font-family:var(--mono); font-size:.78rem; padding:5px 14px;
+  border-radius:6px; border:1px solid var(--accent); background:var(--accent);
+  color:#fff; cursor:pointer; transition:all .15s; }
+.toggle-btn:hover { opacity:.85; }
+.toggle-btn.is-before { background:var(--error); border-color:var(--error); }
+.toggle-label { font-family:var(--mono); font-size:.78rem; color:var(--text-dim); }
+.livedemo-stage { padding:16px; background:var(--bg); }
+.livedemo-stage.is-before { outline:2px dashed var(--error); outline-offset:-8px; }
+.livedemo-stage .ld-before { display:none; }
+.livedemo-stage.is-before .ld-before { display:block; }
+.livedemo-stage.is-before .ld-after { display:none; }
+.ld-panel { padding:12px; border-radius:6px; font-family:var(--mono); font-size:11px; line-height:1.6; }
+.ld-panel.bad { background:#fee2e2; border:1px solid #cb2431; color:#6b1a22; }
+.ld-panel.good { background:#dcfce7; border:1px solid #22863a; color:#166534; }
+
+/* try-box */
+.try-box { background:rgba(34,134,58,.06); border:1px solid rgba(34,134,58,.30);
+  border-left:3px solid var(--success); border-radius:7px;
+  padding:12px 14px; margin:14px 0; font-size:.86rem; line-height:1.8; color:#154f1e; }
+.try-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--success); font-weight:700; margin-bottom:6px; }
+.try-box ol { margin-left:20px; margin-top:4px; }
+.try-box ol li { margin-bottom:4px; }
+.try-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--success); }
+.try-tip { background:rgba(176,136,0,.06); border-left:3px solid var(--accent4);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#5c4400; margin-top:8px; }
+.try-tip strong { color:var(--accent4); }
+.try-skeleton { background:#f0f4f8; border:1px solid var(--border); border-radius:5px;
+  padding:10px 12px; margin-top:8px; font-family:var(--mono); font-size:.78rem;
+  color:var(--text); white-space:pre; overflow-x:auto; line-height:1.5; }
+
+/* code-pair */
+.code-pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; }
+.code-pair-col { display:flex; flex-direction:column; min-width:0; }
+.code-pair-label { font-family:var(--mono); font-size:.72rem; letter-spacing:.05em;
+  font-weight:700; padding:6px 10px; border-radius:6px 6px 0 0; }
+.code-pair-before .code-pair-label { background:rgba(203,36,49,.10); color:#9a1320;
+  border:1px solid rgba(203,36,49,.30); border-bottom:none; }
+.code-pair-after  .code-pair-label { background:rgba(34,134,58,.10); color:#154f1e;
+  border:1px solid rgba(34,134,58,.30); border-bottom:none; }
+.code-pair-col .code-block { margin:0; border-radius:0 0 8px 8px; flex:1; }
+.code-pair-before .code-block { border-color:rgba(203,36,49,.30); }
+.code-pair-after  .code-block { border-color:rgba(34,134,58,.30); }
+@media (max-width:900px){ .code-pair { grid-template-columns:1fr; } }
+
+/* ========= LAB 固有のデモCSS ========= */
+
+/* Lab1: ::before / ::after */
+#ld-before-after.is-before .demo-quote::before,
+#ld-before-after.is-before .demo-quote::after { content:none; }
+.demo-quote { position:relative; padding:18px 40px; background:#fff;
+  border:1px solid var(--border); border-radius:8px; font-style:italic;
+  color:var(--text); font-size:.95rem; }
+.demo-quote::before { content:'“'; position:absolute; left:8px; top:0;
+  font-size:2.8rem; color:var(--accent); font-family:Georgia,serif; line-height:1; }
+.demo-quote::after { content:'”'; position:absolute; right:8px; bottom:-12px;
+  font-size:2.8rem; color:var(--accent); font-family:Georgia,serif; line-height:1; }
+
+/* Lab2: content プロパティ */
+#ld-content.is-before .demo-content-box::before { content:''; }
+.demo-content-box { padding:14px; background:#fff; border:1px solid var(--border);
+  border-radius:6px; font-size:.9rem; }
+.demo-content-box::before { content:'★ NEW '; color:var(--error); font-weight:700; }
+.demo-attr { padding:12px; background:#fff; border:1px solid var(--border); border-radius:6px; }
+.demo-attr a::after { content:' (' attr(href) ')'; color:var(--text-dim); font-size:.8rem; }
+
+/* Lab3: ::first-letter / ::first-line */
+#ld-first.is-before .demo-paragraph::first-letter,
+#ld-first.is-before .demo-paragraph::first-line { all:unset; }
+.demo-paragraph { padding:16px; background:#fff; border:1px solid var(--border);
+  border-radius:6px; font-size:.95rem; max-width:520px; }
+.demo-paragraph::first-letter { font-size:2.6rem; font-weight:700; color:var(--accent);
+  float:left; line-height:1; padding:4px 8px 0 0; font-family:Georgia,serif; }
+.demo-paragraph::first-line { font-weight:600; color:var(--accent2); letter-spacing:.02em; }
+
+/* Lab4: ::selection */
+.demo-selectable { padding:14px; background:#fff; border:1px solid var(--border);
+  border-radius:6px; font-size:.95rem; user-select:text; }
+.demo-selectable::selection { background:#ffeb3b; color:#cb2431; }
+
+/* Lab5: ::placeholder */
+#ld-ph.is-before .demo-input::placeholder { color:#757575; font-style:normal; letter-spacing:normal; opacity:1; }
+.demo-input { width:100%; padding:10px 12px; font-size:.95rem;
+  border:1px solid var(--border); border-radius:6px; background:#fff;
+  font-family:var(--sans); }
+.demo-input::placeholder { color:var(--accent3); font-style:italic; letter-spacing:.03em; opacity:.85; }
+.demo-input:focus { outline:2px solid var(--accent); outline-offset:1px; }
+
+/* Lab6: ::file-selector-button */
+.demo-file { display:block; font-family:var(--sans); font-size:.9rem; color:var(--text-dim); }
+#ld-file.is-before .demo-file::file-selector-button { all:revert; }
+.demo-file::file-selector-button { background:var(--accent); color:#fff;
+  border:none; padding:8px 18px; border-radius:6px; font-family:var(--mono);
+  font-size:.82rem; cursor:pointer; margin-right:10px; transition:opacity .15s; }
+.demo-file::file-selector-button:hover { opacity:.85; }
+
+/* Lab7: ::marker */
+#ld-marker.is-before .demo-list::marker { all:unset; }
+.demo-list { padding:14px 14px 14px 36px; background:#fff;
+  border:1px solid var(--border); border-radius:6px; font-size:.92rem; }
+.demo-list li::marker { color:var(--error); font-weight:800;
+  font-family:var(--mono); content:'▶ '; }
+.demo-ol { padding:14px 14px 14px 40px; background:#fff;
+  border:1px solid var(--border); border-radius:6px; font-size:.92rem; }
+.demo-ol li::marker { color:var(--accent); font-weight:700; font-family:var(--mono); }
+
+/* Lab8: ::backdrop */
+.demo-dialog-btn { padding:8px 16px; background:var(--accent); color:#fff;
+  border:none; border-radius:6px; font-family:var(--sans); font-size:.9rem; cursor:pointer; }
+.demo-dialog-btn:hover { opacity:.88; }
+dialog.demo-dialog { border:none; border-radius:10px; padding:24px 28px;
+  background:#fff; color:var(--text); max-width:420px; box-shadow:0 10px 40px rgba(0,0,0,.2); }
+dialog.demo-dialog::backdrop { background:rgba(0,92,197,.55); backdrop-filter:blur(3px); }
+dialog.demo-dialog p { margin-bottom:14px; font-size:.92rem; }
+dialog.demo-dialog button { padding:6px 14px; background:var(--error); color:#fff;
+  border:none; border-radius:5px; cursor:pointer; font-family:var(--sans); }
+
+/* Lab9: 数値ネスト */
+.demo-nested { padding:18px 20px; background:#fff; border:1px solid var(--border);
+  border-radius:8px; font-size:.95rem; position:relative; }
+.demo-nested::before { content:''; position:absolute; top:0; left:0; right:0; height:4px;
+  background:linear-gradient(90deg,var(--accent),var(--accent2),var(--accent3)); border-radius:8px 8px 0 0; }
+.demo-nested::after { content:'★'; position:absolute; right:12px; top:12px;
+  color:var(--accent4); font-size:1.2rem; }
+
+/* Lab10: 区切り（誤記比較） */
+.demo-badge-box { padding:14px; background:#fff; border:1px solid var(--border);
+  border-radius:6px; display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+.demo-badge-a { padding:4px 10px; background:var(--accent); color:#fff;
+  border-radius:20px; font-size:.82rem; position:relative; }
+.demo-badge-a::after { content:'NEW'; position:absolute; top:-8px; right:-8px;
+  background:var(--error); color:#fff; font-size:.6rem; padding:2px 5px; border-radius:10px; }
+.demo-badge-b { padding:4px 10px; background:var(--accent2); color:#fff;
+  border-radius:20px; font-size:.82rem; position:relative; }
+.demo-badge-b:after { content:'OK'; position:absolute; top:-8px; right:-8px;
+  background:var(--accent4); color:#fff; font-size:.6rem; padding:2px 5px; border-radius:10px; }
+
+/* Lab11: アイコン挿入パターン */
+.demo-icon-link::before { content:'🔗 '; }
+.demo-icon-ext::after { content:' ↗'; color:var(--accent); font-weight:700; }
+.demo-icon-req::after { content:' *'; color:var(--error); font-weight:700; }
+.demo-icon-list { list-style:none; padding:14px; background:#fff;
+  border:1px solid var(--border); border-radius:6px; font-size:.92rem; }
+.demo-icon-list li { margin-bottom:6px; }
+.demo-icon-list li::before { content:'✓ '; color:var(--success); font-weight:800; }
+
+/* Lab12: layout 限界 */
+.demo-limit-card { padding:16px; background:#fff; border:1px solid var(--border);
+  border-radius:8px; position:relative; font-size:.9rem; overflow:hidden; }
+.demo-limit-card::before { content:'NEW'; position:absolute; top:10px; right:-32px;
+  transform:rotate(45deg); background:var(--error); color:#fff;
+  padding:3px 40px; font-family:var(--mono); font-size:.7rem; font-weight:700;
+  letter-spacing:.08em; box-shadow:0 2px 4px rgba(0,0,0,.15); }
+.demo-limit-card::after { content:''; position:absolute; bottom:0; left:0; right:0;
+  height:3px; background:linear-gradient(90deg,var(--accent),var(--accent2)); }
+
+/* Responsive */
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .verify { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// CSS <span>擬似要素 Lab</span></div>
+  <div class="nav-section">基礎</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>擬似要素とは</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>::before / ::after</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>content の全て</a>
+  <div class="nav-section">テキスト装飾</div>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>::first-letter</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>::first-line</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>::selection</a>
+  <div class="nav-section">フォーム系</div>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>::placeholder</a>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>::file-selector-btn</a>
+  <div class="nav-section">リスト・ダイアログ</div>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>::marker</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>::backdrop</a>
+  <div class="nav-section">応用・比較</div>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>擬似要素 vs 擬似クラス</a>
+  <a class="nav-item" href="#lab11"><span class="nav-num">11</span>実践パターン集</a>
+  <a class="nav-item" href="#lab12"><span class="nav-num">12</span>擬似要素の限界</a>
+</nav>
+
+<div class="hero">
+  <h1>CSS 擬似要素 実機確認 Lab</h1>
+  <p class="subtitle">// 13 labs — 初心者向け完全網羅 / ::before から ::backdrop まで</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>擬似要素とは何か</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>::before / ::after 基本</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>content プロパティの全て</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>::first-letter（ドロップキャップ）</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>::first-line（最初の行）</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>::selection（選択範囲色）</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>::placeholder（入力ヒント）</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>::file-selector-button</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>::marker（箇条書きマーク）</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>::backdrop（dialog背景）</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">10</span>擬似要素 vs 擬似クラス</a>
+    <a class="toc-item" href="#lab11"><span class="toc-num">11</span>実践パターン集</a>
+    <a class="toc-item" href="#lab12"><span class="toc-num">12</span>擬似要素の限界と注意</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ========== LAB 0 ========== -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>擬似要素とは何か（概念とコロン記法）</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      擬似要素（pseudo-element）は <code>HTMLには存在しないのに CSS で作れる「仮想の子要素」</code>です。実 DOM には現れないのにページには描画されます。コロン2つ <code>::name</code> で書き、擬似クラス <code>:hover</code> などとは文法が区別されます。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 イメージ: 擬似要素は「見えない子供」</div>
+      要素 <code>&lt;p&gt;</code> に対して <code>::before</code> を書くと、ブラウザが描画時に <strong>p の先頭に仮想の小さな子要素</strong>をそっと挿入してくれる、と思えばOK。DevTools では確認できるが、HTMLソースには出てこない。
+<pre class="ascii-art">
+HTML (書いたもの):
+┌───────────────────┐
+│ &lt;p&gt;本文&lt;/p&gt;        │
+└───────────────────┘
+
+CSSで p::before { content:'★'; } と書くと...
+
+ブラウザが描画:
+┌────────────────────────────────┐
+│ &lt;p&gt; [★::before] 本文 [::after] &lt;/p&gt;
+│       ↑ 仮想子要素      ↑ 仮想子要素
+└────────────────────────────────┘
+        DOMには存在しない / 画面には映る
+</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>分類</th><th>記法</th><th>代表例</th><th>何を指すか</th></tr></thead>
+      <tbody>
+        <tr><td>擬似要素</td><td><code>::name</code></td><td>::before / ::after / ::first-letter</td><td>要素の一部（仮想の子）</td></tr>
+        <tr><td>擬似クラス</td><td><code>:name</code></td><td>:hover / :focus / :nth-child</td><td>要素の状態や位置</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before（CSS2 旧記法／混同しやすい）</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>CSS — 旧コロン1つ</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">/* 擬似要素なのにコロン1つ。動くが非推奨 */</span>
+<span class="sel">p:before</span> { <span class="prop">content</span>:<span class="val">'★'</span>; }
+<span class="sel">p:hover</span>  { <span class="prop">color</span>:<span class="val">red</span>; }  <span class="cm">/* これは擬似クラスで正しい */</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After（CSS3 推奨記法）</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>CSS — コロン2つで擬似要素を明示</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">/* コロン2つで「擬似要素」と一目で分かる */</span>
+<span class="sel">p::before</span> { <span class="prop">content</span>:<span class="val">'★'</span>; }
+<span class="sel">p:hover</span>   { <span class="prop">color</span>:<span class="val">red</span>; }  <span class="cm">/* 擬似クラスはコロン1つのまま */</span></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== LAB 1 ========== -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>::before / ::after — 要素の前後に仮想の子を挿入</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      最もよく使う2つの擬似要素。<code>::before</code> は要素の<strong>内容の先頭</strong>、<code>::after</code> は<strong>末尾</strong>に仮想の子を挿入します。必ず <code>content</code> プロパティが必要（無いと描画されない）。下のライブデモは引用符を <code>::before</code>/<code>::after</code> で装飾しています。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>HTML + CSS — 引用文に上下のクォートを装飾</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">&lt;!-- HTML --&gt;</span>
+&lt;<span class="tag">blockquote</span> <span class="attr">class</span>=<span class="val">"quote"</span>&gt;擬似要素は仮想の子供です&lt;/<span class="tag">blockquote</span>&gt;
+
+<span class="cm">/* CSS */</span>
+<span class="sel">.quote</span>          { <span class="prop">position</span>:<span class="val">relative</span>; <span class="prop">padding</span>:<span class="num">18</span><span class="val">px</span> <span class="num">40</span><span class="val">px</span>; }
+<span class="sel">.quote::before</span> { <span class="prop">content</span>:<span class="val">'"'</span>; <span class="prop">position</span>:<span class="val">absolute</span>;
+                  <span class="prop">left</span>:<span class="num">8</span><span class="val">px</span>; <span class="prop">top</span>:<span class="num">0</span>; <span class="prop">font-size</span>:<span class="num">2.8</span><span class="val">rem</span>; }
+<span class="sel">.quote::after</span>  { <span class="prop">content</span>:<span class="val">'"'</span>; <span class="prop">position</span>:<span class="val">absolute</span>;
+                  <span class="prop">right</span>:<span class="num">8</span><span class="val">px</span>; <span class="prop">bottom</span>:<span class="num">-12</span><span class="val">px</span>; }</pre>
+    </div>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="ld-before-after">Before を見る（::before/::after OFF）</button>
+        <span class="toggle-label" id="ld-before-after-label">現在: After（装飾ON）</span>
+      </div>
+      <div class="livedemo-stage" id="ld-before-after">
+        <p class="demo-quote">擬似要素を使えば、HTMLを汚さずに引用符や装飾を加えられる。これが最大の強み。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== LAB 2 ========== -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>content プロパティの全て</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>content</code> は擬似要素の描画内容を決める必須プロパティ。文字列、画像、属性値、カウンター、空文字など多彩。省略すると <code>::before</code>/<code>::after</code> は<strong>生成すらされない</strong>（これが落とし穴）。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>記法</th><th>効果</th><th>よく使う場面</th></tr></thead>
+      <tbody>
+        <tr><td><code>content:'★'</code></td><td>文字列を挿入</td><td>アイコン・装飾</td></tr>
+        <tr><td><code>content:''</code></td><td>空文字（要素は生成される）</td><td>図形や線を描画する空箱</td></tr>
+        <tr><td><code>content:url(icon.svg)</code></td><td>画像を挿入</td><td>アイコン</td></tr>
+        <tr><td><code>content:attr(href)</code></td><td>属性値を表示</td><td>印刷時にURL表示</td></tr>
+        <tr><td><code>content:counter(sec)</code></td><td>自動番号</td><td>章番号・目次</td></tr>
+        <tr><td><code>content:none</code></td><td>生成しない</td><td>OFFにする</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>HTML + CSS — attr() で href を表示（印刷に便利）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">&lt;!-- HTML --&gt;</span>
+&lt;<span class="tag">p</span> <span class="attr">class</span>=<span class="val">"attr-demo"</span>&gt;
+  詳しくは &lt;<span class="tag">a</span> <span class="attr">href</span>=<span class="val">"https://example.com"</span>&gt;こちら&lt;/<span class="tag">a</span>&gt; 参照
+&lt;/<span class="tag">p</span>&gt;
+
+<span class="cm">/* CSS: リンクの直後に (URL) を自動挿入 */</span>
+<span class="sel">.attr-demo a::after</span> {
+  <span class="prop">content</span>: <span class="val">' ('</span> <span class="fn">attr</span>(<span class="val">href</span>) <span class="val">')'</span>;
+  <span class="prop">color</span>: <span class="val">#5c6370</span>;
+  <span class="prop">font-size</span>: <span class="num">.8</span><span class="val">rem</span>;
+}</pre>
+    </div>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="ld-content">Before を見る（content なし）</button>
+        <span class="toggle-label" id="ld-content-label">現在: After（content あり）</span>
+      </div>
+      <div class="livedemo-stage" id="ld-content">
+        <div class="demo-content-box">新着のお知らせです</div>
+        <div class="demo-attr" style="margin-top:12px;">
+          詳しくは <a href="https://example.com">こちら</a> を参照
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== LAB 3 ========== -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>::first-letter — ドロップキャップ</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ブロック要素の<strong>最初の1文字</strong>だけを狙い撃ちできる擬似要素。雑誌風のドロップキャップが HTMLを汚さずに作れます。インライン要素には適用できません（<code>display:block</code> 系に限る）。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>CSS — 先頭文字だけ巨大化</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="sel">.paragraph::first-letter</span> {
+  <span class="prop">font-size</span>: <span class="num">2.6</span><span class="val">rem</span>;
+  <span class="prop">font-weight</span>: <span class="num">700</span>;
+  <span class="prop">color</span>: <span class="val">#005cc5</span>;
+  <span class="prop">float</span>: <span class="val">left</span>;         <span class="cm">/* 本文を回り込ませる */</span>
+  <span class="prop">line-height</span>: <span class="num">1</span>;
+  <span class="prop">padding</span>: <span class="num">4</span><span class="val">px</span> <span class="num">8</span><span class="val">px</span> <span class="num">0</span> <span class="num">0</span>;
+}</pre>
+    </div>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="ld-first">Before を見る（装飾 OFF）</button>
+        <span class="toggle-label" id="ld-first-label">現在: After（::first-letter/::first-line ON）</span>
+      </div>
+      <div class="livedemo-stage" id="ld-first">
+        <p class="demo-paragraph">擬似要素を使うと、先頭の1文字や最初の1行だけに特別な装飾を与えられます。これは HTMLタグを追加せずに達成できるので、本文の構造を汚しません。雑誌のような見栄えを簡単に作れます。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== LAB 4 ========== -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>::first-line — 最初の「見えている1行」</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      要素内の<strong>視覚的な最初の1行</strong>に適用される擬似要素。ウィンドウ幅で1行の長さが変わるため、ブラウザが<strong>動的に</strong>判定します。これが一番の見どころで、幅を変えると適用範囲も変化。
+    </p>
+
+    <div class="info-box info">
+      <strong>📘 ポイント</strong>: <code>::first-line</code> は「HTML上の最初の行」ではなく「<strong>描画結果の1行目</strong>」を指します。ウィンドウを狭めると1行目も変わる。適用できるプロパティは限定的（font、color、background、text-decoration など）。
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>CSS — 1行目だけ緑の太字に</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="sel">.paragraph::first-line</span> {
+  <span class="prop">font-weight</span>: <span class="num">600</span>;
+  <span class="prop">color</span>: <span class="val">#22863a</span>;
+  <span class="prop">letter-spacing</span>: <span class="num">.02</span><span class="val">em</span>;
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== LAB 5 ========== -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>::selection — 選択された範囲のスタイル</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ユーザが<strong>ドラッグして選択したテキスト</strong>の背景色・文字色を変えられる擬似要素。ブランドカラーに合わせた選択色を使うと「ちゃんと作られている感」が出ます。使えるプロパティは <code>color / background-color / text-decoration / text-shadow</code> などに限定。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>CSS — 選択範囲を黄色×赤文字に</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="sel">.selectable::selection</span> {
+  <span class="prop">background</span>: <span class="val">#ffeb3b</span>;
+  <span class="prop">color</span>: <span class="val">#cb2431</span>;
+}</pre>
+    </div>
+
+    <div style="margin:14px 0;">
+      <p class="demo-selectable">▼ この文章をマウスでドラッグして選択してみてください。通常の青色ではなく、黄色い背景に赤い文字で選択範囲が表示されるはずです。ブランドカラーに合わせると良い印象を与えます。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ========== LAB 6 ========== -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>::placeholder — 入力欄のヒント文字</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>&lt;input placeholder="..."&gt;</code> のヒント文字のスタイルを変える擬似要素。色だけでなくイタリック・文字間隔・透明度も変えられます。<strong>透明度 1 を明示しないと Firefox で薄く見える</strong>落とし穴あり。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>HTML + CSS — プレースホルダを紫イタリックに</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">&lt;!-- HTML --&gt;</span>
+&lt;<span class="tag">input</span> <span class="attr">class</span>=<span class="val">"my-input"</span> <span class="attr">placeholder</span>=<span class="val">"メールアドレス"</span>&gt;
+
+<span class="cm">/* CSS */</span>
+<span class="sel">.my-input::placeholder</span> {
+  <span class="prop">color</span>: <span class="val">#6f42c1</span>;
+  <span class="prop">font-style</span>: <span class="val">italic</span>;
+  <span class="prop">letter-spacing</span>: <span class="num">.03</span><span class="val">em</span>;
+  <span class="prop">opacity</span>: <span class="num">.85</span>;  <span class="cm">/* Firefox は既定で薄い: 明示推奨 */</span>
+}</pre>
+    </div>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="ld-ph">Before を見る（装飾 OFF）</button>
+        <span class="toggle-label" id="ld-ph-label">現在: After（紫イタリック）</span>
+      </div>
+      <div class="livedemo-stage" id="ld-ph">
+        <input class="demo-input" placeholder="メールアドレスを入力してください">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== LAB 7 ========== -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>::file-selector-button — ファイル選択ボタン</h3>
+    <span class="lab-tag tag-advanced">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>&lt;input type="file"&gt;</code> の<strong>「ファイルを選択」ボタン</strong>の見た目を変える擬似要素。これまでは <code>::-webkit-file-upload-button</code> のベンダープレフィックス頼みで悩みの種でしたが、標準化されました（2022年ごろ全ブラウザ対応）。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>CSS — ファイル選択ボタンを青い角丸に</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="sel">.my-file::file-selector-button</span> {
+  <span class="prop">background</span>: <span class="val">#005cc5</span>;
+  <span class="prop">color</span>: <span class="val">#fff</span>;
+  <span class="prop">border</span>: <span class="val">none</span>;
+  <span class="prop">padding</span>: <span class="num">8</span><span class="val">px</span> <span class="num">18</span><span class="val">px</span>;
+  <span class="prop">border-radius</span>: <span class="num">6</span><span class="val">px</span>;
+  <span class="prop">margin-right</span>: <span class="num">10</span><span class="val">px</span>;
+  <span class="prop">cursor</span>: <span class="val">pointer</span>;
+}</pre>
+    </div>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="ld-file">Before を見る（デフォルト）</button>
+        <span class="toggle-label" id="ld-file-label">現在: After（青い角丸ボタン）</span>
+      </div>
+      <div class="livedemo-stage" id="ld-file">
+        <input type="file" class="demo-file">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== LAB 8 ========== -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>::marker — 箇条書きの「・」や数字</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>&lt;ul&gt;</code>/<code>&lt;ol&gt;</code>/<code>&lt;li&gt;</code> や <code>&lt;summary&gt;</code> のマーカー（黒丸・数字・▶︎）専用の擬似要素。これまでマーカー色だけ変えるのに <code>list-style:none</code> + <code>::before</code> で偽装していた作業が1行で済むようになりました。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>CSS — ulのマーカーを赤い▶に、olの数字を青太字に</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="sel">.my-ul li::marker</span> {
+  <span class="prop">color</span>: <span class="val">#cb2431</span>;
+  <span class="prop">font-weight</span>: <span class="num">800</span>;
+  <span class="prop">content</span>: <span class="val">'▶ '</span>;   <span class="cm">/* マーカー自体を置換 */</span>
+}
+<span class="sel">.my-ol li::marker</span> {
+  <span class="prop">color</span>: <span class="val">#005cc5</span>;
+  <span class="prop">font-weight</span>: <span class="num">700</span>;
+}</pre>
+    </div>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="ld-marker">Before を見る（デフォルト）</button>
+        <span class="toggle-label" id="ld-marker-label">現在: After（カスタムマーカー）</span>
+      </div>
+      <div class="livedemo-stage" id="ld-marker">
+        <ul class="demo-list">
+          <li>最初の項目</li>
+          <li>2番目の項目</li>
+          <li>3番目の項目</li>
+        </ul>
+        <ol class="demo-ol" style="margin-top:10px;">
+          <li>手順1</li>
+          <li>手順2</li>
+          <li>手順3</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== LAB 9 ========== -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>::backdrop — ダイアログの背景</h3>
+    <span class="lab-tag tag-advanced">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>&lt;dialog&gt;</code> をモーダルで開いたときや全画面表示時に、<strong>ダイアログの後ろに敷かれる半透明レイヤー</strong>のスタイルを制御する擬似要素。これまで overlay用の div を自作していた作業が一気に不要に。
+    </p>
+
+    <div class="info-box info">
+      <strong>📘 発動条件</strong>: <code>dialog.showModal()</code> で開いた場合のみ。<code>dialog.show()</code> では backdrop は出ません。フルスクリーン API でも利用可能。
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>HTML + CSS — ダイアログの背景を青ぼかしに</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">&lt;!-- HTML --&gt;</span>
+&lt;<span class="tag">dialog</span> <span class="attr">id</span>=<span class="val">"myDialog"</span>&gt;
+  &lt;<span class="tag">p</span>&gt;これはモーダルダイアログです&lt;/<span class="tag">p</span>&gt;
+  &lt;<span class="tag">button</span> <span class="attr">onclick</span>=<span class="val">"myDialog.close()"</span>&gt;閉じる&lt;/<span class="tag">button</span>&gt;
+&lt;/<span class="tag">dialog</span>&gt;
+&lt;<span class="tag">button</span> <span class="attr">onclick</span>=<span class="val">"myDialog.showModal()"</span>&gt;開く&lt;/<span class="tag">button</span>&gt;
+
+<span class="cm">/* CSS */</span>
+<span class="sel">dialog::backdrop</span> {
+  <span class="prop">background</span>: <span class="val">rgba(0,92,197,.55)</span>;
+  <span class="prop">backdrop-filter</span>: <span class="fn">blur</span>(<span class="num">3</span><span class="val">px</span>);
+}</pre>
+    </div>
+
+    <div style="margin:14px 0;">
+      <button class="demo-dialog-btn" onclick="document.getElementById('myLabDialog').showModal()">ダイアログを開く</button>
+      <dialog class="demo-dialog" id="myLabDialog">
+        <p>これはモーダルダイアログです。背景の青いぼかしが <code>::backdrop</code> で描画されています。</p>
+        <button onclick="document.getElementById('myLabDialog').close()">閉じる</button>
+      </dialog>
+    </div>
+  </div>
+</div>
+
+<!-- ========== LAB 10 ========== -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>擬似要素 vs 擬似クラス — コロン数で使い分け</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      初心者が混同しやすいのがこの2つ。コロンの数（<code>:</code> か <code>::</code>）だけでなく、<strong>何を選んでいるか</strong>が本質的に違います。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 覚え方</div>
+      「<strong>要素の一部</strong>を作る／選ぶ」のが擬似要素（::）、「要素の<strong>状態や位置</strong>」を選ぶのが擬似クラス（:）。
+<pre class="ascii-art">
+擬似要素 (::)           擬似クラス (:)
+─────────────           ──────────────
+p::before    ← 作る    a:hover      ← 状態
+p::first-line ← 一部   li:first-child ← 位置
+p::marker    ← 一部   input:focus   ← 状態
+p::selection ← 一部   p:nth-of-type(2) ← 位置
+
+本質: 要素を「分解/新設」 vs 要素を「状態で絞る」
+</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>目的</th><th>書き方</th><th>種類</th></tr></thead>
+      <tbody>
+        <tr><td>カード先頭にアイコン挿入</td><td><code>.card::before</code></td><td>擬似要素</td></tr>
+        <tr><td>ホバー時だけ色変更</td><td><code>.card:hover</code></td><td>擬似クラス</td></tr>
+        <tr><td>1文字目だけ装飾</td><td><code>p::first-letter</code></td><td>擬似要素</td></tr>
+        <tr><td>2番目の子だけ装飾</td><td><code>li:nth-child(2)</code></td><td>擬似クラス</td></tr>
+        <tr><td>input のヒント文字</td><td><code>input::placeholder</code></td><td>擬似要素</td></tr>
+        <tr><td>入力欄にフォーカス中</td><td><code>input:focus</code></td><td>擬似クラス</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before（よくある混同）</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>CSS — 意図不明</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">/* ::hover と書いてしまう */</span>
+<span class="sel">a::hover</span> { <span class="prop">color</span>:<span class="val">red</span>; }  <span class="cm">/* 動かない(擬似要素ではない) */</span>
+
+<span class="cm">/* :before と書くのは旧記法で非推奨 */</span>
+<span class="sel">p:before</span> { <span class="prop">content</span>:<span class="val">'★'</span>; } <span class="cm">/* 動くがモダンではない */</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After（正しい使い分け）</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>CSS — 意図が明確</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">/* 擬似クラス = コロン1つ */</span>
+<span class="sel">a:hover</span>  { <span class="prop">color</span>:<span class="val">red</span>; }
+
+<span class="cm">/* 擬似要素 = コロン2つ */</span>
+<span class="sel">p::before</span> { <span class="prop">content</span>:<span class="val">'★'</span>; }</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== LAB 11 ========== -->
+<div class="lab" id="lab11">
+  <div class="lab-header">
+    <div class="lab-num">11</div>
+    <h3>実践パターン集 — アイコン/必須マーク/外部リンク</h3>
+    <span class="lab-tag tag-advanced">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      現場で頻繁に使う5つの <code>::before</code>/<code>::after</code> レシピをまとめて確認します。HTML を変更せず CSS だけで装飾できるため、既存コンポーネントの拡張に強い。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>CSS — 5つの実践パターン</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">/* 1. リンクアイコン */</span>
+<span class="sel">.icon-link::before</span>     { <span class="prop">content</span>:<span class="val">'🔗 '</span>; }
+
+<span class="cm">/* 2. 外部リンクマーク */</span>
+<span class="sel">.icon-ext::after</span>       { <span class="prop">content</span>:<span class="val">' ↗'</span>; <span class="prop">color</span>:<span class="val">#005cc5</span>; }
+
+<span class="cm">/* 3. 必須フィールドの * */</span>
+<span class="sel">.required::after</span>       { <span class="prop">content</span>:<span class="val">' *'</span>; <span class="prop">color</span>:<span class="val">#cb2431</span>; }
+
+<span class="cm">/* 4. チェックマーク箇条書き（list-style不要） */</span>
+<span class="sel">.checklist li::before</span>  { <span class="prop">content</span>:<span class="val">'✓ '</span>; <span class="prop">color</span>:<span class="val">#22863a</span>; <span class="prop">font-weight</span>:<span class="num">800</span>; }
+
+<span class="cm">/* 5. 区切り記号 */</span>
+<span class="sel">.breadcrumb li + li::before</span> { <span class="prop">content</span>:<span class="val">' / '</span>; <span class="prop">color</span>:<span class="val">#999</span>; }</pre>
+    </div>
+
+    <div style="margin:14px 0; padding:14px; background:#fff; border:1px solid var(--border); border-radius:8px;">
+      <p style="font-size:.9rem;">
+        <span class="demo-icon-link">関連ドキュメント</span> /
+        <a href="https://example.com" class="demo-icon-ext" target="_blank" rel="noopener">外部サイト</a> /
+        <label class="demo-icon-req">お名前</label>
+      </p>
+      <ul class="demo-icon-list" style="margin-top:10px;">
+        <li>実機で動作確認済み</li>
+        <li>HTMLを汚さない装飾</li>
+        <li>保守性が高い</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ========== LAB 12 ========== -->
+<div class="lab" id="lab12">
+  <div class="lab-header">
+    <div class="lab-num">12</div>
+    <h3>擬似要素の限界と注意点</h3>
+    <span class="lab-tag tag-advanced">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      便利な擬似要素ですが「<strong>できないこと</strong>」も明確に知っておくと事故を減らせます。以下は現場でよく遭遇する5つの注意点。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>できないこと</th><th>理由 / 回避策</th></tr></thead>
+      <tbody>
+        <tr><td><code>&lt;img&gt;</code>/<code>&lt;input&gt;</code>/<code>&lt;br&gt;</code> に <code>::before</code>/<code>::after</code></td><td>これらは「置換要素」「空要素」で子を持てない → ラッパdivに付ける</td></tr>
+        <tr><td>JSで DOM を取得</td><td><code>::before</code> は DOM に存在しない → <code>querySelector</code> で掴めない。<code>getComputedStyle(el, '::before')</code> で読み取りのみ可</td></tr>
+        <tr><td>複数の擬似要素を重ねる</td><td>1要素につき <code>::before</code> <code>::after</code> 各1つだけ → 多層装飾にはラッパを増やす or <code>background</code> レイヤを併用</td></tr>
+        <tr><td><code>content</code> なし で <code>::before</code></td><td>生成されない → <code>content:''</code> を必ず書く（空でもOK）</td></tr>
+        <tr><td>SEO/スクリーンリーダでの内容読み上げ</td><td><code>content</code> の文字は読み上げ対応がブラウザ依存 → <strong>重要テキストは擬似要素に入れない</strong></td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box err">
+      <strong>⚠️ アクセシビリティ落とし穴</strong>: <code>content:'必須'</code> のような<strong>意味を持つ文字列</strong>を擬似要素に書くと、支援技術が読まない可能性があります。必須マークなら <code>aria-required="true"</code> など HTML 属性で意味を伝え、<code>::after</code> は<strong>視覚装飾のみ</strong>に留めるのが安全。
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before（img に ::after が効かない）</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>CSS — 置換要素に擬似要素</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">/* img は子を持てないので無視される */</span>
+<span class="sel">img::after</span> {
+  <span class="prop">content</span>: <span class="val">'NEW'</span>;  <span class="cm">/* 表示されない */</span>
+}</pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After（wrapper に付ける）</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>HTML + CSS — div で包む</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">&lt;!-- HTML --&gt;</span>
+&lt;<span class="tag">div</span> <span class="attr">class</span>=<span class="val">"img-wrap"</span>&gt;
+  &lt;<span class="tag">img</span> <span class="attr">src</span>=<span class="val">"photo.jpg"</span>&gt;
+&lt;/<span class="tag">div</span>&gt;
+
+<span class="cm">/* CSS */</span>
+<span class="sel">.img-wrap</span>        { <span class="prop">position</span>:<span class="val">relative</span>; }
+<span class="sel">.img-wrap::after</span> { <span class="prop">content</span>:<span class="val">'NEW'</span>;
+                     <span class="prop">position</span>:<span class="val">absolute</span>;
+                     <span class="prop">top</span>:<span class="num">8</span><span class="val">px</span>; <span class="prop">right</span>:<span class="num">8</span><span class="val">px</span>; }</pre>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:14px;">
+      <div class="demo-limit-card">
+        <p>wrapper div に付けた ::before（右上のリボン）と ::after（下の線）の両立例。置換要素では不可能だが、包めば自由。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<script>
+function copyCode(btn) {
+  const block = btn.closest('.code-block') || btn.parentElement;
+  const pre = block.querySelector('pre');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+const LAB_META = {
+  lab0: {
+    info:  { type:'info', html:'📘 <strong>重要</strong>: コロン1つ <code>:before</code> も動くが、CSS3以降は必ず <code>::before</code>（コロン2つ）を使う。コードレビューでの指摘対象になることが多い。' },
+    usecase: {
+      scenes: [
+        'HTMLを編集せず装飾やアイコンだけ追加したい',
+        '既存コンポーネントに「新着バッジ」や「必須マーク」を足したい',
+        '印刷用CSSで href を自動表示したい',
+        '雑誌風のドロップキャップを実装したい',
+        'モーダルの後ろの薄暗い背景をカスタマイズしたい'
+      ],
+      triggers: [
+        'CSSだけで装飾を追加する要求',
+        'デザインガイドで「擬似要素を使う」と指定',
+        '「HTMLは触らずに見た目だけ変えて」という依頼'
+      ]
+    },
+    check: [
+      '①ページのどこでもよいので本文を<strong>右クリック → ページのソースを表示</strong>。<code>::before</code> などは HTML に存在しないことを確認',
+      '②同じページを<strong>右クリック → 検証（要素の検査）</strong>すると、左ペインのツリーに薄い色で <code>::before</code>/<code>::after</code> が見える（ブラウザが生成した仮想要素）',
+      '③ラボ01〜09を順に見て、各擬似要素が「どこに何を描画しているか」を目視で確認する'
+    ]
+  },
+  lab1: {
+    info:  { type:'ok', html:'✅ <code>content</code> は必須。書き忘れると <code>::before</code>/<code>::after</code> は<strong>生成すらされない</strong>（エラーも出ないので気づきにくい）。' },
+    usecase: {
+      scenes: [
+        '引用文の前後に装飾的なクォート記号を入れる',
+        'セクション見出しの左に縦線を引く',
+        'ボタンにホバー時だけ矢印を出す',
+        'カードの右上に「NEW」バッジを配置',
+        '区切り記号（パンくずの「/」など）をCSSで描画'
+      ],
+      triggers: [
+        'デザインに「装飾用のクォート／リボン／アイコン」がある',
+        'JSX/HTMLにない記号が画面に表示されている',
+        '「この星マークはどこから来たの？」と思ったら ::before の可能性'
+      ]
+    },
+    check: [
+      '①「Before を見る」ボタンを押す。上下のクォート記号が消え、引用文が無装飾になることを確認',
+      '②もう一度押して After に戻すと、左上と右下に大きな青い「"」が戻ることを確認',
+      '③<strong>右クリック → 検証</strong>で <code>.demo-quote</code> 要素を選び、左の要素ツリーに薄い色の <code>::before</code> と <code>::after</code> が表示されていることを確認'
+    ]
+  },
+  lab2: {
+    info:  { type:'warn', html:'⚠️ <code>content:""</code>（空文字）は<strong>生成される</strong>ので図形描画の箱として使える。逆に <code>content:none</code> は<strong>生成されない</strong>。似ているが全く違う。' },
+    usecase: {
+      scenes: [
+        '印刷用CSSで a タグの href を自動表示（attr）',
+        '章番号を自動付与（counter）',
+        '「未読」マークを data-* 属性と連動（attr）',
+        'アイコン画像を content:url() で差し込む',
+        '三角や線を content:"" + border で描画'
+      ],
+      triggers: [
+        '「属性値を見た目に反映したい」と思ったら attr()',
+        '「番号を自動採番したい」と思ったら counter()',
+        'Figmaで三角の装飾があって画像化せずに済ませたい'
+      ]
+    },
+    check: [
+      '①「Before を見る」を押すと、上の「★ NEW」が消えることを確認（content:"" に戻した状態）',
+      '②下の「こちら」リンクの直後に灰色で <code>(https://example.com)</code> が表示されていることを確認',
+      '③印刷プレビュー（Ctrl+P / Cmd+P）を開くと、画面と同じく URL が付いて見える'
+    ]
+  },
+  lab3: {
+    info:  { type:'info', html:'📘 <code>::first-letter</code> は<strong>ブロック要素</strong>にしか効かない。<code>&lt;span&gt;</code> のようなインラインに書いても無反応。' },
+    usecase: {
+      scenes: [
+        '雑誌・ブログ記事の1文字目をドロップキャップ化',
+        '書籍風のUIで「各章の最初の文字を装飾」',
+        '引用ブロックの先頭文字だけ色を変える',
+        'RSSリーダーのカード先頭を強調',
+        '小説サイトの章頭演出'
+      ],
+      triggers: [
+        '「雑誌風デザイン」「本のような見た目」のリクエスト',
+        'Figmaで先頭文字だけ大きく描かれている',
+        'span を追加したくないが先頭だけ装飾したい'
+      ]
+    },
+    check: [
+      '①「Before を見る」を押す。先頭の大文字装飾と1行目の緑色が消え、ただのプレーンな段落になることを確認',
+      '②After に戻すと、青く大きな「擬」の字が左に浮き出し、本文が回り込むことを確認',
+      '③<strong>ウィンドウ幅を狭める</strong>と、1行目の緑色の範囲が自動的に変化する（::first-line は動的に判定）'
+    ]
+  },
+  lab4: {
+    info:  { type:'warn', html:'⚠️ <code>::first-line</code> で使えるプロパティは限定的: <code>font-*</code> / <code>color</code> / <code>background</code> / <code>text-decoration</code> / <code>word-spacing</code> / <code>letter-spacing</code> など。<code>margin</code> / <code>padding</code> / <code>border</code> は<strong>効かない</strong>。' },
+    usecase: {
+      scenes: [
+        '記事のリード文を強調（1行目だけ太字）',
+        '最初の行だけ色を変えて注意喚起',
+        'カードのタイトル行を自動装飾',
+        'ニュース記事の導入部をハイライト'
+      ],
+      triggers: [
+        '「リード文」「導入部」を目立たせたい要件',
+        'HTMLに span を追加できない制約下で先頭行を装飾',
+        '記事系サイトの一覧ページで最初の1行だけ強調'
+      ]
+    },
+    check: [
+      '①Lab03 の段落を<strong>ウィンドウ幅を変えながら</strong>観察する。緑の範囲が幅に応じて変わることを確認',
+      '②画面を<strong>最大化 → 半分 → 最小化</strong>と変化させる。1行目が「擬似要素を...」→「擬似要素を使うと」→ 数文字、と動的に変わる',
+      '③これは <code>::first-letter</code> と違い、<strong>描画結果の1行目</strong>を指すことを体感で理解する'
+    ]
+  },
+  lab5: {
+    info:  { type:'info', html:'📘 <code>::selection</code> には継承がない。子孫要素にも適用したいなら <code>body ::selection</code> や <code>*::selection</code> のようにセレクタを広げる。' },
+    usecase: {
+      scenes: [
+        'ブランドカラーに合わせた選択色',
+        'コード例ブロックだけ選択色を変える',
+        'コピー操作を促すため選択色を目立たせる',
+        'プレゼン用スライドで選択範囲を強調'
+      ],
+      triggers: [
+        'デザインシステムに「選択時の色」定義がある',
+        '「コピーボタンの代わりに選択を促したい」',
+        'サイト全体の青い選択色が安っぽく見えるとき'
+      ]
+    },
+    check: [
+      '①Lab05 のグレーの段落を<strong>マウスでドラッグして選択</strong>する',
+      '②選択範囲が<strong>黄色い背景に赤い文字</strong>で表示されることを確認（通常の青ではない）',
+      '③本文の「▼ この文章を...」以外の場所（例: この確認手順の文字）を選択すると、<strong>通常の青色</strong>で選択される（セレクタが限定されているため）'
+    ]
+  },
+  lab6: {
+    info:  { type:'warn', html:'⚠️ Firefox と他ブラウザで<strong>既定の透明度</strong>が違う。<code>opacity:1</code> を明示すると統一できる。一部の古い Safari では部分的に機能しない記述もあるので要検証。' },
+    usecase: {
+      scenes: [
+        'ログインフォームのプレースホルダをブランドカラーに',
+        '検索ボックスのヒント文字をイタリック化',
+        '薄すぎて見えないプレースホルダの視認性改善',
+        'エラー時のプレースホルダを赤くする',
+        'ダークモードでのプレースホルダ色調整'
+      ],
+      triggers: [
+        '「プレースホルダが見えにくい」というフィードバック',
+        'フォームのアクセシビリティ改善要件',
+        'ダークテーマで白い入力欄のヒントが同化する'
+      ]
+    },
+    check: [
+      '①「Before を見る」を押すとプレースホルダがデフォルトのグレーに戻ることを確認',
+      '②After に戻すと<strong>紫色・イタリック体</strong>になることを確認',
+      '③入力欄に何か文字を打つと、プレースホルダは消える（通常通り）'
+    ]
+  },
+  lab7: {
+    info:  { type:'ok', html:'✅ 以前は <code>::-webkit-file-upload-button</code>（Chrome/Safari）や <code>::-moz-...</code>（Firefox）と分けていたが、<code>::file-selector-button</code> で<strong>全ブラウザ統一</strong>できるようになった。' },
+    usecase: {
+      scenes: [
+        'ファイルアップロードUIをブランドカラーに',
+        'デフォルトの灰色ボタンをおしゃれなデザインに',
+        'アイコン付きアップロードボタンを作る（::before併用）',
+        'ホバー時のアニメーション付与',
+        'Material / Bootstrap 風ボタンに統一'
+      ],
+      triggers: [
+        'デザインシステムに合わない灰色ボタンが画面に出ている',
+        'アップロードUI が安っぽく見えるとフィードバック',
+        'ファイル選択ボタンを他のボタンと統一したい'
+      ]
+    },
+    check: [
+      '①「Before を見る」を押すと<strong>OS標準のファイル選択ボタン</strong>（灰色）に戻ることを確認',
+      '②After に戻すと<strong>青い角丸ボタン</strong>になることを確認',
+      '③ボタンをクリックするとファイル選択ダイアログが開く（機能は通常通り動作する）'
+    ]
+  },
+  lab8: {
+    info:  { type:'info', html:'📘 <code>::marker</code> で使えるプロパティは限定的: <code>color</code> / <code>font-*</code> / <code>content</code> / <code>white-space</code> など。背景色や幅は<strong>効かない</strong>ので注意。複雑な装飾は <code>list-style:none</code> + <code>::before</code> 方式で。' },
+    usecase: {
+      scenes: [
+        'チェックリストUIのマーカーをブランド緑に',
+        '数字リストの番号だけ太字＆色付き',
+        '<code>&lt;details&gt;</code> の▶アイコンを置換',
+        'タスクリストで完了項目のマーカー色変更',
+        'エラーリストで赤いマーカー統一'
+      ],
+      triggers: [
+        '「数字だけ赤くして」「・だけ青く」という細かい要望',
+        '<code>list-style:none</code> + 偽装 <code>::before</code> がコードに溢れている',
+        'details の▶が気に入らない'
+      ]
+    },
+    check: [
+      '①「Before を見る」を押すと、ul が通常の<strong>黒い・</strong>に、ol が通常の<strong>黒い数字</strong>に戻ることを確認',
+      '②After に戻すと、ul が<strong>赤い▶</strong>、ol の数字が<strong>青い太字</strong>になることを確認',
+      '③箇条書きの内容部分（「最初の項目」など）の色は変わらず、<strong>マーカーだけ</strong>色が変わっていることを確認'
+    ]
+  },
+  lab9: {
+    info:  { type:'warn', html:'⚠️ <code>dialog.show()</code>（非モーダル）では ::backdrop は出ない。必ず <code>showModal()</code> を使う。また古いブラウザでは <code>backdrop-filter</code> が効かない点も注意。' },
+    usecase: {
+      scenes: [
+        'モーダル背景をブランドカラーの半透明に',
+        '背景に blur() をかけて奥の内容をぼかす',
+        '画像ライトボックスの暗転',
+        'フルスクリーン動画再生時の周囲を黒に',
+        '確認ダイアログの背景色を警告色にする'
+      ],
+      triggers: [
+        'モーダル背景 div を手書きしている既存コード',
+        '<code>&lt;dialog&gt;</code> タグへの置き換え作業',
+        'モーダルのデザインが古臭いと指摘された'
+      ]
+    },
+    check: [
+      '①「ダイアログを開く」ボタンを押す。ダイアログの後ろが<strong>青い半透明＋ぼかし</strong>になることを確認',
+      '②ダイアログ外の文字（背景の本文）が青くぼけて見えることを確認',
+      '③「閉じる」ボタンで通常表示に戻る。閉じると backdrop も消える'
+    ]
+  },
+  lab10: {
+    info:  { type:'info', html:'📘 CSS3 仕様では「::（2つ）= 擬似要素」「:（1つ）= 擬似クラス」と明確に区別。古いコード互換のため <code>:before</code> <code>:after</code> <code>:first-letter</code> <code>:first-line</code> はコロン1つでも動くが、他の擬似要素（<code>::selection</code> など）は<strong>コロン2つ必須</strong>。' },
+    usecase: {
+      scenes: [
+        'コードレビューで混同を指摘する',
+        'CSSファイルをモダン化するリファクタリング',
+        '新人向けの学習教材を作る',
+        'Lint ルール（stylelint）の設定検討'
+      ],
+      triggers: [
+        'レビューで <code>:before</code> を見つけた（<code>::before</code> にすべき）',
+        '<code>::hover</code> と書かれて動かないバグ',
+        '「コロンの数で何が違うの？」という質問'
+      ]
+    },
+    check: [
+      '①Lab 00〜09 のサイドバーから各ラボを見て、<strong>どれが擬似要素か擬似クラスか</strong>を自分で分類してみる（答え: 全部擬似要素）',
+      '②サイト内のどこでも <code>:hover</code> などの擬似クラスは<strong>コロン1つ</strong>、<code>::before</code> などはコロン2つで書かれていることを DevTools の Styles パネルで確認',
+      '③試しに自分でエディタで <code>p::hover { color:red; }</code> と書いて保存→反映されないことを確認（擬似要素として解釈され、そんな擬似要素は存在しないので無効）'
+    ]
+  },
+  lab11: {
+    info:  { type:'ok', html:'✅ 実践では <code>::before</code>/<code>::after</code> が圧倒的に多い。アイコン・バッジ・必須マーク・区切り・装飾など、HTMLを追加せずに表現を増やせるので保守性が高い。' },
+    usecase: {
+      scenes: [
+        'すべてのリンクに自動でアイコン付与',
+        'required クラスだけで必須マーク',
+        'パンくずリストの / 自動挿入',
+        'チェックリスト UI（list-style不要）',
+        '外部リンクに ↗ を自動付与してUXを明示'
+      ],
+      triggers: [
+        '「すべての外部リンクに印を」と一括対応が必要',
+        '多数の要素に同じアイコン装飾を付けたい',
+        'HTML は変更できず CSS だけで対応する制約'
+      ]
+    },
+    check: [
+      '①「関連ドキュメント」に 🔗 アイコンが自動で付いていることを確認',
+      '②「外部サイト」リンクの後ろに ↗ マークが付いていることを確認',
+      '③「お名前」ラベルの後ろに赤い * が付いていることを確認',
+      '④下のリスト項目すべての先頭に緑の ✓ が付いていることを確認（<code>list-style</code> は使っていない）'
+    ]
+  },
+  lab12: {
+    info:  { type:'err', html:'🚨 <strong>重要</strong>: <code>content</code> の文字列は支援技術（スクリーンリーダ）が読み上げない / 一部だけ読む / 全部読む、と<strong>ブラウザ依存</strong>。意味を持つテキストは必ず HTML側に置き、擬似要素は「装飾だけ」に留める。' },
+    usecase: {
+      scenes: [
+        'img に ::after を書いて動かず悩んだ時の解決',
+        'アクセシビリティチェックで擬似要素の内容が読まれない問題',
+        '多重装飾（3層以上）をラッパで実現',
+        'JSから擬似要素のcontentを読み取る（getComputedStyle）'
+      ],
+      triggers: [
+        '「::after が表示されない」→ 置換要素かも',
+        '「スクリーンリーダで装飾アイコンが邪魔」→ 擬似要素化で解消',
+        '「1要素に3つ以上の装飾を付けたい」→ 限界なのでラッパ増設'
+      ]
+    },
+    check: [
+      '①「NEW」のリボンが右上に斜めに表示されていることを確認（::before）',
+      '②カード下部に青緑グラデーションの線が引かれていることを確認（::after）',
+      '③<strong>右クリック → ページのソースを表示</strong>で、この要素のHTMLに「NEW」という文字が<strong>存在しない</strong>ことを確認（CSSで生成している）',
+      '④スクリーンリーダを使える場合、「NEW」が読み上げられるか試す（読まれなくても正常。意味は HTML で伝えるべき）'
+    ]
+  }
+};
+
+function infoHTML(m){ return m?.info ? `<div class="info-box ${m.info.type||'info'}">${m.info.html}</div>` : ''; }
+function verifyHTML(m){ if (!m?.verify) return '';
+  const {before, after} = m.verify;
+  return `<div class="verify">
+    <div class="verify-col verify-before"><div class="verify-label">Before ▶︎ 実行前</div>${before||''}</div>
+    <div class="verify-col verify-after"><div class="verify-label">After ▶︎ 実行後</div>${after||''}</div>
+  </div>`; }
+function checkHTML(m){ if (!m?.check?.length) return '';
+  return `<div class="check-steps">
+    <div class="check-steps-title">🔍 ブラウザ実機チェック</div>
+    <ol>${m.check.map(s=>`<li>${s}</li>`).join('')}</ol>
+  </div>`; }
+function usecaseHTML(m){ if (!m?.usecase) return '';
+  const {scenes=[], triggers=[]} = m.usecase;
+  return `<div class="usecase-box">
+    <div class="usecase-title">💡 利用シーン</div>
+    <ul class="usecase-list">${scenes.map(s=>`<li>${s}</li>`).join('')}</ul>
+    ${triggers.length ? `<div class="usecase-trigger"><strong>こう見えたら使える候補:</strong><ul>${triggers.map(t=>`<li>${t}</li>`).join('')}</ul></div>` : ''}
+  </div>`; }
+function tryHTML(m){
+  const tip = m?.try ? `<div class="try-tip"><strong>💡 このラボのコツ:</strong> ${m.try}</div>` : '';
+  return `<div class="try-box">
+    <div class="try-title">💻 コード例を試す手順（コピペで動かす）</div>
+    <ol>
+      <li>上のコードブロックの <strong>Copy</strong> ボタンを押してクリップボードにコピー</li>
+      <li>テキストエディタで <code>試行.html</code> を新規作成し、下の<strong>HTML雛形</strong>の <code>&lt;!-- ここに貼る --&gt;</code> 部分にペースト</li>
+      <li>保存して、ファイルを<strong>ダブルクリック</strong>するかブラウザにドラッグ&amp;ドロップで開く</li>
+      <li>下の「🔍 ブラウザ実機チェック」の項目を順に試して、想定通りの挙動になるか確認する</li>
+    </ol>
+    <pre class="try-skeleton">&lt;!DOCTYPE html&gt;
+&lt;html lang="ja"&gt;
+&lt;head&gt;
+  &lt;meta charset="UTF-8"&gt;
+  &lt;title&gt;擬似要素 試行&lt;/title&gt;
+  &lt;style&gt;
+    /* ここにCSSを貼る */
+  &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;!-- ここにHTMLを貼る --&gt;
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+    ${tip}
+  </div>`;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // 各ラボに info → usecase → verify → try → check を自動挿入
+  document.querySelectorAll('.lab').forEach(lab => {
+    const meta = LAB_META[lab.id];
+    const body = lab.querySelector('.lab-body');
+    if (!body || !meta) return;
+    const frag = document.createElement('div');
+    frag.innerHTML = infoHTML(meta) + usecaseHTML(meta) + verifyHTML(meta) + tryHTML(meta) + checkHTML(meta);
+    while (frag.firstChild) body.appendChild(frag.firstChild);
+  });
+
+  // サイドバー active ハイライト
+  const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+  const map = new Map();
+  links.forEach(a => {
+    const el = document.getElementById(a.getAttribute('href').slice(1));
+    if (el) map.set(el, a);
+  });
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) {
+      const l = map.get(e.target);
+      if (l) { links.forEach(n => n.classList.remove('active')); l.classList.add('active'); }
+    }
+  }), { rootMargin:'-30% 0px -60% 0px' });
+  document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+  // 既存 .code-block に header + Copy を自動付与（header 未定義のもののみ）
+  document.querySelectorAll('.code-block').forEach((cb, i) => {
+    if (cb.querySelector('.code-block-header')) return;
+    const header = document.createElement('div');
+    header.className = 'code-block-header';
+    header.innerHTML = `<span>Code #${i+1}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+    cb.insertBefore(header, cb.firstChild);
+  });
+});
+
+// Livedemo トグル
+document.addEventListener('click', (e) => {
+  if (!e.target.matches('.toggle-btn')) return;
+  const btn = e.target;
+  const stage = document.getElementById(btn.dataset.target);
+  if (!stage) return;
+  const isBefore = stage.classList.toggle('is-before');
+  btn.classList.toggle('is-before', isBefore);
+  const label = document.getElementById(btn.dataset.target + '-label');
+  if (label) label.textContent = isBefore
+    ? '現在: Before（機能OFF）'
+    : '現在: After（機能ON）';
+});
+</script>
+</body>
+</html>
