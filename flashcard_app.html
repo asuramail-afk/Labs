@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Keyword → Structure Flashcards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431; --warn:#b08800;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.7;min-height:100vh;padding-left:240px}
+
+/* Sidebar */
+#sidebar{position:fixed;top:0;left:0;bottom:0;width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border);overflow-y:auto;padding:14px 0 40px;z-index:50}
+#sidebar::-webkit-scrollbar{width:4px}
+#sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+#sidebar .nav-title{font-family:var(--mono);font-size:.78rem;color:var(--accent);
+  padding:6px 16px 10px;letter-spacing:.06em;border-bottom:1px solid var(--border);margin-bottom:8px}
+#sidebar .nav-title span{color:var(--text-dim)}
+#sidebar .nav-section{padding:10px 16px 4px;font-family:var(--mono);font-size:.65rem;
+  color:var(--text-dim);letter-spacing:.15em;text-transform:uppercase}
+#sidebar .nav-item{display:block;padding:7px 16px 7px 20px;font-size:.82rem;
+  color:var(--text-dim);text-decoration:none;border-left:2px solid transparent;
+  background:none;border-top:none;border-right:none;border-bottom:none;
+  width:100%;text-align:left;cursor:pointer;font-family:var(--sans);
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#sidebar .nav-item:hover{background:var(--surface2);color:var(--text)}
+#sidebar .nav-item.active{border-left-color:var(--accent);
+  background:rgba(0,92,197,.08);color:var(--accent);font-weight:600}
+#sidebar .nav-num{font-family:var(--mono);color:var(--accent2);font-size:.72rem;margin-right:8px;opacity:.8}
+.deck-row{display:flex;align-items:center;padding:0 16px 0 20px;gap:6px}
+.deck-row .nav-item{flex:1;padding-left:0;border-left:none}
+.deck-row.active{border-left:2px solid var(--accent);background:rgba(0,92,197,.08)}
+.deck-row.active .nav-item{color:var(--accent);font-weight:600}
+.deck-count{font-family:var(--mono);font-size:.7rem;color:var(--text-dim);
+  background:var(--surface2);padding:1px 6px;border-radius:10px;min-width:24px;text-align:center}
+
+/* Hero */
+.hero{padding:40px 40px 28px;text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:-120px;right:-120px;width:400px;height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);pointer-events:none}
+.hero h1{font-size:2rem;font-weight:800;letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero .subtitle{color:var(--text-dim);font-size:.92rem;margin-top:6px}
+
+/* Container */
+.container{max-width:900px;margin:0 auto;padding:24px 24px 80px}
+
+/* Mode tabs */
+.mode-tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;padding:4px;margin-bottom:20px}
+.mode-tab{flex:1;padding:10px 16px;background:transparent;border:none;
+  font-family:var(--sans);font-size:.92rem;font-weight:600;color:var(--text-dim);
+  border-radius:7px;cursor:pointer;transition:all .15s}
+.mode-tab.active{background:var(--bg);color:var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.mode-tab:hover:not(.active){color:var(--text)}
+
+/* View switcher */
+.view{display:none}
+.view.active{display:block}
+
+/* === STUDY VIEW === */
+.study-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;
+  font-family:var(--mono);font-size:.82rem;color:var(--text-dim)}
+.study-progress{display:flex;gap:14px;align-items:center}
+.progress-bar{width:120px;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .3s}
+
+.card-stage{position:relative;min-height:420px;perspective:1200px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  padding:36px 32px;min-height:420px;display:flex;flex-direction:column;justify-content:center;
+  position:relative;transition:transform .25s,box-shadow .25s}
+.card:hover{box-shadow:0 4px 20px rgba(0,0,0,.05)}
+
+.card-side-label{position:absolute;top:14px;left:18px;font-family:var(--mono);
+  font-size:.68rem;letter-spacing:.14em;color:var(--text-dim);text-transform:uppercase}
+.card-deck-label{position:absolute;top:14px;right:18px;font-family:var(--mono);
+  font-size:.7rem;color:var(--accent);background:rgba(0,92,197,.08);
+  padding:3px 10px;border-radius:12px}
+
+.front-content{text-align:center;font-size:2rem;font-weight:700;color:var(--text);
+  letter-spacing:-.5px;line-height:1.4;padding:0 12px}
+.front-context{font-size:.9rem;color:var(--text-dim);margin-top:14px;font-weight:400}
+
+.back-content{font-family:var(--mono);font-size:.92rem;line-height:1.7;
+  background:var(--code-bg);border:1px solid var(--border);border-radius:8px;
+  padding:18px 20px;white-space:pre;overflow-x:auto;margin-top:8px;color:var(--text)}
+
+.recall-prompt{margin-top:18px;text-align:center;font-size:.92rem;color:var(--text-dim);
+  font-style:italic;padding:12px;background:rgba(176,136,0,.06);
+  border:1px solid rgba(176,136,0,.25);border-radius:8px}
+
+.card-actions{margin-top:22px;display:flex;gap:10px;justify-content:center}
+.btn{padding:12px 24px;border-radius:8px;font-family:var(--sans);font-size:.92rem;
+  font-weight:600;border:1px solid;cursor:pointer;transition:all .15s;
+  display:inline-flex;align-items:center;gap:8px}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-primary:hover{opacity:.9}
+.btn-success{background:var(--success);color:#fff;border-color:var(--success)}
+.btn-success:hover{opacity:.9}
+.btn-warn{background:var(--warn);color:#fff;border-color:var(--warn)}
+.btn-warn:hover{opacity:.9}
+.btn-error{background:var(--error);color:#fff;border-color:var(--error)}
+.btn-error:hover{opacity:.9}
+.btn-ghost{background:transparent;color:var(--text-dim);border-color:var(--border)}
+.btn-ghost:hover{color:var(--text);border-color:var(--text-dim)}
+.btn-icon{padding:8px 12px;font-size:.82rem}
+
+.eval-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px}
+.eval-btn{padding:14px 12px;border-radius:8px;border:1px solid;cursor:pointer;
+  font-family:var(--sans);font-weight:600;transition:all .15s;
+  display:flex;flex-direction:column;align-items:center;gap:4px}
+.eval-btn .eval-icon{font-size:1.4rem}
+.eval-btn .eval-label{font-size:.84rem}
+.eval-btn .eval-hint{font-size:.7rem;color:var(--text-dim);font-weight:400;font-family:var(--mono)}
+.eval-good{border-color:var(--success);color:var(--success);background:rgba(34,134,58,.04)}
+.eval-good:hover{background:rgba(34,134,58,.12)}
+.eval-mid{border-color:var(--warn);color:var(--warn);background:rgba(176,136,0,.04)}
+.eval-mid:hover{background:rgba(176,136,0,.12)}
+.eval-bad{border-color:var(--error);color:var(--error);background:rgba(203,36,49,.04)}
+.eval-bad:hover{background:rgba(203,36,49,.12)}
+
+.empty-state{text-align:center;padding:60px 20px;color:var(--text-dim)}
+.empty-state h3{font-size:1.2rem;color:var(--text);margin-bottom:8px}
+.empty-state p{font-size:.92rem;margin-bottom:20px}
+
+.hint-row{margin-top:12px;text-align:center;font-family:var(--mono);
+  font-size:.72rem;color:var(--text-dim);letter-spacing:.05em}
+.hint-row kbd{display:inline-block;padding:2px 7px;background:var(--surface2);
+  border:1px solid var(--border);border-bottom-width:2px;border-radius:4px;
+  font-family:var(--mono);font-size:.72rem;color:var(--text);margin:0 2px}
+
+/* === MANAGE VIEW === */
+.manage-toolbar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.search-box{flex:1;min-width:200px;padding:10px 14px;border:1px solid var(--border);
+  border-radius:8px;font-family:var(--sans);font-size:.9rem;background:var(--surface)}
+.search-box:focus{outline:none;border-color:var(--accent)}
+
+.card-list{display:flex;flex-direction:column;gap:8px}
+.list-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:14px 18px;display:grid;grid-template-columns:auto 1fr auto auto auto;gap:14px;align-items:center;
+  transition:border-color .15s}
+.list-item:hover{border-color:var(--accent)}
+.list-item .li-deck{font-family:var(--mono);font-size:.7rem;color:var(--accent);
+  background:rgba(0,92,197,.08);padding:3px 8px;border-radius:10px;white-space:nowrap}
+.list-item .li-front{font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.list-item .li-stats{font-family:var(--mono);font-size:.72rem;color:var(--text-dim);white-space:nowrap}
+.list-item .li-due{font-family:var(--mono);font-size:.72rem;white-space:nowrap;padding:2px 8px;border-radius:10px}
+.li-due.due-now{background:rgba(203,36,49,.10);color:var(--error)}
+.li-due.due-soon{background:rgba(176,136,0,.10);color:var(--warn)}
+.li-due.due-later{background:rgba(34,134,58,.10);color:var(--success)}
+
+/* === EDIT VIEW === */
+.edit-form{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px}
+.form-row{margin-bottom:18px}
+.form-label{display:block;font-family:var(--mono);font-size:.78rem;color:var(--accent);
+  margin-bottom:6px;letter-spacing:.05em;font-weight:600}
+.form-help{font-size:.78rem;color:var(--text-dim);margin-top:4px}
+.form-input{width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:7px;
+  font-family:var(--sans);font-size:.95rem;background:var(--bg);color:var(--text)}
+.form-input:focus{outline:none;border-color:var(--accent)}
+.form-textarea{width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:7px;
+  font-family:var(--mono);font-size:.88rem;background:var(--code-bg);color:var(--text);
+  min-height:200px;resize:vertical;line-height:1.6;tab-size:2;white-space:pre}
+.form-textarea:focus{outline:none;border-color:var(--accent)}
+.form-textarea-preview{margin-top:10px;padding:11px 14px;background:var(--code-bg);
+  border:1px dashed var(--border);border-radius:7px;font-family:var(--mono);font-size:.88rem;
+  white-space:pre;overflow-x:auto;color:var(--text);min-height:60px;line-height:1.6}
+.form-textarea-preview.empty{color:var(--text-dim);font-style:italic;font-family:var(--sans);font-size:.85rem}
+
+.form-actions{display:flex;gap:10px;justify-content:space-between;align-items:center;margin-top:24px}
+.form-actions-left{display:flex;gap:10px}
+.form-actions-right{display:flex;gap:10px}
+
+.template-row{display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap}
+.template-btn{padding:5px 12px;background:var(--surface2);border:1px solid var(--border);
+  border-radius:5px;font-family:var(--mono);font-size:.74rem;cursor:pointer;color:var(--text-dim);
+  transition:all .15s}
+.template-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* === STATS VIEW === */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px}
+.stat-label{font-family:var(--mono);font-size:.72rem;color:var(--text-dim);letter-spacing:.06em}
+.stat-value{font-size:2rem;font-weight:700;color:var(--accent);font-family:var(--mono);margin-top:4px;line-height:1.1}
+.stat-sub{font-size:.78rem;color:var(--text-dim);margin-top:4px}
+
+.deck-stats-list{display:flex;flex-direction:column;gap:8px}
+.deck-stat-item{background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  padding:12px 16px;display:grid;grid-template-columns:1fr auto auto auto;gap:14px;align-items:center;
+  font-size:.88rem}
+.deck-stat-item .ds-name{font-weight:600}
+.deck-stat-item .ds-num{font-family:var(--mono);color:var(--text-dim);font-size:.82rem}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:var(--text);color:#fff;padding:12px 22px;border-radius:8px;
+  font-size:.9rem;z-index:200;transition:transform .25s;box-shadow:0 4px 12px rgba(0,0,0,.2)}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.success{background:var(--success)}
+.toast.error{background:var(--error)}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;
+  align-items:center;justify-content:center;z-index:100;padding:20px}
+.modal-overlay.show{display:flex}
+.modal{background:var(--bg);border-radius:12px;padding:24px;max-width:500px;width:100%;
+  max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+.modal h3{margin-bottom:14px;font-size:1.1rem}
+.modal p{margin-bottom:14px;font-size:.9rem;color:var(--text-dim)}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+
+/* Responsive */
+@media(max-width:900px){
+  body{padding-left:0}
+  #sidebar{position:static;width:100%;height:auto;border-right:none;
+    border-bottom:1px solid var(--border);padding:8px 0}
+  .container{padding:16px 14px 60px}
+  .hero{padding:24px 16px 18px}
+  .hero h1{font-size:1.5rem}
+  .front-content{font-size:1.5rem}
+  .back-content{font-size:.78rem}
+  .list-item{grid-template-columns:1fr;gap:6px}
+  .list-item .li-stats,.list-item .li-due,.list-item .li-deck{justify-self:start}
+}
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="App navigation">
+  <div class="nav-title">// FLASHCARDS <span>v1</span></div>
+  <div class="nav-section">画面</div>
+  <button class="nav-item view-tab active" data-view="study"><span class="nav-num">01</span>学習</button>
+  <button class="nav-item view-tab" data-view="manage"><span class="nav-num">02</span>カード一覧</button>
+  <button class="nav-item view-tab" data-view="edit"><span class="nav-num">03</span>新規作成</button>
+  <button class="nav-item view-tab" data-view="stats"><span class="nav-num">04</span>統計</button>
+  <div class="nav-section">デッキ</div>
+  <div id="deck-list-nav"></div>
+  <div class="nav-section">データ</div>
+  <button class="nav-item" id="nav-export"><span class="nav-num">→</span>エクスポート</button>
+  <button class="nav-item" id="nav-import"><span class="nav-num">←</span>インポート</button>
+  <input type="file" id="import-file" accept=".json" style="display:none">
+</nav>
+
+<div class="hero">
+  <h1>Keyword → Structure</h1>
+  <p class="subtitle">表のキーワードから、頭の中で構造を組み立てる練習。</p>
+</div>
+
+<div class="container">
+
+  <!-- ========== STUDY VIEW ========== -->
+  <div class="view active" id="view-study">
+    <div class="study-header">
+      <div id="study-deck-name">全カード</div>
+      <div class="study-progress">
+        <span id="study-counter">0 / 0</span>
+        <div class="progress-bar"><div class="progress-fill" id="study-progress-fill" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <div class="card-stage" id="card-stage">
+      <div class="empty-state" id="study-empty">
+        <h3>カードがありません</h3>
+        <p>まずは「新規作成」からカードを追加してください。<br>
+          または「インポート」で既存のJSONを読み込めます。</p>
+        <button class="btn btn-primary" onclick="switchView('edit')">+ 新しいカードを作る</button>
+      </div>
+    </div>
+
+    <div class="hint-row">
+      <kbd>Space</kbd> 表/裏切替 &nbsp;・&nbsp;
+      <kbd>1</kbd> 思い出せた &nbsp;・&nbsp;
+      <kbd>2</kbd> あいまい &nbsp;・&nbsp;
+      <kbd>3</kbd> 詰まった &nbsp;・&nbsp;
+      <kbd>E</kbd> 編集
+    </div>
+  </div>
+
+  <!-- ========== MANAGE VIEW ========== -->
+  <div class="view" id="view-manage">
+    <div class="manage-toolbar">
+      <input type="text" class="search-box" id="search-box" placeholder="🔍 キーワード検索...">
+      <select class="search-box" id="filter-deck" style="flex:0 0 180px;min-width:auto">
+        <option value="">全てのデッキ</option>
+      </select>
+      <button class="btn btn-primary" onclick="switchView('edit')">+ 新規作成</button>
+    </div>
+    <div class="card-list" id="card-list"></div>
+    <div class="empty-state" id="manage-empty" style="display:none">
+      <h3>カードがありません</h3>
+      <p>「新規作成」からカードを追加してください。</p>
+    </div>
+  </div>
+
+  <!-- ========== EDIT VIEW ========== -->
+  <div class="view" id="view-edit">
+    <div class="edit-form">
+      <h3 id="edit-title" style="margin-bottom:18px;font-size:1.1rem">新規カード作成</h3>
+
+      <div class="form-row">
+        <label class="form-label">DECK / デッキ</label>
+        <input type="text" class="form-input" id="form-deck" list="deck-suggestions" placeholder="例: CSS-IFC, OutSystems-BPT">
+        <datalist id="deck-suggestions"></datalist>
+        <div class="form-help">既存デッキ名を入れるとそこに追加。新しい名前なら新デッキ作成。</div>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">FRONT / 表面 — キーワード</label>
+        <input type="text" class="form-input" id="form-front" placeholder="例: line box の高さ決定要素">
+        <div class="form-help">短く。1キーワード+(必要なら)文脈の一言。</div>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">CONTEXT / 補足(任意)</label>
+        <input type="text" class="form-input" id="form-context" placeholder="例: CSS Inline Formatting Context">
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">BACK / 裏面 — 構造図</label>
+        <div class="template-row">
+          <button type="button" class="template-btn" data-tpl="hierarchy">▸ 階層型</button>
+          <button type="button" class="template-btn" data-tpl="compare">▸ 比較型</button>
+          <button type="button" class="template-btn" data-tpl="flow">▸ フロー型</button>
+          <button type="button" class="template-btn" data-tpl="clear">▸ クリア</button>
+        </div>
+        <textarea class="form-textarea" id="form-back" placeholder="ここに構造図を書く(ASCIIアート可)"></textarea>
+        <div class="form-help">プレビュー(等幅・改行保持):</div>
+        <div class="form-textarea-preview empty" id="form-back-preview">(裏面プレビュー)</div>
+      </div>
+
+      <div class="form-actions">
+        <div class="form-actions-left">
+          <button class="btn btn-error" id="btn-delete" style="display:none">🗑 削除</button>
+        </div>
+        <div class="form-actions-right">
+          <button class="btn btn-ghost" onclick="switchView('manage')">キャンセル</button>
+          <button class="btn btn-primary" id="btn-save">保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== STATS VIEW ========== -->
+  <div class="view" id="view-stats">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">TOTAL CARDS</div>
+        <div class="stat-value" id="stat-total">0</div>
+        <div class="stat-sub">登録カード数</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">DUE NOW</div>
+        <div class="stat-value" id="stat-due" style="color:var(--error)">0</div>
+        <div class="stat-sub">今日復習すべき</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">REVIEWED TODAY</div>
+        <div class="stat-value" id="stat-today" style="color:var(--success)">0</div>
+        <div class="stat-sub">今日の復習回数</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">STREAK</div>
+        <div class="stat-value" id="stat-streak" style="color:var(--accent4)">0</div>
+        <div class="stat-sub">連続学習日数</div>
+      </div>
+    </div>
+
+    <h3 style="margin:24px 0 12px;font-size:1rem;color:var(--accent);font-family:var(--mono)">// デッキ別</h3>
+    <div class="deck-stats-list" id="deck-stats-list"></div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal" id="modal-content"></div>
+</div>
+
+<script>
+// ============================================================
+// State & Storage
+// ============================================================
+const STORAGE_KEY = 'flashcards.v1';
+const state = {
+  cards: [],          // [{id, deck, front, context, back, ease, interval, due, lastReviewed, reviewCount}]
+  reviews: [],        // [{date:'YYYY-MM-DD', count}]  日別レビュー集計
+  currentDeck: null,  // null = 全カード
+  studyQueue: [],
+  studyIndex: 0,
+  studyShowing: 'front',
+  editingId: null,
+};
+
+function uid(){ return 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function todayStr(){ const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function nowMs(){ return Date.now(); }
+function daysFromNow(n){ return nowMs() + n * 86400000; }
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const data = JSON.parse(raw);
+      state.cards = data.cards || [];
+      state.reviews = data.reviews || [];
+    }
+  }catch(e){ console.error('load failed', e); }
+  if(state.cards.length === 0){
+    seedSampleCards();
+  }
+}
+
+function save(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      cards: state.cards,
+      reviews: state.reviews,
+      _savedAt: nowMs(),
+    }));
+  }catch(e){ console.error('save failed', e); toast('保存失敗: '+e.message, 'error'); }
+}
+
+function seedSampleCards(){
+  state.cards = [
+    {
+      id: uid(), deck: 'CSS-IFC',
+      front: 'line box の高さ決定要素',
+      context: 'CSS Inline Formatting Context',
+      back: `line box の高さ
+ ├─ strut (フォント由来の最小高)
+ │    └─ line-height で決まる
+ ├─ 各 inline box の vertical-align
+ │    ├─ baseline
+ │    ├─ middle / sub / super
+ │    └─ top / bottom
+ └─ 全要素の上端〜下端の max
+       = 最終的な line box 高さ`,
+      ease: 2.5, interval: 0, due: nowMs(), lastReviewed: 0, reviewCount: 0,
+    },
+    {
+      id: uid(), deck: 'OutSystems-BPT',
+      front: 'Light BPT vs 通常 BPT',
+      context: 'OutSystems Process',
+      back: `              Light BPT       通常 BPT
+インスタンス  非永続化         永続化(DB)
+状態管理     なし             ProcessId で追跡
+障害復旧     不可             可(再開できる)
+パフォーマンス 軽量            重い(I/Oあり)
+適性         短時間タスク     長期/複雑な業務フロー
+                            (例: 承認ワーク)`,
+      ease: 2.5, interval: 0, due: nowMs(), lastReviewed: 0, reviewCount: 0,
+    },
+    {
+      id: uid(), deck: 'CSS-IFC',
+      front: 'vertical-align: middle の基準点',
+      context: 'inline box の縦位置',
+      back: `親要素の中央 ≠ vertical-align:middle の基準
+
+実際の基準:
+ [親の x-height の中央]
+       ↓
+ 親フォントの x-height ÷ 2 の高さ
+       ↓
+ そこにインライン要素の中央を合わせる
+
+注意:
+ ・「親要素の中央」ではない
+ ・x-height は小文字 x の高さ
+ ・厳密な縦中央寄せには別手法が必要`,
+      ease: 2.5, interval: 0, due: nowMs(), lastReviewed: 0, reviewCount: 0,
+    },
+  ];
+  state.reviews = [];
+  save();
+}
+
+// ============================================================
+// SM-2 風の簡易間隔反復アルゴリズム
+// 評価: good(○) / mid(△) / bad(×)
+// ============================================================
+function applyReview(card, quality){
+  // quality: 'good' | 'mid' | 'bad'
+  card.lastReviewed = nowMs();
+  card.reviewCount = (card.reviewCount || 0) + 1;
+  if(card.ease == null) card.ease = 2.5;
+
+  if(quality === 'bad'){
+    card.ease = Math.max(1.3, card.ease - 0.2);
+    card.interval = 0;
+    card.due = nowMs() + 10 * 60 * 1000; // 10分後再表示
+  } else if(quality === 'mid'){
+    card.ease = Math.max(1.3, card.ease - 0.05);
+    if(card.interval === 0){ card.interval = 1; }
+    else { card.interval = Math.max(1, Math.round(card.interval * 1.2)); }
+    card.due = daysFromNow(card.interval);
+  } else { // good
+    card.ease = Math.min(3.0, card.ease + 0.05);
+    if(card.interval === 0){ card.interval = 2; }
+    else if(card.interval === 1){ card.interval = 3; }
+    else { card.interval = Math.round(card.interval * card.ease); }
+    card.due = daysFromNow(card.interval);
+  }
+  recordReviewToday();
+  save();
+}
+
+function recordReviewToday(){
+  const t = todayStr();
+  const found = state.reviews.find(r => r.date === t);
+  if(found){ found.count++; }
+  else{ state.reviews.push({ date: t, count: 1 }); }
+  // 直近365日のみ保持
+  const cutoff = daysFromNow(-365);
+  state.reviews = state.reviews.filter(r => new Date(r.date).getTime() > cutoff);
+}
+
+// ============================================================
+// Deck helpers
+// ============================================================
+function getDecks(){
+  const set = new Set();
+  state.cards.forEach(c => { if(c.deck) set.add(c.deck); });
+  return Array.from(set).sort();
+}
+function getCardsForStudy(){
+  let pool = state.cards;
+  if(state.currentDeck){ pool = pool.filter(c => c.deck === state.currentDeck); }
+  // 期限到来済みを優先 → 残りはランダム
+  const due = pool.filter(c => c.due <= nowMs());
+  const notDue = pool.filter(c => c.due > nowMs());
+  // 期限到来順にソート(古い=より過ぎているものが先)
+  due.sort((a,b) => a.due - b.due);
+  // 期限到来分が少なすぎる場合は notDue も少し混ぜる(全体の最大20枚)
+  const queue = [...due];
+  if(queue.length < 5){
+    const shuffled = notDue.sort(() => Math.random() - 0.5);
+    queue.push(...shuffled.slice(0, 10 - queue.length));
+  }
+  return queue;
+}
+
+// ============================================================
+// Views
+// ============================================================
+function switchView(name){
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  document.querySelectorAll('.view-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.view === name);
+  });
+  if(name === 'study'){ startStudy(); }
+  if(name === 'manage'){ renderManage(); }
+  if(name === 'edit'){ if(!state.editingId) resetEditForm(); }
+  if(name === 'stats'){ renderStats(); }
+}
+
+// ============================================================
+// Sidebar deck nav
+// ============================================================
+function renderDeckNav(){
+  const decks = getDecks();
+  const nav = document.getElementById('deck-list-nav');
+  const counts = {};
+  state.cards.forEach(c => { counts[c.deck] = (counts[c.deck]||0) + 1; });
+  let html = `<div class="deck-row ${state.currentDeck===null?'active':''}">
+    <button class="nav-item" data-deck="" style="padding-left:0">全カード</button>
+    <span class="deck-count">${state.cards.length}</span>
+  </div>`;
+  decks.forEach(d => {
+    html += `<div class="deck-row ${state.currentDeck===d?'active':''}">
+      <button class="nav-item" data-deck="${escapeAttr(d)}" style="padding-left:0">${escapeHtml(d)}</button>
+      <span class="deck-count">${counts[d]||0}</span>
+    </div>`;
+  });
+  nav.innerHTML = html;
+  nav.querySelectorAll('button[data-deck]').forEach(b => {
+    b.addEventListener('click', () => {
+      const d = b.dataset.deck;
+      state.currentDeck = d || null;
+      renderDeckNav();
+      // 学習画面なら再スタート
+      if(document.getElementById('view-study').classList.contains('active')){
+        startStudy();
+      } else if(document.getElementById('view-manage').classList.contains('active')){
+        document.getElementById('filter-deck').value = state.currentDeck || '';
+        renderManage();
+      }
+    });
+  });
+
+  // datalist for edit form
+  const dl = document.getElementById('deck-suggestions');
+  dl.innerHTML = decks.map(d => `<option value="${escapeAttr(d)}">`).join('');
+
+  // filter dropdown
+  const fd = document.getElementById('filter-deck');
+  const cur = fd.value;
+  fd.innerHTML = '<option value="">全てのデッキ</option>' +
+    decks.map(d => `<option value="${escapeAttr(d)}">${escapeHtml(d)}</option>`).join('');
+  fd.value = cur;
+}
+
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function escapeAttr(s){ return escapeHtml(s); }
+
+// ============================================================
+// Study view
+// ============================================================
+function startStudy(){
+  state.studyQueue = getCardsForStudy();
+  state.studyIndex = 0;
+  state.studyShowing = 'front';
+  document.getElementById('study-deck-name').textContent = state.currentDeck || '全カード';
+  renderStudy();
+}
+
+function renderStudy(){
+  const stage = document.getElementById('card-stage');
+  const counter = document.getElementById('study-counter');
+  const fill = document.getElementById('study-progress-fill');
+
+  if(state.studyQueue.length === 0){
+    stage.innerHTML = `<div class="empty-state">
+      <h3>${state.cards.length === 0 ? 'カードがありません' : '今は復習対象のカードがありません'}</h3>
+      <p>${state.cards.length === 0
+        ? 'まずは「新規作成」からカードを追加してください。'
+        : 'すべて期限内です。すぐに復習したい場合は下のボタンで強制学習できます。'}</p>
+      ${state.cards.length === 0
+        ? `<button class="btn btn-primary" onclick="switchView('edit')">+ 新しいカードを作る</button>`
+        : `<button class="btn btn-primary" onclick="forceStudyAll()">期限関係なく学習する</button>`}
+    </div>`;
+    counter.textContent = '0 / 0';
+    fill.style.width = '0%';
+    return;
+  }
+
+  if(state.studyIndex >= state.studyQueue.length){
+    stage.innerHTML = `<div class="empty-state">
+      <h3>🎉 セッション完了</h3>
+      <p>${state.studyQueue.length} 枚のカードを学習しました。</p>
+      <button class="btn btn-primary" onclick="startStudy()">もう1セット</button>
+      <button class="btn btn-ghost" onclick="switchView('stats')" style="margin-left:8px">統計を見る</button>
+    </div>`;
+    counter.textContent = `${state.studyQueue.length} / ${state.studyQueue.length}`;
+    fill.style.width = '100%';
+    return;
+  }
+
+  const card = state.studyQueue[state.studyIndex];
+  counter.textContent = `${state.studyIndex + 1} / ${state.studyQueue.length}`;
+  fill.style.width = `${(state.studyIndex / state.studyQueue.length) * 100}%`;
+
+  if(state.studyShowing === 'front'){
+    stage.innerHTML = `
+      <div class="card">
+        <div class="card-side-label">FRONT — キーワード</div>
+        <div class="card-deck-label">${escapeHtml(card.deck)}</div>
+        <div class="front-content">${escapeHtml(card.front)}</div>
+        ${card.context ? `<div class="front-context">${escapeHtml(card.context)}</div>` : ''}
+        <div class="recall-prompt">
+          ↓<br>
+          目を閉じて、頭の中で構造を組み立ててみる<br>
+          (10〜30秒)
+        </div>
+        <div class="card-actions">
+          <button class="btn btn-primary" onclick="flipCard()">裏を見る</button>
+          <button class="btn btn-ghost btn-icon" onclick="editCurrentCard()">編集</button>
+        </div>
+      </div>`;
+  } else {
+    stage.innerHTML = `
+      <div class="card">
+        <div class="card-side-label">BACK — 構造図</div>
+        <div class="card-deck-label">${escapeHtml(card.deck)}</div>
+        <div style="font-size:1.1rem;font-weight:600;text-align:center;margin-bottom:8px">${escapeHtml(card.front)}</div>
+        <div class="back-content">${escapeHtml(card.back)}</div>
+        <div class="eval-row">
+          <button class="eval-btn eval-good" onclick="evalCard('good')">
+            <span class="eval-icon">○</span>
+            <span class="eval-label">思い出せた</span>
+            <span class="eval-hint">[1]</span>
+          </button>
+          <button class="eval-btn eval-mid" onclick="evalCard('mid')">
+            <span class="eval-icon">△</span>
+            <span class="eval-label">あいまい</span>
+            <span class="eval-hint">[2]</span>
+          </button>
+          <button class="eval-btn eval-bad" onclick="evalCard('bad')">
+            <span class="eval-icon">×</span>
+            <span class="eval-label">詰まった</span>
+            <span class="eval-hint">[3]</span>
+          </button>
+        </div>
+        <div style="text-align:center;margin-top:12px">
+          <button class="btn btn-ghost btn-icon" onclick="flipCard()">↩ 表に戻す</button>
+          <button class="btn btn-ghost btn-icon" onclick="editCurrentCard()">編集</button>
+        </div>
+      </div>`;
+  }
+}
+
+function flipCard(){
+  state.studyShowing = state.studyShowing === 'front' ? 'back' : 'front';
+  renderStudy();
+}
+
+function evalCard(quality){
+  if(state.studyShowing !== 'back') return;
+  const card = state.studyQueue[state.studyIndex];
+  if(!card) return;
+  applyReview(card, quality);
+  state.studyIndex++;
+  state.studyShowing = 'front';
+  renderStudy();
+  renderDeckNav();
+}
+
+function forceStudyAll(){
+  let pool = state.cards;
+  if(state.currentDeck){ pool = pool.filter(c => c.deck === state.currentDeck); }
+  state.studyQueue = pool.slice().sort(() => Math.random() - 0.5).slice(0, 20);
+  state.studyIndex = 0;
+  state.studyShowing = 'front';
+  renderStudy();
+}
+
+function editCurrentCard(){
+  const card = state.studyQueue[state.studyIndex];
+  if(!card) return;
+  state.editingId = card.id;
+  switchView('edit');
+  fillEditForm(card);
+}
+
+// ============================================================
+// Manage view
+// ============================================================
+function renderManage(){
+  const list = document.getElementById('card-list');
+  const empty = document.getElementById('manage-empty');
+  const search = document.getElementById('search-box').value.toLowerCase().trim();
+  const deckFilter = document.getElementById('filter-deck').value;
+
+  let cards = state.cards.slice();
+  if(deckFilter){ cards = cards.filter(c => c.deck === deckFilter); }
+  if(search){
+    cards = cards.filter(c =>
+      (c.front||'').toLowerCase().includes(search) ||
+      (c.back||'').toLowerCase().includes(search) ||
+      (c.deck||'').toLowerCase().includes(search) ||
+      (c.context||'').toLowerCase().includes(search)
+    );
+  }
+  cards.sort((a,b) => a.due - b.due);
+
+  if(cards.length === 0){
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  list.innerHTML = cards.map(c => {
+    const dueStatus = c.due <= nowMs() ? 'due-now' : (c.due <= daysFromNow(2) ? 'due-soon' : 'due-later');
+    const dueText = c.due <= nowMs() ? '今すぐ' :
+      `${Math.ceil((c.due - nowMs()) / 86400000)}日後`;
+    return `<div class="list-item" onclick="openEdit('${c.id}')">
+      <span class="li-deck">${escapeHtml(c.deck||'未分類')}</span>
+      <span class="li-front">${escapeHtml(c.front)}</span>
+      <span class="li-stats">${c.reviewCount||0}回</span>
+      <span class="li-due ${dueStatus}">${dueText}</span>
+      <button class="btn btn-ghost btn-icon" onclick="event.stopPropagation();openEdit('${c.id}')">編集</button>
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+// Edit view
+// ============================================================
+function resetEditForm(){
+  state.editingId = null;
+  document.getElementById('edit-title').textContent = '新規カード作成';
+  document.getElementById('form-deck').value = state.currentDeck || '';
+  document.getElementById('form-front').value = '';
+  document.getElementById('form-context').value = '';
+  document.getElementById('form-back').value = '';
+  document.getElementById('btn-delete').style.display = 'none';
+  updateBackPreview();
+}
+
+function fillEditForm(card){
+  state.editingId = card.id;
+  document.getElementById('edit-title').textContent = 'カード編集';
+  document.getElementById('form-deck').value = card.deck || '';
+  document.getElementById('form-front').value = card.front || '';
+  document.getElementById('form-context').value = card.context || '';
+  document.getElementById('form-back').value = card.back || '';
+  document.getElementById('btn-delete').style.display = 'inline-flex';
+  updateBackPreview();
+}
+
+function openEdit(id){
+  const card = state.cards.find(c => c.id === id);
+  if(!card) return;
+  switchView('edit');
+  fillEditForm(card);
+}
+
+function saveCard(){
+  const deck = document.getElementById('form-deck').value.trim();
+  const front = document.getElementById('form-front').value.trim();
+  const context = document.getElementById('form-context').value.trim();
+  const back = document.getElementById('form-back').value;
+
+  if(!front){ toast('表面(キーワード)は必須です', 'error'); return; }
+  if(!back.trim()){ toast('裏面(構造図)は必須です', 'error'); return; }
+
+  if(state.editingId){
+    const card = state.cards.find(c => c.id === state.editingId);
+    if(card){
+      card.deck = deck || '未分類';
+      card.front = front;
+      card.context = context;
+      card.back = back;
+      toast('カードを更新しました', 'success');
+    }
+  } else {
+    state.cards.push({
+      id: uid(),
+      deck: deck || '未分類',
+      front, context, back,
+      ease: 2.5, interval: 0, due: nowMs(),
+      lastReviewed: 0, reviewCount: 0,
+    });
+    toast('カードを追加しました', 'success');
+  }
+  save();
+  renderDeckNav();
+  resetEditForm();
+  switchView('manage');
+}
+
+function deleteCard(){
+  if(!state.editingId) return;
+  showModal({
+    title: 'カードを削除しますか?',
+    body: 'この操作は取り消せません。',
+    confirmText: '削除',
+    confirmStyle: 'btn-error',
+    onConfirm: () => {
+      state.cards = state.cards.filter(c => c.id !== state.editingId);
+      save();
+      renderDeckNav();
+      resetEditForm();
+      switchView('manage');
+      toast('カードを削除しました', 'success');
+    }
+  });
+}
+
+function updateBackPreview(){
+  const text = document.getElementById('form-back').value;
+  const preview = document.getElementById('form-back-preview');
+  if(!text.trim()){
+    preview.textContent = '(裏面プレビュー)';
+    preview.classList.add('empty');
+  } else {
+    preview.textContent = text;
+    preview.classList.remove('empty');
+  }
+}
+
+// テンプレート
+const TEMPLATES = {
+  hierarchy: `[ルート概念]
+ ├─ 子概念A
+ │    ├─ 詳細A1
+ │    └─ 詳細A2
+ ├─ 子概念B
+ │    └─ 詳細B1
+ └─ 子概念C`,
+  compare: `              項目A          項目B
+特徴1        値1A           値1B
+特徴2        値2A           値2B
+特徴3        値3A           値3B
+適性         場面A          場面B`,
+  flow: `[1] ステップ1
+     ↓
+[2] ステップ2
+     ↓ (条件: ...)
+[3] ステップ3
+     ↓
+[結果] / [次のフェーズ]`,
+};
+
+document.querySelectorAll('.template-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tpl = btn.dataset.tpl;
+    if(tpl === 'clear'){
+      document.getElementById('form-back').value = '';
+    } else if(TEMPLATES[tpl]){
+      document.getElementById('form-back').value = TEMPLATES[tpl];
+    }
+    updateBackPreview();
+  });
+});
+
+// ============================================================
+// Stats view
+// ============================================================
+function renderStats(){
+  document.getElementById('stat-total').textContent = state.cards.length;
+
+  const dueNow = state.cards.filter(c => c.due <= nowMs()).length;
+  document.getElementById('stat-due').textContent = dueNow;
+
+  const t = todayStr();
+  const today = state.reviews.find(r => r.date === t);
+  document.getElementById('stat-today').textContent = today ? today.count : 0;
+
+  // streak: 連続して reviews が記録されている日数
+  let streak = 0;
+  const dates = new Set(state.reviews.map(r => r.date));
+  let cursor = new Date();
+  while(true){
+    const ds = cursor.getFullYear()+'-'+String(cursor.getMonth()+1).padStart(2,'0')+'-'+String(cursor.getDate()).padStart(2,'0');
+    if(dates.has(ds)){ streak++; cursor.setDate(cursor.getDate() - 1); }
+    else if(streak === 0 && ds === t){ cursor.setDate(cursor.getDate() - 1); /* 今日まだなら昨日から数える */ }
+    else { break; }
+    if(streak > 365) break;
+  }
+  document.getElementById('stat-streak').textContent = streak;
+
+  // デッキ別
+  const decks = getDecks();
+  const list = document.getElementById('deck-stats-list');
+  if(decks.length === 0){
+    list.innerHTML = '<div class="empty-state" style="padding:30px"><p>デッキがありません</p></div>';
+    return;
+  }
+  list.innerHTML = decks.map(d => {
+    const cards = state.cards.filter(c => c.deck === d);
+    const due = cards.filter(c => c.due <= nowMs()).length;
+    const reviewed = cards.reduce((sum, c) => sum + (c.reviewCount||0), 0);
+    return `<div class="deck-stat-item">
+      <span class="ds-name">${escapeHtml(d)}</span>
+      <span class="ds-num">全${cards.length}</span>
+      <span class="ds-num" style="color:${due>0?'var(--error)':'var(--text-dim)'}">期限到来 ${due}</span>
+      <span class="ds-num">復習 ${reviewed}回</span>
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+// Export / Import
+// ============================================================
+function exportData(){
+  const data = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    cards: state.cards,
+    reviews: state.reviews,
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `flashcards-backup-${todayStr()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('JSONをダウンロードしました', 'success');
+}
+
+function importData(file){
+  const reader = new FileReader();
+  reader.onload = e => {
+    try{
+      const data = JSON.parse(e.target.result);
+      if(!data.cards || !Array.isArray(data.cards)){
+        toast('不正なJSONファイルです', 'error'); return;
+      }
+      showModal({
+        title: 'インポート方法を選んでください',
+        body: `<p>読み込むカード数: <strong>${data.cards.length}</strong></p>
+               <p>「マージ」: 既存カードに追加(IDが同じものは更新)<br>
+                  「置換」: 既存データを全て削除して読み込み</p>`,
+        confirmText: 'マージ',
+        cancelText: 'キャンセル',
+        extraText: '置換',
+        extraStyle: 'btn-error',
+        onConfirm: () => {
+          // マージ
+          const idMap = new Map(state.cards.map(c => [c.id, c]));
+          data.cards.forEach(c => { idMap.set(c.id, { ...idMap.get(c.id), ...c }); });
+          state.cards = Array.from(idMap.values());
+          save(); renderDeckNav();
+          toast(`${data.cards.length}枚をマージしました`, 'success');
+        },
+        onExtra: () => {
+          state.cards = data.cards;
+          state.reviews = data.reviews || [];
+          save(); renderDeckNav();
+          toast('データを置換しました', 'success');
+          if(document.getElementById('view-study').classList.contains('active')) startStudy();
+          if(document.getElementById('view-manage').classList.contains('active')) renderManage();
+        }
+      });
+    }catch(err){
+      toast('JSON解析失敗: '+err.message, 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ============================================================
+// UI helpers
+// ============================================================
+function toast(msg, type){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (type ? ' ' + type : '');
+  setTimeout(() => { el.className = 'toast' + (type ? ' ' + type : ''); }, 2000);
+}
+
+function showModal(opts){
+  const overlay = document.getElementById('modal-overlay');
+  const content = document.getElementById('modal-content');
+  const extraBtn = opts.extraText
+    ? `<button class="btn ${opts.extraStyle||'btn-warn'}" id="modal-extra">${escapeHtml(opts.extraText)}</button>`
+    : '';
+  content.innerHTML = `<h3>${escapeHtml(opts.title||'')}</h3>
+    <div>${opts.body||''}</div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="modal-cancel">${escapeHtml(opts.cancelText||'キャンセル')}</button>
+      ${extraBtn}
+      <button class="btn ${opts.confirmStyle||'btn-primary'}" id="modal-confirm">${escapeHtml(opts.confirmText||'OK')}</button>
+    </div>`;
+  overlay.classList.add('show');
+  document.getElementById('modal-cancel').onclick = () => { overlay.classList.remove('show'); };
+  document.getElementById('modal-confirm').onclick = () => { overlay.classList.remove('show'); opts.onConfirm && opts.onConfirm(); };
+  if(opts.extraText){
+    document.getElementById('modal-extra').onclick = () => { overlay.classList.remove('show'); opts.onExtra && opts.onExtra(); };
+  }
+}
+
+// ============================================================
+// Event bindings
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  load();
+  renderDeckNav();
+  startStudy();
+
+  document.querySelectorAll('.view-tab').forEach(t => {
+    t.addEventListener('click', () => switchView(t.dataset.view));
+  });
+
+  document.getElementById('btn-save').addEventListener('click', saveCard);
+  document.getElementById('btn-delete').addEventListener('click', deleteCard);
+  document.getElementById('form-back').addEventListener('input', updateBackPreview);
+
+  document.getElementById('search-box').addEventListener('input', renderManage);
+  document.getElementById('filter-deck').addEventListener('change', renderManage);
+
+  document.getElementById('nav-export').addEventListener('click', exportData);
+  document.getElementById('nav-import').addEventListener('click', () => document.getElementById('import-file').click());
+  document.getElementById('import-file').addEventListener('change', e => {
+    if(e.target.files[0]) importData(e.target.files[0]);
+    e.target.value = '';
+  });
+
+  // Tab key inside textarea inserts spaces (instead of moving focus)
+  document.getElementById('form-back').addEventListener('keydown', e => {
+    if(e.key === 'Tab'){
+      e.preventDefault();
+      const ta = e.target;
+      const s = ta.selectionStart, en = ta.selectionEnd;
+      ta.value = ta.value.substring(0, s) + '  ' + ta.value.substring(en);
+      ta.selectionStart = ta.selectionEnd = s + 2;
+      updateBackPreview();
+    }
+  });
+
+  // Keyboard shortcuts (study only)
+  document.addEventListener('keydown', e => {
+    if(['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
+    if(!document.getElementById('view-study').classList.contains('active')) return;
+
+    if(e.key === ' '){ e.preventDefault(); flipCard(); }
+    else if(state.studyShowing === 'back'){
+      if(e.key === '1') evalCard('good');
+      else if(e.key === '2') evalCard('mid');
+      else if(e.key === '3') evalCard('bad');
+    }
+    if(e.key.toLowerCase() === 'e'){
+      const card = state.studyQueue[state.studyIndex];
+      if(card){ editCurrentCard(); }
+    }
+  });
+});
+</script>
+</body>
+</html>
