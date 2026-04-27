@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VB.NET 主要機能 ロジックツリー</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --bg-card: #1a2027;
+    --bg-elevated: #232b35;
+    --border: #2d3744;
+    --text: #d4dae0;
+    --text-dim: #8a96a3;
+    --text-bright: #e8edf3;
+    --accent: #5eb4ff;
+    --accent-hover: #7cc4ff;
+    --keyword: #c792ea;
+    --string: #c3e88d;
+    --comment: #5f7a8c;
+    --number: #f78c6c;
+    --highlight: #ffd54f;
+    --node-1: #5eb4ff;
+    --node-2: #82d4a4;
+    --node-3: #f5a97f;
+    --node-4: #c792ea;
+    --node-leaf: #607d8b;
+    --shadow: rgba(0, 0, 0, 0.4);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 20px;
+    min-height: 100vh;
+  }
+
+  header {
+    max-width: 1400px;
+    margin: 0 auto 24px;
+    padding: 24px;
+    background: linear-gradient(135deg, var(--bg-card), var(--bg-elevated));
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 20px var(--shadow);
+  }
+
+  h1 {
+    font-size: 1.6rem;
+    color: var(--text-bright);
+    margin-bottom: 8px;
+    letter-spacing: 0.02em;
+  }
+
+  .subtitle {
+    color: var(--text-dim);
+    font-size: 0.9rem;
+  }
+
+  .controls {
+    max-width: 1400px;
+    margin: 0 auto 20px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .search-box {
+    flex: 1;
+    min-width: 240px;
+    position: relative;
+  }
+
+  .search-box input {
+    width: 100%;
+    padding: 10px 14px 10px 38px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 0.95rem;
+    transition: border-color 0.2s;
+  }
+
+  .search-box input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .search-box::before {
+    content: "🔍";
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.6;
+  }
+
+  .btn {
+    padding: 10px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+  }
+
+  .btn:hover {
+    background: var(--bg-elevated);
+    border-color: var(--accent);
+    color: var(--text-bright);
+  }
+
+  .tree-container {
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .node {
+    margin: 4px 0;
+  }
+
+  .node-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+  }
+
+  .node-header:hover {
+    background: var(--bg-elevated);
+    border-color: var(--accent);
+  }
+
+  .node-header.lvl-1 {
+    background: linear-gradient(135deg, var(--bg-card), var(--bg-elevated));
+    border-left: 4px solid var(--node-1);
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-bright);
+  }
+
+  .node-header.lvl-2 {
+    border-left: 3px solid var(--node-2);
+    font-weight: 500;
+  }
+
+  .node-header.lvl-3 {
+    border-left: 2px solid var(--node-3);
+  }
+
+  .node-header.lvl-4 {
+    border-left: 2px solid var(--node-4);
+    background: var(--bg);
+  }
+
+  .node-header.leaf {
+    border-left: 2px solid var(--node-leaf);
+    background: var(--bg);
+    cursor: default;
+  }
+
+  .toggle {
+    display: inline-block;
+    width: 18px;
+    text-align: center;
+    color: var(--accent);
+    transition: transform 0.2s;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .node.collapsed > .node-header > .toggle {
+    transform: rotate(-90deg);
+  }
+
+  .leaf .toggle {
+    visibility: hidden;
+  }
+
+  .node-label {
+    flex: 1;
+    line-height: 1.5;
+  }
+
+  .node-label .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    background: var(--bg-elevated);
+    border-radius: 4px;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-right: 8px;
+    border: 1px solid var(--border);
+  }
+
+  .children {
+    margin-left: 24px;
+    padding-left: 12px;
+    border-left: 1px dashed var(--border);
+    margin-top: 4px;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+  }
+
+  .node.collapsed > .children {
+    display: none;
+  }
+
+  .detail {
+    margin: 8px 0 8px 30px;
+    padding: 12px 16px;
+    background: var(--bg);
+    border-left: 2px solid var(--node-leaf);
+    border-radius: 0 6px 6px 0;
+    font-size: 0.92rem;
+    color: var(--text-dim);
+  }
+
+  .detail p {
+    margin-bottom: 8px;
+  }
+
+  .detail p:last-child {
+    margin-bottom: 0;
+  }
+
+  .detail strong {
+    color: var(--text-bright);
+  }
+
+  .detail code {
+    padding: 2px 6px;
+    background: var(--bg-elevated);
+    border-radius: 4px;
+    font-family: "JetBrains Mono", "Consolas", monospace;
+    font-size: 0.85em;
+    color: var(--accent);
+  }
+
+  pre {
+    background: #0a0e13;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin: 10px 0;
+    overflow-x: auto;
+    font-family: "JetBrains Mono", "Consolas", monospace;
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+
+  pre code {
+    background: none;
+    padding: 0;
+    color: var(--text);
+  }
+
+  .kw { color: var(--keyword); }
+  .str { color: var(--string); }
+  .com { color: var(--comment); font-style: italic; }
+  .num { color: var(--number); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+    font-size: 0.88rem;
+  }
+
+  th, td {
+    padding: 8px 12px;
+    text-align: left;
+    border: 1px solid var(--border);
+  }
+
+  th {
+    background: var(--bg-elevated);
+    color: var(--text-bright);
+    font-weight: 600;
+  }
+
+  td {
+    background: var(--bg);
+  }
+
+  .highlight {
+    background: rgba(255, 213, 79, 0.25);
+    color: var(--highlight);
+    padding: 0 2px;
+    border-radius: 2px;
+  }
+
+  .hidden {
+    display: none !important;
+  }
+
+  .stats {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    padding: 6px 12px;
+  }
+
+  /* スクロールバー */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--node-leaf); }
+
+  @media (max-width: 768px) {
+    body { padding: 12px; }
+    h1 { font-size: 1.3rem; }
+    .children { margin-left: 12px; padding-left: 8px; }
+    .detail { margin-left: 12px; }
+    pre { font-size: 0.75rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🌲 VB.NET 主要機能 ロジックツリー</h1>
+  <div class="subtitle">オブジェクト初期化子・コレクション初期化子・構造体・タプル・ラムダ・共有メンバー・Nullable</div>
+</header>
+
+<div class="controls">
+  <div class="search-box">
+    <input type="text" id="search" placeholder="キーワード検索 (例: Nullable, タプル, LINQ)">
+  </div>
+  <button class="btn" onclick="expandAll()">▼ 全て展開</button>
+  <button class="btn" onclick="collapseAll()">▶ 全て折りたたみ</button>
+  <button class="btn" onclick="expandLevel(2)">レベル2まで</button>
+  <span class="stats" id="stats"></span>
+</div>
+
+<div class="tree-container" id="tree">
+
+  <!-- ====================== ルート ====================== -->
+  <div class="node">
+    <div class="node-header lvl-1" onclick="toggle(this)">
+      <span class="toggle">▼</span>
+      <span class="node-label">VB.NET 主要機能</span>
+    </div>
+    <div class="children">
+
+      <!-- ====================== 1. オブジェクト初期化子 ====================== -->
+      <div class="node">
+        <div class="node-header lvl-1" onclick="toggle(this)">
+          <span class="toggle">▼</span>
+          <span class="node-label">1. オブジェクト初期化子 (Object Initializer)</span>
+        </div>
+        <div class="children">
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label"><span class="tag">目的</span>コンストラクタを増やさずプロパティ一括設定</span>
+            </div>
+            <div class="children">
+              <div class="detail">
+<pre><code><span class="com">' 従来</span>
+<span class="kw">Dim</span> p <span class="kw">As New</span> Person()
+p.Name = <span class="str">"Tom"</span>
+p.Age = <span class="num">40</span>
+
+<span class="com">' オブジェクト初期化子</span>
+<span class="kw">Dim</span> p <span class="kw">As New</span> Person() <span class="kw">With</span> {
+    .Name = <span class="str">"Tom"</span>,
+    .Age = <span class="num">40</span>,
+    .City = <span class="str">"Osaka"</span>
+}</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label"><span class="tag">利用シーン</span>DTO詰め替え / LINQ / テストデータ</span>
+            </div>
+            <div class="children">
+              <div class="node"><div class="node-header lvl-3 leaf"><span class="toggle">─</span><span class="node-label">DTO・エンティティへの値詰め(DB変換、API応答組立)</span></div></div>
+              <div class="node"><div class="node-header lvl-3 leaf"><span class="toggle">─</span><span class="node-label">LINQ <code>Select</code> 内で匿名型を作る場面で必須</span></div></div>
+              <div class="node"><div class="node-header lvl-3 leaf"><span class="toggle">─</span><span class="node-label">単体テストの入力データ準備</span></div></div>
+            </div>
+          </div>
+
+          <div class="node">
+            <div class="node-header lvl-2 leaf">
+              <span class="toggle">─</span>
+              <span class="node-label"><span class="tag">必要性</span>「全パラメータ版/一部版」のコンストラクタ乱立を防ぐ。プロパティが縦に並びレビュー時に読みやすい</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====================== 2. コレクション初期化子 ====================== -->
+      <div class="node">
+        <div class="node-header lvl-1" onclick="toggle(this)">
+          <span class="toggle">▼</span>
+          <span class="node-label">2. コレクション初期化子 (Collection Initializer)</span>
+        </div>
+        <div class="children">
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label"><span class="tag">目的</span>List/Dictionary を宣言と同時に中身まで初期化</span>
+            </div>
+            <div class="children">
+              <div class="detail">
+<pre><code><span class="kw">Dim</span> names <span class="kw">As New</span> List(<span class="kw">Of</span> String) <span class="kw">From</span> {<span class="str">"Tom"</span>, <span class="str">"Alice"</span>, <span class="str">"Bob"</span>}
+
+<span class="kw">Dim</span> scores <span class="kw">As New</span> Dictionary(<span class="kw">Of</span> String, Integer) <span class="kw">From</span> {
+    {<span class="str">"Math"</span>, <span class="num">90</span>},
+    {<span class="str">"English"</span>, <span class="num">75</span>}
+}</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label"><span class="tag">利用シーン</span>マスタデータ / テスト期待値 / 設定値</span>
+            </div>
+            <div class="children">
+              <div class="node"><div class="node-header lvl-3 leaf"><span class="toggle">─</span><span class="node-label">定数的なマスタデータ(コード値→名称)</span></div></div>
+              <div class="node"><div class="node-header lvl-3 leaf"><span class="toggle">─</span><span class="node-label">単体テストの期待値リスト</span></div></div>
+              <div class="node"><div class="node-header lvl-3 leaf"><span class="toggle">─</span><span class="node-label">設定値のハードコード</span></div></div>
+            </div>
+          </div>
+
+          <div class="node">
+            <div class="node-header lvl-2 leaf">
+              <span class="toggle">─</span>
+              <span class="node-label"><span class="tag">必要性</span><code>Add</code> 連打よりデータが「表」として見える。要素増減時の diff も小さい</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====================== 3. 構造体 ====================== -->
+      <div class="node">
+        <div class="node-header lvl-1" onclick="toggle(this)">
+          <span class="toggle">▼</span>
+          <span class="node-label">3. 構造体 (Structure)</span>
+        </div>
+        <div class="children">
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label"><span class="tag">目的</span>軽量な「値型」のデータ塊を定義(クラスは参照型)</span>
+            </div>
+            <div class="children">
+              <div class="detail">
+<pre><code><span class="kw">Public Structure</span> Point
+    <span class="kw">Public</span> X <span class="kw">As</span> Integer
+    <span class="kw">Public</span> Y <span class="kw">As</span> Integer
+<span class="kw">End Structure</span>
+
+<span class="kw">Dim</span> a <span class="kw">As New</span> Point <span class="kw">With</span> {.X = <span class="num">1</span>, .Y = <span class="num">2</span>}
+<span class="kw">Dim</span> b = a   <span class="com">' ← コピーされる(クラスなら参照共有)</span>
+b.X = <span class="num">99</span>
+<span class="com">' a.X は 1 のまま</span></code></pre>
+              </div>
+            </div>
+          </div>
+
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label"><span class="tag">選ぶべきとき</span>サイズ小・不変・大量生成</span>
+            </div>
+            <div class="children">
+              <div class="node"><div class="node-header lvl-3 leaf"><span class="toggle">─</span><span class="node-label">サイズが小さい(目安16バイト以下)</span></div></div>
+              <div class="node"><div class="node-header lvl-3 leaf"><span class="toggle">─</span><span class="node-label">不変的な値の集合(座標、色、金額+通貨)</span></div></div>
+              <div class="node"><div class="node-header lvl-3 leaf"><span class="toggle">─</span><span class="node-label">大量生成しGC負荷を避けたい</span></div></div>
+            </div>
+          </div>
+
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label"><span class="tag">避けるとき</span>フィールド多い / 頻繁書換 / 継承欲しい → Class</span>
+            </div>
+            <div class="children">
+              <div class="node"><div class="node-header lvl-3 leaf"><span class="toggle">─</span><span class="node-label">注意: 値型なので関数渡しでコピー発生。<code>ByRef</code> が必要な場面あり</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====================== 4. タプル ====================== -->
+      <div class="node">
+        <div class="node-header lvl-1" onclick="toggle(this)">
+          <span class="toggle">▼</span>
+          <span class="node-label">4. タプル (Tuple)</span>
+        </div>
+        <div class="children">
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label"><span class="tag">目的</span>専用クラス不要の「複数値の組」を一時的に扱う</span>
+            </div>
+            <div class="children">
+              <div class="detail">
+<pre><code><span class="kw">Public Function</span> Divide(a <span class="kw">As</span> Integer, b <span class="kw">As</span> Integer) <span class="kw">As</span> (Quotient <span class="kw">As</span> Integer, Remainder <span class="kw">As</span> Integer)
+    <span class="kw">Return</span> (a \ b, a <span class="kw">Mod</span> b)
+<span class="kw">End Function</span>
+
+<span class="kw">Dim</span> result = Divide(<span class="num">10</span>, <span class="num">3</span>)
+Console.WriteLine(result.Quotient)   <span class="com">' 3</span>
+Console.WriteLine(result.Remainder)  <span class="com">' 1</span>
+
+<span class="com">' 分解代入</span>
+<span class="kw">Dim</span> (q, r) = Divide(<span class="num">10</span>, <span class="num">3</span>)</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label"><span class="tag">利用シーン</span>複数戻り値 / LINQ中間 / 一時集計</span>
+            </div>
+            <div class="children">
+              <div class="node"><div class="node-header lvl-3 leaf"><span class="toggle">─</span><span class="node-label">関数から複数値を返したい(<code>ByRef</code>の代替)</span></div></div>
+              <div class="node"><div class="node-header lvl-3 leaf"><span class="toggle">─</span><span class="node-label">LINQ中間結果のグループ化</span></div></div>
+              <div class="node"><div class="node-header lvl-3 leaf"><span class="toggle">─</span><span class="node-label">合計と件数のような一時集計</span></div></div>
+            </div>
+          </div>
+
+          <div class="node">
+            <div class="node-header lvl-2 leaf">
+              <span class="toggle">─</span>
+              <span class="node-label"><span class="tag">原則</span>「内部・短命」が原則。API公開境界やドメイン中核概念には<strong>クラスを定義すべき</strong></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====================== 5. ラムダ式 ====================== -->
+      <div class="node">
+        <div class="node-header lvl-1" onclick="toggle(this)">
+          <span class="toggle">▼</span>
+          <span class="node-label">5. ラムダ式 (Lambda)</span>
+        </div>
+        <div class="children">
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label"><span class="tag">目的</span>関数を「その場で値として」書く</span>
+            </div>
+            <div class="children">
+              <div class="detail">
+<pre><code><span class="com">' 単行ラムダ</span>
+<span class="kw">Dim</span> square = <span class="kw">Function</span>(x <span class="kw">As</span> Integer) x * x
+
+<span class="com">' 複数行ラムダ</span>
+<span class="kw">Dim</span> greet = <span class="kw">Function</span>(name <span class="kw">As</span> String)
+                <span class="kw">Dim</span> msg = $<span class="str">"Hello, {name}"</span>
+                <span class="kw">Return</span> msg.ToUpper()
+            <span class="kw">End Function</span>
+
+<span class="com">' LINQ で頻出</span>
+<span class="kw">Dim</span> adults = people.Where(<span class="kw">Function</span>(p) p.Age >= <span class="num">20</span>).
+                    Select(<span class="kw">Function</span>(p) p.Name).
+                    ToList()
+
+<span class="com">' Sub ラムダ(戻り値なし)</span>
+<span class="kw">Dim</span> log = <span class="kw">Sub</span>(s <span class="kw">As</span> String) Console.WriteLine($<span class="str">"[LOG] {s}"</span>)</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label"><span class="tag">利用シーン</span>LINQ / イベント / 戦略パターン / 非同期</span>
+            </div>
+            <div class="children">
+              <div class="node"><div class="node-header lvl-3 leaf"><span class="toggle">─</span><span class="node-label">LINQ(<code>Where</code>, <code>Select</code>, <code>OrderBy</code>)</span></div></div>
+              <div class="node"><div class="node-header lvl-3 leaf"><span class="toggle">─</span><span class="node-label">イベントハンドラの即席登録</span></div></div>
+              <div class="node"><div class="node-header lvl-3 leaf"><span class="toggle">─</span><span class="node-label">処理の差し替え(並べ替え基準、フィルタ条件)</span></div></div>
+              <div class="node"><div class="node-header lvl-3 leaf"><span class="toggle">─</span><span class="node-label">非同期処理の継続(<code>Task.ContinueWith</code>)</span></div></div>
+            </div>
+          </div>
+
+          <div class="node">
+            <div class="node-header lvl-2 leaf">
+              <span class="toggle">─</span>
+              <span class="node-label"><span class="tag">必要性</span>ループ+一時変数の処理を、宣言的な「何をしたいか」だけで表現できる(JS <code>arr.map(x =&gt; ...)</code> と思想が近い)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====================== 6. 共有メンバー ====================== -->
+      <div class="node">
+        <div class="node-header lvl-1" onclick="toggle(this)">
+          <span class="toggle">▼</span>
+          <span class="node-label">6. 共有メンバー (Shared Member)</span>
+        </div>
+        <div class="children">
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label"><span class="tag">目的</span>クラスそのものに属するメンバー(C#/Java の <code>static</code>)</span>
+            </div>
+            <div class="children">
+              <div class="detail">
+<pre><code><span class="kw">Public Class</span> MathHelper
+    <span class="kw">Public Shared ReadOnly</span> PI <span class="kw">As</span> Double = <span class="num">3.14159</span>
+
+    <span class="kw">Public Shared Function</span> Square(x <span class="kw">As</span> Double) <span class="kw">As</span> Double
+        <span class="kw">Return</span> x * x
+    <span class="kw">End Function</span>
+<span class="kw">End Class</span>
+
+<span class="com">' インスタンス不要で呼べる</span>
+<span class="kw">Dim</span> r = MathHelper.Square(<span class="num">5</span>)</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label"><span class="tag">利用シーン</span>ユーティリティ / 定数 / Factory / Singleton</span>
+            </div>
+            <div class="children">
+              <div class="node"><div class="node-header lvl-3 leaf"><span class="toggle">─</span><span class="node-label">ユーティリティ関数(文字列変換、計算ヘルパー)</span></div></div>
+              <div class="node"><div class="node-header lvl-3 leaf"><span class="toggle">─</span><span class="node-label">定数・設定値</span></div></div>
+              <div class="node"><div class="node-header lvl-3 leaf"><span class="toggle">─</span><span class="node-label">ファクトリメソッド、シングルトン</span></div></div>
+              <div class="node"><div class="node-header lvl-3 leaf"><span class="toggle">─</span><span class="node-label">「クラス全体で1つ」の状態(カウンタ等)</span></div></div>
+            </div>
+          </div>
+
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label"><span class="tag">注意点</span>マルチスレッド / テスト容易性</span>
+            </div>
+            <div class="children">
+              <div class="node"><div class="node-header lvl-3 leaf"><span class="toggle">─</span><span class="node-label"><strong>全インスタンス・全スレッドで共有</strong>。マルチスレッドでは排他制御必要</span></div></div>
+              <div class="node"><div class="node-header lvl-3 leaf"><span class="toggle">─</span><span class="node-label">使い過ぎるとモック差し替え不可。DIで渡せるならインスタンスメソッドが望ましい</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====================== 7. Nullable ====================== -->
+      <div class="node">
+        <div class="node-header lvl-1" onclick="toggle(this)">
+          <span class="toggle">▼</span>
+          <span class="node-label">7. Nullable 型 【中核トピック】</span>
+        </div>
+        <div class="children">
+
+          <!-- 7.1 なぜ必要か -->
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label"><span class="tag">なぜ必要か</span>「未入力」と「ゼロ」を分離するため</span>
+            </div>
+            <div class="children">
+              <div class="node">
+                <div class="node-header lvl-3" onclick="toggle(this)">
+                  <span class="toggle">▼</span>
+                  <span class="node-label">VB.NET の型は2系統に分かれる</span>
+                </div>
+                <div class="children">
+                  <div class="node"><div class="node-header lvl-4 leaf"><span class="toggle">─</span><span class="node-label">参照型(Class, String) → <code>Nothing</code> 代入可(参照が空)</span></div></div>
+                  <div class="node"><div class="node-header lvl-4 leaf"><span class="toggle">─</span><span class="node-label">値型(Integer, Date) → <code>Nothing</code> 代入で型のデフォルト値が入る</span></div></div>
+                </div>
+              </div>
+              <div class="node">
+                <div class="node-header lvl-3" onclick="toggle(this)">
+                  <span class="toggle">▼</span>
+                  <span class="node-label">業務上の落とし穴</span>
+                </div>
+                <div class="children">
+                  <div class="detail">
+<pre><code><span class="kw">Dim</span> age <span class="kw">As</span> Integer = Nothing   <span class="com">' これは 0 になる(エラーにならない)</span>
+
+<span class="kw">If</span> age = <span class="num">0</span> <span class="kw">Then</span>
+    <span class="com">' 「0歳」なのか「未入力」なのか区別できない！</span>
+<span class="kw">End If</span></code></pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 7.2 正体 -->
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label"><span class="tag">正体</span>ジェネリック構造体 <code>Nullable(Of T)</code></span>
+            </div>
+            <div class="children">
+              <div class="detail">
+<pre><code><span class="kw">Dim</span> a <span class="kw">As</span> Integer? = <span class="num">10</span>
+<span class="kw">Dim</span> b <span class="kw">As</span> Nullable(<span class="kw">Of</span> Integer) = <span class="num">10</span>   <span class="com">' 同じ意味</span>
+
+<span class="com">' 内部構造</span>
+<span class="com">' Nullable(Of T)  ← Structure</span>
+<span class="com">'   ├─ HasValue As Boolean   (値が入っているか)</span>
+<span class="com">'   └─ value    As T         (実際の値)</span></code></pre>
+                <p>「値 + 値があるかのフラグ」の小さな構造体。<strong>参照型ではない</strong>のでヒープに配置されず軽量。</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 7.3 基本操作 -->
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label"><span class="tag">基本操作</span>判定・取り出し・Null合体</span>
+            </div>
+            <div class="children">
+              <div class="detail">
+<pre><code><span class="kw">Dim</span> age <span class="kw">As</span> Integer? = Nothing
+
+<span class="com">' 値の有無確認</span>
+<span class="kw">If</span> age.HasValue <span class="kw">Then</span> ...           <span class="com">' 推奨</span>
+<span class="kw">If</span> age <span class="kw">IsNot</span> Nothing <span class="kw">Then</span> ...      <span class="com">' これも可</span>
+
+<span class="com">' 値の取り出し</span>
+<span class="kw">Dim</span> n = age.Value                  <span class="com">' Nothingなら例外</span>
+<span class="kw">Dim</span> n = age.GetValueOrDefault()    <span class="com">' Nothingなら 0</span>
+<span class="kw">Dim</span> n = age.GetValueOrDefault(-<span class="num">1</span>)  <span class="com">' Nothingなら -1</span>
+<span class="kw">Dim</span> n = <span class="kw">If</span>(age, -<span class="num">1</span>)                <span class="com">' Null合体演算子(短い)</span></code></pre>
+                <p><strong>注意</strong>: <code>If(a, b)</code> は a が Nothing なら b。三項演算子 <code>If(条件, a, b)</code> と区別。</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 7.4 演算 -->
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label"><span class="tag">演算の挙動</span>ハマりどころ</span>
+            </div>
+            <div class="children">
+              <div class="node">
+                <div class="node-header lvl-3" onclick="toggle(this)">
+                  <span class="toggle">▼</span>
+                  <span class="node-label">算術演算は「伝播」する(SQL の NULL と同じ)</span>
+                </div>
+                <div class="children">
+                  <div class="detail">
+<pre><code><span class="kw">Dim</span> a <span class="kw">As</span> Integer? = <span class="num">10</span>
+<span class="kw">Dim</span> b <span class="kw">As</span> Integer? = Nothing
+
+<span class="kw">Dim</span> c = a + b      <span class="com">' c は Integer? で Nothing</span>
+<span class="kw">Dim</span> d = a + <span class="num">5</span>      <span class="com">' d は Integer? で 15</span></code></pre>
+                  </div>
+                </div>
+              </div>
+
+              <div class="node">
+                <div class="node-header lvl-3" onclick="toggle(this)">
+                  <span class="toggle">▼</span>
+                  <span class="node-label">比較は要注意 — <code>a = b</code> が False になる</span>
+                </div>
+                <div class="children">
+                  <div class="detail">
+<pre><code><span class="kw">Dim</span> a <span class="kw">As</span> Integer? = Nothing
+<span class="kw">Dim</span> b <span class="kw">As</span> Integer? = Nothing
+
+<span class="kw">If</span> a = b <span class="kw">Then</span> ...    <span class="com">' False になる(SQL的にはNULL=NULLは不定)</span>
+
+<span class="com">' 正しい等価判定</span>
+<span class="kw">If</span> a.Equals(b) <span class="kw">Then</span> ...
+<span class="kw">If</span> Nullable.Equals(a, b) <span class="kw">Then</span> ...</code></pre>
+                    <p>意図せず分岐から漏れるバグの温床。<strong>Nullable同士の比較は <code>Equals</code> を使う</strong>癖を。</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="node">
+                <div class="node-header lvl-3" onclick="toggle(this)">
+                  <span class="toggle">▼</span>
+                  <span class="node-label">Boolean? は3値論理</span>
+                </div>
+                <div class="children">
+                  <div class="detail">
+<pre><code><span class="kw">Dim</span> x <span class="kw">As</span> Boolean? = Nothing
+<span class="kw">Dim</span> y <span class="kw">As</span> Boolean? = <span class="kw">True</span>
+
+<span class="kw">Dim</span> r1 = x <span class="kw">And</span> y   <span class="com">' Nothing(不定)</span>
+<span class="kw">Dim</span> r2 = x <span class="kw">Or</span> y    <span class="com">' True (片方が確定で True)</span>
+
+<span class="com">' NG: Nothing は False扱いで分岐される</span>
+<span class="kw">If</span> someBoolNullable <span class="kw">Then</span> ...
+
+<span class="com">' OK: 意図を明示</span>
+<span class="kw">If</span> someBoolNullable = <span class="kw">True</span> <span class="kw">Then</span> ...</code></pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 7.5 データ境界 -->
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label"><span class="tag">データ境界</span>DB・フォーム・APIとの変換</span>
+            </div>
+            <div class="children">
+              <div class="node">
+                <div class="node-header lvl-3" onclick="toggle(this)">
+                  <span class="toggle">▼</span>
+                  <span class="node-label">DBとのマッピング(<code>DBNull.Value</code> ⇔ <code>Nothing</code>)</span>
+                </div>
+                <div class="children">
+                  <div class="detail">
+<pre><code><span class="com">' DB → Nullable</span>
+<span class="kw">Dim</span> age <span class="kw">As</span> Integer? = <span class="kw">If</span>(IsDBNull(row(<span class="str">"age"</span>)), <span class="kw">CType</span>(Nothing, Integer?), <span class="kw">CInt</span>(row(<span class="str">"age"</span>)))
+
+<span class="com">' Nullable → DB</span>
+cmd.Parameters.AddWithValue(<span class="str">"@age"</span>, <span class="kw">If</span>(age.HasValue, <span class="kw">CObj</span>(age.Value), DBNull.Value))</code></pre>
+                    <p>EF Core / Dapper では自動マッピング。生 ADO.NET では <code>DBNull.Value</code> と <code>Nothing</code> は別物。</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="node">
+                <div class="node-header lvl-3" onclick="toggle(this)">
+                  <span class="toggle">▼</span>
+                  <span class="node-label">文字列パース(空欄を Nothing で受ける)</span>
+                </div>
+                <div class="children">
+                  <div class="detail">
+<pre><code><span class="kw">Public Function</span> ParseAge(s <span class="kw">As</span> String) <span class="kw">As</span> Integer?
+    <span class="kw">Dim</span> n <span class="kw">As</span> Integer
+    <span class="kw">If</span> Integer.TryParse(s, n) <span class="kw">Then</span>
+        <span class="kw">Return</span> n
+    <span class="kw">Else</span>
+        <span class="kw">Return</span> Nothing   <span class="com">' パース失敗を「未入力」として扱う</span>
+    <span class="kw">End If</span>
+<span class="kw">End Function</span></code></pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 7.6 LINQ -->
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label"><span class="tag">LINQ</span>集計関数で挙動が変わる</span>
+            </div>
+            <div class="children">
+              <div class="detail">
+<pre><code><span class="kw">Dim</span> ages <span class="kw">As New</span> List(<span class="kw">Of</span> Integer?) <span class="kw">From</span> {<span class="num">25</span>, Nothing, <span class="num">30</span>, Nothing, <span class="num">40</span>}
+
+<span class="kw">Dim</span> total = ages.Sum()      <span class="com">' Nothing は 0 扱いで合計 95</span>
+<span class="kw">Dim</span> avg = ages.Average()    <span class="com">' Nothing を除いた平均(31.66...)</span>
+<span class="kw">Dim</span> cnt = ages.Count()      <span class="com">' 5(全件)</span>
+<span class="kw">Dim</span> hasVal = ages.Count(<span class="kw">Function</span>(x) x.HasValue)  <span class="com">' 3</span></code></pre>
+                <p><code>Sum</code> と <code>Average</code> で <strong>Nothing の扱いが異なる</strong>。Average は分母から除外。</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 7.7 設計指針 -->
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label"><span class="tag">設計指針</span>使うべき/避けるべきケース</span>
+            </div>
+            <div class="children">
+              <div class="node">
+                <div class="node-header lvl-3" onclick="toggle(this)">
+                  <span class="toggle">▼</span>
+                  <span class="node-label">使うべきとき</span>
+                </div>
+                <div class="children">
+                  <div class="node"><div class="node-header lvl-4 leaf"><span class="toggle">─</span><span class="node-label">DBのNULL許容列(退職日、完了日、削除日)</span></div></div>
+                  <div class="node"><div class="node-header lvl-4 leaf"><span class="toggle">─</span><span class="node-label">任意入力フォーム項目(電話番号、副次情報)</span></div></div>
+                  <div class="node"><div class="node-header lvl-4 leaf"><span class="toggle">─</span><span class="node-label">未測定・未確定を意味的に区別したい業務データ</span></div></div>
+                  <div class="node"><div class="node-header lvl-4 leaf"><span class="toggle">─</span><span class="node-label">API応答のオプショナルフィールド</span></div></div>
+                </div>
+              </div>
+              <div class="node">
+                <div class="node-header lvl-3" onclick="toggle(this)">
+                  <span class="toggle">▼</span>
+                  <span class="node-label">使わない方がいいとき</span>
+                </div>
+                <div class="children">
+                  <div class="node"><div class="node-header lvl-4 leaf"><span class="toggle">─</span><span class="node-label">「絶対に値が入る」前提の項目</span></div></div>
+                  <div class="node"><div class="node-header lvl-4 leaf"><span class="toggle">─</span><span class="node-label">「0や空文字が未入力」と業務的に決まっている場合(ルール統一する方が一貫)</span></div></div>
+                  <div class="node"><div class="node-header lvl-4 leaf"><span class="toggle">─</span><span class="node-label">パフォーマンス最重要のループ内</span></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 7.8 実務パターン -->
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label"><span class="tag">実務パターン</span>DTO / 検索条件 / 集計デフォルト</span>
+            </div>
+            <div class="children">
+              <div class="node">
+                <div class="node-header lvl-3" onclick="toggle(this)">
+                  <span class="toggle">▼</span>
+                  <span class="node-label">パターン1: DTO の任意項目</span>
+                </div>
+                <div class="children">
+                  <div class="detail">
+<pre><code><span class="kw">Public Class</span> EmployeeDto
+    <span class="kw">Public Property</span> Id <span class="kw">As</span> Integer
+    <span class="kw">Public Property</span> Name <span class="kw">As</span> String
+    <span class="kw">Public Property</span> HiredDate <span class="kw">As</span> Date
+    <span class="kw">Public Property</span> RetiredDate <span class="kw">As</span> Date?    <span class="com">' 在職中は Nothing</span>
+    <span class="kw">Public Property</span> ManagerId <span class="kw">As</span> Integer?   <span class="com">' 管理職本人は Nothing</span>
+<span class="kw">End Class</span></code></pre>
+                  </div>
+                </div>
+              </div>
+              <div class="node">
+                <div class="node-header lvl-3" onclick="toggle(this)">
+                  <span class="toggle">▼</span>
+                  <span class="node-label">パターン2: 検索条件の任意指定</span>
+                </div>
+                <div class="children">
+                  <div class="detail">
+<pre><code><span class="kw">Public Function</span> SearchOrders(
+    customerId <span class="kw">As</span> Integer?,
+    fromDate <span class="kw">As</span> Date?,
+    toDate <span class="kw">As</span> Date?
+) <span class="kw">As</span> List(<span class="kw">Of</span> Order)
+
+    <span class="kw">Dim</span> query = orders.AsQueryable()
+    <span class="kw">If</span> customerId.HasValue <span class="kw">Then</span> query = query.Where(<span class="kw">Function</span>(o) o.CustomerId = customerId.Value)
+    <span class="kw">If</span> fromDate.HasValue <span class="kw">Then</span> query = query.Where(<span class="kw">Function</span>(o) o.OrderDate >= fromDate.Value)
+    <span class="kw">If</span> toDate.HasValue <span class="kw">Then</span> query = query.Where(<span class="kw">Function</span>(o) o.OrderDate &lt;= toDate.Value)
+    <span class="kw">Return</span> query.ToList()
+<span class="kw">End Function</span></code></pre>
+                    <p>「指定されない条件は無視」が Nullable なら自然に書ける。</p>
+                  </div>
+                </div>
+              </div>
+              <div class="node">
+                <div class="node-header lvl-3" onclick="toggle(this)">
+                  <span class="toggle">▼</span>
+                  <span class="node-label">パターン3: 集計の安全なデフォルト</span>
+                </div>
+                <div class="children">
+                  <div class="detail">
+<pre><code><span class="kw">Dim</span> maxScore <span class="kw">As</span> Integer = scores.DefaultIfEmpty().Max().GetValueOrDefault(<span class="num">0</span>)</code></pre>
+                    <p>空コレクションで <code>Max()</code> が例外にならないよう保護。</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====================== 8. Nullable vs Nothing ====================== -->
+      <div class="node">
+        <div class="node-header lvl-1" onclick="toggle(this)">
+          <span class="toggle">▼</span>
+          <span class="node-label">8. Nullable vs Nothing 比較 【重要】</span>
+        </div>
+        <div class="children">
+
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label"><span class="tag">レイヤーが違う</span>「言葉」と「型」の比較</span>
+            </div>
+            <div class="children">
+              <div class="detail">
+                <p><strong>Nothing</strong> → VB.NETの<strong>キーワード</strong>。文脈で意味が変わる</p>
+                <p><strong>Nullable</strong> → 値型を「Null許容」にするための<strong>型(構造体)</strong></p>
+                <p>比較すると言いつつ、対等な概念ではない。Nullable は <code>Nothing</code> という言葉を<strong>借りて</strong>「値なし」を表現している。</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label"><span class="tag">Nothing の正体</span>文脈で意味が変わる万能キーワード</span>
+            </div>
+            <div class="children">
+              <div class="detail">
+<pre><code><span class="kw">Dim</span> s <span class="kw">As</span> String = Nothing      <span class="com">' Null参照(参照がない)</span>
+<span class="kw">Dim</span> i <span class="kw">As</span> Integer = Nothing     <span class="com">' 0 (Integerのデフォルト値)</span>
+<span class="kw">Dim</span> b <span class="kw">As</span> Boolean = Nothing     <span class="com">' False</span>
+<span class="kw">Dim</span> d <span class="kw">As</span> Date = Nothing        <span class="com">' #0001/01/01#</span>
+<span class="kw">Dim</span> n <span class="kw">As</span> Integer? = Nothing    <span class="com">' Nullable で「値なし」状態</span></code></pre>
+                <table>
+                  <tr><th></th><th>C#</th><th>VB.NET</th></tr>
+                  <tr><td>参照型に代入</td><td><code>null</code></td><td><code>Nothing</code></td></tr>
+                  <tr><td>値型に代入</td><td><strong>コンパイルエラー</strong></td><td><strong>OK(デフォルト値)</strong></td></tr>
+                </table>
+                <p>VB.NETでは <code>Integer = Nothing</code> が通る。「Nothing = Null」と思い込むと事故る。</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label"><span class="tag">3パターンの違い</span>同じ <code>= Nothing</code> でも結果が違う</span>
+            </div>
+            <div class="children">
+              <div class="detail">
+<pre><code><span class="com">' ケース1: 参照型</span>
+<span class="kw">Dim</span> s <span class="kw">As</span> String = Nothing
+<span class="kw">If</span> s <span class="kw">Is</span> Nothing <span class="kw">Then</span> ...        <span class="com">' 文字列が"未割当"</span>
+Console.WriteLine(s.Length)     <span class="com">' NullReferenceException</span>
+
+<span class="com">' ケース2: 通常の値型</span>
+<span class="kw">Dim</span> i <span class="kw">As</span> Integer = Nothing
+Console.WriteLine(i)            <span class="com">' 0(例外にはならない)</span>
+<span class="kw">If</span> i = Nothing <span class="kw">Then</span> ...         <span class="com">' True (i = 0 なので)</span>
+                                <span class="com">' 「未入力」のつもりが「0」と区別不能</span>
+
+<span class="com">' ケース3: Nullable</span>
+<span class="kw">Dim</span> n <span class="kw">As</span> Integer? = Nothing
+Console.WriteLine(n.HasValue)   <span class="com">' False</span>
+<span class="kw">If</span> n <span class="kw">Is</span> Nothing <span class="kw">Then</span> ...        <span class="com">' True</span>
+Console.WriteLine(n.Value)      <span class="com">' InvalidOperationException</span></code></pre>
+              </div>
+            </div>
+          </div>
+
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label"><span class="tag">「未入力」表現力</span>これが本質的な差</span>
+            </div>
+            <div class="children">
+              <div class="detail">
+<pre><code><span class="com">' 通常の値型 + Nothing → 区別不能</span>
+<span class="kw">Dim</span> age <span class="kw">As</span> Integer = Nothing      <span class="com">' 0</span>
+<span class="kw">Dim</span> score <span class="kw">As</span> Integer = <span class="num">0</span>          <span class="com">' 0 (本物の0点)</span>
+<span class="com">' age と score は等しい → 「未入力」と「ゼロ」が混ざる！</span>
+
+<span class="com">' Nullable + Nothing → 区別可能</span>
+<span class="kw">Dim</span> age <span class="kw">As</span> Integer? = Nothing     <span class="com">' HasValue=False</span>
+<span class="kw">Dim</span> score <span class="kw">As</span> Integer? = <span class="num">0</span>         <span class="com">' HasValue=True, Value=0</span></code></pre>
+                <p>業務システムでの典型例:</p>
+                <p>・「血圧 0」と「未測定」<br>・「在庫 0個」と「未入荷で数量未確定」<br>・「退職日が今日」と「在職中(退職日なし)」</p>
+                <p><strong>Nullable は意味を型レベルで分離するための仕組み</strong>。</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label"><span class="tag">判定方法</span>型ごとに正しい書き方が違う</span>
+            </div>
+            <div class="children">
+              <div class="detail">
+<pre><code><span class="com">' 参照型のNothing判定</span>
+<span class="kw">If</span> s <span class="kw">Is</span> Nothing <span class="kw">Then</span> ...         <span class="com">' ◎ 推奨</span>
+<span class="kw">If</span> String.IsNullOrEmpty(s) <span class="kw">Then</span>  <span class="com">' ◎ 空文字も含めて判定</span>
+
+<span class="com">' 値型のNothing判定 → 意味がない</span>
+<span class="kw">If</span> i <span class="kw">Is</span> Nothing <span class="kw">Then</span> ...         <span class="com">' コンパイルエラー</span>
+<span class="kw">If</span> i = Nothing <span class="kw">Then</span> ...          <span class="com">' i=0 と等価。判定として無意味</span>
+
+<span class="com">' Nullableの判定</span>
+<span class="kw">If</span> n.HasValue <span class="kw">Then</span> ...           <span class="com">' ◎ 推奨</span>
+<span class="kw">If</span> n <span class="kw">IsNot</span> Nothing <span class="kw">Then</span> ...      <span class="com">' ◎ これも可</span></code></pre>
+              </div>
+            </div>
+          </div>
+
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label"><span class="tag">アンチパターン</span>やってはいけない書き方</span>
+            </div>
+            <div class="children">
+              <div class="detail">
+<pre><code><span class="com">' NG: 値型のNothingで「未入力」を表現しようとする</span>
+<span class="kw">Dim</span> age <span class="kw">As</span> Integer = Nothing
+<span class="kw">If</span> age = <span class="num">0</span> <span class="kw">Then</span> ...    <span class="com">' 0歳の人と区別できない</span>
+
+<span class="com">' NG: 参照型をわざわざNullableにする</span>
+<span class="kw">Dim</span> s <span class="kw">As</span> Nullable(<span class="kw">Of</span> String)   <span class="com">' そもそもエラー(参照型はNullable不可)</span>
+
+<span class="com">' NG: HasValue確認なしに .Value</span>
+<span class="kw">Dim</span> v = someNullable.Value     <span class="com">' Nothing なら例外</span>
+
+<span class="com">' OK</span>
+<span class="kw">Dim</span> v = someNullable.GetValueOrDefault(<span class="num">0</span>)
+<span class="kw">Dim</span> v = <span class="kw">If</span>(someNullable, <span class="num">0</span>)</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label"><span class="tag">他言語との対比</span>C# / TypeScript</span>
+            </div>
+            <div class="children">
+              <div class="detail">
+                <table>
+                  <tr><th>概念</th><th>VB.NET</th><th>C#</th><th>TypeScript</th></tr>
+                  <tr><td>参照のNull</td><td><code>Nothing</code></td><td><code>null</code></td><td><code>null</code></td></tr>
+                  <tr><td>値型のNull許容</td><td><code>Integer?</code></td><td><code>int?</code></td><td><code>number | null</code></td></tr>
+                  <tr><td>値型に「Null相当」代入</td><td>0になる</td><td>コンパイルエラー</td><td>エラー(strict)</td></tr>
+                </table>
+                <p><strong>VB.NETの <code>Nothing</code> は「Null」というより「デフォルト値」に近い</strong>と理解すると混乱しない。</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label"><span class="tag">最終まとめ</span>一行で言うと</span>
+            </div>
+            <div class="children">
+              <div class="detail">
+                <table>
+                  <tr><th></th><th>Nothing</th><th>Nullable</th></tr>
+                  <tr><td><strong>正体</strong></td><td>キーワード(型ではない)</td><td>構造体(型)</td></tr>
+                  <tr><td><strong>役割</strong></td><td>「デフォルト値」or「Null参照」を表す万能語</td><td>値型に「値なし」状態を追加するラッパー</td></tr>
+                  <tr><td><strong>値型での意味</strong></td><td>デフォルト値(0など)</td><td>真の「値なし」</td></tr>
+                  <tr><td><strong>「未入力」表現</strong></td><td>できない(0と混ざる)</td><td>できる</td></tr>
+                </table>
+                <p style="margin-top:12px;font-size:1.05em;color:var(--highlight)"><strong>一行で</strong>: <code>Nothing</code> は「言葉」、<code>Nullable</code> は「型」。Nullable は <code>Nothing</code> という言葉を借りて、値型でも意味のある "値なし" を表現できるようにした仕組み。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====================== 9. 機能選択判断軸 ====================== -->
+      <div class="node">
+        <div class="node-header lvl-1" onclick="toggle(this)">
+          <span class="toggle">▼</span>
+          <span class="node-label">9. 機能選択の判断軸</span>
+        </div>
+        <div class="children">
+          <div class="node">
+            <div class="node-header lvl-2" onclick="toggle(this)">
+              <span class="toggle">▼</span>
+              <span class="node-label">状況別の選び方</span>
+            </div>
+            <div class="children">
+              <div class="detail">
+                <table>
+                  <tr><th>状況</th><th>選ぶもの</th></tr>
+                  <tr><td>既存クラスのプロパティを一気に詰める</td><td>オブジェクト初期化子</td></tr>
+                  <tr><td>List/Dictionary を中身付きで宣言</td><td>コレクション初期化子</td></tr>
+                  <tr><td>小さい不変データ、大量生成</td><td>Structure</td></tr>
+                  <tr><td>関数から複数値を返したい(内部用)</td><td>タプル</td></tr>
+                  <tr><td>関数を引数・戻り値・変数として扱いたい</td><td>ラムダ</td></tr>
+                  <tr><td>インスタンス不要のユーティリティ・定数</td><td>Shared</td></tr>
+                  <tr><td>値型に「未設定」を持たせたい</td><td>Nullable</td></tr>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div class="node">
+            <div class="node-header lvl-2 leaf">
+              <span class="toggle">─</span>
+              <span class="node-label"><span class="tag">3つの軸</span>「<strong>意味を型で表現</strong>(Nullable/Structure)」「<strong>ボイラープレート削減</strong>(初期化子/タプル/ラムダ)」「<strong>スコープ適切化</strong>(Shared/Structure)」</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // 折りたたみトグル
+  function toggle(headerEl) {
+    const node = headerEl.parentElement;
+    if (node.querySelector(':scope > .children')) {
+      node.classList.toggle('collapsed');
+    }
+  }
+
+  // 全展開
+  function expandAll() {
+    document.querySelectorAll('.node.collapsed').forEach(n => n.classList.remove('collapsed'));
+    updateStats();
+  }
+
+  // 全折りたたみ
+  function collapseAll() {
+    document.querySelectorAll('.node').forEach(n => {
+      if (n.querySelector(':scope > .children')) {
+        n.classList.add('collapsed');
+      }
+    });
+    updateStats();
+  }
+
+  // レベル指定で展開
+  function expandLevel(level) {
+    collapseAll();
+    document.querySelectorAll('.node').forEach(n => {
+      const header = n.querySelector(':scope > .node-header');
+      if (!header) return;
+      const cls = header.className;
+      const m = cls.match(/lvl-(\d)/);
+      if (m && parseInt(m[1]) <= level) {
+        n.classList.remove('collapsed');
+      }
+    });
+    updateStats();
+  }
+
+  // 検索ハイライト + フィルタ
+  const searchInput = document.getElementById('search');
+  searchInput.addEventListener('input', function() {
+    const q = this.value.trim().toLowerCase();
+    
+    // 既存ハイライト除去
+    document.querySelectorAll('.highlight').forEach(el => {
+      const parent = el.parentNode;
+      parent.replaceChild(document.createTextNode(el.textContent), el);
+      parent.normalize();
+    });
+
+    if (!q) {
+      // クリア時:全ノード表示
+      document.querySelectorAll('.node').forEach(n => n.classList.remove('hidden'));
+      updateStats();
+      return;
+    }
+
+    // 全部一旦隠す
+    const allNodes = document.querySelectorAll('.node');
+    allNodes.forEach(n => n.classList.add('hidden'));
+
+    // マッチノードを探して、自身+祖先+子孫を表示
+    let matchCount = 0;
+    allNodes.forEach(n => {
+      const text = n.querySelector(':scope > .node-header')?.textContent.toLowerCase() || '';
+      const detail = Array.from(n.querySelectorAll(':scope > .children > .node:not(.node) > .detail, :scope > .children .detail'))
+                          .map(d => d.textContent.toLowerCase()).join(' ');
+      const headerText = (text + ' ' + (n.querySelector(':scope > .children .detail')?.textContent.toLowerCase() || ''));
+      
+      // 自分自身のヘッダーまたは直下のdetailにマッチ
+      const selfHeader = n.querySelector(':scope > .node-header')?.textContent.toLowerCase() || '';
+      const selfDetail = Array.from(n.querySelectorAll(':scope > .detail, :scope > .children > .detail'))
+                              .filter(el => el.parentElement === n || el.parentElement.parentElement === n)
+                              .map(el => el.textContent.toLowerCase()).join(' ');
+      
+      const fullText = (selfHeader + ' ' + selfDetail);
+      if (fullText.includes(q)) {
+        matchCount++;
+        n.classList.remove('hidden');
+        n.classList.remove('collapsed');
+        // 祖先を表示
+        let parent = n.parentElement;
+        while (parent && parent.id !== 'tree') {
+          if (parent.classList.contains('node')) {
+            parent.classList.remove('hidden');
+            parent.classList.remove('collapsed');
+          }
+          parent = parent.parentElement;
+        }
+        // 子孫も表示
+        n.querySelectorAll('.node').forEach(d => d.classList.remove('hidden'));
+        
+        // ヘッダーテキストにハイライト
+        highlightInElement(n.querySelector(':scope > .node-header > .node-label'), q);
+      }
+    });
+
+    document.getElementById('stats').textContent = `${matchCount} 件ヒット`;
+  });
+
+  function highlightInElement(el, q) {
+    if (!el) return;
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+    const nodes = [];
+    let node;
+    while (node = walker.nextNode()) {
+      if (node.textContent.toLowerCase().includes(q)) {
+        nodes.push(node);
+      }
+    }
+    nodes.forEach(textNode => {
+      const text = textNode.textContent;
+      const lower = text.toLowerCase();
+      const idx = lower.indexOf(q);
+      if (idx === -1) return;
+      const before = text.substring(0, idx);
+      const match = text.substring(idx, idx + q.length);
+      const after = text.substring(idx + q.length);
+      const span = document.createElement('span');
+      span.className = 'highlight';
+      span.textContent = match;
+      const parent = textNode.parentNode;
+      parent.insertBefore(document.createTextNode(before), textNode);
+      parent.insertBefore(span, textNode);
+      parent.insertBefore(document.createTextNode(after), textNode);
+      parent.removeChild(textNode);
+    });
+  }
+
+  function updateStats() {
+    const total = document.querySelectorAll('.node').length;
+    const visible = document.querySelectorAll('.node:not(.hidden)').length;
+    document.getElementById('stats').textContent = `${total} ノード`;
+  }
+
+  // 初期表示:レベル2まで展開
+  expandLevel(2);
+</script>
+
+</body>
+</html>

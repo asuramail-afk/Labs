@@ -1,0 +1,1961 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GoF 23パターン Lab — なぜ使うかが分かる設計パターン集</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-creational { color:var(--accent); border-color:var(--accent); }
+.tag-structural { color:var(--accent2); border-color:var(--accent2); }
+.tag-behavioral { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+.ty { color:#005cc5; }
+
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+.verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+  line-height:1.7; border:1px solid; }
+.verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+.verify-before .verify-label { color:var(--error); }
+.verify-after  .verify-label { color:var(--success); }
+
+.usecase-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:6px; }
+.usecase-list { margin-left:20px; margin-bottom:10px; }
+.usecase-list li { margin-bottom:4px; }
+.usecase-trigger { background:rgba(0,92,197,.05); border-left:3px solid var(--accent);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#003d8f; margin-top:8px; }
+.usecase-trigger ul { margin:4px 0 0 20px; }
+
+.why-box { background:linear-gradient(135deg,rgba(203,36,49,.05),rgba(34,134,58,.05));
+  border:1px solid var(--border); border-left:3px solid var(--error);
+  border-radius:7px; padding:12px 14px; margin:14px 0; font-size:.88rem; line-height:1.8; }
+.why-title { font-family:var(--mono); font-size:.72rem; letter-spacing:.1em;
+  color:var(--error); font-weight:700; margin-bottom:8px; }
+.why-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.why-col { padding:10px 12px; border-radius:6px; }
+.why-problem { background:rgba(203,36,49,.08); color:#6b1a22; }
+.why-solution { background:rgba(34,134,58,.08); color:#154f1e; }
+.why-label { font-family:var(--mono); font-size:.66rem; font-weight:700;
+  letter-spacing:.1em; margin-bottom:5px; text-transform:uppercase; }
+.why-problem .why-label { color:var(--error); }
+.why-solution .why-label { color:var(--success); }
+@media (max-width:900px) { .why-grid { grid-template-columns:1fr; } }
+
+.diagram-box { background:#fff; border:1px solid var(--border); border-radius:8px;
+  padding:16px; margin:14px 0; }
+.diagram-title { font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.1em; margin-bottom:8px; font-weight:700; }
+.diagram-box pre { font-family:var(--mono); font-size:.78rem; line-height:1.45;
+  color:var(--text); white-space:pre; overflow-x:auto; }
+
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .verify { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// GoF 23 <span>Patterns</span></div>
+
+  <div class="nav-section">生成 / Creational</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">01</span>Abstract Factory</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">02</span>Builder</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">03</span>Factory Method</a>
+  <a class="nav-item" href="#lab3"><span class="nav-num">04</span>Prototype</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">05</span>Singleton</a>
+
+  <div class="nav-section">構造 / Structural</div>
+  <a class="nav-item" href="#lab5"><span class="nav-num">06</span>Adapter</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">07</span>Bridge</a>
+  <a class="nav-item" href="#lab7"><span class="nav-num">08</span>Composite</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">09</span>Decorator</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">10</span>Facade</a>
+  <a class="nav-item" href="#lab10"><span class="nav-num">11</span>Flyweight</a>
+  <a class="nav-item" href="#lab11"><span class="nav-num">12</span>Proxy</a>
+
+  <div class="nav-section">振る舞い / Behavioral</div>
+  <a class="nav-item" href="#lab12"><span class="nav-num">13</span>Chain of Resp.</a>
+  <a class="nav-item" href="#lab13"><span class="nav-num">14</span>Command</a>
+  <a class="nav-item" href="#lab14"><span class="nav-num">15</span>Interpreter</a>
+  <a class="nav-item" href="#lab15"><span class="nav-num">16</span>Iterator</a>
+  <a class="nav-item" href="#lab16"><span class="nav-num">17</span>Mediator</a>
+  <a class="nav-item" href="#lab17"><span class="nav-num">18</span>Memento</a>
+  <a class="nav-item" href="#lab18"><span class="nav-num">19</span>Observer</a>
+  <a class="nav-item" href="#lab19"><span class="nav-num">20</span>State</a>
+  <a class="nav-item" href="#lab20"><span class="nav-num">21</span>Strategy</a>
+  <a class="nav-item" href="#lab21"><span class="nav-num">22</span>Template Method</a>
+  <a class="nav-item" href="#lab22"><span class="nav-num">23</span>Visitor</a>
+</nav>
+
+<div class="hero">
+  <h1>GoF 23 デザインパターン Lab</h1>
+  <p class="subtitle">「なぜそのパターンが必要か」「どんな現場で効くか」を視覚的に理解する</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次（カテゴリ別）</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">01</span>Abstract Factory<span style="margin-left:auto;font-size:.72rem;color:var(--accent)">生成</span></a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">02</span>Builder<span style="margin-left:auto;font-size:.72rem;color:var(--accent)">生成</span></a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">03</span>Factory Method<span style="margin-left:auto;font-size:.72rem;color:var(--accent)">生成</span></a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">04</span>Prototype<span style="margin-left:auto;font-size:.72rem;color:var(--accent)">生成</span></a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">05</span>Singleton<span style="margin-left:auto;font-size:.72rem;color:var(--accent)">生成</span></a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">06</span>Adapter<span style="margin-left:auto;font-size:.72rem;color:var(--accent2)">構造</span></a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">07</span>Bridge<span style="margin-left:auto;font-size:.72rem;color:var(--accent2)">構造</span></a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">08</span>Composite<span style="margin-left:auto;font-size:.72rem;color:var(--accent2)">構造</span></a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">09</span>Decorator<span style="margin-left:auto;font-size:.72rem;color:var(--accent2)">構造</span></a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">10</span>Facade<span style="margin-left:auto;font-size:.72rem;color:var(--accent2)">構造</span></a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">11</span>Flyweight<span style="margin-left:auto;font-size:.72rem;color:var(--accent2)">構造</span></a>
+    <a class="toc-item" href="#lab11"><span class="toc-num">12</span>Proxy<span style="margin-left:auto;font-size:.72rem;color:var(--accent2)">構造</span></a>
+    <a class="toc-item" href="#lab12"><span class="toc-num">13</span>Chain of Resp.<span style="margin-left:auto;font-size:.72rem;color:var(--accent3)">振る舞い</span></a>
+    <a class="toc-item" href="#lab13"><span class="toc-num">14</span>Command<span style="margin-left:auto;font-size:.72rem;color:var(--accent3)">振る舞い</span></a>
+    <a class="toc-item" href="#lab14"><span class="toc-num">15</span>Interpreter<span style="margin-left:auto;font-size:.72rem;color:var(--accent3)">振る舞い</span></a>
+    <a class="toc-item" href="#lab15"><span class="toc-num">16</span>Iterator<span style="margin-left:auto;font-size:.72rem;color:var(--accent3)">振る舞い</span></a>
+    <a class="toc-item" href="#lab16"><span class="toc-num">17</span>Mediator<span style="margin-left:auto;font-size:.72rem;color:var(--accent3)">振る舞い</span></a>
+    <a class="toc-item" href="#lab17"><span class="toc-num">18</span>Memento<span style="margin-left:auto;font-size:.72rem;color:var(--accent3)">振る舞い</span></a>
+    <a class="toc-item" href="#lab18"><span class="toc-num">19</span>Observer<span style="margin-left:auto;font-size:.72rem;color:var(--accent3)">振る舞い</span></a>
+    <a class="toc-item" href="#lab19"><span class="toc-num">20</span>State<span style="margin-left:auto;font-size:.72rem;color:var(--accent3)">振る舞い</span></a>
+    <a class="toc-item" href="#lab20"><span class="toc-num">21</span>Strategy<span style="margin-left:auto;font-size:.72rem;color:var(--accent3)">振る舞い</span></a>
+    <a class="toc-item" href="#lab21"><span class="toc-num">22</span>Template Method<span style="margin-left:auto;font-size:.72rem;color:var(--accent3)">振る舞い</span></a>
+    <a class="toc-item" href="#lab22"><span class="toc-num">23</span>Visitor<span style="margin-left:auto;font-size:.72rem;color:var(--accent3)">振る舞い</span></a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ============ Lab 0: Abstract Factory ============ -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>Abstract Factory — 関連オブジェクトをセットで生成</h3>
+    <span class="lab-tag tag-creational">生成</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      互いに関連する複数の部品を「整合性の取れたセット」で作るためのパターン。<code>WindowsButton</code> と <code>MacCheckbox</code> が混ざるような事故を構造的に防ぐ。
+    </p>
+
+    <div class="why-box">
+      <div class="why-title">⚡ なぜこのパターンが必要か</div>
+      <div class="why-grid">
+        <div class="why-col why-problem">
+          <div class="why-label">▼ 問題</div>
+          OS別UIを作るとき、<code>if (os === 'win') new WinButton()</code> のような分岐を<strong>ボタン・チェックボックス・ダイアログそれぞれで毎回</strong>書く羽目になる。OSが増えると分岐も増殖し、混在事故も起きる。
+        </div>
+        <div class="why-col why-solution">
+          <div class="why-label">▼ 解決</div>
+          「OS別ファクトリ」をまず1つ選び、それ以降は<code>factory.createXxx()</code>で部品を作る。利用側はOS分岐を1箇所だけで済ませ、整合性は型で守られる。
+        </div>
+      </div>
+    </div>
+
+    <div class="diagram-box">
+      <div class="diagram-title">▼ 構造イメージ</div>
+<pre>             ┌──────────────┐
+             │  UIFactory   │  ← 抽象IF
+             └──────┬───────┘
+              ┌─────┴─────┐
+       ┌──────▼─────┐ ┌───▼────────┐
+       │WinFactory  │ │MacFactory  │
+       └────────────┘ └────────────┘
+              │              │
+       Button+Checkbox  Button+Checkbox  ← セットで揃う</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">interface</span> <span class="ty">Button</span>   { render(): <span class="ty">void</span>; }
+<span class="kw">interface</span> <span class="ty">Checkbox</span> { render(): <span class="ty">void</span>; }
+
+<span class="kw">interface</span> <span class="ty">UIFactory</span> {
+  createButton():   <span class="ty">Button</span>;
+  createCheckbox(): <span class="ty">Checkbox</span>;
+}
+
+<span class="kw">class</span> <span class="ty">WinFactory</span> <span class="kw">implements</span> <span class="ty">UIFactory</span> {
+  createButton()   { <span class="kw">return</span> { render: () =&gt; console.log(<span class="str">"[Win Button]"</span>) }; }
+  createCheckbox() { <span class="kw">return</span> { render: () =&gt; console.log(<span class="str">"[Win Check]"</span>) }; }
+}
+<span class="kw">class</span> <span class="ty">MacFactory</span> <span class="kw">implements</span> <span class="ty">UIFactory</span> {
+  createButton()   { <span class="kw">return</span> { render: () =&gt; console.log(<span class="str">"[Mac Button]"</span>) }; }
+  createCheckbox() { <span class="kw">return</span> { render: () =&gt; console.log(<span class="str">"[Mac Check]"</span>) }; }
+}
+
+<span class="cm">// OS分岐は「ファクトリ選択」の1箇所だけ</span>
+<span class="kw">const</span> factory: <span class="ty">UIFactory</span> = isMac ? <span class="kw">new</span> <span class="ty">MacFactory</span>() : <span class="kw">new</span> <span class="ty">WinFactory</span>();
+factory.createButton().render();
+factory.createCheckbox().render();</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 1: Builder ============ -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>Builder — 複雑なオブジェクトを段階的に組み立てる</h3>
+    <span class="lab-tag tag-creational">生成</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      引数が10個もあるコンストラクタを「組み立て手順」に変換する。順番・必須/任意・読みやすさを取り戻すパターン。
+    </p>
+
+    <div class="why-box">
+      <div class="why-title">⚡ なぜこのパターンが必要か</div>
+      <div class="why-grid">
+        <div class="why-col why-problem">
+          <div class="why-label">▼ 問題</div>
+          <code>new Pizza("thin", "tomato", true, false, true, null, "regular")</code> — <strong>引数の意味が読めない</strong>。順番を間違えても型が通ってしまうとバグが残る。
+        </div>
+        <div class="why-col why-solution">
+          <div class="why-label">▼ 解決</div>
+          チェーン形式で「何を追加するか」を名前付きで指定。任意項目はメソッド呼び出しの有無で表現でき、可読性が劇的に向上する。
+        </div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">class</span> <span class="ty">Pizza</span> {
+  <span class="kw">constructor</span>(
+    <span class="kw">public</span> dough:    <span class="ty">string</span>,
+    <span class="kw">public</span> sauce:    <span class="ty">string</span>,
+    <span class="kw">public</span> toppings: <span class="ty">string</span>[]
+  ) {}
+}
+
+<span class="kw">class</span> <span class="ty">PizzaBuilder</span> {
+  <span class="kw">private</span> toppings: <span class="ty">string</span>[] = [];
+  <span class="kw">constructor</span>(<span class="kw">private</span> dough: <span class="ty">string</span>, <span class="kw">private</span> sauce: <span class="ty">string</span>) {}
+  addTopping(t: <span class="ty">string</span>) { <span class="kw">this</span>.toppings.push(t); <span class="kw">return</span> <span class="kw">this</span>; }
+  build() { <span class="kw">return</span> <span class="kw">new</span> <span class="ty">Pizza</span>(<span class="kw">this</span>.dough, <span class="kw">this</span>.sauce, <span class="kw">this</span>.toppings); }
+}
+
+<span class="cm">// 何を作っているか自明</span>
+<span class="kw">const</span> pizza = <span class="kw">new</span> <span class="ty">PizzaBuilder</span>(<span class="str">"thin"</span>, <span class="str">"tomato"</span>)
+  .addTopping(<span class="str">"cheese"</span>)
+  .addTopping(<span class="str">"basil"</span>)
+  .build();</pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 こんな現場で効く</div>
+      <ul class="usecase-list">
+        <li><strong>SQLクエリビルダ</strong>（Knex.js / Prisma）— <code>.select().where().orderBy()</code> の形式</li>
+        <li><strong>HTTPリクエスト構築</strong>（OkHttp、axios のリクエスト組み立て）</li>
+        <li><strong>テストデータの組立</strong>（Builderパターンでテストフィクスチャを再利用）</li>
+        <li><strong>OutSystems の Server Action</strong>で多数の任意Inputを持つロジック呼び出しのラッパー</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>こう見えたら使える候補:</strong>
+        <ul>
+          <li>コンストラクタに boolean が4個以上並んでいる</li>
+          <li><code>new X(null, null, "a", null, ...)</code> で null を「飛ばし」に使っている</li>
+          <li>同じクラスを「微妙に違う初期状態」で何度も作っている</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 2: Factory Method ============ -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>Factory Method — 生成だけサブクラスに任せる</h3>
+    <span class="lab-tag tag-creational">生成</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      アルゴリズムの<strong>骨格は親クラスが持ち</strong>、その中で「何を生成するか」だけサブクラスに委譲する。Template Method の生成版とも言える。
+    </p>
+
+    <div class="why-box">
+      <div class="why-title">⚡ なぜこのパターンが必要か</div>
+      <div class="why-grid">
+        <div class="why-col why-problem">
+          <div class="why-label">▼ 問題</div>
+          基底クラスで「ボタンをレンダリングする」共通処理を書きたいが、ボタンの<strong>具体クラスは派生先によって違う</strong>。共通処理に <code>new WinButton()</code> を直書きすると派生で再利用できない。
+        </div>
+        <div class="why-col why-solution">
+          <div class="why-label">▼ 解決</div>
+          基底に「<code>createButton()</code>」という<strong>抽象メソッドの穴</strong>を空け、共通処理はそれを呼ぶだけにする。サブクラスが穴を埋める形で具体生成を担当。
+        </div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">abstract class</span> <span class="ty">Dialog</span> {
+  <span class="cm">// 共通処理 — 親が骨格を持つ</span>
+  render() {
+    <span class="kw">const</span> button = <span class="kw">this</span>.createButton();  <span class="cm">// ← サブクラスが決める</span>
+    button.render();
+  }
+  <span class="kw">protected abstract</span> createButton(): <span class="ty">Button</span>;
+}
+
+<span class="kw">class</span> <span class="ty">WinDialog</span> <span class="kw">extends</span> <span class="ty">Dialog</span> {
+  <span class="kw">protected</span> createButton() { <span class="kw">return</span> { render: () =&gt; console.log(<span class="str">"[Win]"</span>) }; }
+}
+<span class="kw">class</span> <span class="ty">WebDialog</span> <span class="kw">extends</span> <span class="ty">Dialog</span> {
+  <span class="kw">protected</span> createButton() { <span class="kw">return</span> { render: () =&gt; console.log(<span class="str">"[HTML]"</span>) }; }
+}
+
+<span class="kw">new</span> <span class="ty">WinDialog</span>().render(); <span class="cm">// [Win]   render()自体は親のまま再利用</span>
+<span class="kw">new</span> <span class="ty">WebDialog</span>().render(); <span class="cm">// [HTML]</span></pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>Abstract Factory との違い</strong>: Abstract Factory は「複数部品をセットで作る独立クラス」、Factory Method は「親クラスのメソッドの一部を委譲する」。前者は構成（コンポジション）、後者は継承を使う。
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 3: Prototype ============ -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>Prototype — 既存インスタンスを複製して作る</h3>
+    <span class="lab-tag tag-creational">生成</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      コンストラクタで一から組み立てるのではなく、<strong>動いている雛形を <code>clone()</code> でコピー</strong>して新しいオブジェクトを得るパターン。
+    </p>
+
+    <div class="why-box">
+      <div class="why-title">⚡ なぜこのパターンが必要か</div>
+      <div class="why-grid">
+        <div class="why-col why-problem">
+          <div class="why-label">▼ 問題</div>
+          初期化に <strong>DBアクセス・ネットワーク取得・複雑な計算</strong>が必要なオブジェクトを毎回 new で作ると遅い。また「現在の状態を保持したまま少しだけ違うコピーが欲しい」が new では再現できない。
+        </div>
+        <div class="why-col why-solution">
+          <div class="why-label">▼ 解決</div>
+          「ひとまず1つ作って雛形にする → 以降は <code>clone()</code> で複製」。重い初期化を1回で済ませ、状態も丸ごと引き継げる。
+        </div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">class</span> <span class="ty">Shape</span> {
+  <span class="kw">constructor</span>(
+    <span class="kw">public</span> x: <span class="ty">number</span>, <span class="kw">public</span> y: <span class="ty">number</span>, <span class="kw">public</span> color: <span class="ty">string</span>
+  ) {}
+  clone(): <span class="ty">Shape</span> {
+    <span class="kw">return</span> <span class="kw">new</span> <span class="ty">Shape</span>(<span class="kw">this</span>.x, <span class="kw">this</span>.y, <span class="kw">this</span>.color);
+  }
+}
+
+<span class="kw">const</span> original = <span class="kw">new</span> <span class="ty">Shape</span>(<span class="num">10</span>, <span class="num">20</span>, <span class="str">"red"</span>);
+<span class="kw">const</span> copy = original.clone();
+copy.x = <span class="num">100</span>; <span class="cm">// 元には影響しない（独立した別オブジェクト）</span></pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 こんな現場で効く</div>
+      <ul class="usecase-list">
+        <li><strong>図形ツール（Figma / PowerPoint）</strong>でオブジェクトをコピー&ペースト</li>
+        <li><strong>ゲームの敵キャラ大量生成</strong>（雛形1体を作ってclone）</li>
+        <li><strong>テストデータ</strong>: 1つのベースを作って属性を少し変えたバリエーションを作る</li>
+        <li><strong>複雑な設定オブジェクト</strong>のテンプレ → 案件ごとに微調整</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>こう見えたら使える候補:</strong>
+        <ul>
+          <li>初期化処理が重い／コンストラクタで外部リソースを叩いている</li>
+          <li>「同じようなインスタンスを大量に」作りたい</li>
+          <li>「実行中の状態」を持ったままコピーしたい（履歴のスナップショット等）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 4: Singleton ============ -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>Singleton — インスタンスを1つに限定</h3>
+    <span class="lab-tag tag-creational">生成</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      システム全体で1つだけ存在すべきオブジェクト（設定・ロガー・コネクションプール等）を、<strong>誰がどこから呼んでも同じインスタンス</strong>になるよう保証する。
+    </p>
+
+    <div class="why-box">
+      <div class="why-title">⚡ なぜこのパターンが必要か</div>
+      <div class="why-grid">
+        <div class="why-col why-problem">
+          <div class="why-label">▼ 問題</div>
+          設定オブジェクトが複数できると、<strong>あるコードは古い設定を見て、別のコードは新しい設定を見る</strong>という不整合が発生。ロガーが複数だとログが混在し、コネクションプールが複数だとリソース枯渇に直結する。
+        </div>
+        <div class="why-col why-solution">
+          <div class="why-label">▼ 解決</div>
+          コンストラクタを <code>private</code> にして外部からの new を禁止。<code>getInstance()</code> 経由でのみ取得できるようにし、初回呼び出し時に1つだけ作って以降は使い回す。
+        </div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">class</span> <span class="ty">Config</span> {
+  <span class="kw">private static</span> instance: <span class="ty">Config</span>;
+  <span class="kw">private</span> <span class="kw">constructor</span>(<span class="kw">public</span> env = <span class="str">"production"</span>) {}
+
+  <span class="kw">static</span> getInstance(): <span class="ty">Config</span> {
+    <span class="kw">if</span> (!<span class="ty">Config</span>.instance) <span class="ty">Config</span>.instance = <span class="kw">new</span> <span class="ty">Config</span>();
+    <span class="kw">return</span> <span class="ty">Config</span>.instance;
+  }
+}
+
+<span class="kw">const</span> a = <span class="ty">Config</span>.getInstance();
+<span class="kw">const</span> b = <span class="ty">Config</span>.getInstance();
+console.log(a === b); <span class="cm">// true — 同じインスタンス</span>
+<span class="cm">// new Config() はコンパイルエラー（外部から作れない）</span></pre>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>使いすぎ注意</strong>: 便利だが「グローバル変数の言い換え」になりがち。テストでモックしづらい・依存関係が見えなくなる、という副作用がある。<strong>本当に1つで困らないもの</strong>に限定し、迷ったら DI（依存性注入）を検討する。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 こんな現場で効く</div>
+      <ul class="usecase-list">
+        <li><strong>アプリ全体の設定</strong>（環境変数の集約、API URL 等）</li>
+        <li><strong>ロガー</strong>（log4j, winston のデフォルトインスタンス）</li>
+        <li><strong>DBコネクションプール</strong>（重複作成を絶対に避けたい）</li>
+        <li><strong>キャッシュマネージャ</strong>（複数あったらキャッシュの意味がない）</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 5: Adapter ============ -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>Adapter — 互換性のないIFを変換する</h3>
+    <span class="lab-tag tag-structural">構造</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      既存クラスのIFが「期待される形」と違うとき、間に変換層を挟んで使えるようにする。<strong>レガシーAPIを新規システムから呼ぶ</strong>典型的な現場で使う。
+    </p>
+
+    <div class="why-box">
+      <div class="why-title">⚡ なぜこのパターンが必要か</div>
+      <div class="why-grid">
+        <div class="why-col why-problem">
+          <div class="why-label">▼ 問題</div>
+          新システムは <code>print(text)</code> で印刷したいが、既存のレガシークラスは <code>printLegacy(text, true, "A4", null)</code> という古いIF。<strong>レガシーを書き換えると影響範囲が広すぎる</strong>。
+        </div>
+        <div class="why-col why-solution">
+          <div class="why-label">▼ 解決</div>
+          新IFに従う <code>PrinterAdapter</code> を作り、内部で旧クラスを呼び出す。新規コードは新IFだけ知っていればよく、レガシーは無傷のまま。
+        </div>
+      </div>
+    </div>
+
+    <div class="diagram-box">
+      <div class="diagram-title">▼ Adapter の役割（変換コンセント）</div>
+<pre>新規システム                       既存レガシー
+   │                                    │
+   │  ModernPrinter.print()             │
+   ├──────────► ┌──────────────┐ ──────►│
+                │   Adapter    │        │  printLegacy()
+                └──────────────┘ ◄──────┤
+              "新IFで受けて旧IFを呼ぶ"</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 既存のレガシークラス（変更不可）</span>
+<span class="kw">class</span> <span class="ty">OldPrinter</span> {
+  printLegacy(text: <span class="ty">string</span>) { console.log(<span class="str">"OLD: "</span> + text); }
+}
+
+<span class="cm">// 新システムが期待するIF</span>
+<span class="kw">interface</span> <span class="ty">ModernPrinter</span> { print(text: <span class="ty">string</span>): <span class="ty">void</span>; }
+
+<span class="cm">// 変換層</span>
+<span class="kw">class</span> <span class="ty">PrinterAdapter</span> <span class="kw">implements</span> <span class="ty">ModernPrinter</span> {
+  <span class="kw">constructor</span>(<span class="kw">private</span> old: <span class="ty">OldPrinter</span>) {}
+  print(text: <span class="ty">string</span>) { <span class="kw">this</span>.old.printLegacy(text); }
+}
+
+<span class="kw">const</span> printer: <span class="ty">ModernPrinter</span> = <span class="kw">new</span> <span class="ty">PrinterAdapter</span>(<span class="kw">new</span> <span class="ty">OldPrinter</span>());
+printer.print(<span class="str">"hello"</span>); <span class="cm">// OLD: hello</span></pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 こんな現場で効く</div>
+      <ul class="usecase-list">
+        <li><strong>既存COBOL/レガシーDBラッパー</strong>を REST API に見せかける</li>
+        <li><strong>外部SDKの差し替え</strong>: 決済/SMS/地図APIを業者変更しても呼び出し側を変えない</li>
+        <li><strong>OutSystems Integration Studio</strong>で外部DB/APIをエンティティ化する考え方そのもの</li>
+        <li><strong>テストでのモック</strong>: 本物APIをAdapter経由にしておき、テスト時は別実装を差す</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>こう見えたら使える候補:</strong>
+        <ul>
+          <li>「ラッパー」「ブリッジ」と呼ばれている自作クラスがある</li>
+          <li>外部ライブラリの呼び出しが業務コード中に散らばっている</li>
+          <li>サービス業者を変える話が出て、影響調査が膨大</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 6: Bridge ============ -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>Bridge — 抽象と実装を分離して掛け算を足し算に</h3>
+    <span class="lab-tag tag-structural">構造</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      「2軸で増えるもの」（図形 × 描画API、通知種類 × 送信手段）をクラスの掛け算で爆発させず、独立した2階層に切り分けるパターン。
+    </p>
+
+    <div class="why-box">
+      <div class="why-title">⚡ なぜこのパターンが必要か</div>
+      <div class="why-grid">
+        <div class="why-col why-problem">
+          <div class="why-label">▼ 問題</div>
+          図形 (Circle/Square/Triangle) × 描画API (Canvas/SVG/WebGL) を素直に継承で書くと <strong>3 × 3 = 9 クラス必要</strong>。新しい図形や API が増えるたびに掛け算で爆発する。
+        </div>
+        <div class="why-col why-solution">
+          <div class="why-label">▼ 解決</div>
+          図形階層と描画API階層を分離し、図形が描画APIを「持つ」関係にする。<strong>3 + 3 = 6 クラスで済み</strong>、組み合わせは実行時に自由。
+        </div>
+      </div>
+    </div>
+
+    <div class="diagram-box">
+      <div class="diagram-title">▼ クラス数の比較</div>
+<pre>【継承だけで書く】 = 9クラス
+  CircleCanvas, CircleSVG, CircleWebGL,
+  SquareCanvas, SquareSVG, SquareWebGL,
+  TriangleCanvas, TriangleSVG, TriangleWebGL
+
+【Bridge】 = 6クラス + 1関係
+  Shape階層:    Circle / Square / Triangle
+  Renderer階層: Canvas / SVG / WebGL
+  Shape ──持つ──► Renderer  （実行時に組合せ）</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">interface</span> <span class="ty">Renderer</span> { drawCircle(r: <span class="ty">number</span>): <span class="ty">void</span>; }
+
+<span class="kw">class</span> <span class="ty">CanvasRenderer</span> <span class="kw">implements</span> <span class="ty">Renderer</span> {
+  drawCircle(r: <span class="ty">number</span>) { console.log(<span class="str">`Canvas: r=${r}`</span>); }
+}
+<span class="kw">class</span> <span class="ty">SVGRenderer</span> <span class="kw">implements</span> <span class="ty">Renderer</span> {
+  drawCircle(r: <span class="ty">number</span>) { console.log(<span class="str">`SVG: &lt;circle r=${r}/&gt;`</span>); }
+}
+
+<span class="kw">class</span> <span class="ty">Circle</span> {
+  <span class="kw">constructor</span>(<span class="kw">private</span> renderer: <span class="ty">Renderer</span>, <span class="kw">private</span> radius: <span class="ty">number</span>) {}
+  draw() { <span class="kw">this</span>.renderer.drawCircle(<span class="kw">this</span>.radius); }
+}
+
+<span class="cm">// 同じCircleでも描画方法は実行時に選べる</span>
+<span class="kw">new</span> <span class="ty">Circle</span>(<span class="kw">new</span> <span class="ty">SVGRenderer</span>(),    <span class="num">5</span>).draw();
+<span class="kw">new</span> <span class="ty">Circle</span>(<span class="kw">new</span> <span class="ty">CanvasRenderer</span>(), <span class="num">5</span>).draw();</pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 こんな現場で効く</div>
+      <ul class="usecase-list">
+        <li><strong>マルチデバイス UI</strong>: 同じ View が iOS/Android/Web で動く</li>
+        <li><strong>通知システム</strong>: メッセージ種類 × 送信手段（メール/SMS/Push/Slack）</li>
+        <li><strong>OS抽象化レイヤー</strong>: ファイル操作 × OS（Windows/Linux/Mac）</li>
+        <li><strong>テスト</strong>: 本番Renderer と モックRenderer を実行時に差し替え</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 7: Composite ============ -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>Composite — 木構造を「単体と同じように」扱う</h3>
+    <span class="lab-tag tag-structural">構造</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ファイルとフォルダ、UIコンポーネントとそのコンテナのように、<strong>「単体」と「集合」を同じIFで扱える</strong>ようにするパターン。利用側は中身が単体か集合かを気にしなくてよい。
+    </p>
+
+    <div class="why-box">
+      <div class="why-title">⚡ なぜこのパターンが必要か</div>
+      <div class="why-grid">
+        <div class="why-col why-problem">
+          <div class="why-label">▼ 問題</div>
+          フォルダのサイズを計算するのに、利用側が <code>if (item is Folder) {再帰} else {file.size}</code> という条件分岐を毎回書く必要がある。階層が深くなると条件分岐がコード中に散らばる。
+        </div>
+        <div class="why-col why-solution">
+          <div class="why-label">▼ 解決</div>
+          File と Folder の両方が同じ <code>size()</code> メソッドを持つ。Folder は内部で子の <code>size()</code> を合計するだけ。<strong>利用側は <code>node.size()</code> を呼ぶだけで再帰が起きる</strong>。
+        </div>
+      </div>
+    </div>
+
+    <div class="diagram-box">
+      <div class="diagram-title">▼ 構造（File と Folder が同じIF）</div>
+<pre>     FileNode (size()を持つ)
+       ├── File   ── 自分のbyte数を返す
+       └── Folder ── 子のsize()を全部足す
+                      ├── File
+                      ├── File
+                      └── Folder ← 入れ子も同じIF
+                            └── File</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">interface</span> <span class="ty">FileNode</span> { size(): <span class="ty">number</span>; }
+
+<span class="kw">class</span> <span class="ty">File</span> <span class="kw">implements</span> <span class="ty">FileNode</span> {
+  <span class="kw">constructor</span>(<span class="kw">private</span> bytes: <span class="ty">number</span>) {}
+  size() { <span class="kw">return</span> <span class="kw">this</span>.bytes; }
+}
+
+<span class="kw">class</span> <span class="ty">Folder</span> <span class="kw">implements</span> <span class="ty">FileNode</span> {
+  <span class="kw">private</span> children: <span class="ty">FileNode</span>[] = [];
+  add(node: <span class="ty">FileNode</span>) { <span class="kw">this</span>.children.push(node); }
+  size() { <span class="kw">return</span> <span class="kw">this</span>.children.reduce((s, c) =&gt; s + c.size(), <span class="num">0</span>); }
+}
+
+<span class="kw">const</span> root = <span class="kw">new</span> <span class="ty">Folder</span>();
+root.add(<span class="kw">new</span> <span class="ty">File</span>(<span class="num">100</span>));
+<span class="kw">const</span> sub = <span class="kw">new</span> <span class="ty">Folder</span>();
+sub.add(<span class="kw">new</span> <span class="ty">File</span>(<span class="num">200</span>));
+root.add(sub);
+console.log(root.size()); <span class="cm">// 300 — 階層を意識しなくて済む</span></pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 こんな現場で効く</div>
+      <ul class="usecase-list">
+        <li><strong>React/Vue のコンポーネントツリー</strong>: 各ノードが render() を持つ</li>
+        <li><strong>Wijmo FlexGrid の階層行・グルーピング</strong>（Tomさんの実務領域）</li>
+        <li><strong>組織図・カテゴリツリー</strong>: 部署も社員も同じIFで「人数」を返す</li>
+        <li><strong>HTML DOM</strong>: Element と TextNode が同じく Node を継承</li>
+        <li><strong>メニュー構造</strong>: 単一メニュー項目とサブメニューを同じく扱う</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 8: Decorator ============ -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>Decorator — 機能をラップで積み重ねる</h3>
+    <span class="lab-tag tag-structural">構造</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      継承の代わりに「ラップして機能を追加」する。<code>SugarMilkEspresso</code> のような<strong>組み合わせ爆発を避け</strong>、必要な機能だけ実行時に積めるパターン。
+    </p>
+
+    <div class="why-box">
+      <div class="why-title">⚡ なぜこのパターンが必要か</div>
+      <div class="why-grid">
+        <div class="why-col why-problem">
+          <div class="why-label">▼ 問題</div>
+          コーヒー × ミルク × 砂糖 × ホイップ … を継承で表現すると <code>SugarMilkEspresso</code>, <code>WhipMilkEspresso</code> のように <strong>組み合わせの数だけクラスが必要</strong>になる（2^N クラス問題）。
+        </div>
+        <div class="why-col why-solution">
+          <div class="why-label">▼ 解決</div>
+          各機能を「コーヒーを受け取り、自分の機能を足してまた返す」ラッパーとして定義。<strong>ロシアの入れ子人形のように積む</strong>ことで任意の組み合わせが作れる。
+        </div>
+      </div>
+    </div>
+
+    <div class="diagram-box">
+      <div class="diagram-title">▼ ラップの積み重ね</div>
+<pre>  Espresso (300円)
+    ↓ MilkDecorator がラップ → cost = 元 + 50
+    ↓ SugarDecorator がラップ → cost = 元 + 20
+  最終: SugarDecorator(MilkDecorator(Espresso))
+       cost() = 300 + 50 + 20 = 370</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">interface</span> <span class="ty">Coffee</span> { cost(): <span class="ty">number</span>; }
+
+<span class="kw">class</span> <span class="ty">Espresso</span> <span class="kw">implements</span> <span class="ty">Coffee</span> {
+  cost() { <span class="kw">return</span> <span class="num">300</span>; }
+}
+
+<span class="kw">class</span> <span class="ty">MilkDecorator</span> <span class="kw">implements</span> <span class="ty">Coffee</span> {
+  <span class="kw">constructor</span>(<span class="kw">private</span> coffee: <span class="ty">Coffee</span>) {}
+  cost() { <span class="kw">return</span> <span class="kw">this</span>.coffee.cost() + <span class="num">50</span>; }
+}
+
+<span class="kw">class</span> <span class="ty">SugarDecorator</span> <span class="kw">implements</span> <span class="ty">Coffee</span> {
+  <span class="kw">constructor</span>(<span class="kw">private</span> coffee: <span class="ty">Coffee</span>) {}
+  cost() { <span class="kw">return</span> <span class="kw">this</span>.coffee.cost() + <span class="num">20</span>; }
+}
+
+<span class="kw">const</span> drink = <span class="kw">new</span> <span class="ty">SugarDecorator</span>(<span class="kw">new</span> <span class="ty">MilkDecorator</span>(<span class="kw">new</span> <span class="ty">Espresso</span>()));
+console.log(drink.cost()); <span class="cm">// 370</span></pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 こんな現場で効く</div>
+      <ul class="usecase-list">
+        <li><strong>Java I/O</strong>: <code>BufferedReader(InputStreamReader(FileInputStream))</code></li>
+        <li><strong>HTTPミドルウェア</strong>: 認証 → ログ → 圧縮 → ハンドラ の積み重ね</li>
+        <li><strong>React の HOC（高階コンポーネント）</strong>: <code>withAuth(withLogging(MyComponent))</code></li>
+        <li><strong>ロギング/メトリクス</strong>を既存サービスに後付け追加（既存IFを保ったまま）</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>こう見えたら使える候補:</strong>
+        <ul>
+          <li>機能の有無の組み合わせで継承クラスが指数的に増えている</li>
+          <li>「あるメソッドの前後でログ取りたい」など横断的関心事が散らばる</li>
+          <li>機能を実行時に動的にON/OFFしたい</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 9: Facade ============ -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>Facade — 複雑な内部に「統一窓口」を置く</h3>
+    <span class="lab-tag tag-structural">構造</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      複数のクラスを協調させて使う必要がある複雑なサブシステムに対し、<strong>1つだけシンプルな入口</strong>を用意して利用側を楽にする。
+    </p>
+
+    <div class="why-box">
+      <div class="why-title">⚡ なぜこのパターンが必要か</div>
+      <div class="why-grid">
+        <div class="why-col why-problem">
+          <div class="why-label">▼ 問題</div>
+          PC を起動するには <code>cpu.freeze() → memory.load() → disk.read() → cpu.jump() → cpu.execute()</code> の<strong>正しい順序を全員が知っている必要</strong>がある。順序を間違えると壊れるし、知識の重複が発生する。
+        </div>
+        <div class="why-col why-solution">
+          <div class="why-label">▼ 解決</div>
+          <code>ComputerFacade.start()</code> 1つを呼べば中で正しい手順が走る。利用側は内部構造を知る必要がなく、<strong>呼び出し側のコードがスッキリ</strong>する。
+        </div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// サブシステム（複雑な内部）</span>
+<span class="kw">class</span> <span class="ty">CPU</span>    { freeze(){} jump(a:<span class="ty">number</span>){} execute(){} }
+<span class="kw">class</span> <span class="ty">Memory</span> { load(a:<span class="ty">number</span>, d:<span class="ty">string</span>){} }
+<span class="kw">class</span> <span class="ty">Disk</span>   { read(): <span class="ty">string</span> { <span class="kw">return</span> <span class="str">"OS"</span>; } }
+
+<span class="cm">// Facade — 統一窓口</span>
+<span class="kw">class</span> <span class="ty">ComputerFacade</span> {
+  <span class="kw">private</span> cpu = <span class="kw">new</span> <span class="ty">CPU</span>();
+  <span class="kw">private</span> mem = <span class="kw">new</span> <span class="ty">Memory</span>();
+  <span class="kw">private</span> disk = <span class="kw">new</span> <span class="ty">Disk</span>();
+  start() {
+    <span class="kw">this</span>.cpu.freeze();
+    <span class="kw">this</span>.mem.load(<span class="num">0</span>, <span class="kw">this</span>.disk.read());
+    <span class="kw">this</span>.cpu.jump(<span class="num">0</span>);
+    <span class="kw">this</span>.cpu.execute();
+  }
+}
+
+<span class="kw">new</span> <span class="ty">ComputerFacade</span>().start(); <span class="cm">// 1行で完結</span></pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 こんな現場で効く</div>
+      <ul class="usecase-list">
+        <li><strong>OutSystems の Server Action</strong> — まさに Facade そのもの（複数のEntityアクセスをラップ）</li>
+        <li><strong>BFF（Backend for Frontend）</strong>: 画面が必要とする処理を1エンドポイントに集約</li>
+        <li><strong>SDK のトップレベル API</strong>: <code>stripe.charges.create()</code> 内部で複数HTTPコール</li>
+        <li><strong>レガシーシステムの近代化</strong>: 古い複雑なコード群の前に新規Facadeを置く</li>
+      </ul>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>Adapter との違い</strong>: Adapter は「IFの形を変える」（変換）。Facade は「複数のクラスを束ねる」（集約）。Adapter は <strong>既存IFと新IFの1:1変換</strong>、Facade は <strong>複数のIFの上に新しい単純な口を作る</strong>。
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 10: Flyweight ============ -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">11</div>
+    <h3>Flyweight — 共有でメモリを節約する</h3>
+    <span class="lab-tag tag-structural">構造</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      同じデータを大量に持つ場合、<strong>共通部分を1つだけ作って使い回す</strong>。文字フォントのグリフ、ゲームの弾、地図の樹木など、数万単位で同じものを扱う場面で効く。
+    </p>
+
+    <div class="why-box">
+      <div class="why-title">⚡ なぜこのパターンが必要か</div>
+      <div class="why-grid">
+        <div class="why-col why-problem">
+          <div class="why-label">▼ 問題</div>
+          ゲームで同じ「松の木」を10万本配置するのに、テクスチャや 3D メッシュを毎回複製すると <strong>メモリが即座に枯渇</strong>する。文字編集で各文字に独自のフォントオブジェクトを持たせるのも同じ問題。
+        </div>
+        <div class="why-col why-solution">
+          <div class="why-label">▼ 解決</div>
+          「<strong>共有できる部分（重い／変わらない）</strong>」と「<strong>個別の部分（位置・色など軽い）</strong>」を分離。共有部分は Factory が1つだけ作って配り、個別部分だけ各インスタンスが持つ。
+        </div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 共有される「重い」データ（フォント情報）</span>
+<span class="kw">class</span> <span class="ty">CharStyle</span> {
+  <span class="kw">constructor</span>(<span class="kw">public</span> font: <span class="ty">string</span>, <span class="kw">public</span> size: <span class="ty">number</span>) {}
+}
+
+<span class="cm">// Factory が一意性を保証</span>
+<span class="kw">class</span> <span class="ty">StyleFactory</span> {
+  <span class="kw">private</span> cache = <span class="kw">new</span> <span class="ty">Map</span>&lt;<span class="ty">string</span>, <span class="ty">CharStyle</span>&gt;();
+  get(font: <span class="ty">string</span>, size: <span class="ty">number</span>) {
+    <span class="kw">const</span> key = <span class="str">`${font}-${size}`</span>;
+    <span class="kw">if</span> (!<span class="kw">this</span>.cache.has(key))
+      <span class="kw">this</span>.cache.set(key, <span class="kw">new</span> <span class="ty">CharStyle</span>(font, size));
+    <span class="kw">return</span> <span class="kw">this</span>.cache.get(key)!;
+  }
+}
+
+<span class="kw">const</span> factory = <span class="kw">new</span> <span class="ty">StyleFactory</span>();
+<span class="kw">const</span> s1 = factory.get(<span class="str">"Arial"</span>, <span class="num">12</span>);
+<span class="kw">const</span> s2 = factory.get(<span class="str">"Arial"</span>, <span class="num">12</span>);
+console.log(s1 === s2); <span class="cm">// true — メモリ上で同じ実体</span></pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 こんな現場で効く</div>
+      <ul class="usecase-list">
+        <li><strong>JavaScript の文字列リテラル</strong>（V8 の interning）— 同じ文字列は内部で共有</li>
+        <li><strong>ゲームエンジン</strong>: メッシュ/テクスチャの共有（Unity の Asset 参照）</li>
+        <li><strong>DBコネクションプール</strong>: 接続オブジェクトの再利用</li>
+        <li><strong>WebGL / Canvas のスプライト描画</strong>: 同じ画像を何千個配置</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 11: Proxy ============ -->
+<div class="lab" id="lab11">
+  <div class="lab-header">
+    <div class="lab-num">12</div>
+    <h3>Proxy — 本物の前に「代理」を置く</h3>
+    <span class="lab-tag tag-structural">構造</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      本物オブジェクトと<strong>同じIFの代理</strong>を間に挟み、遅延ロード・アクセス制御・キャッシュ・ログ取得などを透過的に追加する。利用側は本物を使っているつもりで Proxy を呼んでいる。
+    </p>
+
+    <div class="why-box">
+      <div class="why-title">⚡ なぜこのパターンが必要か</div>
+      <div class="why-grid">
+        <div class="why-col why-problem">
+          <div class="why-label">▼ 問題</div>
+          高画質画像を「使うかもしれないから」と全部即ロードすると <strong>起動が遅くなり、使われない画像のメモリも無駄</strong>になる。アクセス制御を本物クラスに書くと責務が混ざる。
+        </div>
+        <div class="why-col why-solution">
+          <div class="why-label">▼ 解決</div>
+          <code>LazyImageProxy</code> が「最初の <code>display()</code> 呼び出し時に初めて本物をロード」する。利用側のコードは変えなくていい。同様にキャッシュProxy・認可Proxy・リモートProxyも作れる。
+        </div>
+      </div>
+    </div>
+
+    <div class="diagram-box">
+      <div class="diagram-title">▼ 代理が本物の手前に立つ</div>
+<pre>          利用側
+           │
+           ▼
+        ┌──────────┐
+        │  Proxy   │  ← 本物と同じIF
+        │ (lazy /  │     必要時に...
+        │  auth /  │       ▼
+        │  cache)  │   ┌──────────┐
+        └────┬─────┘   │ RealImage│
+             └────────►│ (重い)   │
+                       └──────────┘</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">interface</span> <span class="ty">Image</span> { display(): <span class="ty">void</span>; }
+
+<span class="kw">class</span> <span class="ty">RealImage</span> <span class="kw">implements</span> <span class="ty">Image</span> {
+  <span class="kw">constructor</span>(<span class="kw">private</span> file: <span class="ty">string</span>) {
+    console.log(<span class="str">`Loading ${file}...`</span>); <span class="cm">// 重い処理</span>
+  }
+  display() { console.log(<span class="str">`Showing ${this.file}`</span>); }
+}
+
+<span class="kw">class</span> <span class="ty">LazyImageProxy</span> <span class="kw">implements</span> <span class="ty">Image</span> {
+  <span class="kw">private</span> real?: <span class="ty">RealImage</span>;
+  <span class="kw">constructor</span>(<span class="kw">private</span> file: <span class="ty">string</span>) {} <span class="cm">// この時点ではロードしない</span>
+  display() {
+    <span class="kw">if</span> (!<span class="kw">this</span>.real) <span class="kw">this</span>.real = <span class="kw">new</span> <span class="ty">RealImage</span>(<span class="kw">this</span>.file); <span class="cm">// 必要時に</span>
+    <span class="kw">this</span>.real.display();
+  }
+}
+
+<span class="kw">const</span> img = <span class="kw">new</span> <span class="ty">LazyImageProxy</span>(<span class="str">"photo.jpg"</span>); <span class="cm">// まだロードされない</span>
+<span class="cm">// ...画面に出すタイミングで:</span>
+img.display(); <span class="cm">// ここで初めてロード</span></pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 こんな現場で効く</div>
+      <ul class="usecase-list">
+        <li><strong>遅延ロード</strong>: ORM (Hibernate, Sequelize) のリレーション lazy loading</li>
+        <li><strong>認可</strong>: <code>SecureProxy.access()</code> で権限確認 → 本物呼び出し</li>
+        <li><strong>キャッシュ</strong>: 結果保持で同じリクエストを本物に飛ばさない</li>
+        <li><strong>リモートProxy</strong>: gRPC / Web Worker のクライアントスタブ</li>
+        <li><strong>JS の <code>Proxy</code>オブジェクト</strong>: Vue 3 のリアクティビティ実装の基礎</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>こう見えたら使える候補:</strong>
+        <ul>
+          <li>「使うかどうか分からない重いオブジェクト」を抱えている</li>
+          <li>同じメソッドの前後で毎回ログ/権限チェックを書いている</li>
+          <li>外部サービスへのアクセスが直接コード中に散らばっている</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>Decorator との違い</strong>: 構造はそっくりだが意図が違う。Decorator は「機能を足す」、Proxy は「アクセスを制御する」。前者は <code>cost()+50円</code>、後者は <code>access()</code> 前に認可チェック。
+    </div>
+  </div>
+</div>
+
+<!-- ============ Behavioral patterns ============ -->
+
+<!-- ============ Lab 12: Chain of Responsibility ============ -->
+<div class="lab" id="lab12">
+  <div class="lab-header">
+    <div class="lab-num">13</div>
+    <h3>Chain of Responsibility — 処理を連鎖させ順に試す</h3>
+    <span class="lab-tag tag-behavioral">振る舞い</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ハンドラを数珠つなぎに並べ、各ハンドラが「自分で処理する／次へ回す」を自律的に判断する。<strong>Webフレームワークのミドルウェアそのもの</strong>。
+    </p>
+
+    <div class="why-box">
+      <div class="why-title">⚡ なぜこのパターンが必要か</div>
+      <div class="why-grid">
+        <div class="why-col why-problem">
+          <div class="why-label">▼ 問題</div>
+          認証→ログ→レート制限→ハンドラ、のような複数段階の処理を <code>if-else</code> や巨大な関数で書くと、<strong>処理順の変更や項目追加の度に既存コードを壊す</strong>。テストも難しい。
+        </div>
+        <div class="why-col why-solution">
+          <div class="why-label">▼ 解決</div>
+          各処理を独立したハンドラにし、チェーンとして連結。順序入れ替え・項目追加が<strong>「並べ替え」「リストに足す」だけで完結</strong>する。
+        </div>
+      </div>
+    </div>
+
+    <div class="diagram-box">
+      <div class="diagram-title">▼ ハンドラの連鎖（リクエスト処理パイプライン）</div>
+<pre>  リクエスト
+    │
+    ▼
+  ┌──────────┐ 認証OK?  ┌──────┐ 通信制限OK? ┌──────┐
+  │ Auth     │─────────►│ Rate │────────────►│ Log  │──► 本処理
+  └──────────┘ NG→拒否  └──────┘ NG→429返却 └──────┘
+       ↑ どこか1つでも止めればチェーン終了</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">abstract class</span> <span class="ty">Handler</span> {
+  <span class="kw">protected</span> next?: <span class="ty">Handler</span>;
+  setNext(h: <span class="ty">Handler</span>) { <span class="kw">this</span>.next = h; <span class="kw">return</span> h; }
+  handle(req: <span class="ty">string</span>): <span class="ty">string</span> | <span class="ty">null</span> {
+    <span class="kw">return</span> <span class="kw">this</span>.next ? <span class="kw">this</span>.next.handle(req) : <span class="ty">null</span>;
+  }
+}
+
+<span class="kw">class</span> <span class="ty">AuthHandler</span> <span class="kw">extends</span> <span class="ty">Handler</span> {
+  handle(req: <span class="ty">string</span>) {
+    <span class="kw">if</span> (!req.includes(<span class="str">"token"</span>)) <span class="kw">return</span> <span class="str">"認証エラー"</span>;
+    <span class="kw">return</span> <span class="kw">super</span>.handle(req);
+  }
+}
+<span class="kw">class</span> <span class="ty">LogHandler</span> <span class="kw">extends</span> <span class="ty">Handler</span> {
+  handle(req: <span class="ty">string</span>) {
+    console.log(<span class="str">"ログ:"</span>, req);
+    <span class="kw">return</span> <span class="kw">super</span>.handle(req);
+  }
+}
+
+<span class="kw">const</span> chain = <span class="kw">new</span> <span class="ty">AuthHandler</span>();
+chain.setNext(<span class="kw">new</span> <span class="ty">LogHandler</span>());
+chain.handle(<span class="str">"token=abc /api"</span>); <span class="cm">// ログ出力後、次へ</span></pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 こんな現場で効く</div>
+      <ul class="usecase-list">
+        <li><strong>Express / Koa / ASP.NET Core のミドルウェア</strong>そのもの</li>
+        <li><strong>例外ハンドラ</strong>: try-catch の段階的移譲（自分で処理 or 親に委ねる）</li>
+        <li><strong>ログ・監査の段階処理</strong>: 重大度別のフィルタリング</li>
+        <li><strong>イベント伝播</strong>: DOM のイベントバブリング、Win32 のメッセージ処理</li>
+        <li><strong>承認フロー</strong>: 課長→部長→社長 と金額に応じて昇格</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 13: Command ============ -->
+<div class="lab" id="lab13">
+  <div class="lab-header">
+    <div class="lab-num">14</div>
+    <h3>Command — 操作をオブジェクトにする</h3>
+    <span class="lab-tag tag-behavioral">振る舞い</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      「何をするか」をオブジェクトとして表現することで、<strong>Undo・キュー・ログ・スケジューリング</strong>といった機能を後付けできるようにする。
+    </p>
+
+    <div class="why-box">
+      <div class="why-title">⚡ なぜこのパターンが必要か</div>
+      <div class="why-grid">
+        <div class="why-col why-problem">
+          <div class="why-label">▼ 問題</div>
+          メソッド呼び出しは「その場で実行」されてしまう。Undoしたい・後で実行したい・ログに残したい・キューに溜めたい——いずれも<strong>「呼び出した事実」を保存できない</strong>のが障害。
+        </div>
+        <div class="why-col why-solution">
+          <div class="why-label">▼ 解決</div>
+          操作を <code>execute()</code> + <code>undo()</code> を持つオブジェクトに変換。これで操作をリストに溜める／逆順実行する／JSON化して保存する／別マシンに送る、すべてが可能になる。
+        </div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">interface</span> <span class="ty">Command</span> { execute(): <span class="ty">void</span>; undo(): <span class="ty">void</span>; }
+
+<span class="kw">class</span> <span class="ty">Light</span> {
+  on()  { console.log(<span class="str">"ON"</span>); }
+  off() { console.log(<span class="str">"OFF"</span>); }
+}
+
+<span class="kw">class</span> <span class="ty">LightOnCommand</span> <span class="kw">implements</span> <span class="ty">Command</span> {
+  <span class="kw">constructor</span>(<span class="kw">private</span> light: <span class="ty">Light</span>) {}
+  execute() { <span class="kw">this</span>.light.on();  }
+  undo()    { <span class="kw">this</span>.light.off(); }
+}
+
+<span class="kw">const</span> history: <span class="ty">Command</span>[] = [];
+<span class="kw">const</span> cmd = <span class="kw">new</span> <span class="ty">LightOnCommand</span>(<span class="kw">new</span> <span class="ty">Light</span>());
+cmd.execute(); history.push(cmd); <span class="cm">// ON  履歴に追加</span>
+history.pop()!.undo();             <span class="cm">// OFF 取り消し</span></pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 こんな現場で効く</div>
+      <ul class="usecase-list">
+        <li><strong>テキスト/画像エディタの Undo/Redo</strong>: 操作スタックそのもの</li>
+        <li><strong>ジョブキュー</strong>(BullMQ, Sidekiq, Celery): タスクをシリアライズして配送</li>
+        <li><strong>マクロ記録</strong>: 操作列を保存して後で再生</li>
+        <li><strong>トランザクション</strong>: 失敗時に逆順で undo</li>
+        <li><strong>OutSystems の BPT</strong>のアクティビティ実行</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>こう見えたら使える候補:</strong>
+        <ul>
+          <li>「取り消し」機能を後付けで実装したい</li>
+          <li>処理を後回しにしたい・別プロセスで実行したい</li>
+          <li>ユーザーの操作履歴をログに残したい</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 14: Interpreter ============ -->
+<div class="lab" id="lab14">
+  <div class="lab-header">
+    <div class="lab-num">15</div>
+    <h3>Interpreter — 文法を解釈して実行</h3>
+    <span class="lab-tag tag-behavioral">振る舞い</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ドメイン固有の<strong>小さな言語（DSL）や式</strong>を、文法の各要素ごとにクラスを作って木構造として表現し、再帰的に評価する。設定ファイルやルールエンジンの基礎。
+    </p>
+
+    <div class="why-box">
+      <div class="why-title">⚡ なぜこのパターンが必要か</div>
+      <div class="why-grid">
+        <div class="why-col why-problem">
+          <div class="why-label">▼ 問題</div>
+          ユーザーやビジネス担当者に「<code>price &gt; 1000 AND category = '本'</code>」のような式を書かせたいが、<strong>文字列をそのまま eval するのは危険</strong>。かといって独自の if 分岐で書き続けると条件追加の度に開発が要る。
+        </div>
+        <div class="why-col why-solution">
+          <div class="why-label">▼ 解決</div>
+          式を「Num」「Add」「And」のようなノードに分解し、各ノードに <code>interpret()</code> を実装。式は木構造として組み立てられ、再帰的に評価される。<strong>新しい演算子も新クラス1つで追加可能</strong>。
+        </div>
+      </div>
+    </div>
+
+    <div class="diagram-box">
+      <div class="diagram-title">▼ 式の木表現: (1 + 2) + 3</div>
+<pre>          Add
+         /   \
+       Add    Num(3)
+       / \
+    Num(1) Num(2)
+
+  各ノードの interpret() を再帰呼び出しで合計</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">interface</span> <span class="ty">Expr</span> { interpret(): <span class="ty">number</span>; }
+
+<span class="kw">class</span> <span class="ty">Num</span> <span class="kw">implements</span> <span class="ty">Expr</span> {
+  <span class="kw">constructor</span>(<span class="kw">private</span> v: <span class="ty">number</span>) {}
+  interpret() { <span class="kw">return</span> <span class="kw">this</span>.v; }
+}
+
+<span class="kw">class</span> <span class="ty">Add</span> <span class="kw">implements</span> <span class="ty">Expr</span> {
+  <span class="kw">constructor</span>(<span class="kw">private</span> l: <span class="ty">Expr</span>, <span class="kw">private</span> r: <span class="ty">Expr</span>) {}
+  interpret() { <span class="kw">return</span> <span class="kw">this</span>.l.interpret() + <span class="kw">this</span>.r.interpret(); }
+}
+
+<span class="cm">// (1 + 2) + 3</span>
+<span class="kw">const</span> expr = <span class="kw">new</span> <span class="ty">Add</span>(<span class="kw">new</span> <span class="ty">Add</span>(<span class="kw">new</span> <span class="ty">Num</span>(<span class="num">1</span>), <span class="kw">new</span> <span class="ty">Num</span>(<span class="num">2</span>)), <span class="kw">new</span> <span class="ty">Num</span>(<span class="num">3</span>));
+console.log(expr.interpret()); <span class="cm">// 6</span></pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 こんな現場で効く</div>
+      <ul class="usecase-list">
+        <li><strong>正規表現エンジン</strong>: パターンを内部木に変換して評価</li>
+        <li><strong>SQL の WHERE 句</strong>: パーサが式木を作って実行</li>
+        <li><strong>ビジネスルールエンジン</strong>: 業務担当者が式を編集</li>
+        <li><strong>テンプレートエンジン</strong>(Handlebars, Liquid): タグを式木に</li>
+        <li><strong>OutSystems の BindTo 式評価</strong>のような仕組み</li>
+      </ul>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>使用頻度は低め</strong>: 23パターン中、最も実装機会が少ない。本格的な言語処理は ANTLR や PEG.js のようなパーサジェネレータを使うのが現実的。「<strong>小さな式評価</strong>」に限定して使う。
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 15: Iterator ============ -->
+<div class="lab" id="lab15">
+  <div class="lab-header">
+    <div class="lab-num">16</div>
+    <h3>Iterator — 内部構造を隠して順次走査</h3>
+    <span class="lab-tag tag-behavioral">振る舞い</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      コレクションが内部で配列か連結リストか木構造かを<strong>利用側に意識させず</strong>、共通の方法で順番に取り出せるようにする。最も身近に使われているパターン。
+    </p>
+
+    <div class="why-box">
+      <div class="why-title">⚡ なぜこのパターンが必要か</div>
+      <div class="why-grid">
+        <div class="why-col why-problem">
+          <div class="why-label">▼ 問題</div>
+          利用側が <code>collection.items[i]</code> のように<strong>内部構造に直接アクセス</strong>すると、データ構造を配列から木に変えただけで全利用箇所を書き換える必要がある。
+        </div>
+        <div class="why-col why-solution">
+          <div class="why-label">▼ 解決</div>
+          コレクションが <code>next()</code> を返す Iterator を提供。利用側は <code>for...of</code> や <code>while (it.hasNext())</code> で書く。<strong>内部構造を後から変えても for ループは無傷</strong>。
+        </div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">class</span> <span class="ty">NumberCollection</span> {
+  <span class="kw">private</span> items: <span class="ty">number</span>[] = [];
+  add(n: <span class="ty">number</span>) { <span class="kw">this</span>.items.push(n); }
+
+  <span class="cm">// JS/TS は Symbol.iterator で標準 Iterator を実装</span>
+  [<span class="ty">Symbol</span>.iterator]() {
+    <span class="kw">let</span> i = <span class="num">0</span>; <span class="kw">const</span> items = <span class="kw">this</span>.items;
+    <span class="kw">return</span> {
+      next() {
+        <span class="kw">return</span> i &lt; items.length
+          ? { value: items[i++], done: <span class="kw">false</span> }
+          : { value: <span class="kw">undefined</span>, done: <span class="kw">true</span> };
+      }
+    };
+  }
+}
+
+<span class="kw">const</span> col = <span class="kw">new</span> <span class="ty">NumberCollection</span>();
+col.add(<span class="num">1</span>); col.add(<span class="num">2</span>); col.add(<span class="num">3</span>);
+<span class="kw">for</span> (<span class="kw">const</span> n <span class="kw">of</span> col) console.log(n); <span class="cm">// 1, 2, 3</span></pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 こんな現場で効く</div>
+      <ul class="usecase-list">
+        <li><strong>JavaScript の <code>for...of</code></strong>, Java の <code>Iterator</code>, C# の <code>IEnumerable</code> — 言語標準で組み込み</li>
+        <li><strong>DBカーソル</strong>: 大量レコードを少しずつ取得（メモリ節約）</li>
+        <li><strong>遅延評価ストリーム</strong>: RxJS, Java Stream API, LINQ</li>
+        <li><strong>木構造の幅優先/深さ優先走査</strong>を <code>for...of</code> で書ける</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 16: Mediator ============ -->
+<div class="lab" id="lab16">
+  <div class="lab-header">
+    <div class="lab-num">17</div>
+    <h3>Mediator — 多対多の通信を仲介役に集約</h3>
+    <span class="lab-tag tag-behavioral">振る舞い</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      オブジェクト同士が<strong>互いを直接参照しないように</strong>、間に「仲介役（Mediator）」を置く。N対Nの結合を N対1 に下げ、変更の影響範囲を抑える。
+    </p>
+
+    <div class="why-box">
+      <div class="why-title">⚡ なぜこのパターンが必要か</div>
+      <div class="why-grid">
+        <div class="why-col why-problem">
+          <div class="why-label">▼ 問題</div>
+          UI で「テキスト入力が変わったらラベルとボタンを更新」「ボタン押すとリストとダイアログ更新」のように<strong>部品同士が直接呼び合う</strong>と、参照関係が網の目になり1つの変更が全体に波及する。
+        </div>
+        <div class="why-col why-solution">
+          <div class="why-label">▼ 解決</div>
+          各部品は仲介役のみ参照。「変化があった」と仲介役に通知し、仲介役が「誰に何を伝えるか」のロジックを集中管理。<strong>部品同士は互いを知らなくてよい</strong>。
+        </div>
+      </div>
+    </div>
+
+    <div class="diagram-box">
+      <div class="diagram-title">▼ Before（網の目）vs After（ハブ）</div>
+<pre>【Before】 N対N の結合     【After】 ハブ集約
+  A ─── B                    A     B
+   \ X /                       \ /
+    ✕ <- バグの温床           Mediator <- 1点で管理
+   / X \                       / \
+  C ─── D                    C     D</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">class</span> <span class="ty">ChatRoom</span> { <span class="cm">// Mediator</span>
+  send(from: <span class="ty">string</span>, msg: <span class="ty">string</span>) {
+    console.log(<span class="str">`[${from}] ${msg}`</span>);
+  }
+}
+
+<span class="kw">class</span> <span class="ty">User</span> {
+  <span class="kw">constructor</span>(<span class="kw">private</span> name: <span class="ty">string</span>, <span class="kw">private</span> room: <span class="ty">ChatRoom</span>) {}
+  say(msg: <span class="ty">string</span>) { <span class="kw">this</span>.room.send(<span class="kw">this</span>.name, msg); }
+}
+
+<span class="kw">const</span> room = <span class="kw">new</span> <span class="ty">ChatRoom</span>();
+<span class="kw">new</span> <span class="ty">User</span>(<span class="str">"Tom"</span>,   room).say(<span class="str">"Hello"</span>);
+<span class="kw">new</span> <span class="ty">User</span>(<span class="str">"Alice"</span>, room).say(<span class="str">"Hi Tom"</span>);
+<span class="cm">// User同士は互いを知らない — Mediator経由のみ</span></pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 こんな現場で効く</div>
+      <ul class="usecase-list">
+        <li><strong>UIダイアログ</strong>: 入力欄・ボタン・チェックの相互作用を Form クラスに集約</li>
+        <li><strong>チャットアプリ</strong>のサーバ側ルーム管理</li>
+        <li><strong>エアトラフィック管制</strong>: 各機が他機ではなく管制塔と通信</li>
+        <li><strong>Redux / Vuex のストア</strong>: コンポーネント間の状態を一元管理（思想は同じ）</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 17: Memento ============ -->
+<div class="lab" id="lab17">
+  <div class="lab-header">
+    <div class="lab-num">18</div>
+    <h3>Memento — 内部状態を保存・復元する</h3>
+    <span class="lab-tag tag-behavioral">振る舞い</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      オブジェクトの内部状態のスナップショットを取り、後で<strong>そっくりそのまま戻す</strong>パターン。エディタの Undo の本体。
+    </p>
+
+    <div class="why-box">
+      <div class="why-title">⚡ なぜこのパターンが必要か</div>
+      <div class="why-grid">
+        <div class="why-col why-problem">
+          <div class="why-label">▼ 問題</div>
+          状態を保存するために internal な変数を全部 public にすると、<strong>カプセル化が壊れて誰でも書き換え可能</strong>になる。一方、保存しないと Undo ができない。
+        </div>
+        <div class="why-col why-solution">
+          <div class="why-label">▼ 解決</div>
+          オブジェクト自身が「<code>save()</code>でMementoを返し、<code>restore(memento)</code>で戻す」責務を持つ。<strong>外部から状態を直接触らずに復元できる</strong>。
+        </div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">class</span> <span class="ty">Editor</span> {
+  <span class="kw">private</span> text = <span class="str">""</span>;
+  type(s: <span class="ty">string</span>) { <span class="kw">this</span>.text += s; }
+  getText() { <span class="kw">return</span> <span class="kw">this</span>.text; }
+
+  save(): <span class="ty">string</span> { <span class="kw">return</span> <span class="kw">this</span>.text; }      <span class="cm">// Memento</span>
+  restore(m: <span class="ty">string</span>) { <span class="kw">this</span>.text = m; }
+}
+
+<span class="kw">const</span> editor = <span class="kw">new</span> <span class="ty">Editor</span>();
+editor.type(<span class="str">"Hello"</span>);
+<span class="kw">const</span> snap = editor.save();   <span class="cm">// "Hello" を記録</span>
+editor.type(<span class="str">" World"</span>);
+console.log(editor.getText()); <span class="cm">// Hello World</span>
+editor.restore(snap);          <span class="cm">// 巻き戻し</span>
+console.log(editor.getText()); <span class="cm">// Hello</span></pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 こんな現場で効く</div>
+      <ul class="usecase-list">
+        <li><strong>エディタの Undo/Redo</strong>: Memento を履歴スタックに積む（Command パターンと併用）</li>
+        <li><strong>ゲームのセーブ/ロード</strong>: プレイヤー状態を一時保存</li>
+        <li><strong>フォーム編集中の自動保存</strong>: 一定時間ごとにスナップショット</li>
+        <li><strong>「変更前の状態に戻す」</strong>機能全般（DBのトランザクション同様）</li>
+      </ul>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>Command との関係</strong>: Command は「操作」、Memento は「状態」。Undo は両方を組み合わせると強力（Commandで操作を記録、各Commandが必要に応じてMementoも持つ）。
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 18: Observer ============ -->
+<div class="lab" id="lab18">
+  <div class="lab-header">
+    <div class="lab-num">19</div>
+    <h3>Observer — 状態変化を購読者に通知</h3>
+    <span class="lab-tag tag-behavioral">振る舞い</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ある対象の状態が変わったとき、登録された複数の購読者に<strong>自動で通知する</strong>。「Pub/Sub」「イベント駆動」「リアクティブ」の根本にあるパターン。
+    </p>
+
+    <div class="why-box">
+      <div class="why-title">⚡ なぜこのパターンが必要か</div>
+      <div class="why-grid">
+        <div class="why-col why-problem">
+          <div class="why-label">▼ 問題</div>
+          「データが更新されたら、関連するUI3箇所と通知バーとログを更新」を直接書くと、データクラスがUIやログを知ることになり<strong>結合が密になる</strong>。新しい監視対象を増やすたびにデータクラスを修正する羽目に。
+        </div>
+        <div class="why-col why-solution">
+          <div class="why-label">▼ 解決</div>
+          データ側は「変更があったら登録された全員に通知する」だけ。誰が何をするかは購読者が自分で決める。<strong>データ側は購読者が誰かを一切知らなくてよい</strong>。
+        </div>
+      </div>
+    </div>
+
+    <div class="diagram-box">
+      <div class="diagram-title">▼ Subject の状態変化が購読者全員に届く</div>
+<pre>           Subject (データの主体)
+             │ notify(value)
+       ┌─────┼─────┬─────┐
+       ▼     ▼     ▼     ▼
+   Observer Observer Observer Observer
+    (UI)    (ログ) (通知)  (集計)
+   ↑ それぞれ独立 — Subject は誰がいるか知らない</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">type</span> <span class="ty">Listener</span> = (value: <span class="ty">number</span>) =&gt; <span class="ty">void</span>;
+
+<span class="kw">class</span> <span class="ty">Subject</span> {
+  <span class="kw">private</span> listeners: <span class="ty">Listener</span>[] = [];
+  subscribe(l: <span class="ty">Listener</span>) { <span class="kw">this</span>.listeners.push(l); }
+  notify(value: <span class="ty">number</span>) { <span class="kw">this</span>.listeners.forEach(l =&gt; l(value)); }
+}
+
+<span class="kw">const</span> subject = <span class="kw">new</span> <span class="ty">Subject</span>();
+subject.subscribe(v =&gt; console.log(<span class="str">"A受信:"</span>, v));
+subject.subscribe(v =&gt; console.log(<span class="str">"B受信:"</span>, v));
+subject.notify(<span class="num">42</span>); <span class="cm">// A受信: 42 / B受信: 42</span></pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 こんな現場で効く</div>
+      <ul class="usecase-list">
+        <li><strong>React の useState / setState</strong>: 状態変化で再レンダリング</li>
+        <li><strong>Vue の reactivity</strong>, <strong>RxJS</strong>, <strong>MobX</strong> 全般</li>
+        <li><strong>OutSystems のデータバインディング</strong>(Tomさんの実務領域)</li>
+        <li><strong>DOM のイベントリスナ</strong>(<code>addEventListener</code>)</li>
+        <li><strong>WebSocket / SSE</strong> でのリアルタイム配信</li>
+        <li><strong>Pub/Sub アーキテクチャ</strong>(Redis Pub/Sub, Kafka)</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>こう見えたら使える候補:</strong>
+        <ul>
+          <li>「データが変わったらXとYとZを更新」を毎回手書きしている</li>
+          <li>あるクラスが他のクラスを直接知っており、依存方向がきつい</li>
+          <li>イベント駆動・リアクティブ志向のコードを書きたい</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 19: State ============ -->
+<div class="lab" id="lab19">
+  <div class="lab-header">
+    <div class="lab-num">20</div>
+    <h3>State — 状態ごとに振る舞いを切り替える</h3>
+    <span class="lab-tag tag-behavioral">振る舞い</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      オブジェクトの状態が変わると振る舞いも変わる場面で、<strong>状態自体をオブジェクト化</strong>して if/switch 地獄を回避する。状態遷移図がそのままクラス構造になる。
+    </p>
+
+    <div class="why-box">
+      <div class="why-title">⚡ なぜこのパターンが必要か</div>
+      <div class="why-grid">
+        <div class="why-col why-problem">
+          <div class="why-label">▼ 問題</div>
+          注文ステータス(下書き/承認待ち/配送中/完了/キャンセル)で操作の可否が変わる場合、<code>if (status === ...) else if ...</code> が<strong>全メソッドに散らばる</strong>。状態追加でほぼ全箇所を修正する羽目に。
+        </div>
+        <div class="why-col why-solution">
+          <div class="why-label">▼ 解決</div>
+          各状態をクラスにして、<code>handle()</code> メソッドでその状態固有の振る舞いを実装。<strong>新しい状態は新クラス1つで追加でき</strong>、既存コードに手を入れる箇所が激減する。
+        </div>
+      </div>
+    </div>
+
+    <div class="diagram-box">
+      <div class="diagram-title">▼ 信号機の状態遷移</div>
+<pre>   ┌──────┐  next()  ┌──────┐  next()  ┌──────┐
+   │ Red  │─────────►│Green │─────────►│Yellow│
+   └──────┘          └──────┘          └──────┘
+       ▲                                  │
+       └──────────────────────────────────┘
+                   next()
+   各状態オブジェクトが「次はどれか」を知っている</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">interface</span> <span class="ty">State</span> { handle(ctx: <span class="ty">TrafficLight</span>): <span class="ty">void</span>; }
+
+<span class="kw">class</span> <span class="ty">Red</span> <span class="kw">implements</span> <span class="ty">State</span> {
+  handle(ctx: <span class="ty">TrafficLight</span>) { console.log(<span class="str">"赤→緑"</span>); ctx.setState(<span class="kw">new</span> <span class="ty">Green</span>()); }
+}
+<span class="kw">class</span> <span class="ty">Green</span> <span class="kw">implements</span> <span class="ty">State</span> {
+  handle(ctx: <span class="ty">TrafficLight</span>) { console.log(<span class="str">"緑→赤"</span>); ctx.setState(<span class="kw">new</span> <span class="ty">Red</span>()); }
+}
+
+<span class="kw">class</span> <span class="ty">TrafficLight</span> {
+  <span class="kw">constructor</span>(<span class="kw">private</span> state: <span class="ty">State</span> = <span class="kw">new</span> <span class="ty">Red</span>()) {}
+  setState(s: <span class="ty">State</span>) { <span class="kw">this</span>.state = s; }
+  next() { <span class="kw">this</span>.state.handle(<span class="kw">this</span>); }
+}
+
+<span class="kw">const</span> light = <span class="kw">new</span> <span class="ty">TrafficLight</span>();
+light.next(); <span class="cm">// 赤→緑</span>
+light.next(); <span class="cm">// 緑→赤</span></pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 こんな現場で効く</div>
+      <ul class="usecase-list">
+        <li><strong>注文/承認/出荷ステータス</strong>: 各状態で実行可能な操作が違う業務ロジック</li>
+        <li><strong>TCPコネクション</strong>: LISTEN/ESTABLISHED/CLOSED 等の状態遷移</li>
+        <li><strong>ゲームキャラクターのAI</strong>: 待機/巡回/攻撃/逃走</li>
+        <li><strong>UIモード切替</strong>: 編集/閲覧/ロックモード で同じボタンの動作が変わる</li>
+        <li><strong>OutSystems の Web Block 表示モード</strong>: 同じBlockが状態で挙動を変える</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>こう見えたら使える候補:</strong>
+        <ul>
+          <li>クラスの全メソッドの先頭に <code>switch(this.status)</code> がある</li>
+          <li>「ステータスXのときYはできない」というルールがコード中に散らばる</li>
+          <li>ステータス図(state diagram)がドキュメントで描かれている</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>Strategy との違い</strong>: 構造はそっくり。Strategy は「利用側が能動的にアルゴリズムを選ぶ」、State は「状態に応じてオブジェクト自身が次の状態に遷移する」。前者は外部から制御、後者は内部で自律。
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 20: Strategy ============ -->
+<div class="lab" id="lab20">
+  <div class="lab-header">
+    <div class="lab-num">21</div>
+    <h3>Strategy — アルゴリズムを差し替え可能にする</h3>
+    <span class="lab-tag tag-behavioral">振る舞い</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      同じ目的を達成する複数のアルゴリズムを<strong>クラスとして独立させ</strong>、実行時に差し替えられるようにする。最もよく使われる振る舞いパターンの1つ。
+    </p>
+
+    <div class="why-box">
+      <div class="why-title">⚡ なぜこのパターンが必要か</div>
+      <div class="why-grid">
+        <div class="why-col why-problem">
+          <div class="why-label">▼ 問題</div>
+          「ソートアルゴリズムを場面で使い分けたい」「決済方法をユーザーに選ばせたい」「税額計算を国別に切り替えたい」を <code>if-else</code> で書くと、<strong>条件分岐がメソッド内部に固定化</strong>され、新しい方式の追加で本体を毎回触ることになる。
+        </div>
+        <div class="why-col why-solution">
+          <div class="why-label">▼ 解決</div>
+          各アルゴリズムを「同じ顔(IF)を持つクラス」にして、利用側は<strong>使うものを実行時に選んで差し込む</strong>。新方式の追加は新クラス追加だけで完結。
+        </div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">interface</span> <span class="ty">SortStrategy</span> { sort(arr: <span class="ty">number</span>[]): <span class="ty">number</span>[]; }
+
+<span class="kw">class</span> <span class="ty">QuickSort</span> <span class="kw">implements</span> <span class="ty">SortStrategy</span> {
+  sort(arr: <span class="ty">number</span>[]) { console.log(<span class="str">"クイックソート"</span>); <span class="kw">return</span> [...arr].sort(); }
+}
+<span class="kw">class</span> <span class="ty">BubbleSort</span> <span class="kw">implements</span> <span class="ty">SortStrategy</span> {
+  sort(arr: <span class="ty">number</span>[]) { console.log(<span class="str">"バブルソート"</span>); <span class="kw">return</span> [...arr].sort(); }
+}
+
+<span class="kw">class</span> <span class="ty">Sorter</span> {
+  <span class="kw">constructor</span>(<span class="kw">private</span> strategy: <span class="ty">SortStrategy</span>) {}
+  setStrategy(s: <span class="ty">SortStrategy</span>) { <span class="kw">this</span>.strategy = s; }
+  execute(arr: <span class="ty">number</span>[]) { <span class="kw">return</span> <span class="kw">this</span>.strategy.sort(arr); }
+}
+
+<span class="kw">const</span> sorter = <span class="kw">new</span> <span class="ty">Sorter</span>(<span class="kw">new</span> <span class="ty">QuickSort</span>());
+sorter.execute([<span class="num">3</span>, <span class="num">1</span>, <span class="num">2</span>]);
+sorter.setStrategy(<span class="kw">new</span> <span class="ty">BubbleSort</span>()); <span class="cm">// 実行時に切替</span>
+sorter.execute([<span class="num">3</span>, <span class="num">1</span>, <span class="num">2</span>]);</pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 こんな現場で効く</div>
+      <ul class="usecase-list">
+        <li><strong>料金計算</strong>: 通常会員 / VIP / 学割 / クーポン適用 を切替</li>
+        <li><strong>決済プロバイダ</strong>: クレカ / PayPay / 銀行振込</li>
+        <li><strong>圧縮アルゴリズム</strong>: gzip / brotli / zstd</li>
+        <li><strong>DataGrid のソート/フィルタ/集計</strong>(Tomさんの Wijmo 実務)</li>
+        <li><strong>地図のルート探索</strong>: 最短 / 高速優先 / 一般道のみ</li>
+        <li><strong>A/B テスト</strong>: 実装を実行時に切り替えて効果検証</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>こう見えたら使える候補:</strong>
+        <ul>
+          <li>同じ入力/出力で計算ロジックが複数あり、<code>if (type === 'A')</code>で分岐</li>
+          <li>テストで本番アルゴリズムをモックに差し替えたい</li>
+          <li>新しい計算方式を追加するたびに既存コードに手が入る</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 21: Template Method ============ -->
+<div class="lab" id="lab21">
+  <div class="lab-header">
+    <div class="lab-num">22</div>
+    <h3>Template Method — 骨格は親、詳細は子で実装</h3>
+    <span class="lab-tag tag-behavioral">振る舞い</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      アルゴリズムの<strong>大きな流れを親クラスで固定</strong>し、可変部分だけ抽象メソッドにして子クラスに埋めさせる。フレームワーク設計の根幹。
+    </p>
+
+    <div class="why-box">
+      <div class="why-title">⚡ なぜこのパターンが必要か</div>
+      <div class="why-grid">
+        <div class="why-col why-problem">
+          <div class="why-label">▼ 問題</div>
+          「データを読む→変換→保存」のような共通フローを CSVProcessor、JSONProcessor、XMLProcessor で<strong>毎回コピペ実装</strong>するとバグ修正の漏れが出る。流れが微妙にズレるリスクも。
+        </div>
+        <div class="why-col why-solution">
+          <div class="why-label">▼ 解決</div>
+          流れを親で1回だけ書き、形式に応じて変わる「読み方」「変換方法」だけを子で実装。<strong>共通フローのバグ修正は1箇所で全派生に反映</strong>。
+        </div>
+      </div>
+    </div>
+
+    <div class="diagram-box">
+      <div class="diagram-title">▼ 親が「流れ」、子が「穴埋め」</div>
+<pre>  親: process()  ← 呼び出し順を固定
+        ├── read()       ← サブクラスが実装する穴
+        ├── transform()  ← サブクラスが実装する穴
+        └── save()       ← 親で共通実装
+
+  子(CSV):  read = "a,b,c" / transform = upperCase
+  子(JSON): read = {...}   / transform = filter</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">abstract class</span> <span class="ty">DataProcessor</span> {
+  process() {  <span class="cm">// テンプレート — 流れは固定</span>
+    <span class="kw">const</span> data = <span class="kw">this</span>.read();
+    <span class="kw">const</span> result = <span class="kw">this</span>.transform(data);
+    <span class="kw">this</span>.save(result);
+  }
+  <span class="kw">protected abstract</span> read(): <span class="ty">string</span>;
+  <span class="kw">protected abstract</span> transform(d: <span class="ty">string</span>): <span class="ty">string</span>;
+  <span class="kw">protected</span> save(d: <span class="ty">string</span>) { console.log(<span class="str">"保存:"</span>, d); } <span class="cm">// 共通</span>
+}
+
+<span class="kw">class</span> <span class="ty">CSVProcessor</span> <span class="kw">extends</span> <span class="ty">DataProcessor</span> {
+  <span class="kw">protected</span> read() { <span class="kw">return</span> <span class="str">"a,b,c"</span>; }
+  <span class="kw">protected</span> transform(d: <span class="ty">string</span>) { <span class="kw">return</span> d.toUpperCase(); }
+}
+
+<span class="kw">new</span> <span class="ty">CSVProcessor</span>().process(); <span class="cm">// 保存: A,B,C</span></pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 こんな現場で効く</div>
+      <ul class="usecase-list">
+        <li><strong>フレームワークのライフサイクル</strong>: React の componentDidMount/componentDidUpdate(Tomさんの React 知識)</li>
+        <li><strong>JUnit / pytest のテストフレームワーク</strong>: setUp → test → tearDown</li>
+        <li><strong>OutSystems の Action Flow</strong>: フローの大枠は固定、各ノードでカスタムロジック</li>
+        <li><strong>バッチ処理</strong>: 接続→読込→処理→書込→切断 の流れを共通化</li>
+      </ul>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>Strategy との違い</strong>: 同じ「処理を差し替える」だが、Strategy は<strong>コンポジション(別オブジェクトを持つ)</strong>、Template Method は<strong>継承(親子関係)</strong>。実行時に差し替えたいなら Strategy、コンパイル時に決まるなら Template Method。
+    </div>
+  </div>
+</div>
+
+<!-- ============ Lab 22: Visitor ============ -->
+<div class="lab" id="lab22">
+  <div class="lab-header">
+    <div class="lab-num">23</div>
+    <h3>Visitor — 構造に手を入れず操作を追加</h3>
+    <span class="lab-tag tag-behavioral">振る舞い</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      既存のクラス階層に<strong>手を加えずに新しい操作を外から追加</strong>する。AST解析やコンパイラの最適化パスのように、「同じデータ構造に異なる解析を何種類もかけたい」場面で輝く。
+    </p>
+
+    <div class="why-box">
+      <div class="why-title">⚡ なぜこのパターンが必要か</div>
+      <div class="why-grid">
+        <div class="why-col why-problem">
+          <div class="why-label">▼ 問題</div>
+          Shape階層に「面積計算」「描画」「JSON出力」「コピー」など機能を増やすたびに、Circle/Square/Triangle 全クラスを書き換える必要がある。<strong>追加の度に既存クラスに手を入れる</strong>のは Open-Closed 原則違反。
+        </div>
+        <div class="why-col why-solution">
+          <div class="why-label">▼ 解決</div>
+          各 Shape は <code>accept(visitor)</code> を1つ持つだけ。新機能は <code>AreaVisitor</code> や <code>JsonVisitor</code> という<strong>新しい外部クラス</strong>として実装。Shape 側は不変。
+        </div>
+      </div>
+    </div>
+
+    <div class="diagram-box">
+      <div class="diagram-title">▼ 構造（Shape）と操作（Visitor）の分離</div>
+<pre>  【Shape階層】 (固定 — 変更しない)
+     Circle, Square, Triangle  各々 accept() を持つ
+
+  【Visitor階層】 (自由に増やせる)
+     AreaVisitor       ── 面積計算
+     PerimeterVisitor  ── 周長計算
+     JsonVisitor       ── JSON化
+     新機能はここに足すだけ ↑</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">interface</span> <span class="ty">Shape</span> { accept(v: <span class="ty">Visitor</span>): <span class="ty">void</span>; }
+
+<span class="kw">class</span> <span class="ty">Circle</span> <span class="kw">implements</span> <span class="ty">Shape</span> {
+  <span class="kw">constructor</span>(<span class="kw">public</span> r: <span class="ty">number</span>) {}
+  accept(v: <span class="ty">Visitor</span>) { v.visitCircle(<span class="kw">this</span>); }
+}
+<span class="kw">class</span> <span class="ty">Square</span> <span class="kw">implements</span> <span class="ty">Shape</span> {
+  <span class="kw">constructor</span>(<span class="kw">public</span> side: <span class="ty">number</span>) {}
+  accept(v: <span class="ty">Visitor</span>) { v.visitSquare(<span class="kw">this</span>); }
+}
+
+<span class="kw">interface</span> <span class="ty">Visitor</span> {
+  visitCircle(c: <span class="ty">Circle</span>): <span class="ty">void</span>;
+  visitSquare(s: <span class="ty">Square</span>): <span class="ty">void</span>;
+}
+
+<span class="cm">// 新機能: Shape を変更せず追加</span>
+<span class="kw">class</span> <span class="ty">AreaVisitor</span> <span class="kw">implements</span> <span class="ty">Visitor</span> {
+  visitCircle(c: <span class="ty">Circle</span>) { console.log(<span class="str">"円:"</span>, <span class="ty">Math</span>.PI * c.r ** <span class="num">2</span>); }
+  visitSquare(s: <span class="ty">Square</span>) { console.log(<span class="str">"正方形:"</span>, s.side ** <span class="num">2</span>); }
+}
+
+<span class="kw">const</span> shapes: <span class="ty">Shape</span>[] = [<span class="kw">new</span> <span class="ty">Circle</span>(<span class="num">5</span>), <span class="kw">new</span> <span class="ty">Square</span>(<span class="num">4</span>)];
+<span class="kw">const</span> visitor = <span class="kw">new</span> <span class="ty">AreaVisitor</span>();
+shapes.forEach(s =&gt; s.accept(visitor));</pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 こんな現場で効く</div>
+      <ul class="usecase-list">
+        <li><strong>コンパイラ・トランスパイラ</strong>: AST に対する型検査・最適化・コード生成パス</li>
+        <li><strong>ESLint / Babel のプラグイン</strong>: AST Visitor として実装される</li>
+        <li><strong>レポート出力</strong>: 同じデータ構造から PDF / Excel / HTML を別 Visitor で生成</li>
+        <li><strong>静的解析ツール</strong>: コードの依存解析、循環参照検出</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>こう見えたら使える候補:</strong>
+        <ul>
+          <li>木構造データに対して「色んな解析」を増やしたい</li>
+          <li>クラス階層は固定だが、操作の種類が増え続ける</li>
+          <li>機能ごとにクラスファイルが分かれていた方が見通しがよい</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>難易度高め・適用注意</strong>: コードがやや複雑になる(ダブルディスパッチ)。Shape 階層が頻繁に増える場合は逆効果(全 Visitor を更新する羽目に)。<strong>「クラス階層は固定で、操作だけ増える」</strong>ケースに限定して使うのが鉄則。
+    </div>
+  </div>
+</div>
+
+<!-- ============ 振り返り(まとめ) ============ -->
+<div class="lab" id="lab-summary" style="border-color:var(--accent3);">
+  <div class="lab-header" style="background:linear-gradient(135deg,rgba(0,92,197,.05),rgba(111,66,193,.05));">
+    <div class="lab-num" style="background:var(--accent3);">★</div>
+    <h3>まとめ — どのパターンを使うかの即決チャート</h3>
+    <span class="lab-tag tag-behavioral">総合</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      実務でパターンを思い出すための<strong>「症状 → 候補」</strong>逆引き。「コードがこう見えたらこのパターン」の早見表。
+    </p>
+
+    <div class="diagram-box">
+      <div class="diagram-title">▼ 症状別 即決チャート</div>
+<pre>「コンストラクタの引数が10個」               → Builder
+「new がコード中に散らばっている」           → Factory Method / Abstract Factory
+「インスタンスは1つだけ欲しい」              → Singleton
+「重い初期化を何度もやっている」              → Prototype / Flyweight
+
+「外部APIを直接呼んでいて差替えづらい」       → Adapter / Proxy
+「機能の組み合わせでクラスが爆発」            → Decorator
+「2軸で増えるものを継承で書いている」         → Bridge
+「単体と集合に同じ処理をしたい」              → Composite
+「複雑な内部の使い方を簡単にしたい」          → Facade
+
+「if (status === ...) が全メソッドにある」    → State
+「アルゴリズムを実行時に切替えたい」          → Strategy
+「Undo/履歴/キューが欲しい」                  → Command + Memento
+「データ変更を複数箇所に反映したい」          → Observer
+「処理をパイプラインで連鎖させたい」          → Chain of Responsibility
+「N対Nの参照が網の目になっている」           → Mediator
+「内部構造を隠して順次走査したい」            → Iterator
+「処理の流れは同じ、一部だけ変えたい」        → Template Method
+「同じデータに違う操作を増やしたい」          → Visitor
+「ユーザーに式や条件を書かせたい」            → Interpreter</pre>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>パターンは目的ではなく道具</strong>。「このコードがこう変わった結果として、たまたまそのパターンになっていた」が本来の使い方。最初から「Strategyパターンで設計する」と決めるのではなく、<strong>「コードが if-else で散らかってきたから整理したい」</strong>という症状からパターンに到達するのが健全。
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>23パターン全部を覚える必要はない</strong>。実務でよく使うのは<strong>10個程度</strong>(Strategy, Observer, Factory Method, Singleton, Adapter, Decorator, Composite, Iterator, Template Method, Facade)。残りは「そういう発想がある」と知っておけば、出会った時に逆引きできる。
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+function copyCode(btn) {
+  const block = btn.closest('.code-block');
+  const pre = block.querySelector('pre');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // サイドバー active ハイライト
+  const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+  const map = new Map();
+  links.forEach(a => {
+    const el = document.getElementById(a.getAttribute('href').slice(1));
+    if (el) map.set(el, a);
+  });
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) {
+      const l = map.get(e.target);
+      if (l) { links.forEach(n => n.classList.remove('active')); l.classList.add('active'); }
+    }
+  }), { rootMargin: '-30% 0px -60% 0px' });
+  document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+});
+</script>
+
+</body>
+</html>
