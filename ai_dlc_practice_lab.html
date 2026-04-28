@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI-DLC 実践Lab — Claude Code で始める初心者向け手順書</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+.usecase-box { background:rgba(0,92,197,.05); border:1px solid rgba(0,92,197,.25);
+  border-left:3px solid var(--accent); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#003d8f; }
+.usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent); font-weight:700; margin-bottom:6px; }
+.usecase-list { margin-left:20px; margin-bottom:10px; }
+.usecase-list li { margin-bottom:4px; }
+
+.try-box { background:rgba(34,134,58,.06); border:1px solid rgba(34,134,58,.30);
+  border-left:3px solid var(--success); border-radius:7px;
+  padding:12px 14px; margin:14px 0; font-size:.86rem; line-height:1.8; color:#154f1e; }
+.try-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--success); font-weight:700; margin-bottom:6px; }
+.try-box ol { margin-left:20px; margin-top:4px; }
+.try-box ol li { margin-bottom:4px; }
+.try-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--success); }
+.try-tip { background:rgba(176,136,0,.06); border-left:3px solid var(--accent4);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#5c4400; margin-top:8px; }
+.try-tip strong { color:var(--accent4); }
+
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// AI-DLC <span>Practice</span></div>
+  <div class="nav-section">基礎理解</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>AI-DLCとは</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>5つの中核概念</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>3フェーズ全体像</a>
+  <div class="nav-section">準備</div>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>環境セットアップ</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>プロジェクト構造</a>
+  <div class="nav-section">Inception</div>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>Intentを書く</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>Mob Elaboration</a>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>Unit分解</a>
+  <div class="nav-section">Construction</div>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>Bolt実行</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>レビューと反復</a>
+  <div class="nav-section">Operations</div>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>運用と振り返り</a>
+  <div class="nav-section">実例</div>
+  <a class="nav-item" href="#lab11"><span class="nav-num">11</span>初めての練習題材</a>
+</nav>
+
+<div class="hero">
+  <h1>AI-DLC 実践Lab</h1>
+  <p class="subtitle">Claude Code で始める AI-Driven Development Lifecycle 初心者向け手順書</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>AI-DLCとは何か</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>5つの中核概念を押さえる</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>3フェーズの全体像</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>Claude Code 環境セットアップ</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>プロジェクト構造を作る</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>Intentを書く</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>Mob Elaboration（一人で実施）</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>Unitに分解する</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>Boltを回して実装する</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>レビューと反復ループ</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">10</span>Operations と Reflection</a>
+    <a class="toc-item" href="#lab11"><span class="toc-num">11</span>初めての練習題材で通す</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- LAB 0 ============================================ -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>AI-DLCとは何か</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>AI-DLC</code>（AI-Driven Development Lifecycle）は2025年にAWSが提唱した、AIを「中心的な共同作業者」として組み込んだソフトウェア開発手法。従来の「AIアシスト」（補完・テスト生成だけ手伝わせる）でも「AI完全自律」（丸投げ）でもなく、<strong>AIが計画と実装を駆動し、人間が判断と検証を担う</strong>という第3の道を提示する。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 既存手法との違い（一目で）</div>
+      <pre class="ascii-art">┌─────────────────┬──────────────────────────────────┐
+│ AI-assisted     │ 人間が主役。AIは補完・テスト生成だけ手伝う      │
+│ AI-autonomous   │ AIに丸投げ。品質・意図ズレが多発               │
+│ AI-DLC          │ AIが計画→実装、人間が要所で検証・判断          │
+│                 │   ↑「Velocity（速度）+ Quality（品質）」両立    │
+└─────────────────┴──────────────────────────────────┘</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead>
+        <tr><th>従来 SDLC（Agile/Scrum）</th><th>AI-DLC</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>イテレーション = 数週間（Sprint）</td><td>イテレーション = 数時間〜数日（<strong>Bolt</strong>）</td></tr>
+        <tr><td>要件→設計→実装→テストの段階的ハンドオフ</td><td>Intentから連続フローでAIが駆動</td></tr>
+        <tr><td>人間が会議・ドキュメントに大量の時間</td><td>AIが叩き台を生成、人間は判断ポイントだけ集中</td></tr>
+        <tr><td>ドキュメントは後付けになりがち</td><td>各フェーズが構造化された成果物を残す（監査可能）</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info">
+      📘 <strong>提唱元・現状</strong>: AWSのDevOpsブログで2025年7月に最初に公開され、Amazon Q DeveloperやKiroが参照実装。GitHubには<code>TheBushidoCollective/ai-dlc</code>などClaude Code向けプラグインも登場している。本Labでは Claude Code で<strong>個人開発者が一人で</strong>実践する方法を扱う（チームのMob Workは概念だけ理解）。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>初心者がハマる誤解</strong>: AI-DLCは「魔法のプロンプト集」ではない。<strong>判断ポイントを構造化して、Markdownでファイルに残す</strong>という地味な営みが本質。慣れるまでは「AIに考えさせて、自分で読んで承認する」というリズムを身につけることが目標。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 1 ============================================ -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>5つの中核概念を押さえる</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      AI-DLCの語彙はやや独特。最初に <code>Intent / Unit / Bolt / Hat / Mob</code> の5つを押さえると、以降のフェーズ説明がスッと入る。<strong>「なぜ→何を→どう作る→誰の視点で→どこで合意」</strong>の5層と覚える。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 5つの関係を1枚図で</div>
+      <pre class="ascii-art">┌─────────────────────────────────────────────────┐
+│  Intent   「なぜ作る？」 = 1つの北極星（プロジェクトの目的）│
+│    │                                                       │
+│    ├─→ Unit A 「何を作る？」 機能の塊（疎結合な単位）       │
+│    │     └─→ Bolt 1 「どう作る？」 数時間の実装サイクル    │
+│    │     └─→ Bolt 2                                        │
+│    ├─→ Unit B                                             │
+│    │     └─→ Bolt 1                                        │
+│    └─→ Unit C ...                                          │
+│                                                           │
+│  Hat   「誰の視点？」 = AIが切替える役割（設計者/実装者/レビュアー）│
+│  Mob   「どこで合意？」 = 関係者が同席して即決するセッション│
+└─────────────────────────────────────────────────┘</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>用語</th><th>意味</th><th>具体例（イベント管理アプリの場合）</th></tr></thead>
+      <tbody>
+        <tr><td>Intent</td><td>ビジネス目的・北極星。プロジェクト全体で1つ</td><td>「主催者が安全にチケット販売・入場管理できるアプリを作る」</td></tr>
+        <tr><td>Unit</td><td>独立して価値を生む機能の塊。疎結合・高凝集</td><td>「Unit A: チケット販売」「Unit B: 入場検証」「Unit C: 残席管理」</td></tr>
+        <tr><td>Bolt</td><td>数時間〜数日の最小実行ループ。1つのUnit内で複数回す</td><td>「Bolt 1: QRコード検証実装」「Bolt 2: オフライン対応」</td></tr>
+        <tr><td>Hat</td><td>AIが被る役割帽子。Elaborator / Builder / Reviewer など</td><td>同じClaude Codeセッションが、要件整理→実装→レビューと役割を切替える</td></tr>
+        <tr><td>Mob</td><td>関係者が同席して即決する儀式。Mob Elaboration / Mob Construction</td><td>個人開発では「自分1人 + AI」で疑似Mob。判断ログを必ず残す</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box ok">
+      ✅ <strong>覚え方のコツ</strong>: Intent は名詞1文、Unit は3〜7個、Bolt は半日サイズ。これを破ると粒度がブレて判断ログが膨大になる。慣れないうちは「Intent 1個・Unit 3個・各Unit に Bolt 2〜3個」で十分。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 2 ============================================ -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>3フェーズの全体像</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      AI-DLCは <code>Inception → Construction → Operations</code> の3フェーズで進む。各フェーズで生まれた成果物（Markdown）が次フェーズの<strong>Context（文脈）</strong>として連鎖し、AIの判断精度を高める。これが「Sequential Knowledge Handoff（順次知識引き渡し）」と呼ばれる仕組み。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 3フェーズと成果物の流れ</div>
+      <pre class="ascii-art">┌──────────── Inception（着想） ────────────┐
+│ AIが Intent を要件・ストーリー・Unit に展開     │
+│ 成果物: intent.md / user-stories/ / units/    │
+│ 儀式: Mob Elaboration（要件定義の集中議論）   │
+└────────────────────┬────────────────┘
+                     │ Context handoff
+                     ▼
+┌──────────── Construction（建設） ──────────┐
+│ Unit ごとに Bolt を回して設計→コード→テスト    │
+│ 成果物: domain-design.md / code / tests       │
+│ 儀式: Mob Construction（実装中の即時相談）    │
+└────────────────────┬────────────────┘
+                     │ Context handoff
+                     ▼
+┌──────────── Operations（運用） ────────────┐
+│ デプロイ・監視・振り返り。次のIntentに学びを蓄積 │
+│ 成果物: deployment.md / runbook.md /          │
+│         reflection.md                         │
+└────────────────────────────────────┘</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>フェーズ</th><th>AI の役割</th><th>あなたの役割</th><th>主な成果物</th></tr></thead>
+      <tbody>
+        <tr><td>Inception</td><td>Intentから要件・Unitを提案／質問</td><td>曖昧さの解消・優先順位の決定</td><td>intent.md, units/*.md</td></tr>
+        <tr><td>Construction</td><td>設計提案→コード生成→テスト</td><td>設計判断の承認・コードレビュー</td><td>design.md, src/, tests/</td></tr>
+        <tr><td>Operations</td><td>デプロイ手順・監視提案・振り返り</td><td>環境固有の判断・本番承認</td><td>runbook.md, reflection.md</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info">
+      📘 <strong>Adaptive Workflow（適応的ワークフロー）</strong>: 全フェーズを毎回フルでやる必要はない。「タイポ修正」ならInceptionをスキップして直接Boltへ、「インフラ移行」ならドメイン設計をスキップ、というように<strong>タスクの規模・性質で省略可</strong>。AWSが2025年11月に公開したオープンソース版（Amazon Q Rules / Kiro Steering Files）はこの判断を自動化する。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>初心者は省略しないで</strong>: 慣れるまでは小さい題材でフルフェーズを通すこと。省略の判断は数回回した後でないと「何を省いているか」が分からず、結局やり直しになる。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 3 ============================================ -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>Claude Code 環境セットアップ</h3>
+    <span class="lab-tag tag-intermediate">準備</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      AI-DLCを実践する最小環境を構築する。Claude Code はターミナルから動くAIエージェントで、ファイル操作・コマンド実行・Git操作までできる。AI-DLCの「成果物をMarkdownで残す→AIに読ませて次のフェーズへ」という流れと相性が良い。
+    </p>
+
+    <div class="info-box info">
+      📘 <strong>前提</strong>: Node.js 18以上、Anthropicアカウント、Git。既存の業務開発環境（Windows/Mac問わず）でOK。<strong>本Labではプラグイン無しの素のClaude Code</strong>で進める（プラグインは慣れた後で）。
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>① Claude Code インストール</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># npmでグローバルインストール</span>
+npm install -g @anthropic-ai/claude-code
+
+<span class="cm"># 動作確認</span>
+claude --version
+
+<span class="cm"># 初回起動（ブラウザでログイン認証が走る）</span>
+claude</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>② AI-DLC用プロジェクト作成</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># 練習用ディレクトリを作る（場所はどこでもOK）</span>
+mkdir my-ai-dlc-practice
+cd my-ai-dlc-practice
+
+<span class="cm"># Git初期化（成果物を版管理）</span>
+git init
+
+<span class="cm"># AI-DLC用のディレクトリ構造を準備</span>
+mkdir -p aidlc-docs/{intent,units,design,reflection}
+touch aidlc-docs/intent/intent.md
+touch CLAUDE.md
+
+<span class="cm"># Claude Codeを起動</span>
+claude</pre>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>CLAUDE.md の役割</strong>: プロジェクトルートに置くと、Claude Codeが起動時に自動で読む。ここに「このプロジェクトはAI-DLC方式で進める」と書いておくと、毎回プロンプトで指示しなくて済む。次のラボで中身を書く。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>権限に注意</strong>: Claude Code は <code>--dangerously-skip-permissions</code> フラグや Shift+Tab の Auto-Accept モードがあるが、<strong>AI-DLC初学者は使わないこと</strong>。各操作で「これをやってよいか？」とAIが確認してくる動作こそAI-DLCの「人間検証ゲート」を体感する機会になる。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">🔍 セットアップ確認</div>
+      <ol>
+        <li><code>claude --version</code> でバージョンが出るか</li>
+        <li>プロジェクトディレクトリで <code>claude</code> を起動し、<code>"このプロジェクトの構造を見せて"</code> と聞いて <code>aidlc-docs/</code> 配下が認識されるか</li>
+        <li>Ctrl+C か <code>/exit</code> で終了できるか</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- LAB 4 ============================================ -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>プロジェクト構造を作る</h3>
+    <span class="lab-tag tag-intermediate">準備</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      AI-DLCの本質は「<strong>Markdownで判断ログを残す</strong>」ことなので、最初にディレクトリ構造とCLAUDE.mdを整える。これがAIにとっての「メモリ」になり、Claude Codeのセッションをまたいでも文脈が引き継がれる。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 標準ディレクトリ構造</div>
+      <pre class="ascii-art">my-ai-dlc-practice/
+├── CLAUDE.md                    ← AI向けのプロジェクト方針（必須）
+├── aidlc-docs/                  ← AI-DLCの成果物すべて
+│   ├── intent/
+│   │   └── intent.md            ← Lab05で書く
+│   ├── units/
+│   │   ├── unit-01-xxx.md       ← Lab07で生成
+│   │   └── unit-02-xxx.md
+│   ├── design/
+│   │   └── domain-design.md     ← Lab08で生成
+│   ├── bolts/
+│   │   └── bolt-log.md          ← 各Boltの記録
+│   └── reflection/
+│       └── reflection.md        ← Lab10で振り返り
+├── src/                         ← 実装コード
+├── tests/                       ← テスト
+└── .gitignore</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>CLAUDE.md の中身（プロジェクト方針）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># プロジェクト方針</span>
+
+このプロジェクトは <span class="kw">AI-DLC</span>（AI-Driven Development Lifecycle）方式で進めます。
+
+<span class="cm">## ルール</span>
+
+1. すべての判断は <span class="str">aidlc-docs/</span> 配下のMarkdownに記録する
+2. 実装の前に <span class="kw">Intent → Unit → Bolt</span> の順で計画を確定する
+3. 各Boltの開始時に「何を作るか／成功条件／触るファイル」を提示し、私の承認を待つ
+4. コード生成後は <span class="kw">Reviewer</span> の視点で自己レビューし、問題点を列挙する
+5. 不明点・曖昧な要件は実装前に必ず質問する（勝手に解釈して実装しない）
+
+<span class="cm">## 成果物の置き場所</span>
+
+- Intent定義: <span class="str">aidlc-docs/intent/intent.md</span>
+- Unit分解:   <span class="str">aidlc-docs/units/unit-NN-name.md</span>
+- 設計:       <span class="str">aidlc-docs/design/</span>
+- Bolt記録:   <span class="str">aidlc-docs/bolts/bolt-log.md</span>
+- 振り返り:   <span class="str">aidlc-docs/reflection/reflection.md</span>
+
+<span class="cm">## 私について</span>
+
+- AI-DLC初心者です。各フェーズで何をしているか短く説明してから進めてください
+- 専門用語は初出時に1行で意味を添えてください</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>なぜCLAUDE.mdが効くか</strong>: Claude Codeは起動時にプロジェクト直下のCLAUDE.mdを<strong>システムプロンプトの一部として読み込む</strong>。毎回「AI-DLCで進めて」と書く必要がなくなり、AIが勝手にコードを書き始める事故も防げる。React的に言えば、これは「Context Provider」でセッション全体を包むイメージ。
+    </div>
+
+    <div class="try-box">
+      <div class="try-title">💻 試し方</div>
+      <ol>
+        <li>上のCLAUDE.mdをコピーしてプロジェクトルートに保存</li>
+        <li>ターミナルで <code>claude</code> を起動</li>
+        <li>「<code>このプロジェクトのルールを3行で要約して</code>」と聞く</li>
+        <li>AI-DLC・Markdown記録・承認待ちの3点が出てくれば成功</li>
+      </ol>
+      <div class="try-tip"><strong>💡 コツ:</strong> CLAUDE.mdは育てるもの。Lab10の振り返りで気づいた追加ルールをここに書き足していくとAIの挙動が安定する。</div>
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">🔍 構造の確認</div>
+      <ol>
+        <li>ルートで <code>ls -la</code> または <code>dir</code> し、CLAUDE.mdとaidlc-docs/が見えるか</li>
+        <li>Claude Codeで「<code>aidlc-docsの中を見せて</code>」と聞き、空ファイルが認識されるか</li>
+        <li>「<code>このプロジェクトはどんな進め方をする？</code>」と聞き、AI-DLCの3フェーズに言及するか</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- LAB 5 ============================================ -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>Intentを書く（Inception開始）</h3>
+    <span class="lab-tag tag-intermediate">Inception</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Inceptionフェーズの最初の一歩は <code>Intent</code> を書くこと。Intentは<strong>「なぜ作るのか」の1文+背景</strong>。これがブレるとUnit分解もBoltも全部ブレるので、ここに時間をかける価値がある。
+    </p>
+
+    <div class="info-box info">
+      📘 <strong>良いIntentの条件</strong>: ① 主語（誰のため）② 動詞（何ができるように）③ 価値（なぜ嬉しい）が含まれる。技術用語は出さない（「Reactで」「DBは…」はUnitやDesignの話）。
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>aidlc-docs/intent/intent.md（テンプレ）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># Intent</span>
+
+<span class="cm">## 一文で（北極星）</span>
+
+&lt;誰&gt; が &lt;何&gt; できるように &lt;価値&gt; を提供する。
+
+<span class="cm">## 背景</span>
+
+- 現状の課題:
+- なぜ今やるか:
+- やらないと困ること:
+
+<span class="cm">## 成功の定義（Done の判定基準）</span>
+
+- [ ] 計測可能な指標 1
+- [ ] 計測可能な指標 2
+
+<span class="cm">## スコープ外（やらないこと）</span>
+
+- 〇〇は今回の対象外
+- △△は将来検討
+
+<span class="cm">## 制約</span>
+
+- 期限:
+- 環境:
+- 既存システムとの関係:</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>記入例（Markdownメモアプリ）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># Intent</span>
+
+<span class="cm">## 一文で</span>
+
+ひとり開発者が、<span class="str">ブラウザだけで</span>Markdownメモを書いて即時にローカル保存できる、
+ログイン不要の最小限メモアプリを作る。
+
+<span class="cm">## 背景</span>
+
+- 現状: 思いついたメモをスマホとPCで同期するのに何個もアプリを使い分けている
+- なぜ今やるか: AI-DLC学習の練習題材として、自分が毎日使うものを作るのが一番モチベが続く
+- やらないと困ること: 練習が抽象的なまま終わり、業務に活かせない
+
+<span class="cm">## 成功の定義</span>
+
+- [ ] ブラウザでURLを開いた瞬間にメモ入力できる
+- [ ] リロードしてもメモが消えない
+- [ ] 自分が3日連続で使う
+
+<span class="cm">## スコープ外</span>
+
+- マルチユーザ・ログイン機能
+- クラウド同期
+- リッチエディタ（プレーンMarkdownのみ）
+
+<span class="cm">## 制約</span>
+
+- 期限: 1週間（夜の自由時間のみ）
+- 環境: 静的HTML+JS、サーバなし
+- 既存システム: なし（新規）</pre>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>よくある失敗</strong>: Intentに「Reactで作る」「IndexedDBで保存する」と書いてしまう。これは<strong>Unitや設計のレベル</strong>。Intentに技術が混じると、AIが「なぜそれを選ぶか」を考えずにそのまま実装に走る。技術選定はLab07以降で。
+    </div>
+
+    <div class="try-box">
+      <div class="try-title">💻 一人Mob Elaboration の最初の一歩</div>
+      <ol>
+        <li>テンプレを <code>aidlc-docs/intent/intent.md</code> にコピー</li>
+        <li>自分で「一文で」を書いてみる（5〜10分）</li>
+        <li>Claude Code で「<code>intent.md を読んで、曖昧な点を5つ質問して</code>」と依頼</li>
+        <li>AIの質問に答えながらintent.mdを書き直していく</li>
+        <li>「<code>これでIntentとして十分か、不足があれば指摘して</code>」で確認</li>
+      </ol>
+      <div class="try-tip"><strong>💡 コツ:</strong> AIの質問に答えるとき、答えはintent.mdに直接書き込むこと。会話だけで合意するとセッションが切れたら消える。「文書に残す」のがAI-DLCの命綱。</div>
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">🔍 Intent完成の判定</div>
+      <ol>
+        <li>1ヶ月後の自分が読んで「何のプロジェクトか」が分かるか</li>
+        <li>「成功の定義」が<strong>計測可能</strong>（YES/NOで判定できる）か</li>
+        <li>「スコープ外」が3つ以上書けているか（書けないとスコープが膨らむ）</li>
+        <li>技術用語が「制約」セクション以外に出ていないか</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- LAB 6 ============================================ -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>Mob Elaboration を一人で実施</h3>
+    <span class="lab-tag tag-intermediate">Inception</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      本来のMob Elaborationは PO・開発者・QA が同席して数時間集中議論する儀式。個人開発では <strong>「自分（あらゆる役割）+ AI」</strong> で疑似Mobをやる。鍵は<strong>役割を明示的に切替える</strong>こと。AIにHat（帽子）を被せる。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 一人Mobの進め方</div>
+      <pre class="ascii-art">あなた                    AI（Hat切替）
+  │                          │
+  ├─「PO目線で要件レビューして」→ Hat: Product Owner
+  │       ←質問・抜け漏れ指摘─┤
+  │                          │
+  ├─「QA目線でテスト観点を出して」→ Hat: QA Engineer
+  │       ←テストケース提案 ─┤
+  │                          │
+  ├─「セキュリティ目線で見て」→ Hat: Security Reviewer
+  │       ←リスク指摘    ─┤
+  │                          │
+  └→ 議事録を intent.md と    ←
+     elaboration-log.md に追記</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>Mob Elaboration プロンプト例</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># Claude Code に貼り付ける指示</span>
+
+これから Mob Elaboration をします。あなたに3つの役割を順番に演じてもらいます。
+
+<span class="kw">Step 1</span>: <span class="str">Product Owner</span> として
+  intent.md を読み、ユーザの実利用シーンを3つ列挙し、
+  「これは本当に必要？」「優先度は？」を質問してください。
+
+<span class="kw">Step 2</span>: <span class="str">QA Engineer</span> として
+  受入基準（Acceptance Criteria）を Given-When-Then 形式で5個書いてください。
+  境界値・異常系も含めること。
+
+<span class="kw">Step 3</span>: <span class="str">Security Reviewer</span> として
+  このIntentに潜むセキュリティ・プライバシーのリスクを3つ挙げ、
+  対策の方向性を1行ずつ書いてください。
+
+各Stepの結果を <span class="str">aidlc-docs/intent/elaboration-log.md</span> に追記してください。
+私の確認なく次のStepには進まないでください。</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>Hat（役割）</th><th>視点</th><th>主に出すもの</th></tr></thead>
+      <tbody>
+        <tr><td>Product Owner</td><td>ユーザ価値・優先度</td><td>ユーザストーリー、優先順位、削れる機能</td></tr>
+        <tr><td>QA Engineer</td><td>検証可能性</td><td>受入基準、テストケース、境界値</td></tr>
+        <tr><td>Security Reviewer</td><td>リスク</td><td>脅威モデル、データ保護、認可</td></tr>
+        <tr><td>Architect</td><td>非機能要件</td><td>性能・拡張性・運用要件</td></tr>
+        <tr><td>Developer</td><td>実装可能性</td><td>技術選定の選択肢、見積もり</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box ok">
+      ✅ <strong>Hat切替の威力</strong>: 同じClaude Codeセッションでも、明示的に役割を変えるとAIの出力が劇的に変わる。POを被ると「ユーザは…」、QAを被ると「もしXが空だったら…」と自然に視点が動く。これは LLMの<strong>役割プロンプティング</strong>を構造化したもの。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>5役全部やる必要はない</strong>: 練習の最初は <code>PO + QA</code> の2役だけで十分。役を増やすほど時間がかかり、初心者は判断ログを書ききれず疲弊する。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">🔍 Elaboration終了の判定</div>
+      <ol>
+        <li>elaboration-log.md に各Hatの出力が時系列で残っているか</li>
+        <li>受入基準が5個以上、Given-When-Then形式で書けているか</li>
+        <li>Intent修正があれば intent.md に反映済みか</li>
+        <li>「次に何を作るか（Unit候補）」が3〜7個書き出せているか</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- LAB 7 ============================================ -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>Unitに分解する</h3>
+    <span class="lab-tag tag-intermediate">Inception</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Intent から <code>Unit</code> へ分解する。Unitは「<strong>独立して価値を生む機能の塊</strong>」で、疎結合・高凝集が原則。Unitの粒度を間違えると、Boltで詰まったり並行作業できなかったりする。
+    </p>
+
+    <div class="info-box info">
+      📘 <strong>良いUnitの3条件</strong>: ① 単独でリリースしても何かしらの価値が出る ② 他のUnitに強く依存しない（依存があるなら明示） ③ 1人で1〜3日で終わるサイズ。3日超えるなら2つに割る。
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>Unit分解 プロンプト例</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># Claude Code に貼り付ける指示</span>
+
+intent.md と elaboration-log.md を読み、このプロジェクトを Unit に分解してください。
+
+要件:
+1. Unit は <span class="num">3〜5個</span>（多すぎたら統合、少なすぎたら分割を提案）
+2. 各 Unit は疎結合・高凝集を守る
+3. Unit 間に依存がある場合は明示（DAG形式で）
+4. 各Unitを <span class="str">aidlc-docs/units/unit-NN-name.md</span> として作成
+
+各 Unit ファイルには以下を含めてください:
+- 目的（Intentのどこに貢献するか）
+- 受入基準（Acceptance Criteria）
+- 依存する他のUnit（あれば）
+- 推定Bolt数と各Boltの仮タイトル
+- 触る予定のファイル/ディレクトリ
+
+最後に <span class="str">aidlc-docs/units/README.md</span> に
+全Unitの一覧と依存グラフ（テキストで）を作ってください。
+
+実装はまだ始めないでください。Unit構成案を私が承認してから次に進みます。</pre>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 Unit DAG（依存グラフ）の例</div>
+      <pre class="ascii-art">Markdownメモアプリの場合:
+
+  unit-01-editor       （Markdownエディタ部品）
+       │
+       ├─→ unit-02-storage   （LocalStorage保存）
+       │        │
+       │        └─→ unit-04-export  （JSONエクスポート）
+       │
+       └─→ unit-03-list-view （メモ一覧UI）
+                │
+                └─→ unit-04-export
+
+順序: 01 → 02,03 並行 → 04
+独立して動かせる: 01単体（保存なしでも編集はできる）</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>判定</th><th>このUnit分解は…</th></tr></thead>
+      <tbody>
+        <tr><td>✓ 良い</td><td>「unit-02-storage を作らずに unit-01-editor だけリリースしても、編集体験というデモはできる」</td></tr>
+        <tr><td>✗ 悪い</td><td>「unit-01-frontend と unit-02-backend」みたいに技術レイヤーで切る（疎結合に見えて実は密結合）</td></tr>
+        <tr><td>✗ 悪い</td><td>「unit-01-全機能MVP」のように大きすぎる（5日以上かかるならもっと割る）</td></tr>
+        <tr><td>✗ 悪い</td><td>「unit-01-設定画面の保存ボタン」のように小さすぎる（これはBolt粒度）</td></tr>
+      </tbody>
+    </table>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 なぜUnit分解にこだわるか</div>
+      <ul class="usecase-list">
+        <li>Boltでの実装中、AIが触るスコープが明確になり余計なファイルを巻き込まない</li>
+        <li>「ここで詰まったら他のUnitに進める」という退避ルートができる</li>
+        <li>Operations での障害切り分けが楽（このUnitだけロールバックなど）</li>
+        <li>後で他人に渡すとき、Unit境界が引き継ぎ単位になる</li>
+      </ul>
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">🔍 Unit分解の判定</div>
+      <ol>
+        <li>各Unitが「何を作るか」を1文で言えるか</li>
+        <li>依存グラフに循環依存がないか（A→B→Aは禁止）</li>
+        <li>1つのUnitだけ実装した状態で、何かしらの動くデモになるか</li>
+        <li>Unitの数が3〜7個に収まっているか</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- LAB 8 ============================================ -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>Boltを回して実装する</h3>
+    <span class="lab-tag tag-advanced">Construction</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ここからConstructionフェーズ。Unitを<code>Bolt</code>に細分化して回す。1Boltは<strong>数時間〜半日</strong>のサイクルで、「計画→実装→セルフレビュー→人間承認→次へ」という4ステップを毎回踏む。これがAI-DLCの心臓部。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 1 Bolt の流れ（4ステップ）</div>
+      <pre class="ascii-art">┌─ Step 1: Plan ────────────────────────┐
+│ AI: 「このBoltで何を作る／触るファイル／成功条件」をMD化 │
+│ あなた: 内容を読んで承認 or 修正指示                   │
+└────────────────┬────────────────┘
+                 ▼
+┌─ Step 2: Build ───────────────────────┐
+│ AI: 計画に従ってコード生成・テスト記述                │
+│ あなた: 必要なら横で見守る                            │
+└────────────────┬────────────────┘
+                 ▼
+┌─ Step 3: Self-Review ────────────────┐
+│ AI: Reviewer Hatに切替えて自己レビュー、問題点を列挙  │
+│ あなた: 指摘の妥当性を確認                            │
+└────────────────┬────────────────┘
+                 ▼
+┌─ Step 4: Human Gate ─────────────────┐
+│ あなた: コードを実機で動かして検証、Bolt記録に追記    │
+│        OK→コミット、NG→Step 1に戻る                  │
+└────────────────────────────────┘</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>Bolt開始 プロンプト例</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># Claude Code に貼り付ける指示</span>
+
+これから <span class="str">unit-01-editor</span> の <span class="str">Bolt 1</span> を実行します。
+
+<span class="kw">Step 1: Plan</span>
+unit-01-editor.md を読み、Bolt 1 として「最小のMarkdownエディタ部品を1ファイルで作る」
+スコープに絞って、以下を <span class="str">aidlc-docs/bolts/bolt-log.md</span> に追記してください:
+
+- このBoltのゴール（1文）
+- 触るファイル（新規 or 既存、フルパス）
+- 触らないファイル（明示）
+- 成功条件（実機で何が起きればOKか）
+- 想定される失敗ケースと対処
+- 推定時間
+
+書き終わったら<span class="kw">私の承認</span>を待ってください。
+私がOKと言うまで実装には入らないでください。</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>承認後の指示</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>承認します。<span class="kw">Step 2: Build</span> に進んでください。
+
+実装後、<span class="kw">Step 3: Self-Review</span> として Reviewer Hat に切替え、
+以下の観点で自己レビューし、bolt-log.md に追記してください:
+
+- 計画通りに作れているか
+- 触らないと宣言したファイルを触っていないか
+- エッジケース・異常系の扱い
+- 見落としている点・将来の負債候補
+
+コミットはまだしないでください。私が実機確認した後、コミットメッセージを提案してください。</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>「触らないファイル」を明示する理由</strong>: AIは指示を超えて「ついでに直す」傾向がある。これがUnit境界を崩す原因No.1。Bolt計画に「触らない」と書かせると、誤って手を出したときセルフレビューで気づける。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>承認を惰性化しない</strong>: 「OK」と言うのは数秒で済むが、計画を読まずに承認すると、AIが間違った方向に全力で走り、戻すコストが大きくなる。<strong>計画MDを必ず一読</strong>。これがAI-DLCで最も価値のある時間。
+    </div>
+
+    <div class="info-box err">
+      🚨 <strong>初心者がやりがちな破綻パターン</strong>: 「全部いっぺんにやって」と言ってしまうこと。Unit丸ごと、複数Unitを並行、などをBolt無視でやらせると、AIは動くが、出力が大きすぎてレビュー不能になり、結局やり直し。<strong>1 Bolt = 1ファイル or 1機能</strong>を守る。
+    </div>
+
+    <div class="try-box">
+      <div class="try-title">💻 はじめてのBoltを回す</div>
+      <ol>
+        <li>上の「Bolt開始」プロンプトをコピー</li>
+        <li>Claude Codeに貼り付けて、Plan出力を待つ</li>
+        <li>bolt-log.mdを開いて<strong>計画を読む</strong>（30秒）</li>
+        <li>違和感があれば「<code>触るファイルが多すぎ。〇〇だけにして</code>」など修正指示</li>
+        <li>OKなら「承認します。Build に進んで」と返す</li>
+        <li>実装完了後、自分でファイルを開いて目視レビュー</li>
+        <li>ブラウザ等で動作確認、bolt-log.mdに「実機確認OK／NG」を追記</li>
+        <li>OKなら<code>git commit</code>、NGなら原因をAIに伝えて再Bolt</li>
+      </ol>
+      <div class="try-tip"><strong>💡 コツ:</strong> Boltが終わるたびに<code>git commit</code>する。後で「あのBoltに戻したい」が一発でできる。コミットメッセージはAIに「Bolt N: 〇〇」形式で提案させる。</div>
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">🔍 Bolt完了の判定</div>
+      <ol>
+        <li>計画MDの「成功条件」が実機で満たされているか</li>
+        <li>「触らない」と書いたファイルが本当に変更されていないか（<code>git diff</code>で確認）</li>
+        <li>セルフレビューで指摘された点に対処済み（または「次Boltで対処」と明示）か</li>
+        <li>bolt-log.mdに完了時刻と所感が追記されているか</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- LAB 9 ============================================ -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>レビューと反復ループ</h3>
+    <span class="lab-tag tag-advanced">Construction</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Boltを回し続けると必ず<strong>「想定外」</strong>が出る。これをどう吸収するかが品質を分ける。AI-DLCには <code>Reviewer Hat</code> による自己レビューと、<strong>失敗をUnit/Intentに反映する仕組み</strong>がある。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 失敗を吸収する3つのレベル</div>
+      <pre class="ascii-art">レベル1: Bolt内で吸収
+  └ 実装ミス・テスト失敗 → 同じBoltで再実装
+
+レベル2: Unitを分割/統合
+  └ Bolt 3つ予定だったが5つ必要だと分かった
+    → unit-XX-name.md の Bolt一覧を更新、新Boltを追加
+
+レベル3: Intentを修正
+  └ そもそも要件が間違っていた／優先度が違った
+    → intent.md を修正、影響を受けるUnitを再検討
+    → これが「Reflection（振り返り）」の入り口</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>Reviewer Hatでの厳しめレビュー指示</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># 直前のBolt成果物に対して</span>
+
+<span class="kw">Reviewer Hat</span>に切替えてください。
+甘めではなく、コードレビュー経験10年のシニアエンジニア視点で、以下を確認:
+
+1. <span class="str">機能的正しさ</span>: 受入基準を満たすか、エッジケースは？
+2. <span class="str">コード品質</span>: 命名・関数長・重複・可読性
+3. <span class="str">セキュリティ</span>: XSS/インジェクション/権限ミス
+4. <span class="str">テスト</span>: 不足しているケース、テストの偽陽性
+5. <span class="str">将来の負債</span>: いま手を打っておくべき設計上の地雷
+
+各観点で「<span class="kw">Critical</span> / <span class="kw">Major</span> / <span class="kw">Minor</span>」のラベル付き指摘を最低5つ出してください。
+指摘ゼロは禁止です（必ず何か見つける）。
+
+結果は <span class="str">aidlc-docs/bolts/bolt-log.md</span> の該当Boltセクションに追記。</pre>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>「指摘ゼロ禁止」の効果</strong>: AIは褒め役になりがち。明示的に「最低5つ」「Critical/Major/Minor」と指定すると、本気でアラを探す。実際にやってみると、自分のコードでも自分のAIが書いたコードでも、必ず何か見つかる。
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>指摘ラベル</th><th>対応方針</th></tr></thead>
+      <tbody>
+        <tr><td>Critical</td><td>このBolt中に修正。修正前にコミットしない</td></tr>
+        <tr><td>Major</td><td>次Boltまでに修正。Unit受入基準に追加</td></tr>
+        <tr><td>Minor</td><td>reflection.md に「技術負債リスト」として記録、後で扱う</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box warn">
+      ⚠️ <strong>反復の罠</strong>: 「あと少し」でAIに直させ続けると無限ループに陥る。<strong>2回直して直らないなら、そのBoltは一度コミットして次に進む</strong>。技術負債としてreflection.mdに記録すれば、後で別Boltとして対処できる。完璧を狙うとAI-DLCの速度メリットが死ぬ。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">🔍 反復ループの健全性</div>
+      <ol>
+        <li>Bolt再実行が3回を超えたUnitがないか（あれば設計を疑う）</li>
+        <li>Critical指摘が放置されていないか</li>
+        <li>Unit境界を崩す変更（他Unitのファイルを触る）が混入していないか</li>
+        <li>bolt-log.md が時系列で読める形になっているか（後の振り返りで使う）</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- LAB 10 =========================================== -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>Operations と Reflection</h3>
+    <span class="lab-tag tag-advanced">Operations</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      全Unitが完成したらOperationsフェーズへ。デプロイ・運用の観点と、最も重要な<strong>Reflection（振り返り）</strong>を行う。Reflectionは<strong>次のIntentを賢くするための燃料</strong>で、AI-DLCを継続的に効くものにする鍵。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 Operations で押さえる4点</div>
+      <pre class="ascii-art">1. Deploy:    どこで動かす？手順は？ロールバックは？
+2. Observe:   何を見れば壊れたと分かる？ログ・指標
+3. Maintain:  誰が直す？どこに依頼が来る？
+4. Reflect:   今回の学びを次に活かすため何を残す？
+              ↑ これがAI-DLCの差別化ポイント</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>Operations プロンプト例（小規模個人プロジェクト）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># Claude Code に貼り付ける指示</span>
+
+Operationsフェーズに入ります。intent.md と全Unitを踏まえ、以下を作成:
+
+1. <span class="str">aidlc-docs/operations/runbook.md</span>
+   - デプロイ手順（コマンド単位）
+   - ロールバック手順
+   - 動作確認チェックリスト
+
+2. <span class="str">aidlc-docs/operations/observability.md</span>
+   - 「壊れた」を判定する観点（エラーログ・UI崩れ・データ消失）
+   - 自分が手動で確認するチェック頻度
+
+個人開発・サーバなしのプロジェクトなので、過剰なツール導入はしない。
+シンプルで継続できる運用にすること。</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>Reflection プロンプト例（最重要）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># Claude Code に貼り付ける指示</span>
+
+このプロジェクトの Reflection を行います。
+全 bolt-log.md と elaboration-log.md を読み、以下を <span class="str">aidlc-docs/reflection/reflection.md</span> に書いてください:
+
+<span class="kw">## 1. 数値で振り返る</span>
+- 総Bolt数、再実行が必要だったBolt
+- Intent修正の回数とタイミング
+- Unit分割/統合があったか
+
+<span class="kw">## 2. 良かったこと（次も続ける）</span>
+- 効果が高かったプロンプトパターン
+- スムーズに進んだフェーズ
+
+<span class="kw">## 3. ハマったこと（次は避ける）</span>
+- 想定外だった点
+- 計画と実装のズレが出た原因
+
+<span class="kw">## 4. CLAUDE.md に追加すべきルール</span>
+- 今回の経験から、次プロジェクトの CLAUDE.md に書くべき新ルールを3つ提案
+
+<span class="kw">## 5. 技術負債リスト</span>
+- 今回意図的に先送りにした項目
+- 次プロジェクトの最初の Bolt 候補</pre>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>Reflectionが本当に効くタイミング</strong>: 次プロジェクトを始める時、新しい <code>CLAUDE.md</code> を作る前に前プロジェクトのreflection.mdを読み返す。「ハマったこと」と「追加すべきルール」が次の防御策になる。これを<strong>3〜5プロジェクト続ける</strong>と、自分専用のAI-DLCスタイルが固まる。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 Reflectionで気づきやすいパターン</div>
+      <ul class="usecase-list">
+        <li>「Bolt粒度が大きすぎた」→ 次は半分のサイズで切る</li>
+        <li>「IntentとUnitの間にギャップ」→ Mob Elaborationの時間を増やす</li>
+        <li>「特定のHat（例: Security）を呼び忘れた」→ CLAUDE.mdに必須Hatリストを追加</li>
+        <li>「同じ質問を何度もAIにした」→ FAQをCLAUDE.mdに転記</li>
+      </ul>
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">🔍 Operations完了の判定</div>
+      <ol>
+        <li>runbook.mdを読んで<strong>1ヶ月後の自分</strong>がデプロイできるか</li>
+        <li>reflection.md の「次プロジェクトのCLAUDE.md追加ルール」が3つ書けたか</li>
+        <li>技術負債リストが「Lab07のUnit分解」のような<strong>Bolt候補</strong>にできる粒度か</li>
+        <li>Intent.mdの「成功の定義」が実際に達成されたか確認したか</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- LAB 11 =========================================== -->
+<div class="lab" id="lab11">
+  <div class="lab-header">
+    <div class="lab-num">11</div>
+    <h3>初めての練習題材で全工程を通す</h3>
+    <span class="lab-tag tag-advanced">実例</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ここまでの内容を実際に通す<strong>最初の練習題材</strong>を提案する。重要なのは「小さくて、自分が使うもの」。Tomさんの興味（Web技術・OutSystems・JavaScript・学習可視化）と相性が良い候補をいくつか挙げる。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>題材</th><th>Intent候補</th><th>Unit数目安</th><th>推定総時間</th></tr></thead>
+      <tbody>
+        <tr><td>Markdownメモアプリ</td><td>ブラウザだけで動くMarkdownメモを作る</td><td>3〜4</td><td>4〜8時間</td></tr>
+        <tr><td>HTTP Headers クイズ</td><td>既存知識ベースを練習問題HTMLに変換</td><td>3</td><td>3〜5時間</td></tr>
+        <tr><td>ポモドーロ + 日記</td><td>30分作業→振り返り入力の朝ルーティン補助</td><td>3〜4</td><td>4〜6時間</td></tr>
+        <tr><td>OutSystems構文クイックリファレンス</td><td>業務でよく引く検索可能な静的HTML</td><td>3</td><td>3〜5時間</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info">
+      📘 <strong>最初の題材を選ぶ基準</strong>: ① 自分が3日以上使うか ② サーバ・DBなしで完結するか（運用負荷ゼロ） ③ 機能が3〜5個に切れるか。これら満たさないと、AI-DLCの練習なのに環境構築で時間が溶ける。
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 最初の1週間スケジュール例</div>
+      <pre class="ascii-art">Day 1 (60分): Lab 03〜04 環境セットアップ + CLAUDE.md
+Day 2 (60分): Lab 05    Intent.md を書く（一人Mob 1役）
+Day 3 (90分): Lab 06〜07 Mob Elaboration + Unit分解
+Day 4 (90分): Lab 08    Bolt 1〜2 を回す（unit-01）
+Day 5 (90分): Lab 08    Bolt 3〜4 を回す（unit-02）
+Day 6 (60分): Lab 09    残Bolt + 反復レビュー
+Day 7 (60分): Lab 10    Operations + Reflection</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>初回スタートの「最初の一手」プロンプト</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># 環境セットアップ済みで、Claude Code 起動直後に貼る</span>
+
+CLAUDE.md は読みましたか？ AI-DLC方式で進めます。
+
+これから Inception フェーズの Lab 05 を始めます。
+題材は <span class="str">「&lt;選んだ題材&gt;」</span> です。
+
+最初に Intent.md のテンプレを <span class="str">aidlc-docs/intent/intent.md</span> に作り、
+その後 PO Hat に切替えて、私に5つ質問してください。
+私の回答を待ってから次に進んでください。</pre>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>最初は「完成させない」のもアリ</strong>: 最初の練習でMVP完成を狙うと挫折しやすい。Lab 05〜07（Inception）だけ通して<strong>Intent + Unit分解の文書だけ作る</strong>でも十分1学習回として成立する。慣れてからConstructionへ。
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>2回目以降の伸び</strong>: 初回はLabを参照しながらで時間がかかる。2回目から「自分の語彙化」が進み、3回目には CLAUDE.md とReflection.md が個人最適化される。<strong>3プロジェクト続けて初めて</strong>AI-DLCのvelocityメリットが体感できる。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 業務へ展開するときの注意</div>
+      <ul class="usecase-list">
+        <li>業務コードはCLAUDE.md に「触ってよいファイル/ディレクトリ」を厳密に書く</li>
+        <li>レガシー資産（OutSystems等）への適用は、まず「コード読み解き」をUnit化するbrownfield AI-DLCを試す</li>
+        <li>チームで使うときはMob Elaborationを<strong>1時間の朝会</strong>に縮小して導入</li>
+        <li>セキュリティ・コンプラ要件はCLAUDE.mdに固定で書き、毎セッション読ませる</li>
+      </ul>
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">🔍 初回完了の判定（最低ライン）</div>
+      <ol>
+        <li>aidlc-docs/ 配下にintent / units / bolts / reflection の各MDが残っているか</li>
+        <li>git logを見るとBolt単位でコミットが並んでいるか</li>
+        <li>reflection.mdの「次回CLAUDE.mdに追加すべきルール」が書けたか</li>
+        <li>「次にやりたいこと」がreflection.md末尾に書かれ、次Intent候補になっているか</li>
+      </ol>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>もう一段深めたい人へ</strong>: 慣れたらAWS公式の AI-DLC ワークフロー（オープンソース版）や <code>TheBushidoCollective/ai-dlc</code> の Claude Code プラグインを試すと、本Labで手動でやった「Hat切替」「Bolt管理」「Quality Gate」が自動化されている。手動で1〜2周やってからの方が仕組みが分かるのでお勧め。
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+function copyCode(btn) {
+  const block = btn.closest('.code-block') || btn.parentElement;
+  const pre = block.querySelector('pre');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+  const map = new Map();
+  links.forEach(a => {
+    const el = document.getElementById(a.getAttribute('href').slice(1));
+    if (el) map.set(el, a);
+  });
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) {
+      const l = map.get(e.target);
+      if (l) { links.forEach(n => n.classList.remove('active')); l.classList.add('active'); }
+    }
+  }), { rootMargin: '-30% 0px -60% 0px' });
+  document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+  // 既存 .code-block にheaderがなければ自動付与（このファイルでは全部手書きしているので基本動かない）
+  document.querySelectorAll('.code-block').forEach((cb, i) => {
+    if (cb.querySelector('.code-block-header')) return;
+    const header = document.createElement('div');
+    header.className = 'code-block-header';
+    header.innerHTML = `<span>Code #${i+1}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+    cb.insertBefore(header, cb.firstChild);
+  });
+});
+</script>
+
+</body>
+</html>

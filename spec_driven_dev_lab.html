@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>仕様駆動開発 実践Lab — シンプルTODOアプリで手を動かす</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+.verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+  line-height:1.7; border:1px solid; }
+.verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+.verify-before .verify-label { color:var(--error); }
+.verify-after  .verify-label { color:var(--success); }
+
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+.compare-table .yes { color:var(--success); } .compare-table .no { color:var(--error); }
+
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+.usecase-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:6px; }
+.usecase-list { margin-left:20px; margin-bottom:10px; }
+.usecase-list li { margin-bottom:4px; }
+.usecase-trigger { background:rgba(0,92,197,.05); border-left:3px solid var(--accent);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#003d8f; margin-top:8px; }
+.usecase-trigger ul { margin:4px 0 0 20px; }
+
+.livedemo { margin:14px 0; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+.livedemo-bar { display:flex; align-items:center; gap:12px; padding:8px 12px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.toggle-btn { font-family:var(--mono); font-size:.78rem; padding:5px 14px;
+  border-radius:6px; border:1px solid var(--accent); background:var(--accent);
+  color:#fff; cursor:pointer; transition:all .15s; }
+.toggle-btn:hover { opacity:.85; }
+.toggle-btn.is-before { background:var(--error); border-color:var(--error); }
+.toggle-label { font-family:var(--mono); font-size:.78rem; color:var(--text-dim); }
+.livedemo-stage { padding:16px; background:var(--bg); }
+.livedemo-stage.is-before { outline:2px dashed var(--error); outline-offset:-8px; }
+.livedemo-stage .ld-before { display:none; }
+.livedemo-stage.is-before .ld-before { display:block; }
+.livedemo-stage.is-before .ld-after { display:none; }
+.ld-panel { padding:12px; border-radius:6px; font-family:var(--mono); font-size:11px; line-height:1.6; white-space:pre-wrap; }
+.ld-panel.bad { background:#fee2e2; border:1px solid #cb2431; color:#6b1a22; }
+.ld-panel.good { background:#dcfce7; border:1px solid #22863a; color:#166534; }
+
+.try-box { background:rgba(34,134,58,.06); border:1px solid rgba(34,134,58,.30);
+  border-left:3px solid var(--success); border-radius:7px;
+  padding:12px 14px; margin:14px 0; font-size:.86rem; line-height:1.8; color:#154f1e; }
+.try-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--success); font-weight:700; margin-bottom:6px; }
+.try-box ol { margin-left:20px; margin-top:4px; }
+.try-box ol li { margin-bottom:4px; }
+.try-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--success); }
+.try-tip { background:rgba(176,136,0,.06); border-left:3px solid var(--accent4);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#5c4400; margin-top:8px; }
+.try-tip strong { color:var(--accent4); }
+.try-skeleton { background:#f0f4f8; border:1px solid var(--border); border-radius:5px;
+  padding:10px 12px; margin-top:8px; font-family:var(--mono); font-size:.78rem;
+  color:var(--text); white-space:pre; overflow-x:auto; line-height:1.5; }
+
+.code-pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; }
+.code-pair-col { display:flex; flex-direction:column; min-width:0; }
+.code-pair-label { font-family:var(--mono); font-size:.72rem; letter-spacing:.05em;
+  font-weight:700; padding:6px 10px; border-radius:6px 6px 0 0; }
+.code-pair-before .code-pair-label { background:rgba(203,36,49,.10); color:#9a1320;
+  border:1px solid rgba(203,36,49,.30); border-bottom:none; }
+.code-pair-after  .code-pair-label { background:rgba(34,134,58,.10); color:#154f1e;
+  border:1px solid rgba(34,134,58,.30); border-bottom:none; }
+.code-pair-col .code-block { margin:0; border-radius:0 0 8px 8px; flex:1; }
+.code-pair-before .code-block { border-color:rgba(203,36,49,.30); }
+.code-pair-after  .code-block { border-color:rgba(34,134,58,.30); }
+@media (max-width:900px){ .code-pair { grid-template-columns:1fr; } }
+
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .verify { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+  </style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// 仕様駆動開発 <span>Practice</span></div>
+  <div class="nav-section">準備</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>SDDとは何か</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>題材プロジェクト紹介</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>環境準備</a>
+  <div class="nav-section">仕様を書く</div>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>要求仕様（WHY）</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>機能仕様（WHAT）</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>受入基準と例</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>データモデル</a>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>API/IF設計</a>
+  <div class="nav-section">実装と検証</div>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>テスト先行で実装</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>仕様⇄コードの追跡</a>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>変更管理と振返り</a>
+</nav>
+
+<div class="hero">
+  <h1>仕様駆動開発 実践Lab</h1>
+  <p class="subtitle">仮想プロジェクト「シンプルTODOアプリ」で手を動かしながら、Spec-Driven Development を1ステップずつ実践する初心者向け手順書</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>仕様駆動開発（SDD）とは何か</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>題材プロジェクト：MyTodo の紹介</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>環境準備：フォルダとファイル構成</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>STEP1：要求仕様を書く（WHY）</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>STEP2：機能仕様を書く（WHAT）</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>STEP3：受入基準と具体例</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>STEP4：データモデルを定義</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>STEP5：API/インターフェース設計</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>STEP6：テストを書いて実装する</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>STEP7：仕様とコードを紐づける</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">10</span>STEP8：変更管理と振返り</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ========== Lab 0 ========== -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>仕様駆動開発（SDD）とは何か</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <strong>仕様駆動開発（Spec-Driven Development）</strong> は、コードを書く前に「何を作るか」「なぜ作るか」「どう動くべきか」を文書化し、その仕様を中心に開発・テスト・レビューを進めるやり方。「コード優先」で書き始めて後から仕様を埋める従来手法と真逆のアプローチ。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 SDDのイメージ</div>
+      仕様書は「設計図」。家を建てる時、図面なしでいきなり木材を切り始めない。ソフトウェアも同じ。<br>
+      AI支援開発（Claude Code等）が普及した今、<strong>仕様書 = AIへの最良の指示書</strong>でもある。曖昧な口頭指示より、整った仕様書を渡す方が結果が安定する。
+      <pre class="ascii-art">┌────────────┐    ┌────────────┐    ┌────────────┐
+│  WHY       │───▶│  WHAT       │───▶│  HOW        │
+│ 要求仕様    │    │ 機能仕様    │    │ 実装        │
+│ (なぜ)     │    │ (なにを)    │    │ (どう作る)  │
+└────────────┘    └────────────┘    └────────────┘
+       ▲                                      │
+       └──── 振返り・変更管理 ─────────────────┘</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>観点</th><th>コード優先</th><th>仕様駆動（SDD）</th></tr></thead>
+      <tbody>
+        <tr><td>始めること</td><td>いきなりコード</td><td>仕様の文書化</td></tr>
+        <tr><td>議論の対象</td><td>動くコード</td><td>仕様書とサンプル</td></tr>
+        <tr><td>変更時の追跡</td><td><span class="no">困難</span></td><td><span class="yes">仕様 ⇄ コード対応</span></td></tr>
+        <tr><td>AI/LLM 活用</td><td>場当たり的</td><td><span class="yes">仕様書をプロンプト化</span></td></tr>
+        <tr><td>初心者の学習</td><td>動かして覚える</td><td>考えて整理して書く</td></tr>
+      </tbody>
+    </table>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="ld-mindset">Before を見る</button>
+        <span class="toggle-label" id="ld-mindset-label">現在: After（仕様駆動）</span>
+      </div>
+      <div class="livedemo-stage" id="ld-mindset">
+        <div class="ld-panel good ld-after">✓ 仕様駆動の朝
+1. specs/todo.md を開く
+2. 「タスク完了の定義」を1段落書く
+3. 受入基準を3つ書く
+4. その3つが満たされる最小コードを書く
+→ 何ができたら終わりか、最初から明確</div>
+        <div class="ld-panel bad ld-before">✗ コード優先の朝
+1. main.py を開く
+2. とりあえず addTask() を書く
+3. 「あれ完了状態どう持つ?」と悩む
+4. 1時間後、仕様も曖昧、テストもない
+→ 気付くと迷子、終わる基準が無い</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 1 ========== -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>題材プロジェクト：MyTodo の紹介</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      この手順書で作る仮想プロジェクトは <code>MyTodo</code>。「<strong>1人用・コマンドライン版・データはJSONファイルに保存</strong>」というシンプルなTODO管理アプリ。Webサーバ不要、DB不要。Python（または好きな言語）が動けばOK。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 なぜCLI＋JSONなのか</div>
+      ・UI/サーバ/DBがあると <strong>仕様書を書く前に環境構築で疲れる</strong>。<br>
+      ・CLI+JSONなら20行のコードで動く → 仕様の議論に集中できる。<br>
+      ・SDDの本質（書く順序・粒度・追跡）はプロジェクト規模に関係なく同じ。
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm"># 完成イメージ（CLI操作の例）</span>
+$ python mytodo.py add <span class="str">"牛乳を買う"</span>
+✓ 追加: #1 牛乳を買う
+
+$ python mytodo.py add <span class="str">"資料レビュー"</span>
+✓ 追加: #2 資料レビュー
+
+$ python mytodo.py list
+[ ] #1 牛乳を買う
+[ ] #2 資料レビュー
+
+$ python mytodo.py done <span class="num">1</span>
+✓ 完了にしました: #1
+
+$ python mytodo.py list
+[x] #1 牛乳を買う
+[ ] #2 資料レビュー</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>項目</th><th>内容</th></tr></thead>
+      <tbody>
+        <tr><td>言語</td><td>Python 3 推奨（無くてもOK、JS等でも置換可）</td></tr>
+        <tr><td>機能</td><td>add / list / done / delete の4コマンド</td></tr>
+        <tr><td>保存先</td><td><code>tasks.json</code>（同フォルダ）</td></tr>
+        <tr><td>外部依存</td><td>なし（標準ライブラリのみ）</td></tr>
+        <tr><td>所要時間</td><td>仕様書 60〜90分 / 実装 30〜60分</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ========== Lab 2 ========== -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>環境準備：フォルダとファイル構成</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      仕様書とコードを<strong>同じリポジトリに同居</strong>させる。これがSDDの大前提。<code>specs/</code> フォルダに仕様書、<code>src/</code> にコード、<code>tests/</code> にテスト。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm"># 推奨フォルダ構成</span>
+mytodo/
+├── README.md              <span class="cm"># プロジェクト概要</span>
+├── specs/
+│   ├── 01_requirements.md <span class="cm"># 要求仕様（Lab3）</span>
+│   ├── 02_features.md     <span class="cm"># 機能仕様（Lab4）</span>
+│   ├── 03_acceptance.md   <span class="cm"># 受入基準（Lab5）</span>
+│   ├── 04_data_model.md   <span class="cm"># データモデル（Lab6）</span>
+│   └── 05_interface.md    <span class="cm"># API/IF設計（Lab7）</span>
+├── src/
+│   └── mytodo.py          <span class="cm"># 実装（Lab8）</span>
+├── tests/
+│   └── test_mytodo.py     <span class="cm"># テスト（Lab8）</span>
+└── decisions/
+    └── ADR_001_storage.md <span class="cm"># 設計判断ログ（Lab10）</span></pre>
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before（仕様書がコードと離れている）</div>
+        <div class="code-block">
+          <pre><span class="cm"># PCのDocumentsフォルダ等に</span>
+<span class="cm"># Word文書だけ単独で置く</span>
+~/Documents/todo仕様.docx
+~/work/mytodo/main.py
+<span class="cm"># → 同期されず、すぐ古くなる</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After（リポジトリ内Markdown）</div>
+        <div class="code-block">
+          <pre><span class="cm"># Gitで一緒に管理</span>
+mytodo/
+  specs/01_requirements.md
+  src/mytodo.py
+<span class="cm"># → コミット履歴で同時に追跡できる</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>WordやExcelで仕様を書かない</strong>。差分が見えず、レビューもできず、AIにも渡しにくい。<strong>Markdown（.md）一択</strong>。テキストエディタかVS Codeで開く。
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 3 ========== -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>STEP1：要求仕様を書く（WHY）</h3>
+    <span class="lab-tag tag-intermediate">実践</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      まず <strong>「誰が」「何のために」「これを使うのか」</strong> を書く。機能を書きたくなるのを我慢して、<strong>背景・目的・制約・対象外</strong> の4点だけ。所要時間 15分。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 「対象外」を書く意味</div>
+      初心者がやりがちな失敗：「あれもこれも」と機能が膨らむ。<br>
+      <strong>「やらないこと」を明示すれば、後で「これは仕様外なのでやりません」と堂々と言える</strong>。これが範囲（スコープ）管理の出発点。
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm"># specs/01_requirements.md にこれを書く</span>
+
+# MyTodo 要求仕様
+
+## 1. 背景
+個人用のタスク管理を、軽量に・依存なく・どのPCでも動く形で実現したい。
+既存のWebサービスは起動が遅く、オフラインで動かないのが不満。
+
+## 2. 目的
+1日5件程度の個人タスクを、ターミナルから30秒以内で追加・確認・完了できる。
+
+## 3. 利用者
+作者本人1名のみ。他ユーザーやログイン機能は対象外。
+
+## 4. 制約
+- Python 3.9以上が動くPCで動作
+- 外部ライブラリのインストール不要（標準ライブラリのみ）
+- データは1ファイル（tasks.json）で完結
+
+## 5. 対象外（やらないこと）
+- 期日・優先度・カテゴリ機能
+- 複数ユーザー対応
+- GUI/Web UI
+- スマホアプリ連携</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>「目的」は測れる形で書く</strong>。「便利にする」はNG（測れない）。「30秒以内で追加できる」はOK（時計で計れる）。これが後の受入基準につながる。
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before（曖昧で測れない）</div>
+        <div class="code-block">
+          <pre><span class="cm"># 目的</span>
+タスクを便利に管理したい。
+使いやすくて速いものが欲しい。
+
+<span class="cm"># → 「便利」「使いやすい」の判定不能</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After（具体的・測れる）</div>
+        <div class="code-block">
+          <pre><span class="cm"># 目的</span>
+1日5件程度の個人タスクを、
+ターミナルから30秒以内で追加・確認できる。
+
+<span class="cm"># → 「30秒」で達成判定が明確</span></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 4 ========== -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>STEP2：機能仕様を書く（WHAT）</h3>
+    <span class="lab-tag tag-intermediate">実践</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      要求仕様を満たす機能を<strong>箇条書きでリスト化</strong>する。各機能には<strong>ID（FN-001 等）</strong>を振る。これが後で「コードのこの部分はFN-003を実現している」と紐づける鍵になる。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm"># specs/02_features.md</span>
+
+# MyTodo 機能仕様
+
+## 機能一覧
+
+| ID     | 機能名      | 概要                               |
+|--------|-------------|------------------------------------|
+| FN-001 | タスク追加  | 文字列を渡すと新規タスクを登録     |
+| FN-002 | 一覧表示    | 全タスクをID順に表示               |
+| FN-003 | 完了マーク  | IDを指定して完了状態に変更         |
+| FN-004 | タスク削除  | IDを指定してタスクを削除           |
+
+## FN-001 タスク追加 詳細
+- 入力: タスクのタイトル文字列（1〜100文字）
+- 動作: 新しいIDを採番して tasks.json に追記
+- 出力: 「✓ 追加: #&lt;ID&gt; &lt;タイトル&gt;」を表示
+
+## FN-002 一覧表示 詳細
+- 入力: なし
+- 動作: tasks.json を読み、ID昇順で全件表示
+- 出力形式: 「[x] #1 牛乳を買う」未完了は「[ ]」、完了は「[x]」
+
+<span class="cm"># （FN-003, FN-004 も同様に書く）</span></pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 機能IDを振る効果</div>
+      <ul class="usecase-list">
+        <li>テスト関数名に使える: <code>def test_FN001_add_task():</code></li>
+        <li>コミットメッセージで参照できる: <code>feat: FN-003 完了マーク実装</code></li>
+        <li>レビュー指摘が明確に: <code>「FN-002の出力形式と実装が不一致」</code></li>
+        <li>Claude Code等への指示で具体的に: <code>「FN-001を実装して」</code></li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>こう見えたら機能IDの出番:</strong>
+        <ul>
+          <li>「あの機能のことなんだけど…」と毎回説明している</li>
+          <li>テストとコードの対応関係が分からなくなっている</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>ここでHOW（どう実装するか）は書かない</strong>。「ファイルをロックして…」「dictをsortedで…」は禁物。WHATだけ。実装の自由度を残しておく。
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 5 ========== -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>STEP3：受入基準と具体例</h3>
+    <span class="lab-tag tag-intermediate">実践</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      機能ごとに「<strong>これが満たされたら完成と認める</strong>」基準を書く。<code>Given / When / Then</code> 形式で書くと後でテストにそのまま落とせる。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 Given / When / Then とは</div>
+      ・<strong>Given</strong>（前提）: テスト開始前の状態<br>
+      ・<strong>When</strong>（操作）: 利用者が何をするか<br>
+      ・<strong>Then</strong>（期待）: 何が起きるべきか<br>
+      この3点が揃っていれば、誰がレビューしても解釈が同じになる。
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm"># specs/03_acceptance.md</span>
+
+# 受入基準
+
+## AC-001-1: 空のリストにタスクを追加
+- **Given** tasks.json が空（[]）の状態
+- **When**  `python mytodo.py add "牛乳を買う"` を実行
+- **Then** 標準出力に「✓ 追加: #1 牛乳を買う」と表示
+- **Then** tasks.json に id=1, title="牛乳を買う", done=false のタスクが1件存在
+
+## AC-001-2: 既存タスクがある状態で追加
+- **Given** tasks.json に id=1 のタスクが1件
+- **When**  `python mytodo.py add "資料レビュー"` を実行
+- **Then** 標準出力に「✓ 追加: #2 資料レビュー」と表示
+- **Then** tasks.json に2件存在し、新規IDは2
+
+## AC-001-3: 空文字でエラー
+- **Given** どんな状態でも
+- **When**  `python mytodo.py add ""` を実行
+- **Then** 標準エラーに「Error: タイトルが空です」と表示
+- **Then** 終了コード 1 で終了
+- **Then** tasks.json は変更されない
+
+## AC-003-1: 完了マーク
+- **Given** id=1 のタスクが done=false
+- **When**  `python mytodo.py done 1` を実行
+- **Then** 標準出力に「✓ 完了にしました: #1」と表示
+- **Then** tasks.json で id=1 の done が true になる
+
+## AC-003-2: 存在しないIDで完了
+- **Given** id=99 のタスクが存在しない
+- **When**  `python mytodo.py done 99` を実行
+- **Then** 標準エラーに「Error: ID 99 のタスクは見つかりません」と表示
+- **Then** 終了コード 1 で終了</pre>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>異常系を必ず1つ以上書く</strong>。空文字、存在しないID、ファイル破損など。「うまくいくケース」だけ書くとバグだらけになる。AC-001-3 や AC-003-2 のような「失敗してほしいケース」が品質を支える。
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before（曖昧で複数解釈可能）</div>
+        <div class="code-block">
+          <pre>タスクを追加できる。
+追加されたら表示する。
+エラー時は適切に処理する。
+
+<span class="cm"># → 「適切に」って何?</span>
+<span class="cm"># → 何を表示する? どこに?</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After（一意に解釈できる）</div>
+        <div class="code-block">
+          <pre>Given: tasks.json が空
+When:  add <span class="str">"牛乳を買う"</span>
+Then:  stdout に
+       <span class="str">"✓ 追加: #1 牛乳を買う"</span>
+Then:  tasks.json に
+       {id:1,title:<span class="str">"牛乳を買う"</span>,done:<span class="kw">false</span>}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 6 ========== -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>STEP4：データモデルを定義</h3>
+    <span class="lab-tag tag-intermediate">実践</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      保存される<strong>データの形（スキーマ）</strong>を確定させる。型・必須/任意・値の範囲を明記。これが決まらないとテストも書けない。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm"># specs/04_data_model.md</span>
+
+# データモデル
+
+## ストレージ
+- 形式: JSON
+- ファイル名: tasks.json（実行ディレクトリ直下）
+- 文字コード: UTF-8（BOMなし）
+
+## ルートスキーマ
+ルートは Task オブジェクトの配列。
+
+```json
+[
+  {<span class="str">"id"</span>: <span class="num">1</span>, <span class="str">"title"</span>: <span class="str">"牛乳を買う"</span>, <span class="str">"done"</span>: <span class="kw">false</span>, <span class="str">"created_at"</span>: <span class="str">"2026-04-28T09:00:00"</span>},
+  {<span class="str">"id"</span>: <span class="num">2</span>, <span class="str">"title"</span>: <span class="str">"資料レビュー"</span>, <span class="str">"done"</span>: <span class="kw">true</span>,  <span class="str">"created_at"</span>: <span class="str">"2026-04-28T09:05:00"</span>}
+]
+```
+
+## Task フィールド定義
+
+| フィールド   | 型      | 必須 | 説明                                       |
+|--------------|---------|------|--------------------------------------------|
+| id           | int     | ○    | 1以上の整数。一意。新規追加時は max(id)+1  |
+| title        | string  | ○    | 1〜100文字。前後の空白は除去               |
+| done         | boolean | ○    | 完了状態。新規追加時は false               |
+| created_at   | string  | ○    | ISO 8601形式（YYYY-MM-DDTHH:MM:SS）        |
+
+## ファイルが存在しない場合
+- 起動時に tasks.json が無ければ、空配列 `[]` の新規ファイルを作成して続行する。</pre>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 データモデルが先で良い理由</div>
+      <pre class="ascii-art">      [仕様]
+        │
+        ▼
+   [データモデル] ─────┐
+        │              │ 全テストの土台
+        ▼              │ になる
+   [テストコード] ◀────┘
+        │
+        ▼
+   [実装コード]</pre>
+      データモデルが揺れると、テストもコードも全部書き直し。<strong>最初に固める</strong>のが結局速い。
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>"前後の空白は除去"</strong> のような小さなルールも書いておく。書かないと実装者ごとにブレる。
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 7 ========== -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>STEP5：API/インターフェース設計</h3>
+    <span class="lab-tag tag-intermediate">実践</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      利用者から見た<strong>入口（CLIサブコマンド）</strong>と、内部関数の<strong>シグネチャ（引数と戻り値）</strong>を定義。これが「実装の契約」になる。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm"># specs/05_interface.md</span>
+
+# インターフェース設計
+
+## 5.1 CLIサブコマンド
+
+| コマンド               | 機能ID  | 説明                       |
+|------------------------|---------|----------------------------|
+| `mytodo add &lt;title&gt;`   | FN-001  | タスク追加                 |
+| `mytodo list`          | FN-002  | 一覧表示                   |
+| `mytodo done &lt;id&gt;`     | FN-003  | 完了マーク                 |
+| `mytodo delete &lt;id&gt;`   | FN-004  | タスク削除                 |
+
+## 5.2 終了コード（Exit Code）
+
+| コード | 意味                       |
+|--------|----------------------------|
+| 0      | 正常終了                   |
+| 1      | 入力エラー（空文字、ID未指定など） |
+| 2      | データファイルエラー       |
+
+## 5.3 内部関数シグネチャ（実装の契約）
+
+```python
+<span class="kw">def</span> <span class="fn">load_tasks</span>(path: str) -> list[dict]:
+    <span class="cm">"""tasks.jsonを読む。無ければ空配列を返す。破損時はSystemExit(2)"""</span>
+
+<span class="kw">def</span> <span class="fn">save_tasks</span>(path: str, tasks: list[dict]) -> <span class="kw">None</span>:
+    <span class="cm">"""tasks.jsonへ書き戻す。UTF-8、indent=2で整形"""</span>
+
+<span class="kw">def</span> <span class="fn">add_task</span>(tasks: list[dict], title: str) -> dict:
+    <span class="cm">"""新規タスクを生成しリスト末尾に追加。生成したdictを返す"""</span>
+
+<span class="kw">def</span> <span class="fn">mark_done</span>(tasks: list[dict], task_id: int) -> dict:
+    <span class="cm">"""指定IDのタスクのdoneをTrueにして返す。存在しなければValueError"""</span>
+```</pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 関数シグネチャを先に書く効果</div>
+      <ul class="usecase-list">
+        <li>テストが先に書ける（中身がなくてもimport可能なスケルトンを置けば良い）</li>
+        <li>引数の型が決まる → 不正な使い方の議論が早期にできる</li>
+        <li>Claude Code等に「このシグネチャで実装して」と頼める</li>
+        <li>関数の責務（やること）が一文で言えなければ、設計が悪いサイン</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>こう見えたらシグネチャ見直し:</strong>
+        <ul>
+          <li>引数が5個以上ある → 責務が多すぎる、分割を検討</li>
+          <li>戻り値の説明が「色々」「状況による」 → 仕様が固まっていない</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 8 ========== -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>STEP6：テストを書いて実装する</h3>
+    <span class="lab-tag tag-advanced">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ここでようやくコード。<strong>受入基準（AC-xxx）をそのままテストに変換</strong>し、テストが赤い状態（失敗）から始める。1個ずつ緑に変えていく流れ。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm"># tests/test_mytodo.py — AC-001-1 をそのまま書く</span>
+<span class="kw">import</span> json, subprocess, tempfile, os
+<span class="kw">from</span> pathlib <span class="kw">import</span> Path
+
+<span class="kw">def</span> <span class="fn">test_AC_001_1_add_to_empty_list</span>(tmp_path):
+    <span class="cm">"""AC-001-1: 空のリストにタスクを追加"""</span>
+    <span class="cm"># Given: tasks.json が空</span>
+    db = tmp_path / <span class="str">"tasks.json"</span>
+    db.write_text(<span class="str">"[]"</span>, encoding=<span class="str">"utf-8"</span>)
+
+    <span class="cm"># When: add コマンド実行</span>
+    result = subprocess.run(
+        [<span class="str">"python"</span>, <span class="str">"src/mytodo.py"</span>, <span class="str">"add"</span>, <span class="str">"牛乳を買う"</span>],
+        capture_output=<span class="kw">True</span>, text=<span class="kw">True</span>, cwd=tmp_path
+    )
+
+    <span class="cm"># Then: 出力チェック</span>
+    <span class="kw">assert</span> <span class="str">"✓ 追加: #1 牛乳を買う"</span> <span class="kw">in</span> result.stdout
+    <span class="kw">assert</span> result.returncode == <span class="num">0</span>
+
+    <span class="cm"># Then: ファイル状態チェック</span>
+    tasks = json.loads(db.read_text(encoding=<span class="str">"utf-8"</span>))
+    <span class="kw">assert</span> len(tasks) == <span class="num">1</span>
+    <span class="kw">assert</span> tasks[<span class="num">0</span>][<span class="str">"id"</span>] == <span class="num">1</span>
+    <span class="kw">assert</span> tasks[<span class="num">0</span>][<span class="str">"title"</span>] == <span class="str">"牛乳を買う"</span>
+    <span class="kw">assert</span> tasks[<span class="num">0</span>][<span class="str">"done"</span>] <span class="kw">is</span> <span class="kw">False</span></pre>
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm"># src/mytodo.py — 最小実装（FN-001 のみ）</span>
+<span class="kw">import</span> sys, json
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime
+<span class="kw">from</span> pathlib <span class="kw">import</span> Path
+
+DB = Path(<span class="str">"tasks.json"</span>)
+
+<span class="kw">def</span> <span class="fn">load_tasks</span>(path):
+    <span class="kw">if</span> <span class="kw">not</span> path.exists():
+        <span class="kw">return</span> []
+    <span class="kw">return</span> json.loads(path.read_text(encoding=<span class="str">"utf-8"</span>))
+
+<span class="kw">def</span> <span class="fn">save_tasks</span>(path, tasks):
+    path.write_text(json.dumps(tasks, ensure_ascii=<span class="kw">False</span>, indent=<span class="num">2</span>), encoding=<span class="str">"utf-8"</span>)
+
+<span class="kw">def</span> <span class="fn">add_task</span>(tasks, title):
+    title = title.strip()
+    <span class="kw">if</span> <span class="kw">not</span> title:
+        print(<span class="str">"Error: タイトルが空です"</span>, file=sys.stderr)
+        sys.exit(<span class="num">1</span>)
+    new_id = max([t[<span class="str">"id"</span>] <span class="kw">for</span> t <span class="kw">in</span> tasks], default=<span class="num">0</span>) + <span class="num">1</span>
+    task = {
+        <span class="str">"id"</span>: new_id,
+        <span class="str">"title"</span>: title,
+        <span class="str">"done"</span>: <span class="kw">False</span>,
+        <span class="str">"created_at"</span>: datetime.now().isoformat(timespec=<span class="str">"seconds"</span>)
+    }
+    tasks.append(task)
+    <span class="kw">return</span> task
+
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    cmd = sys.argv[<span class="num">1</span>] <span class="kw">if</span> len(sys.argv) > <span class="num">1</span> <span class="kw">else</span> <span class="str">""</span>
+    tasks = load_tasks(DB)
+
+    <span class="kw">if</span> cmd == <span class="str">"add"</span>:
+        title = sys.argv[<span class="num">2</span>] <span class="kw">if</span> len(sys.argv) > <span class="num">2</span> <span class="kw">else</span> <span class="str">""</span>
+        task = add_task(tasks, title)
+        save_tasks(DB, tasks)
+        print(<span class="str">f"✓ 追加: #{task['id']} {task['title']}"</span>)</pre>
+    </div>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="ld-tdd">Before を見る</button>
+        <span class="toggle-label" id="ld-tdd-label">現在: After（テスト先行）</span>
+      </div>
+      <div class="livedemo-stage" id="ld-tdd">
+        <div class="ld-panel good ld-after">✓ AC → テスト → 実装 の順
+1. AC-001-1 を読む
+2. test_AC_001_1_... を書く
+3. 実行 → RED（失敗）
+4. add_task() を実装
+5. 実行 → GREEN（成功）
+6. 次のACへ
+→ 受入基準が常に検証される</div>
+        <div class="ld-panel bad ld-before">✗ 実装 → 後付けテスト
+1. なんとなく add_task() を書く
+2. 動かしてみる、なんか動く
+3. テスト書こうかな…めんどい
+4. 後で書く（書かない）
+5. 仕様変更で気付かず壊れる
+→ 受入基準と無関係なコード</div>
+      </div>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>1ACずつ赤→緑にする</strong>。全機能を一気に実装するとデバッグ地獄。AC-001-1 → AC-001-2 → AC-001-3 → AC-002-1 ... と1個ずつテストを通す。
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 9 ========== -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>STEP7：仕様とコードを紐づける</h3>
+    <span class="lab-tag tag-advanced">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      仕様とコードが分離していると、すぐに片方が古くなる。<strong>機能ID（FN-xxx / AC-xxx）をコードのコメント・テスト名・コミットメッセージに埋め込む</strong>ことで、両者を機械的にひも付ける。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm"># 紐づけパターン1: コード内コメント</span>
+<span class="kw">def</span> <span class="fn">add_task</span>(tasks, title):
+    <span class="cm"># 仕様: FN-001 / AC-001-1, AC-001-3</span>
+    <span class="cm"># 参照: specs/02_features.md, specs/03_acceptance.md</span>
+    title = title.strip()
+    ...
+
+<span class="cm"># 紐づけパターン2: テスト関数名</span>
+<span class="kw">def</span> <span class="fn">test_AC_001_1_add_to_empty_list</span>():    <span class="cm"># ← AC番号がそのまま関数名</span>
+<span class="kw">def</span> <span class="fn">test_AC_001_3_empty_title_error</span>():
+<span class="kw">def</span> <span class="fn">test_AC_003_2_done_with_invalid_id</span>():
+
+<span class="cm"># 紐づけパターン3: コミットメッセージ</span>
+$ git commit -m <span class="str">"feat(FN-001): タスク追加機能を実装"</span>
+$ git commit -m <span class="str">"test(AC-001-3): 空文字エラーケース追加"</span>
+$ git commit -m <span class="str">"docs(specs): FN-002 出力形式を明確化"</span></pre>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 トレーサビリティ（追跡可能性）</div>
+      <pre class="ascii-art">specs/02_features.md       src/mytodo.py             tests/test_mytodo.py
+─────────────────────      ─────────────────────     ─────────────────────
+FN-001 タスク追加  ◀───── # 仕様: FN-001     ◀──── test_AC_001_1_...
+                          def add_task(...)        test_AC_001_2_...
+                                                   test_AC_001_3_...
+
+  仕様              ◀────── 実装        ◀────── テスト
+  どの3者からでも、他の2者にgrepで辿れる状態を作る。</pre>
+      <code>grep -r FN-001 .</code> で仕様・実装・テストが一発で見つかる。これが SDD の真価。
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>「仕様書に書いてあるが実装が無い」「実装はあるが仕様に無い」</strong> を grep で発見できる。年に1回でも全件チェックすれば、デッドコードと未実装機能の両方が見える。
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 10 ========== -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>STEP8：変更管理と振返り</h3>
+    <span class="lab-tag tag-advanced">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      仕様は必ず変わる。<strong>「変更したら仕様書から先に直す」「変更理由をADRに残す」</strong> がSDDの鉄則。最後に振返りで定着させる。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm"># decisions/ADR_001_storage.md (Architecture Decision Record)</span>
+
+# ADR-001: ストレージにJSONファイルを採用
+
+## 状況（Context）
+個人用TODOアプリで、データ保存方式を選ぶ必要があった。
+候補: SQLite / JSONファイル / CSVファイル / メモリのみ
+
+## 決定（Decision）
+**JSONファイル（tasks.json）** を採用する。
+
+## 理由（Reasoning）
+- 1人利用で同時書き込みが起きない → DB不要
+- 標準ライブラリのみで読み書き可能 → 依存ゼロ
+- ユーザーがエディタで直接見られる → デバッグ容易
+- 件数想定が数百件以下 → 性能問題なし
+
+## 結果（Consequences）
++ 軽量で起動が速い
++ Gitで差分が見える
+- 数千件を超えるとパフォーマンス低下（その時に再評価）
+- 並行書き込みは未対応（要求外）
+
+## 日付・作者
+2026-04-28 / Tom</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>変更タイプ</th><th>SDDでの正しい手順</th></tr></thead>
+      <tbody>
+        <tr><td>機能追加</td><td>① specs更新 → ② AC追加 → ③ テスト追加 → ④ 実装</td></tr>
+        <tr><td>仕様修正</td><td>① specs修正 → ② 影響するACを更新 → ③ テスト修正 → ④ 実装修正</td></tr>
+        <tr><td>バグ修正</td><td>① 再現するテストを書く（赤）→ ② 修正（緑）→ ③ ACに反映するか判断</td></tr>
+        <tr><td>設計変更</td><td>① ADR起票 → ② specs改訂 → ③ 関連テスト・コード更新</td></tr>
+      </tbody>
+    </table>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 振返りチェックリスト（1機能完了ごとに5分）</div>
+      <ul class="usecase-list">
+        <li>仕様書とコードに食い違いはないか？（grep で FN-xxx を確認）</li>
+        <li>受入基準（AC）と一致しないテストはないか？</li>
+        <li>「対象外」に書いた機能を、つい実装していないか？</li>
+        <li>ADRに残すべき判断（ライブラリ採用、設計の分岐）があったか？</li>
+        <li>次回同じプロジェクトをやるなら、どこを変えるか？</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>こう見えたら振返り不足:</strong>
+        <ul>
+          <li>「なんでこんな実装になってたっけ？」が3ヶ月後に発生</li>
+          <li>仕様書を読んでも実際の挙動が分からない</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>SDD完走おめでとう</strong>。次は本物の小さな業務ツール（社内のMyTodoサイズの何か）を選んで、specs/ から始めてみる。手順は今回と全く同じ。<br>
+      規模が10倍になっても、書く粒度は同じ。<strong>「WHY → WHAT → AC → データ → IF → テスト → 実装 → 追跡 → 振返り」</strong> の順序だけ守る。
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+  function copyCode(btn) {
+    const block = btn.closest('.code-block') || btn.parentElement;
+    const pre = block.querySelector('pre');
+    if (!pre) return;
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    });
+  }
+
+  const LAB_META = {
+    lab0: {
+      info:  { type:'info', html:'📘 <strong>SDDの核</strong>: 仕様書 → 受入基準 → テスト → 実装 の順を守る。コードを書きたくなる衝動を <strong>15〜30分</strong> 我慢して、まず文章で書く。最初は遅く感じるが、後半で大きく時短になる。' },
+      check: [
+        '①ノートに「自分が今書きたい個人ツールの目的」を1文で書いてみる（例:「日々の支出を1日30秒で記録したい」）',
+        '②その文に「測れる数字」が入っているかチェックする（30秒・1日5件 など）',
+        '③測れる数字が無ければ書き直す。これが SDD の出発点',
+        '④「便利」「使いやすい」「いい感じ」など曖昧語が混じっていたら全部削る'
+      ]
+    },
+    lab1: {
+      info:  { type:'info', html:'📘 <strong>題材は意図的に小さく</strong>: MyTodo は<strong>2時間で完走できる</strong>サイズ。SDDの「型」を体に覚えさせるのが目的なので、機能を増やさない。慣れたら期日や優先度を後から拡張する。' },
+      check: [
+        '①完成イメージのCLI操作（add / list / done）を声に出して読み、自分が使う場面を想像する',
+        '②「これ自分には機能足りないかも」と思った機能をメモしておく（例:期日、タグ）',
+        '③そのメモを <strong>仕様書「対象外」セクションに書くため</strong> 残しておく',
+        '④Pythonが入っているか確認する（ターミナルで <code>python --version</code>）。無くても他言語でOK'
+      ]
+    },
+    lab2: {
+      info:  { type:'warn', html:'⚠️ <strong>ここで脱落する人が多い</strong>: 「フォルダ作るだけなのに何をする?」と感じても、specs/ ディレクトリを物理的に作ることが SDD の宣言になる。空ディレクトリでもまず作る。' },
+      check: [
+        '①ホームディレクトリ等で <code>mytodo/</code> フォルダを新規作成',
+        '②その中に <code>specs/</code> <code>src/</code> <code>tests/</code> <code>decisions/</code> の4フォルダを作る',
+        '③<code>README.md</code> を空ファイルで作成し、1行目に「# MyTodo」とだけ書く',
+        '④VS Code等で <code>mytodo/</code> フォルダを開き、左サイドバーで構成が見えることを確認',
+        '⑤<code>git init</code> して最初のコミットを作る（任意だが推奨）'
+      ]
+    },
+    lab3: {
+      info:  { type:'info', html:'📘 <strong>15分タイマーをかけて書く</strong>: 完璧を目指さない。「対象外」は最低3つ。後で追加できるので、最初は<strong>狭く・薄く</strong>。Markdownの見出しレベル（##/###）を気にしすぎない。' },
+      check: [
+        '①<code>specs/01_requirements.md</code> をテキストエディタで新規作成',
+        '②画面のサンプルをコピペして、内容を自分の言葉に書き換える（コピペで終わらせない）',
+        '③「対象外」を最低3つ書く。書きながら「あれもこれも作りたい」気持ちが減ることを体感する',
+        '④書き終えたら声に出して読む。曖昧語（便利/簡単/いい感じ）が残っていないか確認',
+        '⑤Gitに <code>git add specs/01_requirements.md && git commit -m "docs: 要求仕様 初版"</code>'
+      ]
+    },
+    lab4: {
+      info:  { type:'info', html:'📘 <strong>機能IDの命名規則</strong>: <code>FN-XXX</code>（Function）が一般的。3桁ゼロ埋めで <code>FN-001</code> 〜 <code>FN-999</code> まで使える。プロジェクトをまたぐなら <code>MYTODO-FN-001</code> のようにプレフィクスを付ける。' },
+      check: [
+        '①<code>specs/02_features.md</code> を新規作成し、機能一覧テーブルを作る',
+        '②4機能（add/list/done/delete）を FN-001〜FN-004 で書く',
+        '③各FNに「入力」「動作」「出力」の3項目を書く（HOWは書かない）',
+        '④書き終えたら、要求仕様（01）の目的が4機能で達成できるか読み比べる',
+        '⑤達成できなければ機能を追加 or 要求仕様を修正（仕様書同士の整合性を取る）'
+      ]
+    },
+    lab5: {
+      info:  { type:'ok', html:'✅ <strong>AC番号は機能IDから派生</strong>: <code>AC-001-1</code> = FN-001 の1つ目のAC。1機能あたり 2〜5個の AC を書くのが目安。1個だけだとカバレッジ不足、6個以上だと機能を分割すべきサイン。' },
+      check: [
+        '①<code>specs/03_acceptance.md</code> を新規作成',
+        '②FN-001 に対して AC を最低3つ書く（正常系2、異常系1）',
+        '③Given/When/Then の3行が必ず揃っているか確認。1つでも欠けたら書き直す',
+        '④異常系（空文字、存在しないIDなど）を必ず1つ含める',
+        '⑤4機能 × 平均3AC = 12個程度のACがあれば最低限OK'
+      ]
+    },
+    lab6: {
+      info:  { type:'warn', html:'⚠️ <strong>created_at を忘れがち</strong>: 「いつ作ったか」は将来の絞り込みや並び替えで必ず欲しくなる。今使わなくても、データに <strong>必ず</strong> 入れておく。後から追加するとマイグレーションが必要になり面倒。' },
+      check: [
+        '①<code>specs/04_data_model.md</code> を新規作成',
+        '②サンプルJSONを書き、実際にテキストエディタで <code>tasks.json</code> として保存してみる',
+        '③ブラウザにJSONをドラッグ＆ドロップ（Chrome等）で構文エラーが無いか確認',
+        '④フィールド表に「型」「必須」「説明」「制約（範囲）」が全フィールドに書かれているか確認',
+        '⑤「ファイルが無い時の挙動」を必ず書く（無いと実装で迷う）'
+      ]
+    },
+    lab7: {
+      info:  { type:'info', html:'📘 <strong>シグネチャは契約</strong>: 関数の引数・戻り値・例外を全部宣言する。Pythonなら型ヒントを使う。書き終えたら <strong>関数の中身は空</strong>でもファイルとして保存できる（pass文だけのスケルトン）。' },
+      check: [
+        '①<code>specs/05_interface.md</code> を新規作成',
+        '②CLIサブコマンド表と終了コード表を書く',
+        '③内部関数のシグネチャを4つ書く（load/save/add/done など）',
+        '④各関数の docstring（説明）を1行で書く。1行で書けなければ責務が大きすぎる',
+        '⑤<code>src/mytodo.py</code> を作って、シグネチャだけコピペし関数本体は <code>pass</code> でOK'
+      ]
+    },
+    lab8: {
+      info:  { type:'ok', html:'✅ <strong>RED → GREEN → REFACTOR</strong>: ① テストを書いて実行→赤（失敗） ② 実装を書いて実行→緑（成功） ③ コードを綺麗にする。1ACにつき必ずこの3ステップ。<strong>緑になる前に次のACへ進まない</strong>。' },
+      check: [
+        '①<code>tests/test_mytodo.py</code> を作り、AC-001-1 のテストを1つ書く',
+        '②<code>python -m pytest</code> で実行。RED（失敗）になることを確認',
+        '③<code>src/mytodo.py</code> の add_task() を最小限実装する',
+        '④再度 pytest 実行 → GREEN（成功）になることを確認',
+        '⑤AC-001-2, AC-001-3 と1つずつ繰り返し、4機能分のテストとコードを完成させる'
+      ]
+    },
+    lab9: {
+      info:  { type:'info', html:'📘 <strong>grep可能性が全て</strong>: 仕様ID・テスト関数名・コミットメッセージ・コードコメントの<strong>4箇所</strong>に同じID（例: FN-003）が出てくれば、どこから検索しても3ヶ月後の自分が辿れる。' },
+      check: [
+        '①ターミナルで <code>grep -rn "FN-001" .</code> を実行',
+        '②specs/, src/, tests/ の3箇所から最低1ヶ所ずつヒットすれば合格',
+        '③ヒットしない箇所があれば、そこにIDコメントを追加',
+        '④AC番号でも同じことをやる: <code>grep -rn "AC-001-1" .</code>',
+        '⑤Gitログを確認: <code>git log --oneline | grep FN-</code> でコミットも紐づいているか確認'
+      ]
+    },
+    lab10: {
+      info:  { type:'ok', html:'✅ <strong>ADRは未来の自分への手紙</strong>: 「なぜSQLiteじゃなくJSONにしたんだっけ？」が半年後に必ず来る。その時に <code>decisions/</code> を見れば1分で思い出せる。書く時間は10分、思い出す手間を1時間節約する。' },
+      check: [
+        '①<code>decisions/ADR_001_storage.md</code> を作り、JSONを選んだ理由を書く',
+        '②変更管理ルールをチームのREADME（個人なら自分のルール集）に書く',
+        '③振返りチェックリストの5項目を実際にやってみる',
+        '④2つ目の小さなプロジェクト（家計簿、読書記録など）を選んで specs/01 から始める',
+        '⑤2回目で <strong>SDDの順序が体に染みていれば</strong> 学習成功。3回目以降はテンプレ化される'
+      ]
+    }
+  };
+
+  function infoHTML(m){ return m?.info ? `<div class="info-box ${m.info.type||'info'}">${m.info.html}</div>` : ''; }
+  function verifyHTML(m){ if (!m?.verify) return '';
+    const {before, after} = m.verify;
+    return `<div class="verify">
+      <div class="verify-col verify-before"><div class="verify-label">Before ▶︎ 実行前</div>${before||''}</div>
+      <div class="verify-col verify-after"><div class="verify-label">After ▶︎ 実行後</div>${after||''}</div>
+    </div>`; }
+  function checkHTML(m){ if (!m?.check?.length) return '';
+    return `<div class="check-steps">
+      <div class="check-steps-title">🔍 ハンズオン手順（実際にやってみる）</div>
+      <ol>${m.check.map(s=>`<li>${s}</li>`).join('')}</ol>
+    </div>`; }
+  function tryHTML(m){
+    const tip = m?.try ? `<div class="try-tip"><strong>💡 このラボのコツ:</strong> ${m.try}</div>` : '';
+    return `<div class="try-box">
+      <div class="try-title">💻 仕様書を書く手順（コピペで動かす）</div>
+      <ol>
+        <li>上のコードブロックの <strong>Copy</strong> ボタンを押してクリップボードにコピー</li>
+        <li>テキストエディタ（VS Code推奨）で対応する <code>specs/*.md</code> を新規作成し、ペースト</li>
+        <li>サンプルの内容を <strong>自分のプロジェクトに置き換えて</strong> 編集する（コピペだけで終わらせない）</li>
+        <li>下の「🔍 ハンズオン手順」の項目を順にやって、書き終えたファイルが正しい形になっているか確認する</li>
+      </ol>
+      <pre class="try-skeleton"># プロジェクト名
+
+## 1. 背景
+（ここに書く）
+
+## 2. 目的
+（測れる数字を入れる）
+
+## 3. ...</pre>
+      ${tip}
+    </div>`;
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.lab').forEach(lab => {
+      const meta = LAB_META[lab.id]; const body = lab.querySelector('.lab-body');
+      if (!body || !meta) return;
+      const frag = document.createElement('div');
+      frag.innerHTML = infoHTML(meta) + verifyHTML(meta) + tryHTML(meta) + checkHTML(meta);
+      while (frag.firstChild) body.appendChild(frag.firstChild);
+    });
+
+    const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+    const map = new Map();
+    links.forEach(a => { const el = document.getElementById(a.getAttribute('href').slice(1)); if (el) map.set(el, a); });
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting) { const l = map.get(e.target);
+        if (l) { links.forEach(n=>n.classList.remove('active')); l.classList.add('active'); } }
+    }), { rootMargin:'-30% 0px -60% 0px' });
+    document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+    document.querySelectorAll('.code-block').forEach((cb, i) => {
+      if (cb.querySelector('.code-block-header')) return;
+      const existing = cb.querySelector('.code-label');
+      const labelText = existing ? existing.textContent.trim() : `Code #${i+1}`;
+      if (existing) existing.remove();
+      const header = document.createElement('div');
+      header.className = 'code-block-header';
+      header.innerHTML = `<span>${labelText}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+      cb.insertBefore(header, cb.firstChild);
+    });
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.matches('.toggle-btn')) return;
+    const btn = e.target;
+    const stage = document.getElementById(btn.dataset.target);
+    if (!stage) return;
+    const isBefore = stage.classList.toggle('is-before');
+    btn.classList.toggle('is-before', isBefore);
+    const label = document.getElementById(btn.dataset.target + '-label');
+    if (label) label.textContent = isBefore ? '現在: Before（仕様駆動でない／問題あり）' : '現在: After（仕様駆動／推奨）';
+  });
+</script>
+
+</body>
+</html>

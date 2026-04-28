@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kiro / Amazon Q Developer 実践活用Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+/* Sidebar */
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+/* Hero */
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+/* TOC */
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+/* Container & Lab cards */
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+/* Code block */
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+/* Syntax token colors (GitHub light) */
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+
+/* info-box */
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+/* verify */
+.verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+  line-height:1.7; border:1px solid; }
+.verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+.verify-before .verify-label { color:var(--error); }
+.verify-after  .verify-label { color:var(--success); }
+
+/* check-steps */
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+/* compare-table */
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+.compare-table .yes { color:var(--success); } .compare-table .no { color:var(--error); }
+
+/* beginner-box */
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+/* usecase-box */
+.usecase-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:6px; }
+.usecase-list { margin-left:20px; margin-bottom:10px; }
+.usecase-list li { margin-bottom:4px; }
+.usecase-trigger { background:rgba(0,92,197,.05); border-left:3px solid var(--accent);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#003d8f; margin-top:8px; }
+.usecase-trigger ul { margin:4px 0 0 20px; }
+
+/* livedemo */
+.livedemo { margin:14px 0; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+.livedemo-bar { display:flex; align-items:center; gap:12px; padding:8px 12px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.toggle-btn { font-family:var(--mono); font-size:.78rem; padding:5px 14px;
+  border-radius:6px; border:1px solid var(--accent); background:var(--accent);
+  color:#fff; cursor:pointer; transition:all .15s; }
+.toggle-btn:hover { opacity:.85; }
+.toggle-btn.is-before { background:var(--error); border-color:var(--error); }
+.toggle-label { font-family:var(--mono); font-size:.78rem; color:var(--text-dim); }
+.livedemo-stage { padding:16px; background:var(--bg); }
+.livedemo-stage.is-before { outline:2px dashed var(--error); outline-offset:-8px; }
+.livedemo-stage .ld-before { display:none; }
+.livedemo-stage.is-before .ld-before { display:block; }
+.livedemo-stage.is-before .ld-after { display:none; }
+.ld-panel { padding:12px; border-radius:6px; font-family:var(--mono); font-size:11px; line-height:1.6; }
+.ld-panel.bad { background:#fee2e2; border:1px solid #cb2431; color:#6b1a22; }
+.ld-panel.good { background:#dcfce7; border:1px solid #22863a; color:#166534; }
+
+/* try-box */
+.try-box { background:rgba(34,134,58,.06); border:1px solid rgba(34,134,58,.30);
+  border-left:3px solid var(--success); border-radius:7px;
+  padding:12px 14px; margin:14px 0; font-size:.86rem; line-height:1.8; color:#154f1e; }
+.try-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--success); font-weight:700; margin-bottom:6px; }
+.try-box ol { margin-left:20px; margin-top:4px; }
+.try-box ol li { margin-bottom:4px; }
+.try-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--success); }
+.try-tip { background:rgba(176,136,0,.06); border-left:3px solid var(--accent4);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#5c4400; margin-top:8px; }
+.try-tip strong { color:var(--accent4); }
+.try-skeleton { background:#f0f4f8; border:1px solid var(--border); border-radius:5px;
+  padding:10px 12px; margin-top:8px; font-family:var(--mono); font-size:.78rem;
+  color:var(--text); white-space:pre; overflow-x:auto; line-height:1.5; }
+
+/* code-pair */
+.code-pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; }
+.code-pair-col { display:flex; flex-direction:column; min-width:0; }
+.code-pair-label { font-family:var(--mono); font-size:.72rem; letter-spacing:.05em;
+  font-weight:700; padding:6px 10px; border-radius:6px 6px 0 0; }
+.code-pair-before .code-pair-label { background:rgba(203,36,49,.10); color:#9a1320;
+  border:1px solid rgba(203,36,49,.30); border-bottom:none; }
+.code-pair-after  .code-pair-label { background:rgba(34,134,58,.10); color:#154f1e;
+  border:1px solid rgba(34,134,58,.30); border-bottom:none; }
+.code-pair-col .code-block { margin:0; border-radius:0 0 8px 8px; flex:1; }
+.code-pair-before .code-block { border-color:rgba(203,36,49,.30); }
+.code-pair-after  .code-block { border-color:rgba(34,134,58,.30); }
+@media (max-width:900px){ .code-pair { grid-template-columns:1fr; } }
+
+/* Responsive */
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .verify { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// Kiro / Q Developer<br><span>実践活用Lab</span></div>
+  <div class="nav-section">概要</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>全体像 / 何ができる</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>2製品の使い分け</a>
+  <div class="nav-section">セットアップ</div>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>Kiroインストール</a>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>認証セットアップ</a>
+  <div class="nav-section">Kiro 主要機能</div>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>Vibeモード</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>Specモード</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>Steering</a>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>Hooks (自動化)</a>
+  <div class="nav-section">Q Developer</div>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>VS Code拡張で使う</a>
+  <div class="nav-section">実践適用</div>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>業務での活用パターン</a>
+</nav>
+
+<div class="hero">
+  <h1>Kiro / Amazon Q Developer 実践活用Lab</h1>
+  <p class="subtitle">AWS発のAI開発ツール 2製品を 「概要 → メリット → 動かし方」の順で押さえる手順書</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>全体像 / 何ができる</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>2製品の使い分け</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>Kiroインストール</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>認証セットアップ</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>Vibeモード</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>Specモード</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>Steering</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>Hooks (自動化)</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>VS Code拡張で使う</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>業務での活用パターン</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ========== Lab 0: 全体像 ========== -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>全体像 — Kiro / Q Developer とは何か</h3>
+    <span class="lab-tag tag-basic">概要</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      AWSが提供するAIコーディング支援は大きく2系統。<code>Amazon Q Developer</code>=AWS運用に強い<strong>会話型アシスタント</strong>。<code>Kiro</code>=2025年11月GAの<strong>仕様駆動型 Agentic IDE</strong>。両者は競合ではなく<strong>役割分担</strong>の関係。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 まずは1行で</div>
+      Kiro = <strong>「AI が IDE 全体で伴走する VS Code 派生」</strong>。<br>
+      Q Developer = <strong>「VS Code/JetBrains 拡張＋AWSコンソールに棲むチャット相棒」</strong>。
+<pre class="ascii-art">
+┌─────────────────────────────────────────────────────────┐
+│                                                         │
+│   [Kiro]                          [Amazon Q Developer]  │
+│   ┌─────────────┐                 ┌─────────────┐       │
+│   │  独立IDE    │                 │  拡張機能    │       │
+│   │ (Code OSS)  │                 │ (VS Code等) │       │
+│   └─────────────┘                 └─────────────┘       │
+│         │                                │              │
+│   仕様→設計→実装                AWS質問/コード補完     │
+│   をエージェント主導            既存IDEに追加で導入     │
+│                                                         │
+│   ▼ 重い・本格開発              ▼ 軽い・既存IDE維持    │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+</pre>
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm"># 製品の正体（公式情報ベース）</span>
+Kiro          : AWS発のAI IDE / Code OSS をフォーク
+              : Specs / Hooks / Steering / Agent が中核
+              : 2025-07 プレビュー → 2025-11 GA → 2026年も継続更新
+
+Q Developer   : AWSの会話型AIアシスタント
+              : VS Code, JetBrains, Visual Studio, Eclipse に拡張機能
+              : AWSコンソール / CLI / Slack / Teams にも統合
+              : Kiro CLI に CLI 機能は再ブランド統合中</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>観点</th><th>Kiro</th><th>Amazon Q Developer</th></tr></thead>
+      <tbody>
+      <tr><td>提供形態</td><td>独立IDE (要インストール)</td><td>拡張機能 + コンソール内蔵</td></tr>
+      <tr><td>得意領域</td><td>仕様駆動の本格開発</td><td>AWS環境のQ&amp;A・補完・トラブル調査</td></tr>
+      <tr><td>料金</td><td>Free / Pro / Pro+ (クレジット制)</td><td>Free / Pro $19/月</td></tr>
+      <tr><td>VS Code資産</td><td>設定/プラグインを引き継げる</td><td>そのまま VS Code で使える</td></tr>
+      <tr><td>ターゲット</td><td>プロト→本番に持ち上げたい人</td><td>AWS運用者・既存VS Code利用者</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+      <pre><span class="cm">// ※「Q Developer の CLI」は段階的に Kiro CLI に統合中。
+// 既存 q コマンドはまだ動くが、新機能は Kiro CLI 側に追加されている。</span></pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 1: 使い分け ========== -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>2製品の使い分け — どちらをいつ選ぶか</h3>
+    <span class="lab-tag tag-basic">概要</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      「両方インストールするか、片方だけか」は<strong>仕事のスタイル</strong>で決まる。決定木を1つ覚えれば迷わない。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 1分で決める判断フロー</div>
+<pre class="ascii-art">
+                  ┌────────────────────┐
+                  │  目的は何？         │
+                  └─────────┬──────────┘
+                            │
+        ┌───────────────────┼───────────────────┐
+        ▼                   ▼                   ▼
+  AWS質問・既存       新規アプリを        既存プロジェクトを
+  IDEで補完したい    仕様から作りたい    ガッツリ改修したい
+        │                   │                   │
+        ▼                   ▼                   ▼
+  [Q Developer]          [Kiro]              [Kiro]
+   VS Code拡張          独立IDE              Specモード
+   AWS質問が10倍速      仕様駆動が真価       要件→設計→実装
+</pre>
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm">// パターン別の組み合わせ例</span>
+
+<span class="cm">// パターンA: 既存VS Code資産を活かしたい開発者</span>
+VS Code + Q Developer 拡張    <span class="cm">→ 学習コスト最小</span>
+
+<span class="cm">// パターンB: AI主導で新規プロジェクトをガッツリ作りたい</span>
+Kiro IDE (Specモード中心)     <span class="cm">→ 仕様書ごと自動生成</span>
+
+<span class="cm">// パターンC: AWS運用 + 軽い開発も両方</span>
+VS Code + Q Developer 拡張    <span class="cm">→ チャットで AWS 質問</span>
++ AWS コンソールの Q アイコン  <span class="cm">→ リソース調査</span>
+
+<span class="cm">// パターンD: フル活用 (筆者おすすめ)</span>
+Kiro (新規/大改修)
++ Q Developer (普段使いの VS Code)</pre>
+    </div>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="ld-choose">使い分けを切替</button>
+        <span class="toggle-label" id="ld-choose-label">現在: After（適切な使い分け）</span>
+      </div>
+      <div class="livedemo-stage" id="ld-choose">
+        <div class="ld-panel good ld-after">✓ After: 「AWS S3 のCORS設定教えて」→ Q Developer (秒でAWS知識回答)<br>　　　　 「決済機能を仕様から作って」→ Kiro Spec (要件→設計→タスク→実装)</div>
+        <div class="ld-panel bad ld-before">✗ Before: 全部 Kiro でやる → AWS質問のためだけにIDE切替が面倒<br>　　　　　 全部 Q Developer → 大規模新規開発で仕様書がバラバラ</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 2: Kiroインストール ========== -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>Kiroインストール — 5分で起動まで</h3>
+    <span class="lab-tag tag-intermediate">セットアップ</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      公式サイト <code>kiro.dev</code> からバイナリを落とすだけ。GA後は<strong>ウェイトリスト不要</strong>。Windows/Mac/Linux 対応。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm"># 手順 (Windows例)</span>
+1. https://kiro.dev/ にアクセス
+2. [Download for Windows] ボタン押下
+3. KiroSetup-x.x.x.exe を実行
+4. インストールウィザードに従って進める
+5. [Kiroを実行する] にチェックして完了
+
+<span class="cm"># 起動後の最初の画面で認証方法を選択</span>
+- Google
+- GitHub
+- AWS Builder ID    ← <span class="cm">個人検証ならこれが最速 (AWSアカウント不要)</span>
+- AWS Identity Center  <span class="cm">← 組織導入ならこちら</span></pre>
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before（不要な手順を踏む）</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>Bash — 古い手順</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+          <pre><span class="cm"># GA前 (2025年7-10月) の手順</span>
+1. ウェイトリスト登録
+2. 招待メール待ち (数日〜数週間)
+3. 招待後にダウンロード可能</pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After（GA後 = 現在）</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>Bash — 現在の手順</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+          <pre><span class="cm"># 2025年11月GA以降</span>
+1. kiro.dev で即ダウンロード
+2. インストール → サインイン
+3. <span class="kw">即利用開始</span> (待ち時間ゼロ)</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box warn">
+      ⚠ <strong>WSL2 で起動エラーが出る場合</strong>: <code>$PATH</code> をシェルで明示設定する必要あり。Qiitaに「Kiro WSL2 起動」で具体的な手順あり。Cursor / Q CLI と相互干渉した時と同じパターン。
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 3: 認証 ========== -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>認証セットアップ — Builder ID と Identity Center</h3>
+    <span class="lab-tag tag-intermediate">セットアップ</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Kiro / Q Developer 共通の認証は2系統。<strong>個人検証は Builder ID</strong>、<strong>組織導入は Identity Center</strong>。混同すると料金や統制が破綻する。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>項目</th><th>AWS Builder ID</th><th>IAM Identity Center (旧 SSO)</th></tr></thead>
+      <tbody>
+      <tr><td>用途</td><td>個人検証・学習</td><td>組織展開・チーム利用</td></tr>
+      <tr><td>AWSアカウント</td><td><span class="no">不要</span></td><td><span class="yes">必要</span></td></tr>
+      <tr><td>Free tier</td><td><span class="yes">○</span></td><td><span class="yes">○</span></td></tr>
+      <tr><td>Pro tier ($19/月)</td><td><span class="no">×</span></td><td><span class="yes">○</span></td></tr>
+      <tr><td>SSO/SCIM</td><td><span class="no">×</span></td><td><span class="yes">○</span></td></tr>
+      <tr><td>管理ダッシュボード</td><td><span class="no">×</span></td><td><span class="yes">○</span></td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+      <pre><span class="cm"># Builder ID で始める最短手順</span>
+1. Kiro 起動 → [Sign in with AWS Builder ID]
+2. ブラウザが自動で開く → メールアドレス入力
+3. 確認コードがメールに届く → 入力
+4. 完了。Free tier の月50クレジット + 初回ボーナス500クレジットが使える
+
+<span class="cm"># 確認コマンド (Kiro CLI を使う場合)</span>
+$ kiro-cli login
+$ kiro-cli whoami    <span class="cm"># 認証されているユーザを確認</span></pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>Free tier の中身 (2026年4月時点)</strong>: 月50エージェントチャット / 1,000行のコード変換 / Builder ID で即利用可。Pro は $19/ユーザ/月で SOC2/IP補償/組織管理が付く。
+    </div>
+
+    <div class="info-box warn">
+      ⚠ <strong>データ取扱の差</strong>: Free tier の一部データは<strong>サービス改善に使われる</strong>場合あり、Pro tier は使われない。業務コードを扱うなら Pro 必須。
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 4: Vibe ========== -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>Vibeモード — 軽量プロトタイピング</h3>
+    <span class="lab-tag tag-basic">Kiro機能</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Kiro の<strong>2モードのうち軽い方</strong>。「こんな感じのもの作って」と話しかけるだけで動くものが出来る。<code>Cursor</code> や <code>Claude Code</code> と同じノリ。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 Vibe Coding とは</div>
+      AIに自然言語で指示してコードを生成する開発スタイル。「気分で作る」が語源。プロトタイプ・学習・趣味プロジェクトに最適。<strong>仕様書がない</strong>ので大規模化すると破綻する。
+<pre class="ascii-art">
+[ユーザ] ──「ToDoアプリ作って」──→ [Kiro Vibe]
+                                       │
+                                       ▼
+                                  index.html
+                                  app.js
+                                  style.css
+                                  ※仕様書なし
+</pre>
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm"># Vibe モードの使い方 (Kiro IDE)</span>
+1. Kiro を起動 → 左側のチャットパネルを開く
+2. プロンプト入力欄に自然言語で書く
+   例: <span class="str">「シンプルなToDoアプリをHTML/JS/CSSで作って」</span>
+3. [Send] → ファイルが順次生成される
+4. 各ファイルの差分を [Accept] / [Reject] で確認</pre>
+    </div>
+
+    <div class="info-box ok">
+      ✓ <strong>向いている用途</strong>: 動くものを15分で見せたい / 技術検証 / 個人ツール / 学習用サンプル
+    </div>
+
+    <div class="info-box err">
+      ✗ <strong>向いていない用途</strong>: 既存システム改修 / セキュリティ要件あり / 仕様書必須の業務開発 → 次の Spec モードへ
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 5: Spec ========== -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>Specモード — 仕様駆動開発の核心</h3>
+    <span class="lab-tag tag-advanced">Kiro機能</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Kiro の<strong>真骨頂</strong>。要件 → 設計 → タスク分解 → 実装の4段階を AI と人間で進める。<strong>各段階で人間が承認する</strong>ので暴走しない。本番品質を狙う場合の標準ワークフロー。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 Spec モードのフロー</div>
+<pre class="ascii-art">
+[1] Requirements    [2] Design        [3] Tasks         [4] Implement
+    要件定義     →    設計          →    タスク分解   →    実装
+    requirements.md   design.md         tasks.md          各ファイル
+
+  ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
+  │ AIが起草  │    │ AIが設計  │    │ AIが分解 │    │ AIが実装  │
+  └────┬─────┘    └────┬─────┘    └────┬─────┘    └────┬─────┘
+       ▼               ▼               ▼               ▼
+  人間が確認     人間が確認      人間が確認     人間が確認
+  &amp; 修正        &amp; 修正         &amp; 修正        &amp; テスト
+       │               │               │               │
+       ▼               ▼               ▼               ▼
+  [Move to       [Move to        [Finalize       [Done]
+   Design]        Tasks]          tasks]
+</pre>
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm"># 実例: イーサリアムウォレット作成</span>
+
+<span class="kw">プロンプト</span>: <span class="str">「イーサリアムウォレットを作成したい」</span>
+
+[Step 1] requirements.md が自動生成される
+   - ユースケース
+   - 機能要件 (アドレス生成 / 送金 / 残高表示)
+   - 非機能要件 (セキュリティ / パフォーマンス)
+   ↓ <span class="cm">人間が読んで修正</span>
+   ↓ [Move to design phase]
+
+[Step 2] design.md が自動生成される
+   - アーキテクチャ図
+   - データモデル
+   - API設計
+   ↓ [Generate task list]
+
+[Step 3] tasks.md が自動生成される
+   - [ ] T1: ethers.js セットアップ
+   - [ ] T2: アドレス生成関数実装
+   - [ ] T3: 送金関数実装
+   - [ ] T4: UI コンポーネント
+   ↓ [Finalize task list]
+
+[Step 4] タスク順に実装が走る
+   各タスク完了ごとに人間が Accept/Reject</pre>
+    </div>
+
+    <div class="info-box ok">
+      ✓ <strong>Spec モードのメリット</strong>: ① 要件が文書として残る ② 設計判断が追跡可能 ③ AIの暴走を各段階で止められる ④ 既存システム改修でも履歴を引き継げる
+    </div>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="ld-spec">Vibe vs Spec を切替</button>
+        <span class="toggle-label" id="ld-spec-label">現在: After（Specモード）</span>
+      </div>
+      <div class="livedemo-stage" id="ld-spec">
+        <div class="ld-panel good ld-after">✓ Spec: 要件→設計→タスク→実装<br>　半年後に他人が読んでも「なぜこの設計か」が分かる<br>　仕様書が残るので保守しやすい</div>
+        <div class="ld-panel bad ld-before">✗ Vibe: 「いい感じに作って」だけ<br>　半年後の自分が「なぜこのコード？」となる<br>　仕様書なし → 改修時にAIに渡す情報がない</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 6: Steering ========== -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>Steering — プロジェクトルールを永続化</h3>
+    <span class="lab-tag tag-intermediate">Kiro機能</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <strong>「毎回同じ指示を書かなくていい」</strong>仕組み。命名規則・コーディング規約・利用ライブラリを Markdown ファイルで Kiro に教え込む。React の <code>CLAUDE.md</code> や Cursor の <code>.cursorrules</code> 相当。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm"># プロジェクトルートに配置</span>
+.kiro/
+└── steering/
+    ├── coding-style.md       <span class="cm"># 命名規則</span>
+    ├── tech-stack.md         <span class="cm"># 使う技術スタック</span>
+    └── do-not-touch.md       <span class="cm"># 触ってはいけない場所</span>
+
+<span class="cm"># coding-style.md の中身例</span>
+<span class="kw">## TypeScript Style</span>
+- 関数は const + arrow で書く
+- 変数名は camelCase, クラスは PascalCase
+- any は禁止、unknown を使う
+
+<span class="kw">## ファイル構成</span>
+- components/ にUI、hooks/ にロジック
+- 1ファイル1コンポーネント</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>効果</strong>: Spec モードでもVibeモードでも、Kiro はこの steering ファイルを<strong>常に読み込んで</strong>コード生成する。チーム全員で共有すれば、AI生成コードのスタイルが統一される。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 Steering の典型的な使い方</div>
+      <ul class="usecase-list">
+        <li><strong>命名規則の統一</strong>: テーブル名は snake_case、変数名は camelCase など</li>
+        <li><strong>禁止事項の明示</strong>: 「var を使わない」「console.log は本番コードに残さない」</li>
+        <li><strong>カスタムエージェント定義</strong>: 「AWS SAの分身」のような特定役割のAI</li>
+        <li><strong>レビュー観点</strong>: 「セキュリティ・性能・可読性の順で確認」</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 7: Hooks ========== -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>Hooks — ファイル操作で自動実行</h3>
+    <span class="lab-tag tag-intermediate">Kiro機能</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <strong>ファイル保存・作成・削除をトリガに AI に作業させる</strong>仕組み。経験豊富な先輩が「あ、それ忘れてるよ」と気づくのを自動化したイメージ。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 Hooks のメンタルモデル</div>
+<pre class="ascii-art">
+[開発者の操作]            [Hook トリガ]          [AI の自動アクション]
+
+ファイル保存 (Ctrl+S) ──→ "on save"        ──→ 関連ドキュメント更新
+ファイル作成          ──→ "on create"      ──→ テストファイル雛形生成
+コミット直前          ──→ "before commit"  ──→ 機密情報スキャン
+手動ボタン            ──→ "manual trigger" ──→ READMEの目次再生成
+</pre>
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm"># Hook の設定例 (Kiro IDE の AGENT HOOK 画面)</span>
+
+<span class="kw">Hook Name</span>: 機密情報スキャン
+<span class="kw">Trigger</span>: ファイル保存時
+<span class="kw">Pattern</span>: **/*.{js,ts,py}
+<span class="kw">Action</span>: <span class="str">「このファイルにAPIキー、パスワード、トークンが含まれていないか確認し、
+        含まれていれば警告を出して .env への移動を提案して」</span>
+
+<span class="cm">────</span>
+
+<span class="kw">Hook Name</span>: 関連テスト更新
+<span class="kw">Trigger</span>: ファイル保存時
+<span class="kw">Pattern</span>: src/components/*.tsx
+<span class="kw">Action</span>: <span class="str">「対応する __tests__ 配下のテストファイルを確認し、
+        新しい関数や props があればテストケースを追加して」</span></pre>
+    </div>
+
+    <div class="info-box ok">
+      ✓ <strong>嬉しいポイント</strong>: 自然言語で書ける。bash スクリプトや YAML を覚える必要がない。「やってほしいこと」を文章で書くだけ。
+    </div>
+
+    <div class="info-box warn">
+      ⚠ <strong>クレジットを消費する</strong>: Hook が走るたびに AI 呼び出しが発生 → クレジットを使う。Free tier の50クレジットだとすぐ枯渇する。重要な Hook だけ有効にするか、Pro 推奨。
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 8: Q Developer ========== -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>Q Developer — VS Code 拡張で導入</h3>
+    <span class="lab-tag tag-basic">Q Developer</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      普段の VS Code を変えずに AI 支援を足したいなら<strong>これが最速</strong>。拡張機能を入れて Builder ID でログインするだけ。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm"># インストール手順 (VS Code)</span>
+
+1. VS Code を起動 → Extensions (Ctrl+Shift+X)
+2. <span class="str">"Amazon Q"</span> で検索 → [Install]
+3. 左サイドバーに Amazon Q アイコンが出る → クリック
+4. [Sign in with AWS Builder ID] を選択
+5. ブラウザで認証 → コード入力 → 完了
+
+<span class="cm"># 主な使い方</span>
+- <span class="kw">チャット</span>     : 左パネルで自然言語で質問
+- <span class="kw">インライン補完</span> : コーディング中にゴーストテキストで提案
+- <span class="kw">/explain</span>     : 選択コードを解説
+- <span class="kw">/fix</span>         : バグ修正提案
+- <span class="kw">/test</span>         : ユニットテスト生成
+- <span class="kw">/transform</span>   : Java/.NETバージョンアップ</pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 Q Developer が真価を発揮するシーン</div>
+      <ul class="usecase-list">
+        <li><strong>AWSサービス質問</strong>: 「S3 のCORS設定教えて」「Lambda の同時実行制限は？」</li>
+        <li><strong>既存コード調査</strong>: 開いたファイルを <code>/explain</code> で要約</li>
+        <li><strong>セキュリティスキャン</strong>: 開いたコードに脆弱性がないか検査</li>
+        <li><strong>レガシー変換</strong>: Java 8 → 17 / .NET Framework → .NET</li>
+        <li><strong>AWSコンソールでの調査</strong>: コンソール上の Q アイコンで「実行中の EC2 を一覧」</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>こんなコード/状況を見たら使える候補:</strong>
+        <ul>
+          <li>「このAWSエラー何だっけ…」 → コンソールの Q アイコンで質問</li>
+          <li>200行のレガシー関数を読まされた → <code>/explain</code> で2分で把握</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>料金感覚</strong>: Free tier は<strong>月50エージェントチャット + 1000行のコード変換</strong>。個人検証ならこれで足りる。チームで本格利用なら Pro $19/月。
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 9: 実践適用 ========== -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>業務での活用パターン — 既存IDE+業務コードへの組み込み</h3>
+    <span class="lab-tag tag-advanced">実践</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      OutSystems や Java 系の業務開発が中心の現場でも、<strong>「AI支援を足すだけ」</strong>の使い方なら段階的に導入できる。いきなり Spec モードに飛ばずに、Q Developer の補完から始めるのが現実的。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 段階的導入の3ステップ</div>
+<pre class="ascii-art">
+[Step 1] 個人で慣れる            (1-2週間)
+   VS Code に Q Developer 拡張を入れる
+   業務コードは触らず、技術調査やコード読解に使う
+   ↓
+[Step 2] 自分のサブタスクで試す  (1ヶ月)
+   ユニットテスト生成、ドキュメント整理、ログ解析
+   個人ツールやスクリプトを Kiro Vibe で作る
+   ↓
+[Step 3] チーム展開               (3ヶ月～)
+   Pro 契約 + Identity Center で組織導入
+   新規機能を Kiro Spec で起こす
+   Steering ファイルでチーム規約を共有
+</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>業務シーン</th><th>使うべきツール</th><th>狙い</th></tr></thead>
+      <tbody>
+      <tr><td>仕様書作成 (新規機能)</td><td>Kiro Spec</td><td>requirements.md → design.md を自動起草</td></tr>
+      <tr><td>既存コード読解</td><td>Q Developer /explain</td><td>200行の関数を3分で把握</td></tr>
+      <tr><td>ユニットテスト生成</td><td>Q Developer /test</td><td>カバレッジ底上げ</td></tr>
+      <tr><td>AWSリソース調査</td><td>Q Developer (コンソール)</td><td>「EC2 一覧」など即答</td></tr>
+      <tr><td>コーディング規約徹底</td><td>Kiro Steering</td><td>AI生成コードのスタイル統一</td></tr>
+      <tr><td>定型作業の自動化</td><td>Kiro Hooks</td><td>保存時のドキュメント更新等</td></tr>
+      <tr><td>Java/.NET アップグレード</td><td>Q Developer /transform</td><td>レガシー一括変換</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box warn">
+      ⚠ <strong>業務導入の注意点</strong>: ① <strong>機密コードを Free tier で扱わない</strong> (一部データがサービス改善に使われる) ② <strong>生成コードは必ず人間レビュー</strong> (誤りや古い情報が混じる) ③ <strong>Preview機能を本番前提にしない</strong> (GitHub連携などはPreview段階)
+    </div>
+
+    <div class="info-box ok">
+      ✓ <strong>最初の一歩のおすすめ</strong>: いまの VS Code に Q Developer 拡張を入れて、Builder ID で <strong>1週間「コード読解だけ」に使ってみる</strong>。これだけで業務時間が体感で2割減る。慣れたら Kiro へ。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 OutSystems / 業務システム開発者向けの当てはめ</div>
+      <ul class="usecase-list">
+        <li><strong>JS Extension の作成</strong>: Kiro Vibe で動くものを15分で → 既存パターンに合わせて手で整える</li>
+        <li><strong>SQL クエリ最適化</strong>: Q Developer に <code>EXPLAIN</code> 結果を渡して改善案をもらう</li>
+        <li><strong>レガシー Java バッチ調査</strong>: Q Developer /explain でロジック把握 → 仕様書化</li>
+        <li><strong>新規モジュール仕様策定</strong>: Kiro Spec で requirements.md を起草 → レビュー会で叩く</li>
+        <li><strong>テストデータ生成</strong>: Vibe モードに「20件のサンプル顧客データをCSVで」</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>こんな状況なら導入を検討:</strong>
+        <ul>
+          <li>同じような調査・コード読解を毎週繰り返している</li>
+          <li>仕様書が口頭伝承化していて、新人が立ち上がるのに時間がかかる</li>
+          <li>レガシーコードの改修工数が見積もれない</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /.container -->
+
+<script>
+  function copyCode(btn) {
+    const block = btn.closest('.code-block') || btn.parentElement;
+    const pre = block.querySelector('pre');
+    if (!pre) return;
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    });
+  }
+
+  const LAB_META = {
+    lab0: {
+      info:  { type:'info', html:'📘 <strong>2025-11 GA</strong>: Kiro は2025年7月プレビュー → 2025年11月にGA (一般提供)。2026年3月時点でv0.11、MCP Governance/Document Attachments等エンタープライズ機能も拡充。Q Developer は2024年4月に Amazon CodeWhisperer から Q ブランドに統合。' },
+      check: ['① <code>kiro.dev</code> をブラウザで開いて、トップページのDownloadボタンと製品説明を読む', '② AWSコンソールにログインして右上の Q アイコンが見えることを確認', '③ 両者の用途が「IDE」 vs 「コンソール/拡張」で違うことを上の図と照らして納得する', '④ 自分の今の業務がどちらに近いか（新規開発 / AWS運用）を判定する']
+    },
+    lab1: {
+      check: ['① 自分が今週やったタスクを3つ書き出す', '② それぞれを「AWS質問」「新規開発」「既存改修」のどれかに分類', '③ 上の決定木に当てはめてどちらのツールが向くか判定', '④ 一番タスク数が多いカテゴリのツールから導入する']
+    },
+    lab2: {
+      info:  { type:'info', html:'📘 <strong>動作環境</strong>: Code OSS (VS Codeのオープンソース版) ベース。VS Code の設定・キーバインド・Open VSX 互換プラグインを引き継げるので学習コストが低い。' },
+      check: ['① <code>kiro.dev</code> を開いてダウンロードボタンが OS 別に表示されているか確認', '② インストーラを起動して、サインイン画面で4種類の認証方法（Google/GitHub/Builder ID/Identity Center）が出るか確認', '③ Builder ID でサインインしてエディタが開くか確認', '④ 既存 VS Code の <code>settings.json</code> をインポートできるダイアログが出ることを確認']
+    },
+    lab3: {
+      verify:{ before:'AWSアカウントを作って IAM ユーザを作って…という従来の手順を踏もうとして1時間ハマる',
+               after:'Builder ID なら<strong>メールアドレスだけ</strong>で2分で完了' },
+      check: ['① Builder ID 用の認証メールが届いているか受信箱を確認', '② Kiro / Q Developer のクレジット残量がアプリ画面下部やコンソールで見えるか確認', '③ 業務コードを扱うなら Pro tier (要 Identity Center) への切り替え条件を確認', '④ 組織で使うなら、IAM Identity Center の管理者に SSO 設定を依頼する手順を整理']
+    },
+    lab4: {
+      check: ['① Kiro のチャット欄で「シンプルなToDoアプリをHTMLで作って」と入力して Enter', '② 生成されたファイルが左ペインのファイルツリーに現れるか確認', '③ 各ファイルに [Accept] / [Reject] ボタンが出ることを確認', '④ Accept したファイルをブラウザで開いて動くことを確認']
+    },
+    lab5: {
+      info:  { type:'ok', html:'✅ <strong>本番品質を狙うなら必ず Spec モード</strong>。「AWSのエンジニアたちもプロンプトを書き直すうちに『これは仕様書だ』と気づいた」のが Spec モード誕生の経緯 (AWS公式ブログより)。' },
+      verify:{ before:'<code>requirements.md</code> なし → 半年後の保守者が設計意図を読み取れない',
+               after:'<code>requirements.md</code>＋<code>design.md</code>＋<code>tasks.md</code> が残る → 設計判断が追跡可能' },
+      check: ['① 小さな機能（例：パスワード強度チェッカー）を Spec モードで起こしてみる', '② [Move to design phase] ボタンを押す前に <code>requirements.md</code> を読んで違和感を1つ修正してみる', '③ <code>design.md</code> 生成後、アーキテクチャ図やデータモデルが含まれているか確認', '④ <code>tasks.md</code> のタスクが粒度として実装可能かレビューする', '⑤ 各タスク完了ごとの差分を見て Accept/Reject する流れに慣れる']
+    },
+    lab6: {
+      check: ['① プロジェクトルートに <code>.kiro/steering/</code> フォルダを作成', '② <code>coding-style.md</code> に「変数名は camelCase」など3行のルールを書く', '③ Kiro でコード生成させて、ルールが反映されているか確認', '④ チームメンバーに同じファイルを共有して同じ生成結果になるか比較']
+    },
+    lab7: {
+      check: ['① Kiro 画面の AGENT HOOK 欄を開く', '② 「保存時に console.log が残っていないかチェック」というHookを自然言語で1つ作る', '③ 試しに console.log を含む .js ファイルを保存して警告が出るか確認', '④ クレジット消費が画面下部に表示されることを確認']
+    },
+    lab8: {
+      info:  { type:'info', html:'📘 <strong>SWE-Bench Verified 66%</strong>: 2026年時点で Q Developer は業界トップクラスのagent性能。日本語チャットも対応 (コード内コメントは英語が多い)。' },
+      check: ['① VS Code Extensions で「Amazon Q」を検索して Verified Publisher (AWS) であることを確認', '② インストール後に左サイドバーに Q アイコンが出ているか確認', '③ チャット欄で「このプロジェクトの依存関係を要約して」と日本語で入力して回答が返るか確認', '④ コード上で <code>/explain</code> コマンドを試して関数説明が出るか確認']
+    },
+    lab9: {
+      check: ['① 自分の業務タスクを「Kiro Spec / Kiro Vibe / Q Developer / 手作業」の4分類に振り分ける', '② 一番頻度が高いカテゴリを特定して、そのツールから導入する', '③ 1週間後に「AIが効いた時間 / 効かなかった時間」をメモして振り返る', '④ チーム導入前に Free tier で1ヶ月個人運用して感触を掴む']
+    }
+  };
+
+  function infoHTML(m){ return m?.info ? `<div class="info-box ${m.info.type||'info'}">${m.info.html}</div>` : ''; }
+  function verifyHTML(m){ if (!m?.verify) return '';
+    const {before, after} = m.verify;
+    return `<div class="verify">
+      <div class="verify-col verify-before"><div class="verify-label">Before ▶︎ 導入前</div>${before||''}</div>
+      <div class="verify-col verify-after"><div class="verify-label">After ▶︎ 導入後</div>${after||''}</div>
+    </div>`; }
+  function checkHTML(m){ if (!m?.check?.length) return '';
+    return `<div class="check-steps">
+      <div class="check-steps-title">🔍 実機チェック手順</div>
+      <ol>${m.check.map(s=>`<li>${s}</li>`).join('')}</ol>
+    </div>`; }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.lab').forEach(lab => {
+      const meta = LAB_META[lab.id]; const body = lab.querySelector('.lab-body');
+      if (!body || !meta) return;
+      const frag = document.createElement('div');
+      frag.innerHTML = infoHTML(meta) + verifyHTML(meta) + checkHTML(meta);
+      while (frag.firstChild) body.appendChild(frag.firstChild);
+    });
+
+    const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+    const map = new Map();
+    links.forEach(a => { const el = document.getElementById(a.getAttribute('href').slice(1)); if (el) map.set(el, a); });
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting) { const l = map.get(e.target);
+        if (l) { links.forEach(n=>n.classList.remove('active')); l.classList.add('active'); } }
+    }), { rootMargin:'-30% 0px -60% 0px' });
+    document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+    document.querySelectorAll('.code-block').forEach((cb, i) => {
+      if (cb.querySelector('.code-block-header')) return;
+      const existing = cb.querySelector('.code-label');
+      const labelText = existing ? existing.textContent.trim() : `Code #${i+1}`;
+      if (existing) existing.remove();
+      const header = document.createElement('div');
+      header.className = 'code-block-header';
+      header.innerHTML = `<span>${labelText}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+      cb.insertBefore(header, cb.firstChild);
+    });
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.matches('.toggle-btn')) return;
+    const btn = e.target;
+    const stage = document.getElementById(btn.dataset.target);
+    if (!stage) return;
+    const isBefore = stage.classList.toggle('is-before');
+    btn.classList.toggle('is-before', isBefore);
+    const label = document.getElementById(btn.dataset.target + '-label');
+    if (label) label.textContent = isBefore ? '現在: Before（旧パターン／問題あり）' : '現在: After（推奨パターン）';
+  });
+</script>
+</body>
+</html>

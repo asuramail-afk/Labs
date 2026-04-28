@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI-DLC vs 仕様駆動開発（SDD）比較Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; }
+
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); font-weight:600; }
+.compare-table .yes { color:var(--success); font-weight:600; }
+.compare-table .no { color:var(--error); font-weight:600; }
+.compare-table .partial { color:var(--accent4); font-weight:600; }
+
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+.usecase-box { background:rgba(0,92,197,.05); border:1px solid rgba(0,92,197,.25);
+  border-left:3px solid var(--accent); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#003d8f; }
+.usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent); font-weight:700; margin-bottom:6px; }
+.usecase-list { margin-left:20px; margin-bottom:10px; }
+.usecase-list li { margin-bottom:4px; }
+
+/* Side-by-side panels */
+.dual { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; }
+.dual-col { padding:12px 14px; border-radius:7px; border:1px solid; font-size:.85rem; line-height:1.75; }
+.dual-col h4 { font-family:var(--mono); font-size:.78rem; margin-bottom:6px; letter-spacing:.05em; }
+.dual-col ul { margin-left:18px; margin-top:4px; }
+.dual-col li { margin-bottom:3px; }
+.dual-aidlc { background:rgba(0,92,197,.06); border-color:rgba(0,92,197,.30); color:#003d8f; }
+.dual-aidlc h4 { color:var(--accent); }
+.dual-sdd { background:rgba(34,134,58,.06); border-color:rgba(34,134,58,.30); color:#154f1e; }
+.dual-sdd h4 { color:var(--success); }
+@media (max-width:900px) { .dual { grid-template-columns:1fr; } }
+
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// AI-DLC <span>vs SDD</span></div>
+  <div class="nav-section">前提</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>3行サマリー</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>そもそもSDDとは</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>系譜と思想の違い</a>
+  <div class="nav-section">構造比較</div>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>フェーズ対応表</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>成果物の役割</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>反復粒度の違い</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>人間関与の構造</a>
+  <div class="nav-section">深掘り</div>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>ツール実装の差</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>強み・弱み一覧</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>使い分け指針</a>
+  <div class="nav-section">統合</div>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>ハイブリッド運用</a>
+</nav>
+
+<div class="hero">
+  <h1>AI-DLC vs 仕様駆動開発（SDD）</h1>
+  <p class="subtitle">2つのAI時代の開発手法を構造で比較する</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>3行で違いを掴む</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>そもそもSDDとは何か</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>系譜と思想の違い</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>フェーズ対応表で見る</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>成果物の役割の違い</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>反復粒度（Bolt vs Spec単位）</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>人間関与の構造的差</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>ツール実装の差</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>強み・弱みマトリクス</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>使い分け指針</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">10</span>ハイブリッド運用</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- LAB 0 ============================================ -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>3行で違いを掴む</h3>
+    <span class="lab-tag tag-basic">前提</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      長い比較に入る前に、本質的な違いを3行で掴んでおく。両者はAI時代の開発手法として並べられがちだが、<strong>「何を中心に置くか」</strong>と<strong>「どう人間が関与するか」</strong>がそもそも違う。
+    </p>
+
+    <div class="dual">
+      <div class="dual-col dual-aidlc">
+        <h4>🔵 AI-DLC（AWS発・2025-）</h4>
+        <ul>
+          <li><strong>中心: 開発プロセス</strong>（Inception→Construction→Operations）</li>
+          <li><strong>キーワード: Mob Work</strong>（人が同席して即決）</li>
+          <li><strong>狙い: 速度（Velocity）</strong> Boltと呼ぶ数時間サイクル</li>
+        </ul>
+      </div>
+      <div class="dual-col dual-sdd">
+        <h4>🟢 SDD（Spec-Driven Development）</h4>
+        <ul>
+          <li><strong>中心: 仕様（Spec）</strong>。仕様が真実、コードは生成物</li>
+          <li><strong>キーワード: Single Source of Truth</strong>（仕様が唯一の正）</li>
+          <li><strong>狙い: 整合性（Alignment）</strong> 仕様とコードのズレを防ぐ</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>一言で覚えるなら</strong>: <code>AI-DLC = プロセス改革</code>（誰が何を判断するかの再設計） / <code>SDD = アーティファクト改革</code>（仕様を実行可能な真実にする）。両者は<strong>対立せず補完的</strong>。実際にはハイブリッドで使われることが多い。
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 視覚的に並べる</div>
+      <pre class="ascii-art">AI-DLC ─ 流れ重視
+  Intent → Unit → Bolt → Bolt → ... → Reflection
+  「いつ・誰が・何を判断するか」を構造化
+
+SDD ─ 文書重視
+  Spec(真実) ─→ Plan ─→ Tasks ─→ Code(派生物)
+                            ↓
+                          Spec とコードが乖離したら
+                          Spec が勝つ</pre>
+    </div>
+  </div>
+</div>
+
+<!-- LAB 1 ============================================ -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>そもそもSDDとは何か</h3>
+    <span class="lab-tag tag-basic">前提</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Spec-Driven Development は2026年現在、AI時代の開発手法として急速に普及している。GitHub Spec Kit（46.7k★）、AWS Kiro、Tessl などのツールが<strong>「仕様を書いてからAIにコードを生成させる」</strong>という共通の思想で実装されている。前提知識として要点を押さえる。
+    </p>
+
+    <div class="info-box info">
+      📘 <strong>SDDの核心</strong>: 「仕様は人間が読むためのドキュメント」だった時代から、「仕様はAIへの実行可能な契約」へ。2026年1月のarXiv論文「Spec-Driven Development: From Code to Contract in the Age of AI Coding Assistants」が学術的フレームを与えた。
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 SDDの3レベル（厳格度）</div>
+      <pre class="ascii-art">レベル1: Spec-First    （仕様を先に書く。コードは独立に書く）
+レベル2: Spec-Anchored （仕様にコードが対応。乖離を検知）
+レベル3: Spec-as-Source（仕様だけ保守。コードは毎回生成）
+
+  ↑ 厳格度が上がるほど、仕様の精度要求が高い
+  ↑ 上に行くほど、コードを「捨てて再生成」できる</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>代表ツール</th><th>提供元</th><th>形態</th><th>フェーズ</th></tr></thead>
+      <tbody>
+        <tr><td>Spec Kit</td><td>GitHub</td><td>CLI + Slash Command（任意のAIエージェント）</td><td>Constitution → Specify → Plan → Tasks → Implement</td></tr>
+        <tr><td>Kiro</td><td>AWS</td><td>専用IDE（VS Codeフォーク）</td><td>Requirements → Design → Tasks</td></tr>
+        <tr><td>Tessl</td><td>Tessl</td><td>Spec-as-Source指向</td><td>仕様だけ保守、コードは毎回生成</td></tr>
+        <tr><td>BMAD-METHOD</td><td>OSS</td><td>マルチエージェント協調</td><td>独自フェーズ（汎用）</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>GitHub Spec Kit の典型ワークフロー</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># Step 0: Constitution（憲法）= 不変の原則を最初に1回</span>
+<span class="cm">/speckit.constitution</span>
+
+<span class="cm"># Step 1: Specify = 何を作るか・なぜか（技術スタック禁止）</span>
+<span class="cm">/speckit.specify</span> Real-time chat with message history and presence
+
+<span class="cm"># Step 2: Plan = どう作るか（ここで初めて技術選定）</span>
+<span class="cm">/speckit.plan</span> WebSocket for messaging, PostgreSQL for history
+
+<span class="cm"># Step 3: Tasks = 実行可能タスクに分解</span>
+<span class="cm">/speckit.tasks</span>
+
+<span class="cm"># Step 4: Implement = AIがTasksに従って実装</span>
+<span class="cm">/speckit.implement</span></pre>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>SpecKit と Claude Code の関係</strong>: Spec Kit は Claude Code を含む複数のコーディングエージェントから使えるCLI。<code>uvx --from git+https://github.com/github/spec-kit.git specify init &lt;PROJECT&gt;</code> で初期化すると、各エージェントのスラッシュコマンドが定義された Markdown 群がプロジェクトに展開される。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 2 ============================================ -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>系譜と思想の違い</h3>
+    <span class="lab-tag tag-basic">前提</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      両者の違いを理解するには、それぞれが<strong>「何の問題に答えようとして生まれたか」</strong>を知るのが早い。同じ「AI時代」でも、見ている課題が違う。
+    </p>
+
+    <div class="dual">
+      <div class="dual-col dual-aidlc">
+        <h4>🔵 AI-DLC が答える問題</h4>
+        <p style="margin:6px 0 8px;">「AIがコードを爆速で書けるのに、なぜリリースが速くならないのか？」</p>
+        <ul>
+          <li>会議・要件調整・承認ワークフローがボトルネック</li>
+          <li>Sprint 2週間のリズムがAI速度と合わない</li>
+          <li>従来SDLCはAIアシストでも素人自律でも品質が出ない</li>
+        </ul>
+        <p style="margin-top:8px;"><strong>解</strong>: 「人間判断の高速化」を儀式化（Mob Work）し、サイクルをBolt（数時間）に圧縮</p>
+      </div>
+      <div class="dual-col dual-sdd">
+        <h4>🟢 SDD が答える問題</h4>
+        <p style="margin:6px 0 8px;">「AIが書いたコード、動くけど意図と合ってない」</p>
+        <ul>
+          <li>あいまいなプロンプトでAIが勝手に解釈する</li>
+          <li>複数ファイルにまたがる整合性が壊れる</li>
+          <li>vibe codingの結果、技術負債が爆発（コピペ48%増・リファクタ60%減）</li>
+        </ul>
+        <p style="margin-top:8px;"><strong>解</strong>: 仕様を機械可読・実行可能にし、AIへの<strong>契約</strong>として渡す</p>
+      </div>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>観点</th><th>AI-DLC</th><th>SDD</th></tr></thead>
+      <tbody>
+        <tr><td>提唱元</td><td>AWS（2025年7月公開）</td><td>BDD・形式手法・API設計の系譜（2026年に学術化）</td></tr>
+        <tr><td>系譜</td><td>XP（Extreme Programming）の Mob 化</td><td>BDD・契約による設計（DbC）・Design-First API</td></tr>
+        <tr><td>主敵</td><td>Agile/Scrumの長サイクル</td><td>Vibe Coding（雰囲気でAIに書かせる）</td></tr>
+        <tr><td>答えるWhy</td><td>速度を上げたい</td><td>整合性を保ちたい</td></tr>
+        <tr><td>批判される点</td><td>1Boltに10〜26の人間検証ゲートがあり、モデル性能向上で過剰になる懸念</td><td>小さなバグ修正には大げさすぎる（Sledgehammer問題）</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box warn">
+      ⚠️ <strong>AI-DLCの「Mob Work」が見落とされがち</strong>: AI-DLC ≒ 仕様駆動開発と紹介されることがあるが、これは表層理解。AI-DLCの本質は<strong>「決定権者を物理的に同席させて、AI出力をリアルタイム検証する」</strong>というXP系の思想。仕様文書はその<strong>結果</strong>として生まれる。
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>歴史の流れ</strong>: 2024年「Vibe Coding」流行 → 2025年「AI-assisted vs autonomous」両極の限界露呈 → 2025年7月 AWSがAI-DLC発表（プロセス側からの解） → 2025年9月 GitHub Spec Kit公開（仕様側からの解） → 2026年 両者が並立し<strong>補完関係</strong>と認識されるように。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 3 ============================================ -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>フェーズ対応表で見る</h3>
+    <span class="lab-tag tag-intermediate">構造比較</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      両者のフェーズを並べると、<strong>同じことを違う粒度で扱っている</strong>のがよく分かる。AI-DLCの方が「なぜ→何を→どう作る→どう運用するか」までカバー範囲が広い一方、SDDの方が「何を作るか」の解像度が高い。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 フェーズ対応図</div>
+      <pre class="ascii-art">              ┌─────────────────┐  ┌────────────┐
+AI-DLC →     │   Inception      │  │ Construction│  →  Operations
+              │ (Mob Elaboration)│  │(Mob Const.) │
+              └────────┬─────────┘  └──────┬─────┘
+                       │                    │
+            ┌──────────┴──────┬─────────────┴──┐  (※SDDは運用不在)
+            ▼                 ▼                 ▼
+SDD →   Constitution → Specify → Plan → Tasks → Implement
+       (憲法)        (仕様)   (計画) (タスク) (実装)
+
+              ↑ AI-DLC の Inception を、SDDは
+                Constitution + Specify + Plan + Tasks の4段に解像</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>位置</th><th>AI-DLC の段</th><th>SDD の段（Spec Kit）</th><th>主な成果物</th></tr></thead>
+      <tbody>
+        <tr><td>方針</td><td>CLAUDE.md / Steering Files</td><td>Constitution（憲法）</td><td>不変の原則・ルール</td></tr>
+        <tr><td>Why</td><td>Intent</td><td>Specify（What/Whyのみ）</td><td>spec.md / intent.md</td></tr>
+        <tr><td>How</td><td>（Construction内で扱う）</td><td>Plan（技術選定はここ）</td><td>plan.md / design.md</td></tr>
+        <tr><td>Decompose</td><td>Unit分解</td><td>Tasks（依存DAG付き）</td><td>units/*.md / tasks.md</td></tr>
+        <tr><td>Build</td><td>Bolt実行</td><td>Implement（タスク順次）</td><td>code / tests</td></tr>
+        <tr><td>Run</td><td>Operations</td><td><span class="no">明示的な対応なし</span></td><td>runbook.md</td></tr>
+        <tr><td>Reflect</td><td>Reflection</td><td><span class="partial">Drift Analysis（拡張）</span></td><td>reflection.md</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box warn">
+      ⚠️ <strong>SDDに「Operations」がない</strong>のは思想的欠落ではなく、<strong>SDDが「コード生成までの正確性」に焦点を絞っている</strong>から。本番運用・障害対応・振り返りまでは別の手法（DevOps/SRE）と組み合わせる前提。AI-DLCは運用まで一気通貫にカバーする。
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>SDDの「Constitution（憲法）」が独特</strong>: プロジェクト全体に常に適用される<strong>不変の原則</strong>を1ファイルに書き、すべてのフェーズで参照させる。例えば「TDD必須」「最大3プロジェクト構成」など。AI-DLCのCLAUDE.mdに近いが、SDDではこれを<strong>強制ゲート</strong>として実装する点が違う。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 4 ============================================ -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>成果物の役割の違い</h3>
+    <span class="lab-tag tag-intermediate">構造比較</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      両者ともMarkdown中心だが、<strong>成果物の「位置づけ」</strong>が根本的に違う。AI-DLCの文書は<strong>判断ログ</strong>、SDDの文書は<strong>実行契約</strong>。同じMDファイルでも役割が違う。
+    </p>
+
+    <div class="dual">
+      <div class="dual-col dual-aidlc">
+        <h4>🔵 AI-DLC: 判断ログとしての文書</h4>
+        <ul>
+          <li>誰がいつ何を決めたかを残す</li>
+          <li>過程（Mob Elaborationでのやり取り）も記録</li>
+          <li>後の Reflection で読み返して学習材料に</li>
+          <li>監査証跡（誰が承認した・AIがどう判断した）</li>
+        </ul>
+        <p style="margin-top:6px;"><strong>例</strong>: bolt-log.md は時系列の判断記録</p>
+      </div>
+      <div class="dual-col dual-sdd">
+        <h4>🟢 SDD: 実行契約としての文書</h4>
+        <ul>
+          <li>仕様 = AIへの実行可能な指示</li>
+          <li>コードは仕様から派生する二次成果物</li>
+          <li>仕様 vs コードの<strong>乖離検知</strong>が組み込み</li>
+          <li>仕様は単一真実源（SSOT）</li>
+        </ul>
+        <p style="margin-top:6px;"><strong>例</strong>: spec.md と code が食い違ったら spec が勝つ</p>
+      </div>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>観点</th><th>AI-DLC</th><th>SDD</th></tr></thead>
+      <tbody>
+        <tr><td>主役</td><td>プロセス（誰が何を決めたか）</td><td>仕様（何が真実か）</td></tr>
+        <tr><td>コードの位置</td><td>主要成果物（仕様と並列）</td><td>派生物（仕様の実装結果）</td></tr>
+        <tr><td>文書とコードの関係</td><td>並走・両方保守</td><td>仕様優位・コード再生成可</td></tr>
+        <tr><td>仕様変更時</td><td>Reflectionで意思決定を記録</td><td>影響タスクが自動再起動</td></tr>
+        <tr><td>レガシー対応</td><td>brownfield: 既存コードから semantic context を抽出</td><td>既存コードから spec を抽出（リバース）</td></tr>
+        <tr><td>典型的な文書数</td><td>多数（intent / units / bolts / reflection / runbook）</td><td>少数だが厚い（spec / plan / tasks）</td></tr>
+      </tbody>
+    </table>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 同じ機能を作るときの文書差（チャット機能の例）</div>
+      <pre class="ascii-art">─── AI-DLC の場合 ───────────────────────────
+intent.md         「ユーザがリアルタイムで会話できる」
+units/
+  ├ unit-01-message.md  「メッセージ送受信」
+  ├ unit-02-history.md  「履歴保存」
+  └ unit-03-presence.md 「オンライン状態」
+bolts/bolt-log.md   ← 各Boltの判断ログ時系列
+reflection.md     ← 終わった後の学び
+
+─── SDD（Spec Kit）の場合 ─────────────────────
+specs/003-chat/
+  ├ spec.md         「ユーザストーリー＋受入基準（Given-When-Then）」
+  ├ plan.md         「WebSocket+PostgreSQL+Redisアーキ」
+  ├ research.md     「ライブラリ比較の根拠」
+  ├ data-model.md   「Message/Userスキーマ」
+  ├ contracts/      「WebSocketイベント定義・REST契約」
+  ├ quickstart.md   「動作確認シナリオ」
+  └ tasks.md        「依存DAG付きタスクリスト」
+
+  ↑ specs/ 配下が「契約」で、ここが正</pre>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>SDDの強み: contracts/ ディレクトリ</strong>: API契約・データモデル・イベント定義を独立ファイルに切り出すことで、<strong>別チームが並行実装しても整合性が保てる</strong>。AI-DLCにはこの粒度の契約管理は組み込まれておらず、必要なら自分で導入する。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 5 ============================================ -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>反復粒度の違い（Bolt vs Spec単位）</h3>
+    <span class="lab-tag tag-intermediate">構造比較</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      両者の最も実感しやすい違いは<strong>「何を1サイクルとするか」</strong>。AI-DLCはBolt（数時間〜数日の実装サイクル）が単位。SDDはSpec単位（1機能まるごと）で、Specifyから始めてImplementまで通す。粒度がかなり違う。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 反復粒度の比較</div>
+      <pre class="ascii-art">─── AI-DLC ────────────────────────────────
+1サイクル = 1 Bolt（数時間〜半日）
+  ┌── Plan
+  ├── Build
+  ├── Self-Review
+  └── Human Gate ← 毎Boltで人間承認
+
+  Unit内で何回もBoltを回す。
+  Bolt失敗 → 同Boltで再試行 → ダメならUnit再分解
+
+─── SDD ──────────────────────────────────
+1サイクル = 1 Spec（1機能まるごと、数日〜1週間）
+  ┌── Constitution（プロジェクト初回のみ）
+  ├── Specify
+  ├── Plan
+  ├── Tasks
+  └── Implement ← 各Taskを順次自動実行
+
+  Spec単位で完結。
+  途中の各フェーズで人間検証ゲート。</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>観点</th><th>AI-DLC（Bolt）</th><th>SDD（Spec単位）</th></tr></thead>
+      <tbody>
+        <tr><td>1サイクル時間</td><td>数時間〜半日</td><td>数日〜1週間</td></tr>
+        <tr><td>1サイクルの成果</td><td>1機能の一部（実装片）</td><td>1機能まるごと（仕様＋実装）</td></tr>
+        <tr><td>人間承認回数</td><td>各Boltで承認（多い）</td><td>各フェーズで承認（少なめ）</td></tr>
+        <tr><td>失敗時のロスト</td><td>1Bolt分（小）</td><td>1Spec分（やや大）</td></tr>
+        <tr><td>並行実行</td><td>Unitが疎結合なら並行可能</td><td>tasks.md の[P]マーカーで並行可能</td></tr>
+        <tr><td>文脈引き継ぎ</td><td>bolt-log.md の時系列</td><td>spec.md → plan.md → tasks.md の階層</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info">
+      📘 <strong>Bolt粒度の哲学的理由</strong>: AI-DLCがBoltを小さくする理由は、AIのコンテキストウィンドウ制限への対応。Bolt記録をファイルに残すことで、新セッション開始時にAIが「前回どこまでやったか」を読み込める仕組み（state files）。SDDも同様の問題を抱えるが、<strong>仕様自体が状態</strong>なのでBolt記録は不要、というアプローチ。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>Spec単位の落とし穴（Sledgehammer問題）</strong>: Martin Fowlerチームの観察では、Kiroで小さなバグ修正をやると、4ユーザストーリー＋16受入基準を生成してしまう。Spec単位は<strong>機能追加には強いが、小修正には重い</strong>。AI-DLCの Adaptive Workflow （タスク規模で省略判断）の方がこの点は柔軟。
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>初心者の学習負荷</strong>: SDDの方がフェーズ数が少なく（Specify→Plan→Tasks→Implement）、各フェーズが明確に分かれているので最初の理解は早い。AI-DLCはBolt数を自分で見積もる必要があり、最初は粒度がブレやすい。<strong>「最初はSDD、慣れたらAI-DLC」という導入順序も有効</strong>。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 6 ============================================ -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>人間関与の構造的差</h3>
+    <span class="lab-tag tag-intermediate">構造比較</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      両者ともhuman-in-the-loopを掲げるが、<strong>「人間が何をするか」</strong>が違う。AI-DLCは決定者を集めて即決させる<strong>儀式化</strong>。SDDは仕様レビューに人間判断を集中する<strong>ゲート化</strong>。
+    </p>
+
+    <div class="dual">
+      <div class="dual-col dual-aidlc">
+        <h4>🔵 AI-DLC: 集合的・即時的</h4>
+        <ul>
+          <li>関係者が同席（Mob Work）</li>
+          <li>非同期合意ではなく口頭即決</li>
+          <li>1Boltに 10〜26 の人間検証ポイント</li>
+          <li>個人開発では Hat 切替で疑似Mob</li>
+        </ul>
+        <p style="margin-top:6px;"><strong>哲学</strong>: 判断のスループット最大化のため、決定者を物理的に集める</p>
+      </div>
+      <div class="dual-col dual-sdd">
+        <h4>🟢 SDD: 個別・段階的</h4>
+        <ul>
+          <li>各フェーズ末で人間が仕様レビュー</li>
+          <li>非同期可能（PR的レビュー）</li>
+          <li>仕様の精度を上げることで人間関与を集約</li>
+          <li>"Verify, not steer"（GitHub の表現）</li>
+        </ul>
+        <p style="margin-top:6px;"><strong>哲学</strong>: 仕様レビューに集中し、実装は自動化</p>
+      </div>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 人間関与のタイミング比較</div>
+      <pre class="ascii-art">─── AI-DLC（1日のタイムライン） ────────────────
+9:00  Mob Elaboration開始（人間×AI同席で議論）
+10:30 Intent と Unit を確定
+11:00 Bolt 1 開始 [計画] → [承認] → [実装] → [レビュー] → [承認]
+13:00 Bolt 2  「          」                       「          」
+15:00 Bolt 3  「          」
+17:00 振り返り、明日の計画
+
+  ↑ 終日、人間は AI と並走している。AIが暴走しないよう
+    細かく承認ゲートを通す。
+
+─── SDD（数日のタイムライン） ──────────────────
+Day 1  /speckit.specify → AIがspec.md生成 → 人間レビュー
+Day 2  /speckit.plan    → AIがplan.md生成 → 人間レビュー
+Day 3  /speckit.tasks   → AIがtasks.md生成 → 人間レビュー
+Day 4  /speckit.implement → AIが順次実装（人間は監視のみ）
+Day 5  PR作成 → 人間が最終レビュー
+
+  ↑ 各日の終わりに集中レビュー。実装中は基本AI任せ。</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>観点</th><th>AI-DLC</th><th>SDD</th></tr></thead>
+      <tbody>
+        <tr><td>関与頻度</td><td>非常に高い（毎Bolt数回）</td><td>中程度（フェーズ末に集中）</td></tr>
+        <tr><td>関与の性質</td><td>議論・即決・口頭合意</td><td>仕様レビュー・コメント</td></tr>
+        <tr><td>非同期可能性</td><td>低い（同席前提）</td><td>高い（GitHubのPRワークフローと相性良）</td></tr>
+        <tr><td>分散チーム適性</td><td>低い（時差・物理同席が難）</td><td>高い（時差を超えてレビュー可）</td></tr>
+        <tr><td>初心者一人開発</td><td>Hat切替で疑似Mob可能</td><td>そのまま使える（人間=自分1人で完結）</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box warn">
+      ⚠️ <strong>AI-DLCの限界</strong>: Mob Work前提が「同期同席できる組織」に制約される。リモート分散チーム・グローバル組織では儀式の実施コストが高い。<strong>2025年中頃のモデル性能を前提とした設計</strong>のため、2026年の高性能モデルでは検証ポイントが過剰になる懸念も指摘されている（Zenn記事より）。
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>SDDの強み</strong>: 仕様自体が監査証跡になり、誰がいつ承認したかをGit履歴で追える。組織のガバナンス・コンプラ要件（NIST AI RMF・EU AI Act・SOC 2）と相性が良く、<strong>規制業界での採用が進んでいる</strong>。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 7 ============================================ -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>ツール実装の差</h3>
+    <span class="lab-tag tag-advanced">深掘り</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ツールの提供形態も対照的。AI-DLCは<strong>「方法論＋緩いリファレンス実装」</strong>でツール拘束が緩い。SDDは<strong>「方法論を実装したツール群」</strong>として提供され、ツールごとに体験が違う。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>項目</th><th>AI-DLC</th><th>SDD</th></tr></thead>
+      <tbody>
+        <tr><td>主な実装</td><td>AWS公式ワークフロー（Amazon Q Rules / Kiro Steering Files）／TheBushidoCollective Claude Codeプラグイン</td><td>GitHub Spec Kit（CLI）／AWS Kiro（IDE）／Tessl／BMAD-METHOD</td></tr>
+        <tr><td>提供形態</td><td>Markdown規約 + （任意の）プラグイン</td><td>専用CLI / IDE / Slash Command</td></tr>
+        <tr><td>導入の重さ</td><td>軽い（CLAUDE.md書くだけでも始められる）</td><td>中（CLIインストール or 専用IDE）</td></tr>
+        <tr><td>ロックイン</td><td>ほぼなし（規約だけ）</td><td>低〜中（ツールに依存度あり）</td></tr>
+        <tr><td>カスタマイズ性</td><td>高い（自分でテンプレ作れる）</td><td>Spec Kitは高い、Kiroは中</td></tr>
+        <tr><td>強制力</td><td>緩い（自分が承認スキップ可）</td><td>強い（フェーズゲートが組み込まれている）</td></tr>
+      </tbody>
+    </table>
+
+    <div class="dual">
+      <div class="dual-col dual-aidlc">
+        <h4>🔵 AI-DLC を始めるコスト</h4>
+        <ul>
+          <li>Claude Code（または任意のAIエージェント）があればOK</li>
+          <li>CLAUDE.md とディレクトリ構造を手で作る</li>
+          <li>方法論の理解に時間がかかる</li>
+          <li>儀式（Mob）の運用は組織側で工夫</li>
+        </ul>
+        <p style="margin-top:6px;">→ <strong>個人で気軽に試せる</strong>。ただし規律は自前。</p>
+      </div>
+      <div class="dual-col dual-sdd">
+        <h4>🟢 SDD を始めるコスト</h4>
+        <ul>
+          <li>Spec Kit: <code>uvx specify init</code> で初期化</li>
+          <li>Slash Command がエージェントに自動展開</li>
+          <li>テンプレートとフェーズ進行が固定</li>
+          <li>Kiro なら専用IDEを入れる</li>
+        </ul>
+        <p style="margin-top:6px;">→ <strong>レール上を走れる</strong>。ただし型に従う必要。</p>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>同じClaude Codeで両方を使う場合の準備差</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># ─── AI-DLC を始める（前回手順書の通り） ───</span>
+mkdir my-ai-dlc-practice && cd my-ai-dlc-practice
+mkdir -p aidlc-docs/{intent,units,bolts,design,reflection}
+<span class="cm"># CLAUDE.md を手で書く（プロジェクト方針）</span>
+claude  <span class="cm"># 起動して指示で進める</span>
+
+<span class="cm"># ─── SDD（Spec Kit）を始める ───</span>
+<span class="cm"># uv（Python のパッケージランナー）が必要</span>
+uvx --from git+https://github.com/github/spec-kit.git specify init my-sdd-project
+cd my-sdd-project
+<span class="cm"># Claude Code 用の slash command が自動配置される</span>
+claude
+<span class="cm"># プロンプト上で /speckit.constitution → /speckit.specify ... と叩く</span></pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>AI-DLC は思想、SDD は道具</strong>という見方もできる。AI-DLCはどのツールでも実践可能（Claude Code でも Cursor でも Cowork でも）。SDDは「Spec Kit を使う」「Kiro を使う」のようにツール選択が方法論実践と紐づく。<strong>長く続ける</strong>なら思想を学ぶ AI-DLC が、<strong>すぐ動かしたい</strong>なら道具がある SDD が強い。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 8 ============================================ -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>強み・弱みマトリクス</h3>
+    <span class="lab-tag tag-advanced">深掘り</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ここまでの違いを「強み」「弱み」の軸で整理する。どちらかが優れているわけではなく、<strong>解こうとしている問題が違う</strong>。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>観点</th><th>AI-DLC</th><th>SDD</th></tr></thead>
+      <tbody>
+        <tr><td>速度</td><td><span class="yes">非常に速い</span>（Bolt数時間）</td><td><span class="partial">中速</span>（Spec単位で数日）</td></tr>
+        <tr><td>整合性</td><td><span class="partial">プロセスで担保</span></td><td><span class="yes">仕様で担保</span></td></tr>
+        <tr><td>大規模機能</td><td><span class="partial">Unit分解で対応</span></td><td><span class="yes">仕様階層で強い</span></td></tr>
+        <tr><td>小修正・バグfix</td><td><span class="yes">Adaptive Workflowで省略可</span></td><td><span class="no">Sledgehammer問題</span></td></tr>
+        <tr><td>運用・継続</td><td><span class="yes">Operations / Reflectionあり</span></td><td><span class="no">明示的な対応なし</span></td></tr>
+        <tr><td>分散チーム</td><td><span class="no">Mob同席が前提</span></td><td><span class="yes">非同期PRワークフロー親和</span></td></tr>
+        <tr><td>監査・コンプラ</td><td><span class="partial">Bolt-logが証跡になる</span></td><td><span class="yes">仕様自体が証跡</span></td></tr>
+        <tr><td>ベンダーロックイン</td><td><span class="yes">なし</span></td><td><span class="partial">ツール依存あり</span></td></tr>
+        <tr><td>初学者の理解</td><td><span class="partial">概念多い（5語＋3フェーズ）</span></td><td><span class="yes">フェーズ少なく明快</span></td></tr>
+        <tr><td>レガシー（brownfield）</td><td><span class="partial">semantic context抽出の仕組みあり</span></td><td><span class="partial">既存コードからspec抽出</span></td></tr>
+        <tr><td>テスト統合</td><td><span class="partial">Reviewer Hatで指摘</span></td><td><span class="yes">TDDをConstitutionで強制可</span></td></tr>
+        <tr><td>API契約管理</td><td><span class="no">専用機構なし</span></td><td><span class="yes">contracts/ ディレクトリ</span></td></tr>
+      </tbody>
+    </table>
+
+    <div class="dual">
+      <div class="dual-col dual-aidlc">
+        <h4>🔵 AI-DLC が向く場面</h4>
+        <ul>
+          <li>同席可能なチーム（小・中規模）</li>
+          <li>速度を最大化したい新規開発</li>
+          <li>運用・継続学習まで一貫させたい</li>
+          <li>ツール選定に縛られたくない</li>
+          <li>個人開発でリズムを整えたい</li>
+        </ul>
+      </div>
+      <div class="dual-col dual-sdd">
+        <h4>🟢 SDD が向く場面</h4>
+        <ul>
+          <li>分散・非同期チーム</li>
+          <li>API・データモデルの整合性が重要</li>
+          <li>規制業界（金融・医療・公共）</li>
+          <li>機能追加が中規模以上</li>
+          <li>既存IDE/エージェントを活かしたい</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="info-box err">
+      🚨 <strong>両方が苦手な領域</strong>: ① 探索的プロトタイピング・PoC（仕様も計画も決まっていない段階） → これは <strong>vibe codingの方が速い</strong>こともある。② 緊急インシデント対応 → どちらの儀式も時間が掛かりすぎる。<strong>「全部AI-DLC/SDDで済ませる」と思わず、軽い手法も併用</strong>する判断が必要。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 9 ============================================ -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>使い分け指針</h3>
+    <span class="lab-tag tag-advanced">深掘り</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      実際の選択フローチャート。タスクの性質と組織の状況で選ぶのが現実的。<strong>「どちらを学ぶか」</strong>と<strong>「どちらを使うか」</strong>は別問題で、両方触れた上で使い分けるのが理想。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 選択フローチャート</div>
+      <pre class="ascii-art">START
+  │
+  ▼
+  Q1: 仕様（何を作るか）は明確か？
+  ├─ いいえ → 探索的なら vibe coding でOK
+  │           要件が見えてから戻る
+  └─ はい
+       │
+       ▼
+  Q2: 規模はどれくらい？
+  ├─ 小（1日以下） → 軽量プロンプト+Claude Codeで十分
+  ├─ 中（1〜3日） → AI-DLC（Bolt 3〜5個）が手頃
+  └─ 大（1週間〜） → SDD（Spec Kit）で仕様階層化
+                      または AI-DLC + SDD 併用
+       │
+       ▼
+  Q3: チームは同期できる？分散？
+  ├─ 同席可 → AI-DLC（Mob Work生かせる）
+  └─ 分散 → SDD（PRレビュー文化と親和）
+       │
+       ▼
+  Q4: 監査・コンプラ要件は厳しい？
+  ├─ はい → SDD（仕様が証跡になる）
+  └─ いいえ → 好みで選ぶ
+       │
+       ▼
+  Q5: 運用フェーズまで一貫したい？
+  ├─ はい → AI-DLC（Operations + Reflectionあり）
+  └─ いいえ → SDDで完結後、別手法へ</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>シナリオ</th><th>推奨</th><th>理由</th></tr></thead>
+      <tbody>
+        <tr><td>個人開発・学習</td><td>AI-DLC</td><td>運用までカバー、学習リズムが作れる</td></tr>
+        <tr><td>OSS新規プロジェクト</td><td>SDD（Spec Kit）</td><td>分散貢献者がレビューしやすい</td></tr>
+        <tr><td>業務システム新規（中規模）</td><td>SDD</td><td>仕様契約が監査証跡になる</td></tr>
+        <tr><td>業務システム保守・追加機能</td><td>AI-DLC（適応的）</td><td>小規模はBoltで素早く、大規模はUnit分解</td></tr>
+        <tr><td>レガシー刷新（brownfield）</td><td>SDD（仕様抽出）</td><td>既存コードからspec抽出が現代化に強い</td></tr>
+        <tr><td>緊急バグ修正</td><td>どちらも省略</td><td>軽量プロンプト or vibe coding</td></tr>
+        <tr><td>API・SaaS統合開発</td><td>SDD</td><td>contracts/ がインターフェース管理に最適</td></tr>
+        <tr><td>社内ツール・ユーティリティ</td><td>AI-DLC</td><td>軽量に始められて運用までカバー</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info">
+      📘 <strong>Tomさんの業務文脈で考えると</strong>: 業務でOutSystems・Wijmo FlexGrid のような既存資産（brownfield）を扱うなら、<strong>「既存コード→仕様抽出」のSDDアプローチ</strong>がワークフローに馴染みやすい。一方、個人学習や副業のようなgreenfieldなら<strong>AI-DLCで運用まで通す</strong>方が学びが深い。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 学ぶ順序の提案</div>
+      <ul class="usecase-list">
+        <li><strong>Step 1</strong>: AI-DLCを1〜2プロジェクト通す（前回手順書）→ 「人間判断ポイントの構造化」を体感</li>
+        <li><strong>Step 2</strong>: GitHub Spec Kitを試す → 「仕様を実行契約として書く」体験</li>
+        <li><strong>Step 3</strong>: 両者を比較してCLAUDE.md / Constitution に自分用ルールを抽出</li>
+        <li><strong>Step 4</strong>: 業務で「ここはSDD、ここはAI-DLC」と使い分けるハイブリッドへ</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- LAB 10 =========================================== -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>ハイブリッド運用（実用パターン）</h3>
+    <span class="lab-tag tag-advanced">統合</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      実務では「SDDで仕様を確定し、AI-DLCのプロセス規律で実装する」というハイブリッドが現実解になりつつある。両者は対立せず<strong>レイヤーが違う</strong>。SDDは<strong>What/How（成果物のレイヤー）</strong>、AI-DLCは<strong>Who/When（プロセスのレイヤー）</strong>。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 ハイブリッド構造</div>
+      <pre class="ascii-art">┌─ プロセスのレイヤー（AI-DLC） ──────────────────────────┐
+│  Inception      Construction         Operations          │
+│  (Mob)          (Bolt × 多数)        (Reflection)        │
+│   │                  │                    │              │
+│   ▼                  ▼                    ▼              │
+│ ┌─ アーティファクトのレイヤー（SDD） ──────────────────┐ │
+│ │ Constitution → Specify → Plan → Tasks → Implement    │ │
+│ │  (CLAUDE.md)   (spec.md) (plan.md) (tasks.md) (code) │ │
+│ └────────────────────────────────────────────────┘ │
+└────────────────────────────────────────────────────┘
+
+  ↑ AI-DLCのフェーズの中で SDD のアーティファクトを生成
+    SDDの仕様精度 × AI-DLCのプロセス規律 = 高品質×高速度</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>AI-DLC段</th><th>そこで生成するSDD成果物</th><th>狙い</th></tr></thead>
+      <tbody>
+        <tr><td>Inception開始</td><td>Constitution（=CLAUDE.md強化版）</td><td>不変ルール明文化</td></tr>
+        <tr><td>Mob Elaboration</td><td>spec.md（What/Why）</td><td>仕様精度を上げる</td></tr>
+        <tr><td>Mob Elaboration終盤</td><td>plan.md（技術選定）</td><td>How を明示</td></tr>
+        <tr><td>Construction開始</td><td>tasks.md（=Unit分解 + Bolt案）</td><td>依存DAGを明確化</td></tr>
+        <tr><td>各Bolt</td><td>contracts/ 更新</td><td>API契約の整合性維持</td></tr>
+        <tr><td>Operations</td><td>quickstart.md（運用検証）</td><td>運用テストの自動化</td></tr>
+        <tr><td>Reflection</td><td>Constitution更新</td><td>学びを次プロジェクトへ</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>ハイブリッド運用の最小プロンプト例（Claude Code）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># Step 1: AI-DLCの儀式でSDD仕様を作る</span>
+
+これから AI-DLC の Inception フェーズを始めます。
+ただし成果物のフォーマットは <span class="kw">SDD（Spec Kit）形式</span>で出力してください。
+
+<span class="kw">Mob Elaboration の手順</span>:
+1. Product Owner Hat で <span class="str">specs/001-feature/spec.md</span> を生成
+   - User Story（As a... I want... So that...）
+   - Acceptance Criteria（Given/When/Then）
+   - 技術スタックは書かない
+2. Architect Hat で <span class="str">specs/001-feature/plan.md</span> を生成
+   - 技術スタック・アーキ図・主要ライブラリ選定理由
+3. Developer Hat で <span class="str">specs/001-feature/tasks.md</span> を生成
+   - 依存DAG付きタスクリスト
+   - 各タスクが AI-DLC の <span class="kw">1 Bolt</span> に対応するように粒度調整
+
+各Hatの後で私の承認を待ってください。
+判断ログは AI-DLC 流に <span class="str">aidlc-docs/elaboration-log.md</span> に時系列で残してください。
+
+<span class="cm"># Step 2: Construction は AI-DLC の Bolt サイクルで回す</span>
+<span class="cm">#         （tasks.md の各タスク = 1 Bolt として扱う）</span></pre>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>このハイブリッドの利点</strong>: ① SDDの<strong>仕様契約</strong>が手に入る（後で他人に渡せる）② AI-DLCの<strong>判断ログとReflection</strong>が手に入る（自分の学習が蓄積する）③ 両者の批判（SDDの「小修正に重い」「運用がない」、AI-DLCの「仕様精度が緩い」）を相互に補える。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>ハイブリッドは中級者向け</strong>: 両方の語彙と流れを知らないとどっちつかずになる。<strong>最初は片方を1〜2プロジェクト完走</strong>してから、足りないと感じた要素を他方から借りるアプローチが現実的。
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>業界の方向性</strong>: 2026年現在、AWS自身が「AI-DLCワークフロー」をオープンソース化（Amazon Q Rules / Kiro Steering Files）し、KiroはSDDのIDEとしても位置づけられている。<strong>AWS内部でも両者は補完関係で運用</strong>されており、「どちらか」ではなく「どう組み合わせるか」が現代の実践課題になっている。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 Tomさんが次に試すなら</div>
+      <ul class="usecase-list">
+        <li>前回手順書のAI-DLC練習題材で、Inceptionの成果物だけ <strong>Spec Kit形式</strong>で書いてみる（追加工数は1時間程度）</li>
+        <li>業務のOutSystems開発で、新規Service Action追加時に <strong>spec.md + tasks.md</strong> だけ書いてみる（実装はいつも通り）</li>
+        <li>両方やった後で、自分のCLAUDE.md/Constitutionに「自分はこう使い分ける」というルールを書く</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+function copyCode(btn) {
+  const block = btn.closest('.code-block') || btn.parentElement;
+  const pre = block.querySelector('pre');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+  const map = new Map();
+  links.forEach(a => {
+    const el = document.getElementById(a.getAttribute('href').slice(1));
+    if (el) map.set(el, a);
+  });
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) {
+      const l = map.get(e.target);
+      if (l) { links.forEach(n => n.classList.remove('active')); l.classList.add('active'); }
+    }
+  }), { rootMargin: '-30% 0px -60% 0px' });
+  document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+  document.querySelectorAll('.code-block').forEach((cb, i) => {
+    if (cb.querySelector('.code-block-header')) return;
+    const header = document.createElement('div');
+    header.className = 'code-block-header';
+    header.innerHTML = `<span>Code #${i+1}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+    cb.insertBefore(header, cb.firstChild);
+  });
+});
+</script>
+
+</body>
+</html>
