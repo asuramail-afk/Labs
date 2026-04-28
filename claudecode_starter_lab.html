@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Code 自走入門 Lab — MCP / Hooks / Slash Commands / Skills</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+      --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+      --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+      --success:#22863a; --error:#cb2431;
+      --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+    #sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+      background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+      border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+    #sidebar::-webkit-scrollbar { width:4px; }
+    #sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+    #sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+      padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+    #sidebar .nav-title span { color:var(--text-dim); }
+    #sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+      color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+    #sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+      color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+      transition:background .15s,color .15s,border-color .15s;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    #sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+    #sidebar .nav-item.active { border-left-color:var(--accent);
+      background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+    #sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+      font-size:.72rem; margin-right:8px; opacity:.8; }
+
+    .hero { padding:60px 40px 40px; text-align:center;
+      background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+      border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+    .hero::before { content:''; position:absolute; top:-120px; right:-120px;
+      width:400px; height:400px;
+      background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+      pointer-events:none; }
+    .hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+      background:linear-gradient(135deg,var(--accent),var(--accent2));
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+    .hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+    .toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+    .toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+    .toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+    .toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+      background:var(--surface); border:1px solid var(--border); border-radius:8px;
+      text-decoration:none; color:var(--text); font-size:.88rem;
+      transition:border-color .2s,transform .15s; }
+    .toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+    .toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+      font-size:.8rem; min-width:28px; }
+
+    .container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+    .lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+      overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+    .lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+      background:var(--surface2); border-bottom:1px solid var(--border); }
+    .lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+      background:var(--accent); width:30px; height:30px; display:flex;
+      align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+    .lab-header h3 { font-size:1.15rem; font-weight:600; }
+    .lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+      padding:3px 10px; border-radius:20px; border:1px solid; }
+    .tag-basic { color:var(--accent); border-color:var(--accent); }
+    .tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+    .tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+    .lab-body { padding:24px; }
+    .lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+    .lab-desc code { font-family:var(--mono); background:var(--code-bg);
+      padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+    .code-block { position:relative; background:var(--code-bg);
+      border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+    .code-block pre { padding:12px 16px 14px; overflow-x:auto;
+      font-family:var(--mono); font-size:.82rem; line-height:1.65;
+      color:var(--text); white-space:pre; tab-size:2; }
+    .code-block-header { display:flex; align-items:center; justify-content:space-between;
+      padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+      font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+    .copy-btn { background:transparent; border:1px solid var(--border);
+      color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+      padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+    .copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+    .copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+    .kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+    .cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+    .attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+
+    .info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+      line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+    .info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+    .info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+    .info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+    .info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+    .info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+      padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+    .verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+    .verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+      line-height:1.7; border:1px solid; }
+    .verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+    .verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+    .verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+      text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+    .verify-before .verify-label { color:var(--error); }
+    .verify-after  .verify-label { color:var(--success); }
+
+    .check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+      border-left:3px solid var(--accent4); border-radius:7px;
+      padding:11px 14px 11px 16px; margin:16px 0 4px;
+      font-size:.86rem; line-height:1.8; color:#5c4400; }
+    .check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+      text-transform:uppercase; font-weight:700; color:var(--accent4);
+      margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+    .check-steps ol { margin-left:20px; margin-top:2px; }
+    .check-steps li { margin-bottom:3px; }
+    .check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+      padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+    .compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+      margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+      border-radius:7px; overflow:hidden; }
+    .compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+      font-family:var(--mono); font-size:.72rem; color:var(--accent);
+      letter-spacing:.05em; border-bottom:1px solid var(--border); }
+    .compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+      color:var(--text); vertical-align:top; }
+    .compare-table tr:last-child td { border-bottom:none; }
+    .compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+    .compare-table .yes { color:var(--success); } .compare-table .no { color:var(--error); }
+
+    .beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+      border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+      margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+    .beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+      color:var(--accent3); font-weight:700; margin-bottom:5px; }
+    .beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+      line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+      margin-top:8px; color:var(--text); overflow-x:auto; }
+
+    .usecase-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+      border-left:3px solid var(--accent3); border-radius:7px; padding:12px 14px;
+      margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+    .usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+      color:var(--accent3); font-weight:700; margin-bottom:6px; }
+    .usecase-list { margin-left:20px; margin-bottom:10px; }
+    .usecase-list li { margin-bottom:4px; }
+    .usecase-trigger { background:rgba(0,92,197,.05); border-left:3px solid var(--accent);
+      padding:8px 12px; border-radius:5px; font-size:.82rem; color:#003d8f; margin-top:8px; }
+    .usecase-trigger ul { margin:4px 0 0 20px; }
+
+    .try-box { background:rgba(34,134,58,.06); border:1px solid rgba(34,134,58,.30);
+      border-left:3px solid var(--success); border-radius:7px;
+      padding:12px 14px; margin:14px 0; font-size:.86rem; line-height:1.8; color:#154f1e; }
+    .try-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+      color:var(--success); font-weight:700; margin-bottom:6px; }
+    .try-box ol { margin-left:20px; margin-top:4px; }
+    .try-box ol li { margin-bottom:4px; }
+    .try-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+      padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--success); }
+    .try-tip { background:rgba(176,136,0,.06); border-left:3px solid var(--accent4);
+      padding:8px 12px; border-radius:5px; font-size:.82rem; color:#5c4400; margin-top:8px; }
+    .try-tip strong { color:var(--accent4); }
+    .try-skeleton { background:#f0f4f8; border:1px solid var(--border); border-radius:5px;
+      padding:10px 12px; margin-top:8px; font-family:var(--mono); font-size:.78rem;
+      color:var(--text); white-space:pre; overflow-x:auto; line-height:1.5; }
+
+    .code-pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; }
+    .code-pair-col { display:flex; flex-direction:column; min-width:0; }
+    .code-pair-label { font-family:var(--mono); font-size:.72rem; letter-spacing:.05em;
+      font-weight:700; padding:6px 10px; border-radius:6px 6px 0 0; }
+    .code-pair-before .code-pair-label { background:rgba(203,36,49,.10); color:#9a1320;
+      border:1px solid rgba(203,36,49,.30); border-bottom:none; }
+    .code-pair-after  .code-pair-label { background:rgba(34,134,58,.10); color:#154f1e;
+      border:1px solid rgba(34,134,58,.30); border-bottom:none; }
+    .code-pair-col .code-block { margin:0; border-radius:0 0 8px 8px; flex:1; }
+    .code-pair-before .code-block { border-color:rgba(203,36,49,.30); }
+    .code-pair-after  .code-block { border-color:rgba(34,134,58,.30); }
+    @media (max-width:900px){ .code-pair { grid-template-columns:1fr; } }
+
+    @media (max-width:900px) {
+      body { padding-left:0; }
+      #sidebar { position:static; width:100%; height:auto; border-right:none;
+        border-bottom:1px solid var(--border); padding:8px 0; }
+      #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+      .verify { grid-template-columns:1fr; }
+      .hero h1 { font-size:1.6rem; }
+      .toc-grid { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// Claude Code <span>自走入門</span></div>
+
+  <div class="nav-section">基礎</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>全体地図</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>セットアップ</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>CLAUDE.md</a>
+
+  <div class="nav-section">Skills</div>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>Skills 入門</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>Skill を作る</a>
+
+  <div class="nav-section">Slash Commands</div>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>/command 入門</a>
+
+  <div class="nav-section">MCP</div>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>MCP 入門</a>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>MCP 実践</a>
+
+  <div class="nav-section">Hooks</div>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>Hooks 入門</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>安全策 Hook</a>
+
+  <div class="nav-section">統合</div>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>自走チェック</a>
+</nav>
+
+<div class="hero">
+  <h1>Claude Code 自走入門 Lab</h1>
+  <p class="subtitle">MCP / Hooks / Slash Commands / Skills を、初心者が手を動かして習得するための実践手順書</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>4要素の全体地図と習得順序</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>セットアップと初回起動</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>CLAUDE.md でプロジェクト記憶</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>Skills とは何か（最も簡単な入口）</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>初めての Skill を作る</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>Slash Commands を使う</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>MCP の概念と接続</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>MCP を実際に使う</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>Hooks の概念と最小例</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>危険操作を Hook で防ぐ</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">10</span>自走チェックリストと習熟ロードマップ</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- LAB 00 -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>4要素の全体地図と習得順序</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Claude Code を「ただのチャット」から「自分専用の作業ロボ」に変える4つの拡張要素を、まず<strong>役割分担</strong>で理解する。深掘りは後のラボで行うので、ここでは「何が何のためにあるか」だけを掴む。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 4要素を一言で</div>
+      4要素は「<strong>誰が</strong> / <strong>いつ</strong> / <strong>何を起動するか</strong>」で役割が分かれる。<br>
+      <strong>Skills</strong> = Claudeが自動で読みに行く"参考書"。<br>
+      <strong>Slash Commands</strong> = あなたが手動で呼ぶ"定型プロンプト"。<br>
+      <strong>MCP</strong> = Claudeに新しい"道具"（外部サービス）を生やす。<br>
+      <strong>Hooks</strong> = Claudeの行動の前後に"必ず実行する"スクリプト。
+      <pre class="ascii-art">
+              ┌────────────────────── あなたが操作 ──────────────────────┐
+              │                                                          │
+              │   /deploy   ← Slash Commands（手動で呼ぶ定型プロンプト）  │
+              │      ↓                                                   │
+        ┌─────┴──────────────────────┐                                  │
+        │  Claude Code セッション    │← UserPromptSubmit Hook が割込    │
+        │                            │                                  │
+        │  作業中に "PDF 作りたい"   │                                  │
+        │  と言うと…                │                                  │
+        │     → Skills を自動で発見  │ ← Skills（自動で読みに行く参考書）│
+        │                            │                                  │
+        │  外部サービス操作したい    │                                  │
+        │     → MCP の道具を呼ぶ     │ ← MCP（外部サービス＝新しい道具） │
+        │                            │                                  │
+        │  ファイルを編集            │                                  │
+        │     → PostToolUse Hook 発火│ ← Hooks（前後に必ず動くスクリプト）│
+        └────────────────────────────┘                                  │
+              │                                                          │
+              └─────────────────── 結果が返る ──────────────────────────┘
+      </pre>
+    </div>
+
+    <table class="compare-table">
+      <thead>
+        <tr><th>要素</th><th>誰が起動?</th><th>何が増える?</th><th>典型シーン</th><th>難易度</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Skills</td><td>Claude が自動</td><td>専門知識・手順書</td><td>「PDFに変換して」→自動でPDF skillを発見</td><td>★☆☆</td></tr>
+        <tr><td>Slash Commands</td><td>あなたが手動</td><td>呼び出しショートカット</td><td>毎朝 <code>/standup</code> で日次まとめ</td><td>★☆☆</td></tr>
+        <tr><td>MCP</td><td>Claude が自動 (許可後)</td><td>外部サービスの道具</td><td>GitHub/Notion/DB など外部連携</td><td>★★☆</td></tr>
+        <tr><td>Hooks</td><td>イベントで自動</td><td>強制実行ロジック</td><td>編集後に必ず prettier、危険コマンド禁止</td><td>★★★</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info">
+      📘 <strong>2026年4月時点の重要事項</strong>: <code>.claude/commands/</code> と <code>.claude/skills/</code> は<strong>統合</strong>された。両方使えるが、新規作成は<strong>Skills 推奨</strong>。同名なら Skill が優先される。
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>このLabの推奨学習順</strong>: Skills（最も簡単・効果実感が早い）→ Slash Commands → MCP → Hooks（最後・誤設定リスク高）。順序を守れば挫折しにくい。
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm"># 4要素が住む場所（プロジェクトのルート）</span>
+.
+├── CLAUDE.md                  <span class="cm"># プロジェクト記憶（Lab 02）</span>
+├── .claude/
+│   ├── settings.json          <span class="cm"># Hooks / 権限（Lab 08, 09）</span>
+│   ├── skills/
+│   │   └── my-skill/
+│   │       └── SKILL.md       <span class="cm"># Skills（Lab 03, 04）</span>
+│   └── commands/
+│       └── standup.md         <span class="cm"># Slash Commands（Lab 05・旧形式）</span>
+└── .mcp.json                  <span class="cm"># MCP サーバ定義（Lab 06, 07）</span></pre>
+    </div>
+  </div>
+</div>
+
+<!-- LAB 01 -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>セットアップと初回起動</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Claude Code は Node.js 18+ が必要なターミナル CLI。インストール → 認証 → 適当なフォルダで起動 → <code>/help</code> で動作確認、までを一気に通す。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm"># 1. Node.js 18 以上があるか確認（Windowsはコマンドプロンプト/PowerShell）</span>
+node -v   <span class="cm"># v18.x.x 以上ならOK</span>
+
+<span class="cm"># 2. グローバルインストール</span>
+npm install -g @anthropic-ai/claude-code
+
+<span class="cm"># 3. 任意のプロジェクトフォルダへ移動して起動</span>
+cd C:\Users\<span class="str">user</span>\my-project
+claude
+
+<span class="cm"># 4. 初回はブラウザが開いてAnthropicアカウント認証 → 戻ると対話画面</span></pre>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>Windowsでハマりがちな点</strong>: PowerShell実行ポリシーで <code>npm install -g</code> が止まる場合は、管理者権限のPowerShellで <code>Set-ExecutionPolicy -Scope CurrentUser RemoteSigned</code> を実行。WSL/Git Bashでも動作可。
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm"># 起動後、まず叩くコマンド3つ</span>
+/help         <span class="cm"># 全コマンド一覧（60+ あるので圧倒されてOK、後で覚える）</span>
+/doctor       <span class="cm"># インストール健全性チェック</span>
+/model        <span class="cm"># 使用モデル切替（Opus/Sonnet/Haiku）</span></pre>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 「何を質問していいか分からない」を解決</div>
+      最初は <strong>「このフォルダの中身を要約して」</strong> と聞くだけで十分。Claudeがファイルツリーを読み、自然言語で説明してくれる。コードを書かせる前に「読ませる」体験から入ると怖くない。
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>モデル選びの目安</strong>: 普段は <code>sonnet</code>、複雑な設計は <code>opus</code>、軽い質問は <code>haiku</code>。Maxプランなら <code>opusplan</code>（思考はOpus・コードはSonnet）が便利。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 02 -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>CLAUDE.md でプロジェクト記憶を作る</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      4要素を学ぶ前に <strong>CLAUDE.md</strong> を理解しておく。これは <em>セッション開始時に必ず読まれる</em> プロジェクト固有のメモ。Skills や Hooks の前段として、ここに書くだけで挙動の8割は変えられる。
+    </p>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before（CLAUDE.md なし）</div>
+        <div class="code-block">
+          <pre><span class="cm"># 毎セッション同じ説明を繰り返す</span>
+> このプロジェクトは TypeScript で…
+> テストは vitest を使う
+> .env は触らないで
+> コミットメッセージは英語で…</pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After（CLAUDE.md 配置）</div>
+        <div class="code-block">
+          <pre><span class="cm"># プロジェクトルートに CLAUDE.md を置くだけ</span>
+<span class="cm"># 内容例:</span>
+<span class="kw">## Stack</span>
+- TypeScript / Vitest / Next.js
+
+<span class="kw">## ルール</span>
+- .env* は<span class="str">絶対に</span>編集しない
+- コミット<span class="kw">メッセージ</span>は英語
+- テスト先行（テスト書いてから実装）</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>200行以内に保つ</strong>: CLAUDE.md は<strong>毎ターン</strong>コンテキストに載るので、長すぎるとトークンを圧迫し応答も遅くなる。「これだけは守って」のリストに絞る。
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>3階層</strong>: <code>~/.claude/CLAUDE.md</code>（全プロジェクト共通）→ プロジェクトルート（チーム共通）→ サブディレクトリ（局所）の順で重ねて読まれる。
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm"># CLAUDE.md の最小テンプレ（コピペ用）</span>
+<span class="kw"># プロジェクトメモ</span>
+
+<span class="kw">## スタック</span>
+- 言語: TypeScript 5.x
+- テスト: Vitest
+- パッケージマネージャ: pnpm
+
+<span class="kw">## 必ず守って欲しいこと</span>
+- `.env*` `secrets/` 配下は読み書き禁止
+- コミット前に `pnpm test` を必ず実行
+- ライブラリ追加時は理由をコミットメッセージに書く
+
+<span class="kw">## よく使うコマンド</span>
+- 開発: `pnpm dev`
+- ビルド: `pnpm build`
+- テスト1ファイル: `pnpm vitest run path/to/file.test.ts`</pre>
+    </div>
+  </div>
+</div>
+
+<!-- LAB 03 -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>Skills とは何か（最も簡単な入口）</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Skills は <strong>「特定の話題が出たときに Claude が自分で読みに行く参考書」</strong>。あなたが呼び出さなくていい。Claudeが「あ、これはあのSkillが要りそう」と判断して読み込む（auto-invoke）。最も<strong>体感が早い</strong>機能なので最初に試すのがおすすめ。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 Skill が動く瞬間のメンタルモデル</div>
+      <pre class="ascii-art">
+あなた:「このコードを PDF にして」
+   ↓
+Claude のセッション開始時、こう仕込まれている:
+   .claude/skills/*/SKILL.md の name と description が
+   Claude のコンテキストに常駐（中身ではなく見出しだけ）
+   ↓
+Claude:「PDF? あ、pdf-export って Skill があるな」
+   ↓
+Skill の SKILL.md（中身）を自動で読みに行く
+   ↓
+書かれた手順に沿って動作
+
+つまり Skill は「索引付きの参考書」を Claude の机に並べておく行為。
+      </pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>SKILL.md の最重要フィールド</strong>: <code>description</code>。ここに書いたキーワードでClaudeが「これを使うべき」と判断する。曖昧だと動かない。
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm"># 既存 Skill を確認する（公式バンドル＋自作）</span>
+/skills           <span class="cm"># 一覧表示。ON/OFF 切替も可能</span></pre>
+    </div>
+
+    <table class="compare-table">
+      <thead>
+        <tr><th>項目</th><th>Skills</th><th>Slash Commands</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>呼び出し</td><td>Claude が自動判断</td><td>あなたが <code>/name</code> で手動</td></tr>
+        <tr><td>適切な用途</td><td>「PDF が話題に出たら…」など状況依存</td><td>「毎朝の定型作業」など固定タスク</td></tr>
+        <tr><td>frontmatter</td><td><code>description</code> が必須・重要</td><td>シンプル（または skill と同じ）</td></tr>
+        <tr><td>2026推奨</td><td class="yes">推奨</td><td>引き続き使えるが Skills 統合へ</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box warn">
+      ⚠️ <strong>description は具体的に書く</strong>: 「コードを整理する」のような抽象表現はトリガーされにくい。「TypeScript ファイルを保存後に prettier と eslint を自動修正する」のように<strong>動詞＋対象＋条件</strong>で書く。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 04 -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>初めての Skill を作る — explain-code</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      最も短い Skill「コードを ASCII図 + アナロジーで解説する」を実際に作って試す。1ファイル作るだけで Claude の挙動が永続的に変わる体験をする。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm"># 1. Skill 用ディレクトリを作る（ユーザー全体で使う場合は ~/.claude/skills/）</span>
+mkdir -p ~/.claude/skills/explain-code
+
+<span class="cm"># 2. SKILL.md を作る</span>
+cat &gt; ~/.claude/skills/explain-code/SKILL.md &lt;&lt;<span class="str">'EOF'</span>
+---
+name: explain-code
+description: コードを ASCII 図とアナロジーで初心者にも分かるよう解説する。ユーザが「このコード説明して」「どう動くの？」「初心者向けに」と言ったとき使う。
+---
+
+# コード解説スキル
+
+コードを説明するときは、<span class="kw">必ず</span>以下の順で答える:
+
+1. <span class="kw">**身近なたとえ話**</span>で1段落（料理・郵便・乗り換え案内など）
+2. <span class="kw">**ASCII 図**</span>で構造／フロー／関係を可視化
+3. <span class="kw">**ステップ実行**</span>を行ごとに番号付きで
+4. <span class="kw">**初心者が踏みがちな罠**</span>を最後に1つ
+EOF</pre>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>これだけで完成</strong>。次に <code>claude</code> を新規セッションで起動して「<em>このコード説明して: <code>arr.reduce((a,b)=&gt;a+b,0)</code></em>」と聞くと、Skillが自動発動して4ステップで答える。
+    </div>
+
+    <div class="verify">
+      <div class="verify-col verify-before">
+        <div class="verify-label">Before ▶︎ Skill なし</div>
+        Claudeはぶっきらぼうに「reduce は配列を畳み込んで…」と用語で説明。初心者には伝わらない。
+      </div>
+      <div class="verify-col verify-after">
+        <div class="verify-label">After ▶︎ Skill あり</div>
+        「これは『箱を1つずつ開けて中身を足し算メモに加算していく』作業です」→ ASCII図で <code>[1,2,3] → 0+1=1 → 1+2=3 → 3+3=6</code> を描く → 罠まで触れる。
+      </div>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>frontmatter の <code>---</code> は半角3つ</strong>。全角や4つ以上だとパースされず Skill 一覧に出ない。<code>/skills</code> で一覧に出ない時はまずここを疑う。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">🔍 動作確認</div>
+      <ol>
+        <li>新規ターミナルで <code>claude</code> 起動</li>
+        <li><code>/skills</code> を実行 → <strong>explain-code</strong> が一覧にあるか確認</li>
+        <li>「このコード説明して: <code>[1,2,3].map(x =&gt; x*2)</code>」と聞く</li>
+        <li>回答が <strong>たとえ話 → ASCII図 → 行解説 → 罠</strong> の4部構成になっていれば成功</li>
+        <li>4部構成にならなければ、SKILL.md の description に「コード」「説明」「初心者」など<strong>キーワードを増やす</strong></li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- LAB 05 -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>Slash Commands を使う — /standup</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Slash Commands は <strong>「あなたが手動で呼ぶ定型プロンプト」</strong>。毎日同じ依頼を打つのが面倒な作業に最適。引数も渡せる。2026年現在は Skills と統合されたが、シンプルな定型は <code>commands/</code> でも問題なく動く。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm"># 1. プロジェクトに commands フォルダを作る</span>
+mkdir -p .claude/commands
+
+<span class="cm"># 2. /standup コマンド = 日次スタンドアップ用プロンプト</span>
+cat &gt; .claude/commands/standup.md &lt;&lt;<span class="str">'EOF'</span>
+直近24時間のgitコミットを `git log --since="24 hours ago" --oneline` で確認し、
+以下の3つで日本語要約してください:
+
+1. ✅ 完了したこと
+2. 🔄 進行中のこと（未コミットの変更も含む `git status`）
+3. ⚠️ ブロッカーや懸念点
+EOF</pre>
+    </div>
+
+    <div class="info-box ok">
+      ✅ Claude起動中に <code>/standup</code> と打つだけで上記プロンプトが送信される。チームで共有したいなら <code>.claude/</code> をgitにコミット。
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm"># 引数つき例: /fix-issue 123 で「Issue #123 を修正」と展開される</span>
+cat &gt; .claude/commands/fix-issue.md &lt;&lt;<span class="str">'EOF'</span>
+GitHub Issue #$ARGUMENTS を以下の手順で対応してください:
+
+1. `gh issue view $ARGUMENTS` で内容を読む
+2. 関連ファイルを特定し、修正案を提示
+3. 確認を取ってから実装
+4. テストを書いて pass を確認
+5. コミットメッセージに `Fixes #$ARGUMENTS` を含める
+EOF
+
+<span class="cm"># 使い方</span>
+/fix-issue 123</pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 こんなとき Slash Commands</div>
+      <ul class="usecase-list">
+        <li>毎朝同じ「今日のタスクを git log から要約」を頼みたい</li>
+        <li>PR レビュー観点を毎回同じテンプレで聞きたい</li>
+        <li>コードレビューチェックリストを <code>/review</code> で発動したい</li>
+        <li>本番デプロイ前のチェック手順を <code>/preflight</code> に固める</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>こう感じたら候補</strong>
+        <ul>
+          <li>「またこのプロンプト書いてる…」と思った瞬間</li>
+          <li>新人にいつも同じ依頼の仕方を教えている作業</li>
+          <li>セッションを跨いで再利用したい指示</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>引数の文法</strong>: <code>$ARGUMENTS</code>（全引数）／<code>$0 $1 $2</code>（位置引数）／<code>${CLAUDE_SKILL_DIR}</code>（Skillディレクトリ）。
+    </div>
+
+    <table class="compare-table">
+      <thead>
+        <tr><th>場所</th><th>スコープ</th><th>用途</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>.claude/commands/</td><td>プロジェクト</td><td>チームで共有・git管理</td></tr>
+        <tr><td>~/.claude/commands/</td><td>ユーザー全体</td><td>個人用（全プロジェクト）</td></tr>
+        <tr><td>.claude/skills/&lt;名&gt;/SKILL.md</td><td>プロジェクト（推奨）</td><td>名前 = <code>/&lt;名&gt;</code> で呼べる＋自動発動も可能</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- LAB 06 -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>MCP の概念と接続 — Claude に新しい道具を生やす</h3>
+    <span class="lab-tag tag-advanced">上級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      MCP（Model Context Protocol）は <strong>「外部サービスを Claude の道具として接続する規格」</strong>。GitHub・Notion・Slack・DB などを、それぞれ専用のサーバとして立ててClaudeから呼べるようにする。<strong>Skills が"知識"なら、MCP は"手足"</strong>。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 MCP の構造（伝言ゲーム）</div>
+      <pre class="ascii-art">
+[ あなた ]                         [ 外部サービス ]
+   │                                    ▲
+   │ 「Notionに議事録を保存」          │ Notion API
+   ▼                                    │
+[ Claude Code ] ←──── MCPサーバ ───────┘
+                  (notion-mcp が
+                   APIを翻訳して
+                   Claudeに"道具"として渡す)
+
+つまりMCPサーバは「Claude語 ⇄ 各サービスAPI」の通訳。
+道具(tool)・資源(resource)・プロンプトの3種類を提供する。
+      </pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>3つの transport</strong>: <code>stdio</code>（ローカルプロセス）／<code>http</code>（リモート、推奨）／<code>sse</code>（旧式・非推奨）。クラウドサービスは大半が http。
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm"># 例1: GitHub MCP をプロジェクトに追加</span>
+claude mcp add --scope project --transport http github https://api.githubcopilot.com/mcp/
+
+<span class="cm"># 例2: ローカルで動く Playwright を追加（ブラウザ操作）</span>
+claude mcp add playwright npx @playwright/mcp@latest
+
+<span class="cm"># 例3: 既存サーバ一覧</span>
+/mcp                          <span class="cm"># セッション内で確認</span>
+claude mcp list               <span class="cm"># シェルから確認</span></pre>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>scope に注意</strong>: <code>--scope project</code> は <code>.mcp.json</code> がgit管理 → チームで共有。<code>--scope user</code> は個人。<code>--scope local</code> は <code>.claude/settings.local.json</code> でgit除外（個人のAPIキー入りはこれ）。
+    </div>
+
+    <div class="info-box err">
+      🚫 <strong>絶対NG</strong>: <code>.mcp.json</code> や <code>settings.json</code> に APIキーを直書きしてgitコミット。<code>.env</code> や OS のキーチェーンを参照する形にする。間違えてpushしたら即rotation。
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm"># .mcp.json の例（チーム共有）— トークンは環境変数経由</span>
+{
+  <span class="attr">"mcpServers"</span>: {
+    <span class="attr">"github"</span>: {
+      <span class="attr">"transport"</span>: <span class="val">"http"</span>,
+      <span class="attr">"url"</span>: <span class="val">"https://api.githubcopilot.com/mcp/"</span>,
+      <span class="attr">"headers"</span>: {
+        <span class="attr">"Authorization"</span>: <span class="val">"Bearer ${GITHUB_PAT}"</span>
+      }
+    }
+  }
+}</pre>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>2026年の改善点</strong>: Claude Code は MCP のツール定義を<strong>遅延読込み</strong>（名前だけ最初に読んで、必要時にスキーマ取得）するので、50+のMCPツールを繋いでもコンテキストを圧迫しない。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 07 -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>MCP を実際に使う — Filesystem MCP で安全な範囲操作</h3>
+    <span class="lab-tag tag-advanced">上級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      初心者が最初に試すなら <code>filesystem</code> MCP がおすすめ。Claude が「アクセスできるディレクトリを限定」して動けるので、誤動作リスクを抑えながら MCP の感触を掴める。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm"># 例: ~/Documents/sandbox 配下だけアクセス可能な filesystem MCP</span>
+claude mcp add --scope local filesystem -- \
+  npx -y @modelcontextprotocol/server-filesystem ~/Documents/sandbox</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>道具が増えた瞬間</strong>: <code>/mcp</code> で確認すると <code>mcp__filesystem__read_file</code>, <code>mcp__filesystem__write_file</code>, <code>mcp__filesystem__list_directory</code> などが見えるはず。これらが Claude の<strong>新しい道具</strong>。
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before（MCP なし）</div>
+        <div class="code-block">
+          <pre><span class="cm"># Claudeに頼んでも</span>
+> sandbox にメモを保存して
+<span class="cm"># → Bashで mkdir/echo を駆使する</span>
+<span class="cm"># → 範囲指定が曖昧で他フォルダ触るリスク</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After（filesystem MCP）</div>
+        <div class="code-block">
+          <pre><span class="cm"># 同じ依頼が</span>
+> sandbox にメモを保存して
+<span class="cm"># → mcp__filesystem__write_file を呼ぶ</span>
+<span class="cm"># → 設定したディレクトリ外には物理的に書けない</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 初心者がまず試すと効果が大きい MCP 3選</div>
+      <ul class="usecase-list">
+        <li><strong>filesystem</strong>: 限定ディレクトリのファイル操作。"道具が増える"体感に最適</li>
+        <li><strong>github</strong>: Issue/PR 作成、レビューコメント取得。日常作業が劇的に速くなる</li>
+        <li><strong>playwright</strong>: ブラウザ自動化。E2Eテストや動作確認の手作業を削減</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>こう感じたら候補</strong>
+        <ul>
+          <li>「同じAPIをcurlで何度も叩いている」 → 専用MCPがある可能性大</li>
+          <li>「ブラウザで毎回同じ画面遷移を確認している」 → playwright MCP</li>
+          <li>「Claudeに具体ファイル名でアクセス制限したい」 → filesystem MCP</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>許可ダイアログが出る</strong>: 初回呼び出しで「このMCPツールの使用を許可？」と聞かれる。常に許可するなら <code>/permissions</code> で allowlist 登録、または Lab 09 の Hook で自動承認も可能。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">🔍 動作確認</div>
+      <ol>
+        <li>セッション内で <code>/mcp</code> を実行 → <strong>filesystem</strong> がリストにあるか</li>
+        <li>「<code>~/Documents/sandbox</code> に <code>hello.txt</code> を作って中身は今日の日付」と依頼</li>
+        <li>許可ダイアログで Allow を選択</li>
+        <li>エクスプローラまたは <code>ls ~/Documents/sandbox</code> でファイルが実在するか確認</li>
+        <li>同じ命令で <code>/etc/passwd</code> を読ませようとすると<strong>拒否</strong>されることを確認（範囲外）</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- LAB 08 -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>Hooks の概念と最小例 — 編集後に自動 prettier</h3>
+    <span class="lab-tag tag-advanced">上級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Hooks は <strong>「Claudeの行動の前後に必ず動くスクリプト」</strong>。Claudeが従ってくれない指示も、Hook なら<strong>強制実行</strong>できる。最初は安全な PostToolUse（編集後の整形）から触るのが鉄則。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 主要な Hook イベント（覚えるのは最初4つで十分）</div>
+      <pre class="ascii-art">
+        ┌──────────────────────────────────────────────┐
+        │ SessionStart    起動時に1回（環境変数注入など） │
+        └──────────────────────────────────────────────┘
+                              ↓
+          ┌──────────────────────────────────────────┐
+          │ UserPromptSubmit  あなたが発言した直後      │
+          └──────────────────────────────────────────┘
+                              ↓
+            ┌─────────────────────────────────┐
+            │ PreToolUse   ツール実行直前(検閲) │
+            │              ↓                   │
+            │     [ Bash / Edit / Write 等 ]   │
+            │              ↓                   │
+            │ PostToolUse  ツール実行直後(整形) │  ← まずここから！
+            └─────────────────────────────────┘
+                              ↓
+        ┌──────────────────────────────────────────────┐
+        │ Stop / SessionEnd  応答完了 / セッション終了    │
+        └──────────────────────────────────────────────┘
+      </pre>
+    </div>
+
+    <div class="info-box err">
+      🚫 <strong>大きな勘違い</strong>: Hooks は<strong>JavaScript モジュールではない</strong>。<code>module.exports</code> を書いても無視される。実体は <code>settings.json</code> 内の<strong>JSON設定</strong>で、<code>command</code>（シェル実行）／<code>http</code>（HTTP呼出し）／<code>prompt</code>（LLMで判定）の3形態しかない。
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm"># 最小例: TS/JS ファイル編集後に prettier を強制実行</span>
+<span class="cm"># 場所: .claude/settings.json (プロジェクト) or ~/.claude/settings.json (個人)</span>
+{
+  <span class="attr">"hooks"</span>: {
+    <span class="attr">"PostToolUse"</span>: [
+      {
+        <span class="attr">"matcher"</span>: <span class="val">"Edit|Write|MultiEdit"</span>,
+        <span class="attr">"hooks"</span>: [
+          {
+            <span class="attr">"type"</span>: <span class="val">"command"</span>,
+            <span class="attr">"command"</span>: <span class="val">"jq -r '.tool_input.file_path' | xargs -r -I{} sh -c 'case \"{}\" in *.ts|*.tsx|*.js) npx prettier --write \"{}\" ;; esac'"</span>
+          }
+        ]
+      }
+    ]
+  }
+}</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>仕組み</strong>: Claudeが Edit/Write/MultiEdit ツールを使うたびに、その引数JSONが<strong>標準入力</strong>でhookスクリプトへ流れる。<code>jq</code>で<code>file_path</code>を取り出し、TS/JSなら prettier を当てる。Claudeはこの動作を<strong>知らずに</strong>整形済みコードを見ることになる。
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>動作確認方法</strong>: わざと崩した形でコード編集を依頼 → 編集後にファイルを開くと整形済み。Claudeに「整形して」と頼んでないのに整形されているのが Hook の効果。
+    </div>
+
+    <table class="compare-table">
+      <thead>
+        <tr><th>イベント</th><th>用途</th><th>matcher 使える?</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>SessionStart</td><td>環境変数注入、コンテキスト追加</td><td class="no">✗</td></tr>
+        <tr><td>UserPromptSubmit</td><td>プロンプト検閲、自動コンテキスト追加</td><td class="no">✗</td></tr>
+        <tr><td>PreToolUse</td><td>危険コマンド禁止、入力修正</td><td class="yes">✓ (ツール名)</td></tr>
+        <tr><td>PostToolUse</td><td>整形・lint・通知</td><td class="yes">✓ (ツール名)</td></tr>
+        <tr><td>Stop</td><td>テスト強制、完了条件チェック</td><td class="no">✗</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box warn">
+      ⚠️ <strong>Windows 環境</strong>: <code>jq</code> や <code>xargs</code> は標準では入っていない。Git Bash か WSL を使うか、PowerShell で同等処理を書く（<code>$input | ConvertFrom-Json</code>）。最小例は Git Bash 前提。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 09 -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>安全策 Hook — 危険コマンドを物理的に止める</h3>
+    <span class="lab-tag tag-advanced">上級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      PreToolUse で <code>exit 2</code> を返すと <strong>そのツール実行を阻止</strong>できる。CLAUDE.md に「<code>rm -rf</code> 禁止」と書いても破られる可能性があるが、Hookなら確実に止まる。これが Hooks の真価。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm"># 危険コマンドガード（Bashツール限定）</span>
+{
+  <span class="attr">"hooks"</span>: {
+    <span class="attr">"PreToolUse"</span>: [
+      {
+        <span class="attr">"matcher"</span>: <span class="val">"Bash"</span>,
+        <span class="attr">"hooks"</span>: [
+          {
+            <span class="attr">"type"</span>: <span class="val">"command"</span>,
+            <span class="attr">"command"</span>: <span class="val">"jq -r '.tool_input.command' | grep -qE 'rm -rf /|DROP TABLE|git push --force' && { echo 'BLOCKED: 危険コマンド' >&2; exit 2; } || exit 0"</span>
+          }
+        ]
+      }
+    ]
+  }
+}</pre>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>exit code の意味</strong>: <code>0</code>=成功・通過、<code>2</code>=ブロック（stderrがClaudeに返り、ツール実行は中止）、その他=非ブロックエラー（実行は続く）。
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>JSON で判定する高機能版</strong>: <code>permissionDecision: "deny"</code> を返すとClaudeに「拒否された理由」を伝えられ、再試行の質が上がる。
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm"># JSON出力で理由付き拒否（PreToolUse）</span>
+{
+  <span class="attr">"hookSpecificOutput"</span>: {
+    <span class="attr">"hookEventName"</span>: <span class="val">"PreToolUse"</span>,
+    <span class="attr">"permissionDecision"</span>: <span class="val">"deny"</span>,
+    <span class="attr">"permissionDecisionReason"</span>: <span class="val">"本番DBへの直接書き込みは禁止です。マイグレーション経由でお願いします。"</span>
+  }
+}</pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 すぐ役立つ Hook レシピ4選</div>
+      <ul class="usecase-list">
+        <li><strong>.env ガード</strong>: <code>matcher: "Edit|Write"</code> で <code>.env*</code> 編集を deny</li>
+        <li><strong>git push --force ガード</strong>: 上記の rm -rf と同じ要領で grep</li>
+        <li><strong>SessionStart で環境情報注入</strong>: 現在ブランチ名・最新コミットを context に追加</li>
+        <li><strong>Stop で test 強制</strong>: 完了応答前に <code>npm test</code> を走らせ落ちたら exit 2 で続行させる</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>こう感じたら Hook の出番</strong>
+        <ul>
+          <li>「CLAUDE.md に書いたのに守ってくれない…」 → 強制力が必要</li>
+          <li>「毎回手で同じ整形コマンド打ってる」 → PostToolUse に逃せる</li>
+          <li>「セッション開始時に毎回同じ context 渡してる」 → SessionStart へ</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="info-box err">
+      🚫 <strong>Hook 設計の鉄則</strong>: <strong>失敗を許容しない処理を書かない</strong>。Hookが落ちると Claude のセッション全体が止まる。<code>|| true</code> や timeout 設定で必ず逃げ道を作る。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">🔍 動作確認</div>
+      <ol>
+        <li><code>.claude/settings.json</code> に上記の危険コマンドガードを保存</li>
+        <li>新規セッションで「<code>/tmp</code> を <code>rm -rf</code> でクリーンアップして」と依頼</li>
+        <li>「BLOCKED: 危険コマンド」のメッセージが返り、Claudeが代替案を提示すれば成功</li>
+        <li>普通の <code>ls</code> 等は通ることも確認（誤検出していない）</li>
+        <li>うまく動かない時は <code>/doctor</code> で hook 構文エラーをチェック</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- LAB 10 -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>自走チェックリストと習熟ロードマップ</h3>
+    <span class="lab-tag tag-basic">仕上げ</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ここまでで4要素を一通り触った。「自走利用」とは <strong>「困った時に自分でドキュメントとコマンドで解決できる」</strong>状態のこと。最後に、その状態に達したかをチェックする質問と、次の30日でやるべき実践課題を示す。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 自走できるかチェック（YESが7個以上で合格）</div>
+      <pre class="ascii-art">
+□ Skill が動かない時、まず /skills と SKILL.md の description を疑える
+□ Slash Command と Skill の使い分けを 30秒で説明できる
+□ MCPサーバを足したら /mcp で道具一覧が増えることを知っている
+□ Hook イベント名を最低3つ言える(PreToolUse/PostToolUse/SessionStart)
+□ APIキーは settings.json に直書きしてはいけないと分かっている
+□ /doctor で問題の8割は当たりがつくと知っている
+□ CLAUDE.md は短く保つべき理由（毎ターン読まれる）が分かる
+□ 困った時に公式 docs (code.claude.com/docs) を最初に開ける
+□ exit code 2 が「ブロック」を意味すると即答できる
+□ MCPの transport 種類(http/stdio)を区別できる
+      </pre>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>30日ロードマップ（推奨）</strong>: 1週目=Skills 3つ作る／2週目=Slash Commands 5つ作る／3週目=MCP 1〜2個接続（filesystem→github）／4週目=Hooks（PostToolUse の整形だけでOK）。一気に全部やらない。
+    </div>
+
+    <table class="compare-table">
+      <thead>
+        <tr><th>困りごと</th><th>最初に試すこと</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Skill が発動しない</td><td><code>/skills</code> 一覧確認 → description にキーワード追加</td></tr>
+        <tr><td>Slash Command が見えない</td><td><code>/help</code> 確認 → ファイル名と <code>/</code> 名が一致してるか</td></tr>
+        <tr><td>MCP ツールが見えない</td><td><code>/mcp</code> 確認 → APIキー設定 → サーバ再起動</td></tr>
+        <tr><td>Hook が動いてない</td><td><code>/doctor</code> → settings.json の構文 → exit code</td></tr>
+        <tr><td>権限ダイアログが多すぎる</td><td><code>/permissions</code> で allowlist 追加 or <code>/less-permission-prompts</code></td></tr>
+        <tr><td>セッションが重い</td><td><code>/context</code> で消費確認 → <code>/compact</code> で圧縮 or <code>/clear</code></td></tr>
+      </tbody>
+    </table>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 自分の作業に適用するための問いかけ</div>
+      <ul class="usecase-list">
+        <li>「いつも同じ説明を打っている」 → CLAUDE.md か Slash Command に固める</li>
+        <li>「特定の話題が出ると毎回同じ手順を踏む」 → Skill にする</li>
+        <li>「外部サービスを毎回 curl で叩いている」 → MCP サーバを探す（<code>npm search mcp-server</code>）</li>
+        <li>「守って欲しいルールが守られない」 → CLAUDE.md でダメなら Hook で強制</li>
+        <li>「セッション開始時に毎回同じ前提を渡している」 → SessionStart Hook</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>次の一歩のサイン</strong>
+        <ul>
+          <li>同じプロンプトを3回書いた → Slash Command 化のタイミング</li>
+          <li>2回 CLAUDE.md のルールが破られた → Hook 化のタイミング</li>
+          <li>「もっと早く知りたかった」と思った機能 → 同僚に共有</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>困った時の公式リソース</strong>: <code>code.claude.com/docs</code>（公式）／<code>/help</code>（コマンド一覧）／<code>/doctor</code>（自己診断）／<code>--debug</code> フラグ（API呼出ログ）。この4つで大半は解決する。
+    </div>
+
+    <div class="info-box ok">
+      🎯 <strong>最終目標</strong>: 「<em>あ、これHookでやれそう</em>」「<em>このSkill書いとくと楽だな</em>」と<strong>自分から発想できる</strong>状態。そこまで来れば自走完了。あとは作業のたびに少しずつ装備を増やしていけばいい。
+    </div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<script>
+  function copyCode(btn) {
+    const block = btn.closest('.code-block') || btn.parentElement;
+    const pre = block.querySelector('pre');
+    if (!pre) return;
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    });
+  }
+
+  const LAB_META = {
+    lab0: {
+      info:  { type:'info', html:'📘 <strong>このLabのゴール</strong>: 4要素の<em>役割分担</em>を頭に入れる。深く覚えなくていい。「自分が呼ぶか / Claudeが自動か」と「知識追加か / 道具追加か / 強制実行か」の軸だけ意識。' },
+      check: ['① 4要素の名前を見ずに紙に書けるか', '② Skills と Slash Commands の違いを30秒で説明できるか', '③ MCP は"道具追加"、Hook は"強制実行"と即答できるか', '④ <code>.claude/</code> 配下のフォルダ構成を覚えているか']
+    },
+    lab1: {
+      info:  { type:'info', html:'📘 <strong>3コマンドだけ覚える</strong>: <code>/help</code>(全部見る) / <code>/doctor</code>(壊れてないか診る) / <code>/model</code>(モデル切替)。これだけで初日は乗り切れる。' },
+      check: ['① <code>node -v</code> が 18 以上か', '② <code>claude</code> 起動でAnthropicログイン画面がブラウザで開くか', '③ <code>/help</code> でコマンド一覧が出るか', '④ <code>/doctor</code> で全項目グリーンか', '⑤ 簡単な質問（"hello"）に応答が返るか'],
+      try: 'まずは "このフォルダの中身を要約して" と聞くだけ。コードを書かせるのは後回しで、読ませる体験から始めると安心。'
+    },
+    lab2: {
+      info:  { type:'ok', html:'✅ <strong>CLAUDE.md は最強の入口</strong>。Skills/Hooks を学ぶ前に、ここに書くだけで挙動の8割は変えられる。短く（200行以内）保つこと。' },
+      check: ['① プロジェクトルートに <code>CLAUDE.md</code> を置いた', '② <code>claude</code> 再起動して、CLAUDE.md の内容に沿った応答になるか確認', '③ 試しにルール違反を依頼してみて拒否されるか確認', '④ 行数が200行を超えていないか'],
+      try: '最初は5項目だけ書く。スタック / 禁止事項 / よく使うコマンド / 命名規則 / コミット規約。'
+    },
+    lab3: {
+      info:  { type:'info', html:'📘 <strong>Skill = "Claudeが自動で読む参考書"</strong>。あなたが呼ばなくていい。description のキーワード設計が命。' },
+      check: ['① <code>/skills</code> で既存Skill一覧が出るか', '② バンドルされている公式Skillを1つ選んで内容を眺める', '③ description が「動詞＋対象＋条件」で書かれているか確認', '④ Skill が ON/OFF 切替できることを確認']
+    },
+    lab4: {
+      info:  { type:'ok', html:'✅ <strong>1ファイル作るだけで世界が変わる体験</strong>。最短ルートでSkillの効力を体感する。' },
+      try: 'frontmatterの<code>---</code>は半角3つ。新規セッションで聞かないと反映されない（再起動 or <code>/clear</code>）。'
+    },
+    lab5: {
+      info:  { type:'info', html:'📘 <strong>"3回打ったら command 化"</strong>。同じプロンプトを3回打った時点で <code>.claude/commands/</code> 行き。' },
+      check: ['① <code>.claude/commands/standup.md</code> が存在', '② <code>/help</code> または <code>/</code> 入力で <strong>standup</strong> が候補に出るか', '③ <code>/standup</code> 実行で git log の要約が返るか', '④ チームで使うなら <code>.claude/</code> をgitコミット']
+    },
+    lab6: {
+      info:  { type:'warn', html:'⚠️ <strong>APIキー直書き厳禁</strong>。<code>.mcp.json</code> をうっかりコミットしてキー流出 → 即rotation の事故が多い。環境変数経由が必須。' },
+      check: ['① <code>claude mcp list</code> で追加したサーバが出るか', '② <code>/mcp</code> でセッション内ツール一覧に <code>mcp__&lt;サーバ&gt;__</code> が出るか', '③ <code>.mcp.json</code> に直接トークンを書いていないか', '④ <code>.gitignore</code> に <code>.claude/settings.local.json</code> が入っているか']
+    },
+    lab7: {
+      info:  { type:'ok', html:'✅ <strong>filesystem MCP は最初の練習台に最適</strong>。ディレクトリ範囲を限定するので、Claudeに変なフォルダを触られる心配がない。' },
+      try: 'まず sandbox 用の空フォルダを切って、そこだけアクセス可にする。`~/Documents/sandbox` のように深い階層が安心。'
+    },
+    lab8: {
+      info:  { type:'warn', html:'⚠️ <strong>Hook は強力ゆえに事故も大きい</strong>。最初は<em>絶対に壊れない</em> PostToolUse の整形だけで止めるのが鉄則。慣れてから PreToolUse へ。' },
+      check: ['① <code>.claude/settings.json</code> の hooks セクションが有効なJSONか', '② わざと整形が必要なコード編集を依頼', '③ 編集後にファイルを開いて整形済みか確認', '④ <code>/doctor</code> で hook エラーが出ていないか'],
+      try: 'Windowsなら Git Bash か WSL で動かすのが楽。<code>jq</code> が無いと最小例は動かないので注意。'
+    },
+    lab9: {
+      info:  { type:'err', html:'🚫 <strong>本番環境の自分のPCで試す前に、必ず使い捨てサンドボックスで動作確認</strong>。Hook構文エラーで Claude Code 自体が起動できなくなる事故もある。' },
+      check: ['① 危険コマンド（<code>rm -rf /</code> 等）が確実に拒否されるか', '② 普通のコマンド（<code>ls</code>）は通るか（誤検出していないか）', '③ Hook が落ちた時に Claude 全体が止まらないか（<code>|| true</code>）', '④ チーム共有なら settings.json をgitコミット']
+    },
+    lab10: {
+      info:  { type:'ok', html:'🎯 <strong>習熟の最終形</strong>: 困った時に「公式docs → /help → /doctor → 検索」の順で<strong>自分で</strong>解決の糸口を見つけられる状態。' }
+    }
+  };
+
+  function infoHTML(m){ return m?.info ? `<div class="info-box ${m.info.type||'info'}">${m.info.html}</div>` : ''; }
+  function verifyHTML(m){ if (!m?.verify) return '';
+    const {before, after} = m.verify;
+    return `<div class="verify">
+      <div class="verify-col verify-before"><div class="verify-label">Before ▶︎ 実行前</div>${before||''}</div>
+      <div class="verify-col verify-after"><div class="verify-label">After ▶︎ 実行後</div>${after||''}</div>
+    </div>`; }
+  function checkHTML(m){ if (!m?.check?.length) return '';
+    return `<div class="check-steps">
+      <div class="check-steps-title">🔍 ブラウザ実機チェック</div>
+      <ol>${m.check.map(s=>`<li>${s}</li>`).join('')}</ol>
+    </div>`; }
+  function tryHTML(m){
+    const tip = m?.try ? `<div class="try-tip"><strong>💡 このラボのコツ:</strong> ${m.try}</div>` : '';
+    return `<div class="try-box">
+      <div class="try-title">💻 実機で試す手順</div>
+      <ol>
+        <li>上のコードブロックの <strong>Copy</strong> ボタンで内容をクリップボードへ</li>
+        <li>該当ファイル(<code>SKILL.md</code> / <code>settings.json</code> / <code>CLAUDE.md</code> 等)に貼って保存</li>
+        <li>新規ターミナルで <code>claude</code> を起動（既存セッションは再起動 or <code>/clear</code>）</li>
+        <li>下の「🔍 ブラウザ実機チェック」を順に実行して期待通り動くか確認</li>
+      </ol>
+      ${tip}
+    </div>`;
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.lab').forEach(lab => {
+      const meta = LAB_META[lab.id]; const body = lab.querySelector('.lab-body');
+      if (!body || !meta) return;
+      const frag = document.createElement('div');
+      frag.innerHTML = infoHTML(meta) + verifyHTML(meta) + tryHTML(meta) + checkHTML(meta);
+      while (frag.firstChild) body.appendChild(frag.firstChild);
+    });
+
+    const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+    const map = new Map();
+    links.forEach(a => { const el = document.getElementById(a.getAttribute('href').slice(1)); if (el) map.set(el, a); });
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting) { const l = map.get(e.target);
+        if (l) { links.forEach(n=>n.classList.remove('active')); l.classList.add('active'); } }
+    }), { rootMargin:'-30% 0px -60% 0px' });
+    document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+    document.querySelectorAll('.code-block').forEach((cb, i) => {
+      if (cb.querySelector('.code-block-header')) return;
+      const pre = cb.querySelector('pre');
+      const firstLine = pre ? (pre.textContent.split('\n')[0] || '').trim().slice(0,60) : '';
+      const labelText = firstLine ? firstLine.replace(/^#\s*/, '') : `Code #${i+1}`;
+      const header = document.createElement('div');
+      header.className = 'code-block-header';
+      header.innerHTML = `<span>${labelText}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+      cb.insertBefore(header, cb.firstChild);
+    });
+  });
+</script>
+
+</body>
+</html>
