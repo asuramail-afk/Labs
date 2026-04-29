@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kiro IDE 実践Lab — Specモードで最初の機能を完走する</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; }
+
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); font-weight:600; }
+
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+.try-box { background:rgba(34,134,58,.06); border:1px solid rgba(34,134,58,.30);
+  border-left:3px solid var(--success); border-radius:7px;
+  padding:12px 14px; margin:14px 0; font-size:.86rem; line-height:1.8; color:#154f1e; }
+.try-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--success); font-weight:700; margin-bottom:6px; }
+.try-box ol { margin-left:20px; margin-top:4px; }
+.try-box ol li { margin-bottom:4px; }
+.try-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--success); }
+.try-tip { background:rgba(176,136,0,.06); border-left:3px solid var(--accent4);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#5c4400; margin-top:8px; }
+.try-tip strong { color:var(--accent4); }
+
+.usecase-box { background:rgba(0,92,197,.05); border:1px solid rgba(0,92,197,.25);
+  border-left:3px solid var(--accent); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#003d8f; }
+.usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent); font-weight:700; margin-bottom:6px; }
+.usecase-list { margin-left:20px; margin-bottom:10px; }
+.usecase-list li { margin-bottom:4px; }
+
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// Kiro IDE <span>Spec Mode</span></div>
+  <div class="nav-section">準備</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>全体像と所要時間</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>動作要件と費用</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>インストール</a>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>初期設定とログイン</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>UI構成を理解</a>
+  <div class="nav-section">Specモード実践</div>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>Steering を整える</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>Spec作成 (Req-First)</a>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>Requirements確認</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>Design生成と確認</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>Tasks生成と実行</a>
+  <div class="nav-section">応用</div>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>Bugfix Specを試す</a>
+  <a class="nav-item" href="#lab11"><span class="nav-num">11</span>Hooks・運用Tips</a>
+</nav>
+
+<div class="hero">
+  <h1>Kiro IDE 実践Lab</h1>
+  <p class="subtitle">Specモードで最小TODO CLIを完走する手順書（v0.10系対応）</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>全体像・所要時間・到達点</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>動作要件と費用感の確認</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>Kiro IDEのインストール</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>初期設定とログイン</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>UI構成（Specs/Steering/Hooks）</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>Steeringファイルを整える</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>Spec作成（Requirements-First）</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>requirements.md レビュー</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>design.md 生成と確認</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>tasks.md 生成と実行</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">10</span>Bugfix Specを試す</a>
+    <a class="toc-item" href="#lab11"><span class="toc-num">11</span>Hooks・運用Tips・限界</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- LAB 0 ============================================ -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>全体像と所要時間</h3>
+    <span class="lab-tag tag-basic">準備</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Kiro は AWS が提供する<strong>SDD（仕様駆動開発）専用の独立IDE</strong>。Code OSSベースでVS Code的に使え、Specs/Steering/Hooksの3つのペインで仕様駆動を完結させる。本Labは前回のSpec Kit手順書と<strong>同じ題材（最小TODO CLI）を Kiro で完走</strong>することで、両者の体感差を実機で掴むことが目的。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 全体フロー</div>
+      <pre class="ascii-art">┌── インストール（Lab 01〜03） ────────┐
+│  ダウンロード → インストール             │
+│  → ログイン → VS Code設定インポート（任意）│
+└────────────┬─────────────────┘
+             ▼
+┌── プロジェクト準備（Lab 04〜05） ────┐
+│  Open Folder で空ディレクトリを開く      │
+│  Steering ファイルを整える               │
+│  （product.md / tech.md / structure.md） │
+└────────────┬─────────────────┘
+             ▼
+┌── Spec Mode 3フェーズ（Lab 06〜09） ──┐
+│  Requirements → Design → Tasks → Run    │
+│  各フェーズで人間レビュー（GUIで）       │
+└────────────┬─────────────────┘
+             ▼
+┌── 応用（Lab 10〜11） ──────────────┐
+│  Bugfix Spec / Hooks / 運用Tips         │
+└────────────────────────────────┘</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>段階</th><th>所要時間</th><th>主な作業</th></tr></thead>
+      <tbody>
+        <tr><td>Lab 01〜03</td><td>15〜30分</td><td>ダウンロード・インストール・ログイン</td></tr>
+        <tr><td>Lab 04〜05</td><td>15〜20分</td><td>UI把握とSteering準備</td></tr>
+        <tr><td>Lab 06〜09</td><td>60〜90分</td><td>Spec → Design → Tasks → Run</td></tr>
+        <tr><td>Lab 10</td><td>30〜60分</td><td>Bugfix Specの体験</td></tr>
+        <tr><td>合計</td><td>2〜3時間</td><td>初回1本完走</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info">
+      📘 <strong>本Labの題材</strong>: 最小TODO CLI（Python）。Spec Kit手順書と意図的に同じにしてある。終わったら<strong>同じ題材で両者を比較</strong>できる。Kiroの強み（GUI・Bugfix Spec・PBT）が、どこで効くかを体感できる。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>本Labのバージョン前提</strong>: Kiro v0.10系（2026年2月以降）。Requirements-First / Design-Firstの2ワークフロー、Bugfix Spec、Property-Based Testing（PBT）が利用可能。古い記事ではこれらの機能がない場合がある。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 1 ============================================ -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>動作要件と費用感の確認</h3>
+    <span class="lab-tag tag-basic">準備</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      インストール前に、自分の環境で動くか・どれくらいの費用がかかるかを確認する。Spec Kitと違ってKiroは独立アプリなので、OS要件と業務PCへのインストール可否を最初にチェック。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>項目</th><th>要件</th></tr></thead>
+      <tbody>
+        <tr><td>Windows</td><td>Windows 10 or 11（64bit）。<strong>ARMは未サポート</strong></td></tr>
+        <tr><td>macOS</td><td>Intel / Apple Silicon 両対応、最新のセキュリティ更新適用済み</td></tr>
+        <tr><td>Linux</td><td>glibc 2.39以上（Ubuntu 24+ / Debian 13+ / Fedora 40+ など）</td></tr>
+        <tr><td>ディスク容量</td><td>約170〜273MB（インストーラサイズ、プラットフォーム別）</td></tr>
+        <tr><td>認証方式</td><td>GitHub / Google / AWS Builder ID / AWS IAM Identity Center のいずれか</td></tr>
+        <tr><td>AWSアカウント</td><td><strong>不要</strong>（個人利用なら GitHub or Google だけでOK）</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info">
+      📘 <strong>費用感（2026年4月時点）</strong>: Free は月50credits（永続）+ 初回30日間500 bonus credits。Pro $20/月で1,000 credits、Pro+ $40/月で2,000 credits、Power $200/月で10,000 credits。<strong>クレジット単位は超過時 $0.04/credit</strong>。日本の請求先住所には消費税が加算される。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>業務PCに入れる場合の確認事項</strong>: ① 会社のソフトウェアインストール承認が必要か ② Code OSSベースなので、社内ポリシーが「VS Code限定」と書いていると弾かれる場合あり ③ <strong>Microsoft専有のVS Code拡張は動かない</strong>（Pylance、Remote Development、GitHub Copilot拡張など）。<strong>個人PC・自宅環境で試すのが最も安全</strong>。
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>初回30日トライアルの活用</strong>: 500 bonus credits は本Lab全体（最小TODO CLI 1本 + Bugfix Spec体験）には十分足りる。<strong>有料化判断は1〜2機能を完走してからで良い</strong>。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">🔍 事前確認</div>
+      <ol>
+        <li>OSバージョン（Windowsなら<code>winver</code>、Macなら「このMacについて」）</li>
+        <li>ディスク空き容量 1GB以上</li>
+        <li>使えるアカウント（GitHub or Google）の有無</li>
+        <li>業務PCの場合、社内ソフトウェア導入ポリシー</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- LAB 2 ============================================ -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>Kiro IDE のインストール</h3>
+    <span class="lab-tag tag-basic">準備</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      公式サイト（kiro.dev）からインストーラをダウンロードして導入する。<strong>App Store や winget では配布されていない</strong>ので、必ず公式サイトから取得する。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>① ダウンロード</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># 公式ダウンロードページ</span>
+https://kiro.dev/downloads/
+
+<span class="cm"># 自分のOSに合うインストーラを選ぶ:</span>
+<span class="cm">#  - Windows: Kiro-Setup-x.x.x.exe</span>
+<span class="cm">#  - macOS Apple Silicon: Kiro-x.x.x-arm64.dmg</span>
+<span class="cm">#  - macOS Intel: Kiro-x.x.x.dmg</span>
+<span class="cm">#  - Linux: .deb / .rpm / .AppImage</span></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>② Windows でのインストール</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># 1. Kiro-Setup-x.x.x.exe をダブルクリック</span>
+<span class="cm"># 2. AWS Customer Agreement と IP License に同意</span>
+<span class="cm"># 3. インストール先を選択（デフォルトでOK）</span>
+<span class="cm"># 4. デスクトップ・スタートメニューショートカットを作るか選択</span>
+<span class="cm"># 5. Install をクリック → 完了まで数分</span>
+<span class="cm"># 6. Launch にチェックを入れて Finish</span></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>③ macOS でのインストール</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># 1. .dmg をダブルクリックでマウント</span>
+<span class="cm"># 2. Kiro.app を Applications フォルダにドラッグ</span>
+<span class="cm"># 3. Launchpad または Spotlight から Kiro を起動</span>
+<span class="cm"># 4. 初回起動時「開発元を確認できません」と出たら</span>
+<span class="cm">#    システム設定 → プライバシーとセキュリティ → 「このまま開く」</span></pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>Kiro CLIも別途あり</strong>: GUIだけでなく <code>kiro-cli</code> というCLIも公式提供されている（macOS/Linux）。本Labは IDE が主体だが、慣れたら CLI で自動化することも可能。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>非公式ダウンロードサイトに注意</strong>: 「Kiro download free」で検索するとTechSpotなど第三者サイトが上位に出る。<strong>必ず kiro.dev からダウンロード</strong>すること。第三者サイトは古いバージョンや改変されたバイナリの可能性がある。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">🔍 インストール確認</div>
+      <ol>
+        <li>デスクトップ or アプリ一覧に Kiro アイコンが追加されたか</li>
+        <li>起動するとスプラッシュ画面が表示されるか</li>
+        <li>「Sign in to Kiro」のログイン画面が出るか</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- LAB 3 ============================================ -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>初期設定とログイン</h3>
+    <span class="lab-tag tag-basic">準備</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      初回起動時のオンボーディングを進める。VS Code設定インポート・テーマ選択・シェル統合の3点を順に設定する。<strong>5分程度で終わる</strong>。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 初回起動の4ステップ</div>
+      <pre class="ascii-art">Step 1: ログインプロバイダ選択
+  ├─ GitHub        ← 個人開発に最も簡単（推奨）
+  ├─ Google
+  ├─ AWS Builder ID（無料・AWSアカウント不要）
+  └─ AWS IAM Identity Center（業務向け）
+
+Step 2: VS Code 設定インポート（任意）
+  └─ 既にVS Codeを使っているなら ON にすると拡張・テーマが移行される
+
+Step 3: テーマ選択
+  └─ Kiro Dark / Kiro Light など
+
+Step 4: シェル統合の許可
+  └─ Kiro がターミナルで pip / npm 等を実行できるようにする
+     （許可しないと自動実装ができなくなるので ON 推奨）</pre>
+    </div>
+
+    <div class="try-box">
+      <div class="try-title">💻 実際の流れ</div>
+      <ol>
+        <li>初回起動でログイン画面が出る</li>
+        <li>個人で試すなら <strong>GitHub</strong> でログイン（ブラウザが開いて認証）</li>
+        <li>戻ってきたら「Import from VS Code」ダイアログ → 拡張を引き継ぐなら Yes</li>
+        <li>テーマ選択（Tomさんは普段 Light 系なら Kiro Light を推奨）</li>
+        <li>シェル統合を有効化（後で実装フェーズで必須）</li>
+        <li>「Welcome to Kiro」画面に到達 → セットアップ完了</li>
+      </ol>
+      <div class="try-tip"><strong>💡 コツ:</strong> 業務PC兼用なら、VS Code拡張インポートはスキップして<strong>クリーンな状態</strong>から始めると、Open VSX非対応拡張で混乱しない。</div>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>初回30日トライアル</strong>: ログイン直後に「500 bonus credits（30日有効）」が付与される。Free tierの50 creditsとは別枠。トライアル期間中はPro相当の機能をフルに試せる。<strong>本Labはトライアル期間内に完走することを推奨</strong>。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>AWS IAM Identity Center を選ぶと</strong>: 業務組織のSSO経由になり、コンテンツ収集オプトアウトなど企業向け設定が変わる。個人学習目的なら GitHub or Google or AWS Builder ID が手軽。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">🔍 ログイン確認</div>
+      <ol>
+        <li>右下のステータスバーにアカウント名が表示されているか</li>
+        <li>左サイドバーに Kiro 専用ペイン（Specs / Steering / Hooks 等）が表示されているか</li>
+        <li>右下のクレジット残高表示に「500 bonus + 50 free」相当が出ているか</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- LAB 4 ============================================ -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>UI構成を理解（Specs / Steering / Hooks）</h3>
+    <span class="lab-tag tag-intermediate">準備</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Kiroの中核は左サイドバーの Kiro ペイン。<strong>Specs / Steering / Hooks / Powers / MCP</strong> の5つに分かれている。本Labで主に使うのは Specs と Steering。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 Kiro ペインの構成</div>
+      <pre class="ascii-art">┌─ 左サイドバー: Kiro ペイン ─────────────────┐
+│  ▼ Specs            ← 機能仕様（本Labのメイン）   │
+│    [+] New Spec     ← ここから機能を作る         │
+│    └ feature-name   ← 機能ごとにフォルダ          │
+│       ├ requirements.md（または bugfix.md）       │
+│       ├ design.md                                 │
+│       └ tasks.md                                  │
+│                                                  │
+│  ▼ Steering         ← プロジェクト全体ルール    │
+│    ├ product.md     ← 何を作っているプロダクトか │
+│    ├ tech.md        ← 技術スタック・規約          │
+│    └ structure.md   ← ディレクトリ構造ルール     │
+│                                                  │
+│  ▼ Hooks            ← ファイル変更で自動発動    │
+│    （Lab 11で扱う）                              │
+│                                                  │
+│  ▼ Agent Powers     ← 専門化されたツール群      │
+│  ▼ MCP Servers      ← 外部ツール統合            │
+└────────────────────────────────────────┘
+
+中央: エディタ（VS Code風）
+右: チャット（vibeまたはspec文脈）</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>機能</th><th>役割</th><th>本Labで使う</th></tr></thead>
+      <tbody>
+        <tr><td>Specs</td><td>機能仕様の作成・実行（核心）</td><td>Lab 06〜10で多用</td></tr>
+        <tr><td>Steering</td><td>プロジェクト全体の不変ルール</td><td>Lab 05で準備</td></tr>
+        <tr><td>Hooks</td><td>ファイル変更で自動発動するエージェント</td><td>Lab 11で軽く触れる</td></tr>
+        <tr><td>Powers</td><td>専門化されたツール群（ドメイン知識）</td><td>使わない（応用編）</td></tr>
+        <tr><td>MCP Servers</td><td>外部ツール統合（Apidog等）</td><td>使わない（応用編）</td></tr>
+        <tr><td>Chat（右側）</td><td>vibe coding風の自由対話</td><td>補助的に使用</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info">
+      📘 <strong>「Spec モード」と「vibe モード」の違い</strong>: Kiroの右側のチャットは2モードある。<strong>vibe</strong>は普通のAIチャット、<strong>spec文脈</strong>は #spec で特定機能を参照しながらの対話。本Labでは Specs ペインから機能を作り、必要なら #spec で参照する流れ。
+    </div>
+
+    <div class="try-box">
+      <div class="try-title">💻 練習用フォルダを開く</div>
+      <ol>
+        <li>事前にOSのファイラで空のフォルダを作る（例: <code>C:\Users\user\KiroProjects\my-todo-kiro</code>）</li>
+        <li>Kiroで <code>File → Open Folder</code> でそのフォルダを選択</li>
+        <li>Trust the authors を聞かれたら Yes</li>
+        <li>左サイドバーの Kiro ペイン（旗のようなアイコン）を開く</li>
+        <li>Specs / Steering / Hooks のセクションが空の状態で表示される</li>
+      </ol>
+      <div class="try-tip"><strong>💡 コツ:</strong> このタイミングで <code>git init</code> をターミナルで打っておくと、Spec Kitと同じく機能ごとに自動でブランチが切られる流れに乗れる。</div>
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">🔍 UI確認</div>
+      <ol>
+        <li>左サイドバーの Kiro ペインを開けるか</li>
+        <li>Specs セクションに <code>+</code> ボタンが見えるか</li>
+        <li>Steering セクションが空（or プレースホルダ）か</li>
+        <li>右側にチャットペインが開けるか（vibe モードがデフォルト）</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- LAB 5 ============================================ -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>Steering ファイルを整える</h3>
+    <span class="lab-tag tag-advanced">Specモード実践</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Spec を作る前に <strong>Steering（操舵）</strong>でプロジェクト全体のルールを書く。これは Spec Kit の constitution.md に相当するが、Kiroは<strong>用途別に複数ファイルに分割</strong>する設計。本Labでは標準の3ファイルを準備する。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 Steeringの3標準ファイル</div>
+      <pre class="ascii-art">.kiro/steering/
+├── product.md     ← 何を作っているか・対象ユーザ・差別化要素
+├── tech.md        ← 技術スタック・コーディング規約・禁止事項
+└── structure.md   ← ディレクトリ構造・ファイル命名・配置ルール
+
+  これらは全ての対話で自動的にAIの文脈に含まれる
+  ↓
+  毎回「Pythonで」「型ヒント必須」と言わなくて済む</pre>
+    </div>
+
+    <div class="try-box">
+      <div class="try-title">💻 Steeringの作り方（GUI）</div>
+      <ol>
+        <li>Kiro ペインで Steering セクションの <code>+</code> をクリック</li>
+        <li>「Generate Steering Documents」を選ぶと、Kiroが現状コードを分析してテンプレを生成</li>
+        <li>or 手動で <code>.kiro/steering/</code> 配下に <code>product.md</code> 等を作成</li>
+        <li>本Labは新規プロジェクトなので、AIに生成させる方が速い</li>
+      </ol>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>右側チャット（vibeモード）に貼る指示</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>このプロジェクトは Python 3.12 で作る最小TODO CLI です。
+
+<span class="kw">.kiro/steering/</span> 配下に以下の3ファイルを作成してください:
+
+<span class="cm">## product.md</span>
+- プロダクト名: minimal-todo-cli
+- 対象ユーザ: 個人開発者（自分1人）
+- コア機能: コマンドラインでタスクを追加・一覧・完了・削除
+- 差別化: ログイン・サーバ・DB不要、即起動
+
+<span class="cm">## tech.md</span>
+- 言語: Python 3.12
+- 標準ライブラリ優先、外部依存は必要最低限
+- 型ヒントを全関数に付ける
+- パッケージ管理: uv（pyproject.toml）
+- テスト: pytest（標準的な使い方）
+- CLIフレームワーク: argparse
+
+<span class="cm">## structure.md</span>
+- src/todo/ 配下にモジュール（task.py / storage.py / cli.py）
+- tests/ 配下にテストファイル（test_*.py）
+- 1ファイル100行を目安に分割
+- README.md にCLI使い方を必ず書く
+
+各ファイルは Markdown で、なぜそのルールが必要かの理由も1行ずつ添えてください。</pre>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>Steering と Spec Kit constitution の違い</strong>: 同じ目的だが、Kiroは関心ごとに分かれているので<strong>後でメンテしやすい</strong>。tech.md だけ更新すれば技術スタック変更が反映され、product.md には触らない、のように。Tomさんが慣れたOutSystemsのSettings Module分割と同じ発想。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>Steeringを書きすぎない</strong>: 全フェーズで毎回ロードされるので、長すぎるとAIの応答が鈍重になる。<strong>合計500行以下を目安</strong>。詳細な決定は個別Spec内で書けばよい。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">🔍 Steering完了の判定</div>
+      <ol>
+        <li>左サイドバーのSteeringに3ファイルが表示されている</li>
+        <li>各ファイルを開いて、内容が自分の意図に合っているか</li>
+        <li>「これでSteeringとして十分か、抜けがあれば指摘して」とチャットで自己評価させる</li>
+        <li><code>git add .kiro/ && git commit -m "Add steering files"</code> でコミット</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- LAB 6 ============================================ -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>Spec作成（Requirements-First）</h3>
+    <span class="lab-tag tag-advanced">Specモード実践</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ここからSpecモードの本番。Specs ペインから新規Specを作り、<strong>Requirements-First ワークフロー</strong>で進める。これは「ユーザ視点の要件から始める」標準的なフロー。
+    </p>
+
+    <div class="try-box">
+      <div class="try-title">💻 New Spec を作る</div>
+      <ol>
+        <li>Kiro ペインで Specs セクションの <code>+</code> をクリック</li>
+        <li>または右側チャットで「Generate spec」と入力</li>
+        <li>「Feature or Bugfix?」と聞かれる → <strong>Feature</strong> を選択</li>
+        <li>「Requirements-First or Design-First?」と聞かれる → <strong>Requirements-First</strong> を選択</li>
+        <li>初期プロンプトを入力する画面になる</li>
+      </ol>
+      <div class="try-tip"><strong>💡 コツ:</strong> Specs設定で「default workflow」を Requirements-First にしておくと、毎回選ばなくて済む。Settings → Kiro → Specs から変更可。</div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>初期プロンプト（Spec作成時に入力）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>最小のTODO CLI を作ります。
+
+ユーザがコマンドラインで以下を行えるようにしたいです:
+- タスクを1行で追加できる（タイトルのみ）
+- 全タスクを一覧表示できる（未完了/完了が一目で分かる）
+- IDを指定してタスクを完了状態にできる
+- 完了済みのタスクをまとめて削除できる
+- データはローカルファイルに永続化される（再起動しても残る）
+- 1人で使う前提（マルチユーザ・認証は不要）
+- インストール後すぐに使えること（DB・サーバ不要）
+
+成功の定義:
+- ターミナルで5回コマンドを叩いてTODO管理が完結する
+- 自分が3日連続で使う
+
+スコープ外:
+- 期限・優先度・タグなどの拡張属性
+- リモート同期
+- TUI / GUI</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>Kiroが裏でやること</strong>: ① <code>.kiro/specs/minimal-todo-cli/</code> ディレクトリを作成 ② Gitブランチを切り替え（<code>minimal-todo-cli</code> ブランチ） ③ requirements.md を EARS記法で生成 ④ 中央エディタで開く ⑤ Specs ペインに進捗インジケータ（Requirements/Design/Tasks の3段）を表示。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>技術スタックを書かない</strong>: 「Pythonで」「argparseで」と書きたくなるが我慢。それは<strong>tech.md（Steering）に既に書いてある</strong>。requirements.md は<strong>What/Whyだけ</strong>の世界。技術が混じると、要件と設計が癒着して柔軟性が失われる。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">🔍 Spec作成の確認</div>
+      <ol>
+        <li>左サイドバーに <code>minimal-todo-cli</code> Spec が現れた</li>
+        <li>進捗バーが「Requirements」フェーズで停止している</li>
+        <li>中央エディタに requirements.md が表示されている</li>
+        <li>requirements.md が EARS記法（WHEN ... THE SYSTEM SHALL ...）で書かれている</li>
+        <li>Gitブランチが <code>minimal-todo-cli</code> に切り替わっている</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- LAB 7 ============================================ -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>requirements.md レビュー</h3>
+    <span class="lab-tag tag-advanced">Specモード実践</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Kiroが生成した requirements.md を<strong>必ず読んで承認する</strong>のがSDDの命。Spec Kitの <code>/speckit.clarify</code> 相当の曖昧解消は、Kiroでは<strong>requirements.mdに対する追加対話</strong>で行う。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 EARS記法の典型出力（Kiroが生成）</div>
+      <pre class="ascii-art">## Task Management
+
+### Add Task
+WHEN a user runs `todo add "&lt;title&gt;"` with a non-empty title
+THE SYSTEM SHALL create a new task with status "pending"
+  and persist it to local storage
+
+WHEN a user runs `todo add ""` with an empty title
+THE SYSTEM SHALL display "Title cannot be empty" and exit
+  with status code 1
+
+### List Tasks
+WHEN a user runs `todo list`
+THE SYSTEM SHALL display all tasks with their ID, status,
+  and title in a readable format
+
+WHILE there are no tasks
+THE SYSTEM SHALL display "No tasks found" instead of an empty list
+
+### Complete Task
+WHEN a user runs `todo complete &lt;id&gt;` with an existing ID
+THE SYSTEM SHALL change the task's status to "completed"
+
+IF the user provides a non-existent ID
+THEN THE SYSTEM SHALL display "Task not found: &lt;id&gt;"
+  and exit with status code 1
+...</pre>
+    </div>
+
+    <div class="try-box">
+      <div class="try-title">💻 レビューと修正</div>
+      <ol>
+        <li>requirements.md を上から読み、抜け・誤解がないか確認</li>
+        <li>気になる点があれば、右側チャットで指摘:<br>
+            「<code>requirements.md にデータ永続化の場所（ホームディレクトリ vs カレント）が明記されていない。追加して</code>」</li>
+        <li>追加したい異常系を指示:<br>
+            「<code>同じIDが複数回 complete されたケースの挙動を追加して</code>」</li>
+        <li>EARS記法に違和感があれば「<code>WHILE は使わず WHEN ベースに統一して</code>」のように指示</li>
+        <li>OK なら右側チャットで <code>LGTM</code> または「次のフェーズに進む」と入力</li>
+      </ol>
+      <div class="try-tip"><strong>💡 コツ:</strong> Kiroの公式ドキュメントが <code>LGTM</code>（Looks Good To Me）と言うだけで次フェーズへ進むことを推奨している。短い承認語が認識される。</div>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>requirements.md の修正は何度でも可</strong>: design.md 生成後でも、requirements.mdを編集して「Refine」ボタンを押せば design.md と tasks.md が自動再生成される。<strong>仕様駆動の真価</strong>はこの整合性の自動維持にある。Spec Kitだとここは手動で言わないといけない。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>EARSは慣れが必要</strong>: 「WHEN ... THE SYSTEM SHALL ...」が窮屈に感じる場合、自然言語のメモを # コメントとして添えても良い。Kiroは混在を許容する。<strong>大事なのは曖昧さの除去</strong>であって、形式の遵守ではない。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">🔍 Requirements完了の判定</div>
+      <ol>
+        <li>すべての主要機能（add/list/complete/clean）がEARS記述されている</li>
+        <li>異常系（空タイトル・存在しないID等）が記述されている</li>
+        <li>データ永続化の場所が明示されている</li>
+        <li>承認後、進捗バーが「Design」フェーズに進んだ</li>
+        <li><code>git add .kiro/ && git commit -m "Add requirements"</code></li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- LAB 8 ============================================ -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>design.md 生成と確認</h3>
+    <span class="lab-tag tag-advanced">Specモード実践</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Requirementsを承認すると、Kiroは<strong>design.md を自動生成</strong>する。これは Spec Kit の plan.md / data-model.md / contracts/ に相当する内容を<strong>1ファイルに集約</strong>したもの。Mermaidシーケンス図やコンポーネント図が含まれることが多い。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 design.md の典型構造</div>
+      <pre class="ascii-art">## Architecture Overview
+- 高レベルのコンポーネント図（mermaid）
+- データフロー
+
+## Components
+- src/todo/cli.py     ← argparse parser、エントリポイント
+- src/todo/task.py    ← Task dataclass
+- src/todo/storage.py ← JSON I/O
+
+## Data Model
+- Task の構造（id / title / status / created_at）
+- JSON保存形式
+- ファイルパス: ~/.todo-cli/data.json
+
+## Sequence Diagrams
+- todo add のシーケンス（mermaid）
+- todo list のシーケンス
+- todo complete のシーケンス
+
+## Error Handling
+- 永続化失敗時のリトライ
+- 破損ファイルの検知
+
+## Implementation Considerations
+- ファイルロック（複数同時起動）
+- トランザクション境界</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>Preview モードで読みやすく</strong>: design.md は Mermaid 図を含むので、エディタ右上の「Preview」ボタンでレンダリング表示すると読みやすい。シーケンス図やコンポーネント図が視覚化される。
+    </div>
+
+    <div class="try-box">
+      <div class="try-title">💻 design.md レビューのコツ</div>
+      <ol>
+        <li>Preview で全体像を把握</li>
+        <li>requirements.md と矛盾がないか確認（特にデータモデルと永続化場所）</li>
+        <li>Steering（tech.md）の制約を満たしているか:<br>
+            ・標準ライブラリ優先 ✓<br>
+            ・型ヒント全関数 ✓<br>
+            ・1ファイル100行 ✓</li>
+        <li>不安な点があればチャットで:<br>
+            「<code>storage.py のファイルロック実装方針が曖昧。fcntl使うのか tempfile経由でアトミック書き込みするのか明記して</code>」</li>
+        <li>requirements.mdの修正が必要になったら:<br>
+            requirements.md を編集 → design.md の右上「Refine」ボタン → 自動再生成</li>
+        <li>OK なら <code>LGTM</code> で次へ</li>
+      </ol>
+      <div class="try-tip"><strong>💡 コツ:</strong> design.md の出力が薄いと感じたら「<code>Implementation Considerations にエッジケース対応を追加して</code>」と指示。AIは指示すればより詳細を出してくれる。</div>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>Spec Kit との実感差</strong>: Spec Kit だと plan.md / data-model.md / contracts/ / research.md / quickstart.md が分散して生成される。Kiroは1ファイルで読みやすいが、<strong>API契約が大きいプロジェクト</strong>では Spec Kit の分散方式の方が探しやすい場面もある。題材依存。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>「過剰な設計」に注意</strong>: 最小TODOなのに大規模システム並みの設計を出すことがある。「<code>これは過剰。最小TODO なのでシンプルに3モジュール構成で十分</code>」と削減指示。<strong>Sledgehammer問題はKiroでも起きる</strong>。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">🔍 Design完了の判定</div>
+      <ol>
+        <li>design.md にコンポーネント図とシーケンス図がある</li>
+        <li>requirements.md の全要件が design.md でカバーされている</li>
+        <li>Steering（特に tech.md）の制約を満たしている</li>
+        <li>承認後、進捗バーが「Tasks」フェーズに進んだ</li>
+        <li><code>git add .kiro/ && git commit -m "Add design"</code></li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- LAB 9 ============================================ -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>tasks.md 生成と実行</h3>
+    <span class="lab-tag tag-advanced">Specモード実践</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      design.md を承認すると、Kiroは tasks.md を自動生成する。<strong>Kiroの最大の差別化ポイント</strong>は、tasks.md の各行に <strong>「Start Task」「Run all tasks」</strong> ボタンが表示されGUI実行できること。Spec Kit の <code>/speckit.implement</code> をボタン化したイメージ。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 tasks.md の表示（Kiro特有のUI）</div>
+      <pre class="ascii-art">┌── tasks.md（Kiroのエディタで開く） ────────────┐
+│  ## Phase 1: Foundation                          │
+│                                                  │
+│  ☐ T001 Project skeleton                        │
+│      Files: pyproject.toml, src/todo/__init__.py │
+│      [Start Task]   ← クリックで実行              │
+│                                                  │
+│  ☐ T002 Task dataclass + tests                  │
+│      Files: tests/test_task.py, src/todo/task.py │
+│      Depends-on: T001                            │
+│      [Start Task]                                │
+│                                                  │
+│  ## Phase 2: Storage                            │
+│                                                  │
+│  ☐ T003 [P] Storage JSON I/O                    │
+│      ...                                         │
+│                                                  │
+│  [Run all tasks]   ← 全タスク順次実行             │
+└────────────────────────────────────────┘</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>Kiroのタスク実行UI</strong>: 公式ドキュメントによると「Kiroはtasks.md ファイルにタスク実行インターフェースを提供。リアルタイムのステータス更新が表示される」。タスクが in-progress / completed と動的に更新される。<strong>進捗が視覚的に把握できる</strong>のがCLIのSpec Kitとの最大の体感差。
+    </div>
+
+    <div class="try-box">
+      <div class="try-title">💻 タスクを段階的に実行</div>
+      <ol>
+        <li>tasks.md を Preview ではなく Edit モードで開く（ボタンが押せる）</li>
+        <li>Phase 1 の T001 の <strong>Start Task</strong> をクリック</li>
+        <li>Kiro がコード生成・テスト記述を始める。中央エディタにファイルが順次作成される</li>
+        <li>完了するとチェックマークが付く</li>
+        <li>そのファイルを開いて目視レビュー</li>
+        <li>OK なら次のタスクの Start Task</li>
+        <li>Phase 1 が全部完了したらターミナルで <code>pytest</code> 実行</li>
+        <li>全テスト通過なら <code>git add . && git commit -m "Phase 1 done"</code></li>
+        <li>Phase 2 以降も同様に</li>
+      </ol>
+      <div class="try-tip"><strong>💡 コツ:</strong> 慣れてきたら「Run all tasks」で全自動実行できる。ただし最初は<strong>1タスクずつ</strong>進めて、AIの挙動を観察するのが安全。クレジット消費も把握しやすい。</div>
+    </div>
+
+    <div class="info-box err">
+      🚨 <strong>暴走したと感じたら止める</strong>: AIが想定外のファイルを大量に作ったり、Steering tech.mdに違反する依存（例: 標準ライブラリ縛りなのに requests 追加）を入れたら、即「Stop」ボタン。<code>git checkout .</code> で戻す。<strong>Phase ごとにコミット</strong>しておくと退避が楽。
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>「コワーカーが既に実装済み」のタスク検出</strong>: Kiro特有の便利機能として、「Check which tasks are already complete」とチャットで指示すると、コードベースをスキャンして<strong>既存の実装と一致するタスクを自動でチェック済みにマーク</strong>してくれる。brownfield や中断再開で効く。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">🔍 Implement完走の判定</div>
+      <ol>
+        <li>tasks.md の全タスクがチェック済みになっている</li>
+        <li>ターミナルで <code>pytest</code> が全PASS</li>
+        <li>実際に <code>python -m todo add "test"</code> など手動コマンドで動く</li>
+        <li>requirements.md の受入基準を1個ずつ手動確認</li>
+        <li>git log で Phase 単位のコミットが残っている</li>
+        <li>右下のクレジット残高を確認（だいたい消費された量も把握）</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- LAB 10 =========================================== -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>Bugfix Spec を試す</h3>
+    <span class="lab-tag tag-advanced">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Kiroの差別化機能の1つ <strong>Bugfix Spec</strong>を体験する。完成したTODO CLIに<strong>意図的にバグを混入</strong>させて、それをBugfix Specで修正する流れ。Property-Based Testing（PBT）の威力も体感できる。
+    </p>
+
+    <div class="try-box">
+      <div class="try-title">💻 まず意図的にバグを仕込む</div>
+      <ol>
+        <li>src/todo/task.py を開く</li>
+        <li>Task に <code>complete()</code> メソッドがあるはずなので、わざと<strong>2回呼ぶと例外を出す</strong>ように改変<br>
+            （または、空タイトルチェックを外して<strong>空タイトルでも追加できる</strong>ようにしてしまう）</li>
+        <li><code>git add . && git commit -m "Introduce intentional bug"</code> で記録</li>
+        <li>これがBugfix Specのインプットになる</li>
+      </ol>
+    </div>
+
+    <div class="try-box">
+      <div class="try-title">💻 Bugfix Specを作る</div>
+      <ol>
+        <li>Specs ペインの <code>+</code> をクリック</li>
+        <li>「Feature or Bugfix?」で <strong>Bugfix</strong> を選択</li>
+        <li>初期プロンプトでバグの状況を説明（次のコードブロック参照）</li>
+        <li>Kiroが bugfix.md を生成（current/expected/unchanged 構造）</li>
+      </ol>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>Bugfix Spec の初期プロンプト</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>同じタスクを2回 complete すると例外が発生します。
+
+現状の挙動:
+  $ todo complete 1
+  $ todo complete 1
+  Traceback... AlreadyCompletedError
+
+期待する挙動:
+  2回目以降は何もせず正常終了する（idempotent）。
+  既に完了済みのメッセージを表示するだけ。
+
+変えてはいけない挙動:
+  - 存在しないIDを指定したときはエラー（status 1）のまま
+  - add / list / clean の振る舞いは一切変更しない
+  - データファイルのフォーマットは変更しない</pre>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 bugfix.md の構造（Kiroが生成）</div>
+      <pre class="ascii-art">## Current Behavior
+- todo complete &lt;id&gt; を同じIDで2回呼ぶと
+  AlreadyCompletedError が発生
+- スタックトレースが表示される
+- exit status: 例外による終了
+
+## Expected Behavior
+- 2回目以降は冪等（idempotent）に成功
+- 「Task &lt;id&gt; is already completed」と表示
+- exit status: 0
+
+## Unchanged Behavior（最重要）
+- 存在しないIDの挙動は維持
+- add コマンドの全挙動を維持
+- list / clean の全挙動を維持
+- data.json のJSONスキーマを維持
+
+## Property-Based Test Cases
+1. 既存バグを検証するPBT
+   - 任意のIDで complete を2回呼ぶと例外が出る（バグ存在を確認）
+2. 修正後の挙動を検証するPBT
+   - 任意のIDで complete を N 回呼んでも例外なく完了
+3. 変えない挙動を保護するPBT
+   - 存在しないIDは引き続きエラー
+   - add → list の冪等性</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>「Unchanged Behavior」がブレイクスルー</strong>: AIが「ついでに直す」傾向を、仕様レベルで明示的にブロックする仕組み。これがあると、サージカル（外科的に最小範囲の）修正が保証される。Spec KitやAI-DLCには対応する組み込み機構はなく、運用で工夫する必要がある。
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>PBTの効き方</strong>: Kiroは Python なら hypothesis、JSなら fast-check を使ったPBTを生成する。「任意の整数IDで complete をランダム回数呼んでも例外なし」のような<strong>性質ベース</strong>のテスト。具体例だけのテストでは見つからない副作用を捕まえる。
+    </div>
+
+    <div class="try-box">
+      <div class="try-title">💻 残りの流れ</div>
+      <ol>
+        <li>bugfix.md をレビュー → LGTM</li>
+        <li>design.md（修正設計）が生成 → レビュー</li>
+        <li>tasks.md（surgical fixのステップ）が生成 → 実行</li>
+        <li>PBTが実行され、3カテゴリのテストが通ることを確認</li>
+        <li>「Unchanged Behavior」のPBTが通っていることが特に重要</li>
+        <li><code>git commit -m "Fix complete idempotency"</code></li>
+      </ol>
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">🔍 Bugfix完了の判定</div>
+      <ol>
+        <li>修正前のバグを再現するPBTが、修正後は通らなくなっている</li>
+        <li>修正後の冪等性を検証するPBTが通る</li>
+        <li>「変えない挙動」のPBTがすべて通る（add/list/cleanが壊れていない）</li>
+        <li>tasks.md にあったタスク以外のファイルに変更が入っていない（<code>git diff</code>で確認）</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- LAB 11 =========================================== -->
+<div class="lab" id="lab11">
+  <div class="lab-header">
+    <div class="lab-num">11</div>
+    <h3>Hooks・運用Tips・限界</h3>
+    <span class="lab-tag tag-intermediate">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      初回完走後の継続運用のためのTipsと、Kiro特有の<strong>Hooks（自動化）</strong>機能の紹介。本Labは詳細実装はしないが、何ができるかを把握しておく。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 Hooksの典型的な使い方</div>
+      <pre class="ascii-art">.kiro/hooks/
+├── on-save-test.md
+│   トリガー: テストファイル保存時
+│   アクション: 該当テストを自動実行してカバレッジ確認
+│
+├── on-spec-update.md
+│   トリガー: requirements.md 変更時
+│   アクション: design.md と tasks.md の整合性チェック
+│
+└── before-commit.md
+    トリガー: コミット直前
+    アクション: Spec と実装の乖離スキャン</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>Hooks の作成</strong>: Kiro ペインの Hooks セクションで <code>+</code> をクリック、または <code>.kiro/hooks/</code> 配下に Markdown ファイルを置く。AIが内容を解釈して自動発動する。<strong>Spec Kit には組み込みの対応物がない</strong>（Git Hooksで自前実装が必要）。
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>症状</th><th>原因と対処</th></tr></thead>
+      <tbody>
+        <tr><td>クレジットがすぐ尽きる</td><td>Specの再生成（Refine）を多用するとクレジットを消費。Free 50 + Trial 500 で2〜3機能が目安。Pro $20/月への昇格を検討</td></tr>
+        <tr><td>VS Code拡張が動かない</td><td>Kiroは Open VSX のみ対応。Microsoft専有拡張（Pylance等）は使えない。代替を Open VSX で探す</td></tr>
+        <tr><td>tasks.md のボタンが効かない</td><td>シェル統合が無効になっている可能性。Settings → Terminal → Integrated → Shell Integration を有効化</td></tr>
+        <tr><td>EARS記法が窮屈で書きにくい</td><td>requirements.md を直接編集して自然言語のメモを # で添える。Kiroは混在を許容する</td></tr>
+        <tr><td>Bugfix Specが大げさすぎる</td><td>初期プロンプトに「これは1行修正レベル。最小限のPBT 1つで十分」と明記</td></tr>
+        <tr><td>Sledgehammer問題（小機能に重い）</td><td>右側の vibe チャットで普通の対話で対応する。Specsを使わない判断もアリ</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box warn">
+      ⚠️ <strong>Kiroの限界</strong>: ① クレジット制なので「使った分だけ」見えるが、busty usage（特定の月に集中）で予想より高くつく ② Open VSX制限で開発体験が狭まる場合あり ③ チームの分散ワークフローでは、IDEを揃える必要があり導入ハードル高 ④ <strong>規制業界では監査ログを別途確保</strong>する必要がある（Kiroの証跡だけでは不十分な場合）。
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>SpecをClaude Codeに持ち込む（前回比較Labのパターン①）</strong>: Kiroで作った requirements.md / design.md / tasks.md は、Spec Kitプロジェクトに変換可能。Claude Codeで実装したい場合や、業務PCにKiroを入れられない場合の脱出口になる。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 Tomさんが次にやるなら</div>
+      <ul class="usecase-list">
+        <li>同じTODO CLI題材で Spec Kit手順書 と Kiro手順書 を比較してみる（仕様の違い・体感の違い）</li>
+        <li>Bugfix Spec を業務由来のバグ題材で試す（OutSystems 由来のバグ等）</li>
+        <li>Kiro の Steering 構成を Claude Code の CLAUDE.md にも転用してみる（用途別分割）</li>
+        <li>1ヶ月使い倒して、月間クレジット消費量を計測。Pro $20/月の費用対効果を判定</li>
+        <li>本格採用するならSpec KitかKiroかを決め、もう片方は補助ツールに位置付ける</li>
+      </ul>
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">🔍 4部作完走後の到達点</div>
+      <ol>
+        <li>AI-DLC のプロセス規律（Bolt・Mob・Reflection）を理解</li>
+        <li>SDD の思想（Spec as Source of Truth）を理解</li>
+        <li>Spec Kit と Kiro を実機で1本ずつ完走</li>
+        <li>自分の状況（業務 / 個人 / コスト / 既存環境）に応じて使い分けの判断軸ができている</li>
+        <li>Steering / Constitution / CLAUDE.md の使い分けも腹落ちしている</li>
+      </ol>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>4部作の総括</strong>: <br>
+      ① <strong>AI-DLC手順書</strong> = プロセスの規律<br>
+      ② <strong>AI-DLC vs SDD比較</strong> = 思想の整理<br>
+      ③ <strong>Spec Kit手順書</strong> = CLI型SDDの実機<br>
+      ④ <strong>Spec Kit vs Kiro比較</strong> = SDDツール選択軸<br>
+      ⑤ <strong>本Lab</strong> = IDE型SDDの実機<br><br>
+      ここまで通せば、AI時代の開発手法の主要選択肢を一通り体験したことになる。あとは<strong>業務に小さく適用</strong>して、自分のスタイルに馴染ませていくフェーズ。
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+function copyCode(btn) {
+  const block = btn.closest('.code-block') || btn.parentElement;
+  const pre = block.querySelector('pre');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+  const map = new Map();
+  links.forEach(a => {
+    const el = document.getElementById(a.getAttribute('href').slice(1));
+    if (el) map.set(el, a);
+  });
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) {
+      const l = map.get(e.target);
+      if (l) { links.forEach(n => n.classList.remove('active')); l.classList.add('active'); }
+    }
+  }), { rootMargin: '-30% 0px -60% 0px' });
+  document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+  document.querySelectorAll('.code-block').forEach((cb, i) => {
+    if (cb.querySelector('.code-block-header')) return;
+    const header = document.createElement('div');
+    header.className = 'code-block-header';
+    header.innerHTML = `<span>Code #${i+1}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+    cb.insertBefore(header, cb.firstChild);
+  });
+});
+</script>
+
+</body>
+</html>

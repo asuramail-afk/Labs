@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tessl 比較Lab — Spec-as-Source という第三の道</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --tessl:#d73a49;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#fcefef 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(215,58,73,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--tessl),var(--accent3));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .anno { color:#22863a; font-weight:600; }
+
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); font-weight:600; }
+.compare-table .yes { color:var(--success); font-weight:600; }
+.compare-table .no { color:var(--error); font-weight:600; }
+.compare-table .partial { color:var(--accent4); font-weight:600; }
+
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+.usecase-box { background:rgba(0,92,197,.05); border:1px solid rgba(0,92,197,.25);
+  border-left:3px solid var(--accent); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#003d8f; }
+.usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent); font-weight:700; margin-bottom:6px; }
+.usecase-list { margin-left:20px; margin-bottom:10px; }
+.usecase-list li { margin-bottom:4px; }
+
+/* Triple panels */
+.triple { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin:14px 0; }
+.triple-col { padding:10px 12px; border-radius:7px; border:1px solid; font-size:.82rem; line-height:1.7; }
+.triple-col h4 { font-family:var(--mono); font-size:.72rem; margin-bottom:5px; letter-spacing:.04em; }
+.triple-col ul { margin-left:16px; margin-top:3px; }
+.triple-col li { margin-bottom:2px; }
+.tri-spec { background:rgba(0,92,197,.06); border-color:rgba(0,92,197,.30); color:#003d8f; }
+.tri-spec h4 { color:var(--accent); }
+.tri-kiro { background:rgba(34,134,58,.06); border-color:rgba(34,134,58,.30); color:#154f1e; }
+.tri-kiro h4 { color:var(--success); }
+.tri-tessl { background:rgba(215,58,73,.06); border-color:rgba(215,58,73,.30); color:#7a1521; }
+.tri-tessl h4 { color:var(--tessl); }
+@media (max-width:900px) { .triple { grid-template-columns:1fr; } }
+
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// Tessl <span>vs the rest</span></div>
+  <div class="nav-section">前提</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>3行サマリー</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>SDD 3レベル</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>Tessl の正体</a>
+  <div class="nav-section">構造</div>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>2つの製品</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>Spec構造（.spec.md）</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>@generate / @describe</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>v0.50で大転換</a>
+  <div class="nav-section">3軸比較</div>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>3者総合比較</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>強み・弱み</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>MDD との関係</a>
+  <div class="nav-section">実用</div>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>使い分け指針</a>
+  <a class="nav-item" href="#lab11"><span class="nav-num">11</span>触ってみる手順</a>
+</nav>
+
+<div class="hero">
+  <h1>Tessl 比較Lab</h1>
+  <p class="subtitle">Spec-as-Source という第三の道、その思想と実装</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>3行で違いを掴む</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>SDDの3レベル理解</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>Tesslの正体と思想</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>2つの製品（Registry + Framework）</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>.spec.md 構造を読む</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>@generate / @describe アノテーション</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>v0.50 への大転換</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>3者総合比較表</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>強み・弱みマトリクス</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>MDD との歴史的関係</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">10</span>使い分け指針（3者）</a>
+    <a class="toc-item" href="#lab11"><span class="toc-num">11</span>実機で触ってみる手順</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- LAB 0 ============================================ -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>3行で違いを掴む</h3>
+    <span class="lab-tag tag-basic">前提</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Spec Kit / Kiro が「<strong>仕様を書いてからコードを生成する</strong>」のに対し、Tesslは「<strong>仕様だけ保守し、コードは仕様の派生物として再生成可能にする</strong>」を目指す。SDDの中で<strong>最も野心的</strong>かつ<strong>最も実験的</strong>。
+    </p>
+
+    <div class="triple">
+      <div class="triple-col tri-spec">
+        <h4>🔵 Spec Kit</h4>
+        <p>レベル: <strong>Spec-First</strong></p>
+        <p style="margin-top:4px;">仕様→計画→タスク→実装。仕様は実装の出発点。実装後はコードを直接編集することも普通。</p>
+      </div>
+      <div class="triple-col tri-kiro">
+        <h4>🟢 Kiro</h4>
+        <p>レベル: <strong>Spec-First / Anchored</strong></p>
+        <p style="margin-top:4px;">requirements/design/tasks を継続的に保守。コードと仕様の両方をメンテする。</p>
+      </div>
+      <div class="triple-col tri-tessl">
+        <h4>🔴 Tessl</h4>
+        <p>レベル: <strong>Spec-as-Source</strong></p>
+        <p style="margin-top:4px;">仕様のみ保守。コードは <code>// GENERATED FROM SPEC - DO NOT EDIT</code>。仕様→コードの1:1マッピング。</p>
+      </div>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>一言で覚えるなら</strong>: <code>Spec Kit/Kiro = 仕様＋コードを保守</code> / <code>Tessl = 仕様のみ保守</code>。Tomさんが過去に触れた可能性がある<strong>MDD（Model-Driven Development）</strong>の考え方を、LLM時代に蘇らせた取り組み。MDDの「UML/DSLで書いて、コードジェネレータで生成」を、「自然言語で書いて、LLMで生成」に置き換えたもの。
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 視覚的に並べる</div>
+      <pre class="ascii-art">─── Spec Kit / Kiro ──────────────────
+  仕様 → コード生成 → 以後、コードと仕様の両方を保守
+       ↓                ↓
+       人が編集          人が編集
+
+─── Tessl（理想形） ──────────────────
+  仕様 ──→ コード（自動生成・編集禁止）
+   ↑              ↓
+   人が編集       // GENERATED FROM SPEC - DO NOT EDIT
+                  仕様を変えるとコードが再生成される</pre>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>重要な現実</strong>: 2026年4月時点で、Tesslの「Framework（フル機能版）」は<strong>v0.28系で開発停止</strong>、現在の主力は v0.50系の「Registry中心 + 軽量MCP」へ大転換した。<strong>「Spec-as-Sourceは未来形、現在は仕様駆動方法論の配布プラットフォーム」</strong>というのが正確な現状認識。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 1 ============================================ -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>SDDの3レベル理解</h3>
+    <span class="lab-tag tag-basic">前提</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Tesslを理解するには、まずSDDが<strong>3つの厳格度レベル</strong>に分けられることを押さえる。Martin Fowlerチームの分析（thoughtworks）が定義したフレーム。これがTesslの位置を理解する地図になる。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 SDDの3レベル</div>
+      <pre class="ascii-art">┌────────────────────────────────────────┐
+│ Level 1: Spec-First                              │
+│   仕様を先に書く。実装後は仕様が放置されることも     │
+│   代表: 旧来のwaterfall、初期の Spec Kit         │
+├────────────────────────────────────────┤
+│ Level 2: Spec-Anchored                           │
+│   仕様を完了後も保守。仕様↔コードの整合性を維持      │
+│   代表: 現在の Spec Kit、Kiro                    │
+├────────────────────────────────────────┤
+│ Level 3: Spec-as-Source                          │
+│   仕様だけが「正」。人間はコードを編集しない         │
+│   代表: Tessl（理想形・実験中）                   │
+└────────────────────────────────────────┘
+    上に行くほど、仕様の厳密さ要求が高い
+    上に行くほど、コードを「捨てて再生成」できる</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>レベル</th><th>仕様の役割</th><th>コードとの関係</th><th>典型ツール</th></tr></thead>
+      <tbody>
+        <tr><td>Spec-First</td><td>実装の出発点</td><td>実装後は仕様と独立に編集</td><td>BDD・初期 Spec Kit</td></tr>
+        <tr><td>Spec-Anchored</td><td>持続する真実源</td><td>両方を保守、乖離検知</td><td>現Spec Kit / Kiro</td></tr>
+        <tr><td>Spec-as-Source</td><td>唯一の真実源</td><td>コードは派生物・編集禁止</td><td>Tessl（実験中）</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info">
+      📘 <strong>Tessl CEOのビジョン</strong>: 創業者 Guy Podjarny（元Snyk創業者）は「<strong>2027年末までに、エージェントと協業する開発者はほとんどコードを見なくなる</strong>」と予測。2026年中に「ほとんどの開発が少なくともspec-assistedになる」とも。これは<strong>Spec-as-Sourceが当たり前になる世界</strong>を見据えた発言。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>Spec-as-Source の難しさ</strong>: 仕様だけで実装を決められるレベルの<strong>記述精度</strong>が必要。現状のLLMには非決定性（同じ仕様でも違うコードを生成しうる）があり、完全自動化は理論的にも実装上も難しい。Tessl自身も「現在は1ファイル＝1仕様の小さな単位」に絞っている。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 2 ============================================ -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>Tessl の正体と思想</h3>
+    <span class="lab-tag tag-basic">前提</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Tesslは2024年に Series A を調達したスタートアップ。CEO Guy Podjarny は<strong>Snyk（時価総額数十億ドルのセキュリティ会社）の創業者</strong>。2025年9月に最初の製品（Spec Registry + Framework）を公開、2026年に大きく方向転換した。
+    </p>
+
+    <div class="info-box info">
+      📘 <strong>Tessl の解こうとする問題</strong>: 「<strong>エージェントは強力だが信頼できない</strong>」。短いプロンプトで自信満々にコードを書き、APIをハルシネーションし、既存機能を壊しながら「成功した」と主張する。コード中心の世界では、AIが意図を間違えてもそれを検知する手段がない。<strong>仕様を中心に据えれば、人間↔AI、AI↔AI のアラインメントが取れる</strong>。
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 Tessl が指摘する3つのエージェント問題</div>
+      <pre class="ascii-art">問題1: API のハルシネーション
+       LLMは古いライブラリ知識を持ち、存在しないAPIを使う
+       → Spec Registry で解決（10,000+ specs で正しい使い方を提供）
+
+問題2: 既存機能を壊す
+       新機能追加時、関連する既存コードを意図せず変更
+       → Framework のテストガードレールで解決
+
+問題3: 意図と実装のズレ
+       短いプロンプトでは要件が捉えられない
+       → Spec を first-class にすることで解決</pre>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>Tesslの哲学的立場</strong>: 「コードは情報を欠落している」。コードを見ても「なぜそう書かれたか」「変えていい部分とダメな部分」「どんな制約のもとで設計されたか」は分からない。<strong>仕様にはこれらが書かれている</strong>。AIに正しく仕事させるには、仕様を主役にする必要がある、という主張。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>批判される点</strong>: ① まだプロダクトが頻繁に大変更される（v0.28→v0.50）② Spec-as-Source は理論先行で実用例が少ない ③ MDD（Model-Driven Development）が業務系で失敗した歴史を繰り返さないか懸念 ④ 1:1 spec-to-code mapping は粒度が小さすぎて全体俯瞰しづらい。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 3 ============================================ -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>2つの製品（Registry + Framework）</h3>
+    <span class="lab-tag tag-intermediate">構造</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Tessl は2つの製品で構成される。<strong>Spec Registry</strong>（公開・無料）と<strong>Framework</strong>（クローズドベータ）。実は2026年に Framework の重みは大きく下がり、Registry中心 + 軽量MCP統合へシフトしている。
+    </p>
+
+    <div class="info-box info">
+      📘 <strong>Spec Registry とは</strong>: オープンソースライブラリの「正しい使い方」を仕様化したもの。<strong>10,000以上のpre-built specs</strong>が集まり、AIが古い知識でAPIを誤用するのを防ぐ。<code>tessl install tessl/npm-express</code> のようにインストール可能で、Claude Code 等のMCP対応エージェントが自動的に文脈に含めて読む。
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>Tessl Registry の使い方（基本）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># プロジェクト初期化（既存プロジェクトでもOK）</span>
+tessl init
+
+<span class="cm"># 使うライブラリの spec をインストール</span>
+tessl install tessl/npm-express
+tessl install tessl/npm-langchain
+
+<span class="cm"># 方法論 tile（Spec-driven development）もインストール可能</span>
+tessl install tessl-labs/spec-driven-development
+
+<span class="cm"># 何が入っているか確認</span>
+tessl list
+
+<span class="cm"># MCPサーバを起動（Claude Code等から使える状態に）</span>
+tessl mcp start</pre>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 Tessl Registry の中身</div>
+      <pre class="ascii-art">.tessl/
+├── tiles/              ← インストールしたtileの実体
+│   ├── tessl/
+│   │   └── npm-express/
+│   │       ├── docs/         ← APIの正しい使い方ドキュメント
+│   │       ├── rules/        ← AIに守らせるルール
+│   │       └── skills/       ← 再利用可能なスキル
+│   └── tessl-labs/
+│       └── spec-driven-development/
+│           └── ...    ← 方法論tile
+├── RULES.md            ← AIエージェントへの統合ルール
+└── (project)
+    └── tessl.json      ← マニフェスト（package.jsonに相当）</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>製品</th><th>状態（2026年4月）</th><th>役割</th></tr></thead>
+      <tbody>
+        <tr><td>Spec Registry</td><td>✅ 公開・無料</td><td>OSSライブラリの正しい使い方をAIに教える</td></tr>
+        <tr><td>SDD Tile</td><td>✅ 公開・無料</td><td>SDD方法論をAIに教える（Tile経由）</td></tr>
+        <tr><td>Framework（v0.28系）</td><td>⚠️ 開発停止・継続利用可</td><td>Spec-as-Source（@generate/@describe）の実装</td></tr>
+        <tr><td>新CLI（v0.50系）</td><td>✅ アクティブ開発</td><td>軽量化：tile管理 + MCP配布が中心</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box warn">
+      ⚠️ <strong>製品方針の急変</strong>: 2025年9月の最初の発表ではFrameworkがメイン製品だったが、2026年に入って <strong>「フル機能のフレームワークより、軽量なMCP配布のほうが市場ニーズに合う」</strong>と判断したとみられる。<strong>Spec-as-Source は今のところ "野心的目標" であり、実用には至っていない</strong>のが正直な現状。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 4 ============================================ -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>.spec.md 構造を読む</h3>
+    <span class="lab-tag tag-intermediate">構造</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Tessl Framework（v0.28系）の Spec ファイルは <code>.spec.md</code> 拡張子で、YAMLフロントマター + Markdown本体の構造。<strong>「何を作るか」と「どう使えるか」を1ファイルに収める</strong>のが特徴。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>典型的な .spec.md（math library の例）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">---</span>
+<span class="kw">name</span>: Math Library
+<span class="kw">description</span>: Simple arithmetic operations
+<span class="kw">targets</span>:
+  - ../src/index.ts
+<span class="cm">---</span>
+
+<span class="cm"># Math Library</span>
+
+<span class="anno">[@generate](./src/index.ts)</span>: This tells Tessl to generate code
+from this spec, specifically the /src/index.ts file.
+
+<span class="cm">## Capabilities</span>
+
+- It adds two numbers together <span class="anno">[@test](../tests/add.test.ts)</span>
+- It subtracts two numbers <span class="anno">[@test](../tests/sub.test.ts)</span>
+- It multiplies two numbers <span class="anno">[@test](../tests/mul.test.ts)</span>
+
+<span class="cm">## API</span>
+
+```ts <span class="anno">{ .api }</span>
+export function add(a: number, b: number): number;
+export function subtract(a: number, b: number): number;
+export function multiply(a: number, b: number): number;
+```</pre>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 .spec.md の3要素</div>
+      <pre class="ascii-art">┌── 1. メタデータ（YAMLフロントマター） ────────┐
+│   name / description / targets（生成対象ファイル）  │
+└──────────────────────────────────────┘
+
+┌── 2. Capabilities（機能の説明） ─────────────┐
+│   自然言語で書いた機能リスト                       │
+│   各機能に [@test](path) でテストへのリンク         │
+└──────────────────────────────────────┘
+
+┌── 3. API（公開インターフェース） ────────────┐
+│   コードブロック（言語指定）+ { .api } マーカー    │
+│   ここがコード生成の制約になる                     │
+└──────────────────────────────────────┘</pre>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>spec ファイル単位の粒度</strong>: 1つの <code>.spec.md</code> = 1つのコードファイル（<code>src/index.ts</code> 等）に対応。これは MDD の細かい粒度と同じ思想。<strong>大きな機能は複数の specファイルで構成</strong>される。Spec Kitやkiroが「機能単位の大きな仕様」なのに対し、Tesslは<strong>ファイル単位の小さな仕様</strong>。
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>Spec Kit/Kiro との粒度差</strong>: Spec Kit の <code>spec.md</code> は機能全体（ユーザストーリー含む）を扱う1ファイル。Tesslの <code>.spec.md</code> は<strong>1コードファイル分</strong>の仕様しか持たない。前者は「ビジネス仕様書」、後者は「コードファイルの設計図」と性格が違う。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 5 ============================================ -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>@generate / @describe アノテーション</h3>
+    <span class="lab-tag tag-intermediate">構造</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Tessl の核心アノテーションが <code>@generate</code> と <code>@describe</code>。<strong>仕様とコードの方向</strong>を制御する。これが <strong>Spec-as-Source</strong> を可能にする最重要の仕組み。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>アノテーション</th><th>意味</th><th>使い所</th></tr></thead>
+      <tbody>
+        <tr><td>@generate</td><td>仕様 → コード方向。<br>仕様を変えるとコードが再生成される</td><td>Greenfield、新規開発</td></tr>
+        <tr><td>@describe</td><td>コード → 仕様方向。<br>既存コードから仕様を抽出する（リバース）</td><td>Brownfield、レガシー文書化</td></tr>
+        <tr><td>@test</td><td>機能とテストの紐付け</td><td>Capabilityごとに必須</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>@generate vs @describe の使い分け</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># 新規ファイルを仕様から作る場合</span>
+<span class="anno">[@generate](./src/calculator.ts)</span>
+<span class="cm"># → tessl build で src/calculator.ts が生成される</span>
+<span class="cm"># → src/calculator.ts の先頭に // GENERATED FROM SPEC - DO NOT EDIT</span>
+
+<span class="cm"># 既存コードに後から仕様を付ける場合</span>
+<span class="anno">[@describe](./src/legacy_module.js)</span>
+<span class="cm"># → 既存コードはそのまま、仕様がドキュメントとして付く</span>
+<span class="cm"># → tessl document コマンドで自動的に仕様を逆生成できる</span></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>既存コードから仕様をリバースする例</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># 既存の JavaScript ファイルから .spec.md を生成</span>
+tessl document --code src/auth.js
+
+<span class="cm"># 生成される spec の例:</span>
+<span class="cm"># ---</span>
+<span class="cm"># name: Authentication</span>
+<span class="cm"># targets:</span>
+<span class="cm">#   - ../src/auth.js</span>
+<span class="cm"># ---</span>
+<span class="cm"># </span>
+<span class="cm"># [@describe](./src/auth.js)</span>
+<span class="cm"># </span>
+<span class="cm"># ## Capabilities</span>
+<span class="cm"># - validates user credentials</span>
+<span class="cm"># - issues JWT tokens</span>
+<span class="cm"># - handles token refresh</span>
+<span class="cm"># </span>
+<span class="cm"># ## API</span>
+<span class="cm"># ```js { .api }</span>
+<span class="cm"># export function login(email, password) { ... }</span>
+<span class="cm"># export function refresh(token) { ... }</span>
+<span class="cm"># ```</span></pre>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>@describe が brownfield に強い理由</strong>: 既存コードベースに対して、いきなり Spec-as-Source は適用できない（コードを全部再生成するリスク）。まず <code>@describe</code> でドキュメント化して<strong>仕様↔コードの紐付けを作り</strong>、慣れてきたら徐々に <code>@generate</code> へ移行できる。レガシー資産（OutSystems等）に SDD を導入する場合の現実解。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>// GENERATED FROM SPEC - DO NOT EDIT の重さ</strong>: <code>@generate</code> したファイルにはこのコメントが先頭に入る。チーム開発で「ちょっとここだけ直したい」がやりづらい。<strong>緊急パッチで仕様を経由できないとき</strong>のフローが必要になる。これも Tessl が広く採用されにくい理由の1つ。
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>v0.28系での話</strong>: ここで紹介した <code>@generate</code> / <code>@describe</code> / <code>tessl build</code> / <code>tessl document</code> はFrameworkのv0.28系（開発停止）の機能。新v0.50系ではこのSpec-as-Source機能は<strong>含まれていない</strong>。試したい場合は v0.28 を明示インストールする必要がある。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 6 ============================================ -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>v0.50 への大転換</h3>
+    <span class="lab-tag tag-intermediate">構造</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      2026年に Tessl は<strong>大きな路線変更</strong>を行った。Frameworkの巨大機能を切り離し、<strong>軽量なtile配布 + MCPサーバ + Spec Registry</strong> にフォーカス。これが現在のTesslの実態。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 v0.28 → v0.50 の比較</div>
+      <pre class="ascii-art">─── v0.28系（〜2025年末まで） ──────────────
+  巨大Framework：
+   - .spec.md ファイル形式
+   - @generate / @describe アノテーション
+   - tessl build でコード生成
+   - tessl document でリバースエンジニアリング
+   - KNOWLEDGE.md で文脈管理
+   - Spec Registry 統合
+  → 「Spec-as-Source の野心的実装」
+
+─── v0.50系（2026年〜） ──────────────────
+  軽量化：
+   - tile（docs / rules / skills）の配布が主役
+   - MCPサーバとして AIエージェントに統合
+   - Spec Registry が中心
+   - フル Framework 機能は別離（v0.28に残る）
+   - KNOWLEDGE.md 廃止（オンデマンド取得に）
+  → 「SDD方法論を配布するプラットフォーム」</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>機能</th><th>v0.28</th><th>v0.50（現行）</th></tr></thead>
+      <tbody>
+        <tr><td>.spec.md ファイル</td><td>✅ コア機能</td><td>❌ 削除（別離）</td></tr>
+        <tr><td>@generate / @describe</td><td>✅ あり</td><td>❌ なし</td></tr>
+        <tr><td>tessl build / document</td><td>✅ あり</td><td>❌ なし</td></tr>
+        <tr><td>Spec Registry（tile install）</td><td>✅ あり</td><td>✅ 強化された</td></tr>
+        <tr><td>MCP server統合</td><td>△ 部分的</td><td>✅ 中核機能</td></tr>
+        <tr><td>SDD Tile（方法論配布）</td><td>—</td><td>✅ 新登場（tessl-labs/spec-driven-development）</td></tr>
+        <tr><td>対応エージェント</td><td>多数</td><td>Claude Code, Cursor を自動設定（他は手動）</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box warn">
+      ⚠️ <strong>公式の説明</strong>: Tesslの changelog より「The Framework functionality is no longer included. If you need the full framework features, v0.28.0 remains available (though development is paused)」（2026年初めのリリースノート）。<strong>Spec-as-Source は実験段階の機能として「凍結」</strong>されている。
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>v0.28（フル Framework）を試したいとき</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># バージョン固定でインストール</span>
+npm install -g @tessl/cli@0.28.0
+
+<span class="cm"># または npx で単発実行</span>
+npx @tessl/[email protected] init
+
+<span class="cm"># フル機能を使うには</span>
+tessl init --framework
+<span class="cm"># これで .spec.md / @generate などが使える</span></pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>現状の Tessl の立ち位置</strong>: 「<strong>SDD方法論をAIエージェントに教えるためのMCPベース配布プラットフォーム</strong>」。Spec Kit や Kiro が「ツール」なのに対し、Tessl は「<strong>ツールに乗せるレイヤー</strong>」になった。Claude Code に Tessl Registry をインストールすれば、Spec Kit の代わりにも使える、という関係。
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>Spec-as-Source は捨てたわけではない</strong>: Tessl CEO の長期ビジョン（2027年末までに開発者がコードを見なくなる）は変わっていない。だが「今すぐ普及できるもの」と「未来形」を分け、まずは<strong>普及しやすい配布プラットフォーム</strong>から市場を取りに行く戦略に見える。Spec-as-Source は v0.28 で検証中、いずれ復活する可能性が高い。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 7 ============================================ -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>3者総合比較表</h3>
+    <span class="lab-tag tag-advanced">3軸比較</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Spec Kit / Kiro / Tessl を1枚にまとめた総合比較表。同じ SDD でも、<strong>どこに重心を置くか</strong>が違う。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>観点</th><th>Spec Kit</th><th>Kiro</th><th>Tessl</th></tr></thead>
+      <tbody>
+        <tr><td>提供形態</td><td>CLI + テンプレ</td><td>独立IDE + CLI</td><td>CLI + MCP server + tile registry</td></tr>
+        <tr><td>SDDレベル</td><td>Spec-First/Anchored</td><td>Spec-First/Anchored</td><td>Spec-as-Source志向（実験中）</td></tr>
+        <tr><td>仕様の粒度</td><td>機能単位（spec.md）</td><td>機能単位（requirements.md等）</td><td>ファイル単位（.spec.md）</td></tr>
+        <tr><td>仕様記法</td><td>自然言語 + Given/When/Then</td><td>EARS 記法</td><td>YAML+Markdown+@アノテーション</td></tr>
+        <tr><td>コード編集の前提</td><td>人間も編集する</td><td>人間も編集する</td><td>(理想)生成のみ・編集禁止</td></tr>
+        <tr><td>典型的な対応エージェント</td><td>Claude/Copilot/Gemini/Cursor等</td><td>Kiro内蔵モデル</td><td>Claude Code/Cursor（MCP対応）</td></tr>
+        <tr><td>OSSライブラリ統合</td><td>個別対応</td><td>MCP統合</td><td>Spec Registry（10,000+ specs）</td></tr>
+        <tr><td>Brownfield 対応</td><td>手動工夫</td><td>Design-First / Bugfix Spec</td><td>@describe でリバース可能</td></tr>
+        <tr><td>料金</td><td>無料（裏のエージェント次第）</td><td>Free〜$200/月</td><td>無料（Frameworkは閉じβ）</td></tr>
+        <tr><td>成熟度</td><td>高（46.7k★・安定）</td><td>中（v0.10系・進化中）</td><td>低（大改造直後）</td></tr>
+        <tr><td>特徴的な強み</td><td>カスタマイズ性・ツール自由</td><td>GUI・PBT・Bugfix Spec</td><td>OSSライブラリ知識・思想の先進性</td></tr>
+      </tbody>
+    </table>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 「ピザ屋」アナロジーで覚える</div>
+      <pre class="ascii-art">Spec Kit  = レシピ集（自分のキッチンで作る）
+            ┃材料も道具も自由・最終形は自分次第
+
+Kiro      = ピザ屋のチェーン店（メニューが整っている）
+            ┃決まった流れで美味しいピザが出てくる
+
+Tessl     = 食材宅配サービス + 調理家電プロトタイプ
+            ┃将来の「ボタン1つで料理完成」を目指すが
+            ┃今は「良質な食材（=Spec Registry）の提供」が主役</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>ライブラリの正しい使い方を知っているのはTessl</strong>: 3者の中で <strong>OSSライブラリの正しい使い方データベース</strong>を持っているのはTesslだけ。これは<strong>SDD領域から少し外れて、AI開発支援エコシステム全般</strong>に効く差別化要素。Express / LangChain / Quarkus等を使うなら、Spec KitやKiroと併用して Tessl Registry をMCP経由で使うパターンが現実的。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 8 ============================================ -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>強み・弱みマトリクス</h3>
+    <span class="lab-tag tag-advanced">3軸比較</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      3者の強み弱みを観点別に評価。<strong>Tessl の強みは「ライブラリ知識」と「思想の先進性」、弱みは「成熟度」と「実用例の少なさ」</strong>。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>観点</th><th>Spec Kit</th><th>Kiro</th><th>Tessl</th></tr></thead>
+      <tbody>
+        <tr><td>導入の手軽さ</td><td><span class="yes">◎</span></td><td><span class="partial">○</span></td><td><span class="yes">◎</span></td></tr>
+        <tr><td>初学者の理解</td><td><span class="partial">△</span></td><td><span class="yes">◎</span></td><td><span class="no">×（概念多）</span></td></tr>
+        <tr><td>SDD思想の深さ</td><td><span class="partial">○</span></td><td><span class="partial">○</span></td><td><span class="yes">◎</span></td></tr>
+        <tr><td>OSS ライブラリ統合</td><td><span class="no">×</span></td><td><span class="partial">△</span></td><td><span class="yes">◎</span></td></tr>
+        <tr><td>カスタマイズ性</td><td><span class="yes">◎</span></td><td><span class="partial">○</span></td><td><span class="partial">○</span></td></tr>
+        <tr><td>機能Spec の体験</td><td><span class="partial">○</span></td><td><span class="yes">◎</span></td><td><span class="no">×（v0.50では削除）</span></td></tr>
+        <tr><td>バグ修正フロー</td><td><span class="no">×</span></td><td><span class="yes">◎</span></td><td><span class="partial">△（@describeで対応可）</span></td></tr>
+        <tr><td>レガシー対応</td><td><span class="partial">○</span></td><td><span class="yes">◎</span></td><td><span class="yes">◎ (@describe)</span></td></tr>
+        <tr><td>Spec-as-Source 実装</td><td><span class="no">×</span></td><td><span class="no">×</span></td><td><span class="partial">△ (v0.28のみ)</span></td></tr>
+        <tr><td>コミュニティ</td><td><span class="yes">◎ 46.7k★</span></td><td><span class="partial">○</span></td><td><span class="partial">△</span></td></tr>
+        <tr><td>製品安定性</td><td><span class="yes">◎</span></td><td><span class="partial">○ (進化中)</span></td><td><span class="no">× (大改造)</span></td></tr>
+        <tr><td>料金（個人）</td><td><span class="yes">◎ 0円</span></td><td><span class="partial">△ $20/月〜</span></td><td><span class="yes">◎ 0円</span></td></tr>
+        <tr><td>未来へのベット</td><td><span class="partial">○ 現実派</span></td><td><span class="partial">○ 現実派</span></td><td><span class="yes">◎ 未来派</span></td></tr>
+      </tbody>
+    </table>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 各ツールの「光る場面」</div>
+      <ul class="usecase-list">
+        <li><strong>Spec Kit</strong>: 既存環境を活かして SDD を学ぶ・実践する。長期安定。</li>
+        <li><strong>Kiro</strong>: GUI・バグ修正特化（Bugfix Spec）・PBT を使いたい。Brownfield 強い。</li>
+        <li><strong>Tessl</strong>: ① OSSライブラリの正しい使い方を AI に教えたい（Registry の威力）② SDD の方法論を Tile として配布・共有したい ③ Spec-as-Source の未来形を体験したい（v0.28）</li>
+      </ul>
+    </div>
+
+    <div class="info-box err">
+      🚨 <strong>Tesslの推奨レベル（2026年4月時点）</strong>: メイン開発手法として採用するのは<strong>時期尚早</strong>。だが <code>tessl install tessl/npm-XXX</code> で<strong>OSSライブラリ統合の MCPレイヤーとして補助的に使う</strong>のは即効性がある。Spec Kit/Kiro と<strong>競合ではなく補完</strong>と位置づけるのが現実的。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 9 ============================================ -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>MDD との歴史的関係</h3>
+    <span class="lab-tag tag-advanced">3軸比較</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Tessl の Spec-as-Source は、実は<strong>2000年代の MDD（Model-Driven Development）</strong>の現代版。Tomさんが業務で OutSystems（ローコードプラットフォーム）に長く関わってきた経験がここで効く。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 MDD の歴史と Tessl の位置</div>
+      <pre class="ascii-art">2000年代: MDD（Model-Driven Development）
+   - UML や 独自DSL でモデル（仕様）を書く
+   - カスタムコードジェネレータでコード生成
+   - 例: Eclipse Modeling Framework、Rational Rose
+   - 結果: 業務系では普及せず（オーバーヘッド過大）
+
+2010年代: ローコード/ノーコード
+   - OutSystems / Mendix / PowerApps など
+   - ビジュアル設計→コード（一部）自動生成
+   - 限定的な領域では成功
+
+2020年代後半: Tessl型 Spec-as-Source
+   - 自然言語で仕様を書く
+   - LLMがコード生成
+   - 仕様言語の制約がない（自由な記述）
+   - 「LLMが MDDの障壁を取り除く」という賭け</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>観点</th><th>2000年代 MDD</th><th>OutSystems等ローコード</th><th>Tessl型 SaS</th></tr></thead>
+      <tbody>
+        <tr><td>仕様の書き方</td><td>UML・独自DSL（厳格）</td><td>ビジュアル設計（GUI）</td><td>自然言語Markdown（自由）</td></tr>
+        <tr><td>コード生成エンジン</td><td>テンプレート+ルール</td><td>プラットフォーム固有エンジン</td><td>LLM</td></tr>
+        <tr><td>適用領域</td><td>制限あり（業務系で頓挫）</td><td>業務アプリで成功</td><td>未確定（実験中）</td></tr>
+        <tr><td>仕様記述コスト</td><td>高い（フォーマル過ぎ）</td><td>中（GUIで楽）</td><td>低い（自然言語）</td></tr>
+        <tr><td>生成コードの再現性</td><td>高い（決定的）</td><td>高い</td><td>低い（LLMの非決定性）</td></tr>
+        <tr><td>カスタマイズ余地</td><td>低い</td><td>中（拡張モジュール）</td><td>高い（仕様の書き方次第）</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info">
+      📘 <strong>OutSystems経験が活きる視点</strong>: Tomさんは普段 OutSystems で「ビジュアル設計 → 自動コード生成」のパターンに慣れている。<strong>「Service Action のフローを描けば、対応するコードが自動生成される」</strong>のと、Tessl の「<code>.spec.md</code> を書けば <code>src/index.ts</code> が自動生成される」は、同じ思想の延長。<strong>OutSystems 開発者は Tessl の発想に親和性が高い</strong>。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>MDD失敗の教訓を Tessl は乗り越えられるか</strong>: MDD失敗の理由は「<strong>抽象レベルが中途半端</strong>」「<strong>カスタマイズ時にコード直接編集が必要になり、仕様↔コードが乖離する</strong>」「<strong>記述コスト＞節約コスト</strong>」。LLMで記述コストは下がったが、<strong>非決定性</strong>と<strong>カスタマイズ時の逃げ道</strong>はまだ未解決。<code>// GENERATED FROM SPEC - DO NOT EDIT</code> を破る瞬間がいつか来る、というのが懐疑派の主張。
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>Tessl が MDD を超える可能性</strong>: ① 自然言語の柔軟性 ② テスト（@test）による検証 ③ Property-Based Testing 等での網羅検証（Kiroのアプローチを取り込めば） ④ MCP経由で多様なツールと連携可能。<strong>「LLMが MDD の障壁を取り除く賭け」は、検証中だが筋は悪くない</strong>。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 10 =========================================== -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>使い分け指針（3者）</h3>
+    <span class="lab-tag tag-advanced">実用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      3者の選択フローチャート。Tesslは<strong>「メインツールではなく補助レイヤー」</strong>として位置付けるのが現実解。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 選択フローチャート</div>
+      <pre class="ascii-art">START
+  │
+  ▼
+  Q1: SDD の主軸ツールは決まっている？
+  ├─ Spec Kit → そのまま使う + Tessl Registry 補助
+  ├─ Kiro     → そのまま使う + Tessl Registry 補助
+  └─ 未定 → Q2へ
+       │
+       ▼
+  Q2: GUI重視 or CLI重視？
+  ├─ GUI → Kiro
+  └─ CLI → Spec Kit
+       │
+       ▼
+  Q3: OSSライブラリを多用する？（npm/pip/maven）
+  ├─ はい → 主軸ツール + Tessl Registry を併用
+  └─ いいえ → 主軸ツール単独でOK
+       │
+       ▼
+  Q4: Spec-as-Source の未来形を体験したい？
+  ├─ はい → Tessl v0.28（実験的）
+  └─ いいえ → Spec Kit / Kiro で十分</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>シナリオ</th><th>推奨</th><th>理由</th></tr></thead>
+      <tbody>
+        <tr><td>SDD初体験・GUI重視</td><td>Kiro</td><td>視覚的に学べる</td></tr>
+        <tr><td>SDD初体験・CLI重視</td><td>Spec Kit</td><td>既存Claude Codeに乗る</td></tr>
+        <tr><td>OSSライブラリ多用（Express等）</td><td>主軸 + Tessl Registry</td><td>API ハルシネーション防止</td></tr>
+        <tr><td>レガシー/Brownfield</td><td>Kiro or Tessl @describe</td><td>既存コードからのリバース</td></tr>
+        <tr><td>研究的・思想を学ぶ</td><td>Tessl 全製品 + 論文</td><td>SDD最先端の議論</td></tr>
+        <tr><td>本番・安定性重視</td><td>Spec Kit</td><td>製品成熟度No.1</td></tr>
+        <tr><td>個人開発・コスト最小</td><td>Spec Kit + Tessl Registry</td><td>両方無料</td></tr>
+        <tr><td>業務でMDD既経験</td><td>Tessl v0.28を検討</td><td>思想の親和性が高い</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info">
+      📘 <strong>Tomさんの場合の推奨</strong>: 既に Spec Kit と Kiro を完走済みなら、次は <strong>Spec Kit + Tessl Registry の併用</strong>を試すのが効率的。OutSystems的なローコード経験を持つので、もし v0.28 のSpec-as-Sourceに興味があれば<strong>趣味プロジェクトで小さく試す</strong>のも面白い。業務適用は時期尚早。
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>Tessl Registry を「ライブラリ MCP」として活用</strong>: 主軸ツールが何であれ、<code>npm install express</code> したら <code>tessl install tessl/npm-express</code> も習慣にすると、AIがExpressのAPIを誤用するリスクが下がる。<strong>これは即効性のある実用パターン</strong>。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>避けたい使い方</strong>: ① Tessl Framework v0.28 を業務本番で使う（開発停止のため将来性なし） ② Tesslだけを SDD ツールとして頼る（成熟度不足） ③ Spec-as-Source を全プロジェクトで強制（緊急時の逃げ道がない）。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 11 =========================================== -->
+<div class="lab" id="lab11">
+  <div class="lab-header">
+    <div class="lab-num">11</div>
+    <h3>実機で触ってみる手順</h3>
+    <span class="lab-tag tag-advanced">実用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Tessl Registry を Claude Code で実際に使う最小手順。<strong>5分で動く</strong>ように構成した。フル Framework（v0.28）は別パスとして案内する。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 Tessl の前提環境</div>
+      <pre class="ascii-art">必要なもの:
+  - Node.js 22以上（v0.50系から最低要件）
+  - Claude Code または Cursor（MCP対応エージェント）
+  - Tessl アカウント（GitHub等でログイン）
+  - 既存のプロジェクト or 空ディレクトリ</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>① 最短セットアップ（v0.50系・主流ルート）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># Tessl CLIをグローバルインストール</span>
+npm install -g @tessl/cli
+
+<span class="cm"># または npxで都度実行</span>
+npx @tessl/cli --version
+
+<span class="cm"># プロジェクトに移動して初期化</span>
+cd my-project
+tessl init --agent claude-code
+<span class="cm"># Claude Code用のMCP設定が自動で生成される</span>
+
+<span class="cm"># Tesslにログイン（ブラウザが開く）</span>
+tessl login</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>② SDD方法論tile + ライブラリtileのインストール</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># SDD方法論をAIに教えるtileを入れる</span>
+tessl install tessl-labs/spec-driven-development
+
+<span class="cm"># 使うライブラリのtileも入れる（例: Express）</span>
+tessl install tessl/npm-express
+
+<span class="cm"># インストール済み一覧を確認</span>
+tessl list
+
+<span class="cm"># 何が起きたか確認:</span>
+<span class="cm"># - .tessl/tiles/ 配下に Markdown が配置される</span>
+<span class="cm"># - .tessl/RULES.md に AIへの指示が統合される</span>
+<span class="cm"># - .claude/ 配下にClaude Code用のMCP設定が入る</span></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>③ Claude Code から使う</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># Claude Code を起動</span>
+claude
+
+<span class="cm"># プロンプトの最初に「use spec-driven development」と書く</span>
+<span class="cm"># これで方法論tileが活性化される</span>
+
+<span class="cm"># 例:</span>
+"Build a REST API for managing team projects.
+Use spec-driven development."
+
+<span class="cm"># 結果: AIがいきなりコードを書かず、要件を質問してくる</span>
+<span class="cm"># Tessl Registry の Express tile も自動的に文脈に入る</span>
+<span class="cm"># → API ハルシネーションが減る</span></pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>「use spec-driven development」が呪文</strong>: Tessl SDD tile はインストールしただけでは発動しない。<strong>プロンプトに方法論を呼び出す合図</strong>を入れることでルールが効く。逆に普通のチャットでは tile が邪魔しないので、必要なときだけ呼ぶ運用ができる。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>Frameworkフル機能（v0.28）を試すには</strong>: 上の手順とは別途、<code>npm install -g @tessl/[email protected]</code> でバージョン固定が必要。<code>.spec.md</code>と <code>@generate</code> はこちらでないと動かない。<strong>開発停止のため将来サポート保証なし</strong>。研究目的・趣味のみで。
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>④ v0.28 のフル Framework を試す（研究目的）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># 別ディレクトリに固定バージョンを入れる</span>
+mkdir tessl-v028-experiment
+cd tessl-v028-experiment
+
+<span class="cm"># v0.28系を明示インストール（メジャー破壊的変更前の最終版）</span>
+npm install --save-dev @tessl/[email protected]
+
+<span class="cm"># 初期化（フレームワーク機能つき）</span>
+npx tessl init --framework
+
+<span class="cm"># 簡単なライブラリの spec を書いて build</span>
+<span class="cm"># （詳細は当時のドキュメント or GitHub履歴を参照）</span>
+npx tessl build</pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 Tomさんの「次の1歩」</div>
+      <ul class="usecase-list">
+        <li>前回作った Spec Kit の TODO CLI プロジェクトに <code>tessl install</code> で SDD tile を追加してみる（共存テスト）</li>
+        <li>Claude Code で次の業務系プロジェクトを始めるとき、最初に <code>tessl init</code> + <code>tessl install tessl/npm-XXX</code> を習慣化する</li>
+        <li>OutSystems経験を活かして、v0.28 で <code>.spec.md</code> を書きコード生成する練習を1本やってみる（ローコード比較レポートになる）</li>
+        <li>Tessl の AI Native Dev コミュニティ（Discord）を観察し、Spec-as-Source がどう進化するかを追う</li>
+      </ul>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>Tessl が成功するかは未確定だが</strong>、<strong>Spec Registry の発想（OSSライブラリ知識をMCPで配布）</strong>は他のSDDツール（Kiro等）も追随する可能性が高い。<strong>「ライブラリの正しい使い方を AI に教える」というレイヤーが標準化される</strong>未来を見越して、今のうちに体験しておく価値はある。
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>シリーズ総まとめ</strong>: <br>
+      ① <strong>AI-DLC手順書</strong>（プロセス規律）<br>
+      ② <strong>AI-DLC vs SDD比較</strong>（思想の整理）<br>
+      ③ <strong>Spec Kit手順書</strong>（CLI型SDD実機）<br>
+      ④ <strong>Spec Kit vs Kiro比較</strong>（ツール選択軸）<br>
+      ⑤ <strong>Kiro手順書</strong>（IDE型SDD実機）<br>
+      ⑥ <strong>本Lab</strong>（Spec-as-Source・Tesslの位置づけ）<br><br>
+      これでAI時代の開発手法の主要選択肢を「思想 → 実装 → 比較 → 未来形」まで一通り通ったことになる。あとは<strong>業務に小さく適用</strong>して、自分のスタイルに馴染ませていくフェーズ。3〜5プロジェクト試した後、<strong>個人版 SDD プレイブック</strong>を Markdown でまとめると体系化が進む。
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+function copyCode(btn) {
+  const block = btn.closest('.code-block') || btn.parentElement;
+  const pre = block.querySelector('pre');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+  const map = new Map();
+  links.forEach(a => {
+    const el = document.getElementById(a.getAttribute('href').slice(1));
+    if (el) map.set(el, a);
+  });
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) {
+      const l = map.get(e.target);
+      if (l) { links.forEach(n => n.classList.remove('active')); l.classList.add('active'); }
+    }
+  }), { rootMargin: '-30% 0px -60% 0px' });
+  document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+  document.querySelectorAll('.code-block').forEach((cb, i) => {
+    if (cb.querySelector('.code-block-header')) return;
+    const header = document.createElement('div');
+    header.className = 'code-block-header';
+    header.innerHTML = `<span>Code #${i+1}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+    cb.insertBefore(header, cb.firstChild);
+  });
+});
+</script>
+
+</body>
+</html>

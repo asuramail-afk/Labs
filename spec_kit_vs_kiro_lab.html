@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spec Kit vs Kiro Spec モード — 同じSDDの違う流派</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; }
+
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); font-weight:600; }
+.compare-table .yes { color:var(--success); font-weight:600; }
+.compare-table .no { color:var(--error); font-weight:600; }
+.compare-table .partial { color:var(--accent4); font-weight:600; }
+
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+.usecase-box { background:rgba(0,92,197,.05); border:1px solid rgba(0,92,197,.25);
+  border-left:3px solid var(--accent); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#003d8f; }
+.usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent); font-weight:700; margin-bottom:6px; }
+.usecase-list { margin-left:20px; margin-bottom:10px; }
+.usecase-list li { margin-bottom:4px; }
+
+/* Side-by-side panels */
+.dual { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; }
+.dual-col { padding:12px 14px; border-radius:7px; border:1px solid; font-size:.85rem; line-height:1.75; }
+.dual-col h4 { font-family:var(--mono); font-size:.78rem; margin-bottom:6px; letter-spacing:.05em; }
+.dual-col ul { margin-left:18px; margin-top:4px; }
+.dual-col li { margin-bottom:3px; }
+.dual-spec { background:rgba(0,92,197,.06); border-color:rgba(0,92,197,.30); color:#003d8f; }
+.dual-spec h4 { color:var(--accent); }
+.dual-kiro { background:rgba(34,134,58,.06); border-color:rgba(34,134,58,.30); color:#154f1e; }
+.dual-kiro h4 { color:var(--success); }
+@media (max-width:900px) { .dual { grid-template-columns:1fr; } }
+
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// Spec Kit <span>vs Kiro</span></div>
+  <div class="nav-section">前提</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>3行サマリー</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>提供形態の違い</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>料金とモデル</a>
+  <div class="nav-section">フェーズ比較</div>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>フェーズ対応表</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>2ワークフロー</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>EARS記法</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>Bugfix Spec</a>
+  <div class="nav-section">運用</div>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>Steering vs Constitution</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>テスト統合</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>強み・弱み</a>
+  <div class="nav-section">選び方</div>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>使い分け指針</a>
+  <a class="nav-item" href="#lab11"><span class="nav-num">11</span>移行と併用</a>
+</nav>
+
+<div class="hero">
+  <h1>Spec Kit vs Kiro Spec モード</h1>
+  <p class="subtitle">同じSDD（仕様駆動開発）の2つの実装を、構造で比較する</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>3行で違いを掴む</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>提供形態（CLI vs IDE）</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>料金とモデル選択</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>フェーズ対応表</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>Kiroの2ワークフロー</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>EARS記法（Kiro固有）</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>Bugfix Spec（Kiro固有）</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>Steering vs Constitution</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>テスト戦略の違い</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>強み・弱みマトリクス</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">10</span>使い分け指針</a>
+    <a class="toc-item" href="#lab11"><span class="toc-num">11</span>移行・併用パターン</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- LAB 0 ============================================ -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>3行で違いを掴む</h3>
+    <span class="lab-tag tag-basic">前提</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      両者ともSDD（仕様駆動開発）の代表的実装だが、<strong>「どこで動くか」「誰が使うか」「どこまで囲うか」</strong>が違う。Spec Kit は<strong>素のエージェントに薄く乗せるレイヤー</strong>、Kiroは<strong>SDD専用の独立IDE製品</strong>。
+    </p>
+
+    <div class="dual">
+      <div class="dual-col dual-spec">
+        <h4>🔵 GitHub Spec Kit</h4>
+        <ul>
+          <li><strong>形態</strong>: CLI + Markdownテンプレ群</li>
+          <li><strong>動く場所</strong>: 既存のClaude Code/Copilot/Geminiなど</li>
+          <li><strong>コスト</strong>: ツール無料（裏のエージェント側課金）</li>
+          <li><strong>強み</strong>: ツール自由・カスタマイズ性高</li>
+        </ul>
+      </div>
+      <div class="dual-col dual-kiro">
+        <h4>🟢 AWS Kiro Spec モード</h4>
+        <ul>
+          <li><strong>形態</strong>: 独立IDE（Code OSSベース）+ CLI</li>
+          <li><strong>動く場所</strong>: Kiroアプリ内（VS Codeとは別アプリ）</li>
+          <li><strong>コスト</strong>: Free 50credits → Pro $20/月〜</li>
+          <li><strong>強み</strong>: GUI完備・SDDに最適化された体験</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>一言で覚えるなら</strong>: <code>Spec Kit = SDDのレシピ集</code>（既存キッチンで自分で料理する）/ <code>Kiro = SDD専用レストラン</code>（メニューに沿って体験する）。Tomさんの状況では、<strong>既にClaude Codeに慣れているならSpec Kit</strong>、<strong>SDD体験を最短で味わいたいならKiro</strong>。
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 視覚的に並べる</div>
+      <pre class="ascii-art">─── Spec Kit（薄い層） ────────────────────
+    [既存のAIエージェント (Claude Code等)]
+              ↑ /speckit.* スラッシュコマンドを足す
+        [Spec Kit テンプレ群]
+              ↑ specify init で配置
+        [あなたのプロジェクト]
+
+─── Kiro（厚い層・統合体験） ───────────────
+    [Kiro IDE = Code OSS ベース 独立アプリ]
+        ├ Specs ペイン（GUI）
+        ├ Steering ペイン（GUI）
+        ├ Hooks ペイン（GUI）
+        ├ Auto エージェント（Sonnet/Opus等）
+        └ あなたのプロジェクト</pre>
+    </div>
+  </div>
+</div>
+
+<!-- LAB 1 ============================================ -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>提供形態の違い（CLI vs IDE）</h3>
+    <span class="lab-tag tag-basic">前提</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      最も実感しやすい違いは<strong>「どこで動くか」</strong>。Spec Kit は普段使っているコーディングエージェントに乗せる薄いレイヤー、Kiro はそれ自体が完結したIDE。インストールから初回起動までの体験が根本的に違う。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>項目</th><th>Spec Kit</th><th>Kiro</th></tr></thead>
+      <tbody>
+        <tr><td>本体</td><td>Pythonツール（specify-cli）</td><td>独立IDE（Code OSSフォーク）+ CLI</td></tr>
+        <tr><td>インストール</td><td><code>uv tool install</code> でCLIだけ</td><td>OSごとのインストーラをダウンロード</td></tr>
+        <tr><td>VSCode拡張との関係</td><td>不要（CLIから配置）</td><td>Open VSX互換プラグインのみ対応（Microsoft専有拡張は不可）</td></tr>
+        <tr><td>サポートエージェント</td><td>Claude Code, Copilot, Gemini, Cursor, Codex, Codebuddy, Pi など多数</td><td>Kiro内蔵のAuto（複数モデル混合）or 単一モデル指定</td></tr>
+        <tr><td>UIの作り</td><td>Markdownファイル+スラッシュコマンドのみ</td><td>Specs/Steering/Hooksの専用ペインGUI</td></tr>
+        <tr><td>タスク実行UI</td><td>tasks.mdをエージェントが読む（テキスト）</td><td>tasks.mdに「Run/Run all」ボタン、進捗表示</td></tr>
+        <tr><td>ログイン</td><td>裏のエージェントの認証（例: Claude Codeの認証）</td><td>GitHub / Google / AWS Builder ID / IAM Identity Center</td></tr>
+        <tr><td>OS対応</td><td>Win/Mac/Linux（Pythonが動けば）</td><td>Win/Mac/Linux のインストーラあり</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info">
+      📘 <strong>「Code OSSベース」の意味</strong>: KiroはVS Codeのオープンソース部分（Code OSS）をフォークして作られた独立IDE。VS Codeの設定・テーマは引き継げるが、<strong>Microsoft専有の拡張機能（Pylance、Remote Development、GitHub Copilot拡張など）は動かない</strong>。Open VSXマーケットプレイスにあるものだけ。これは規制業界での採用判断ポイント。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>Tomさんが業務で使う場合の注意</strong>: 業務PCに新しいIDEを入れるのはハードルが高い場合がある。Spec Kit なら既存環境を触らずに導入できる。Kiro は別アプリのインストール承認が必要。<strong>個人学習・自宅PCで試すならKiroが手早い</strong>、<strong>業務環境ならSpec Kitが導入しやすい</strong>。
+    </div>
+
+    <div class="dual">
+      <div class="dual-col dual-spec">
+        <h4>🔵 Spec Kit が合う人</h4>
+        <ul>
+          <li>既にClaude Code等の使用経験がある</li>
+          <li>ターミナル中心で作業している</li>
+          <li>複数のエージェントを使い分けたい</li>
+          <li>MarkdownとGitだけで完結させたい</li>
+          <li>既存IDE（VS Code等）を変えたくない</li>
+        </ul>
+      </div>
+      <div class="dual-col dual-kiro">
+        <h4>🟢 Kiro が合う人</h4>
+        <ul>
+          <li>GUIでSDD体験をしたい</li>
+          <li>初めてSDDに触れる初学者</li>
+          <li>仕様→設計→タスクの進捗を可視化したい</li>
+          <li>1ツールで完結する方が好み</li>
+          <li>AWSエコシステム志向</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LAB 2 ============================================ -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>料金とモデル選択</h3>
+    <span class="lab-tag tag-basic">前提</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ここが見落とされがちだが、実用上もっとも違う点。Spec Kit はツール自体が無料で<strong>裏のエージェント側で課金</strong>。Kiroは<strong>独自のクレジット制</strong>。同じ仕様作成でも累積コストが変わる。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>プラン</th><th>Spec Kit</th><th>Kiro（2026年4月時点）</th></tr></thead>
+      <tbody>
+        <tr><td>ツール本体</td><td>無料（OSS）</td><td>Free / Pro $20/月 / Pro+ $40/月 / Power $200/月</td></tr>
+        <tr><td>無料枠</td><td>—（裏のエージェント次第）</td><td>50 credits/月（永続）+ 初回30日間500 bonus credits</td></tr>
+        <tr><td>料金体系</td><td>Claude Code: 通常のClaude課金。Copilot: GitHubサブスク。等</td><td>月額固定 + クレジット超過 $0.04/credit</td></tr>
+        <tr><td>モデル選択</td><td>裏のエージェント次第（Claude Codeなら Anthropicのモデル群）</td><td>Auto（混合）/ Sonnet 4.5 / Haiku 4.5 / Opus 4.5/4.6/4.7 / Sonnet 4 を指定可</td></tr>
+        <tr><td>AWS GovCloud対応</td><td>—</td><td>あり（料金20%増、Freeなし、IAM Identity Center必須）</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info">
+      📘 <strong>Kiroのクレジット消費感</strong>: 簡単な質問は1credit未満、Spec実行（要件→設計→タスク→実装）は1回でクレジットを多く消費する。Free 50credits は<strong>1〜2機能の練習で使い切る</strong>感覚。本格運用なら Pro$20/月以上が現実的。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>日本円換算と消費税</strong>: Kiroの公式FAQは「日本の請求先住所には日本の消費税が適用される」と明記。Pro $20/月+消費税 ≒ 月額3,200円前後。Claude.ai有料プラン（既に持っている場合）と<strong>二重支払いになる</strong>点に注意。
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>料金で迷ったらまずFree+Trial</strong>: Kiroは初回30日間500 bonusクレジットがある。これでSpec Kitと同じ題材を1〜2本通せる。比較してから有料化判断するのが安全。
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 1機能あたりのコスト感（推定）</div>
+      <pre class="ascii-art">─── Spec Kit（Claude Code 経由） ───────────
+小機能(数時間) : Claude.aiのProプラン内（既存契約あれば追加0円）
+中機能(数日)   : 同上、または API課金 数百〜数千円相当
+
+─── Kiro（Pro tier） ───────────────────
+小機能         : 50〜100 credits ≒ Free枠で完走可
+中機能         : 200〜500 credits ≒ Proでカバー
+大機能 or 連発 : 1000+ credits ≒ Pro+ or 超過課金
+
+  ↑ Kiroは「使った分が見える」点が透明性高い反面、
+    busty usage（月初に集中）するとProでも超過しやすい</pre>
+    </div>
+  </div>
+</div>
+
+<!-- LAB 3 ============================================ -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>フェーズ対応表</h3>
+    <span class="lab-tag tag-intermediate">フェーズ比較</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      両者のフェーズを並べると、似ているようで<strong>段数と名前が違う</strong>。Spec Kitは6段、Kiroは3段（+ Bugfixは別系統）。同じ内容を異なる粒度で扱っている。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 フェーズ対応図</div>
+      <pre class="ascii-art">─── Spec Kit ───────────────────────────────────
+  /speckit.constitution → /speckit.specify → /speckit.clarify
+                       → /speckit.plan     → /speckit.tasks
+                       → /speckit.implement
+  （6段。Constitution はプロジェクト1回、以降は機能ごと）
+
+─── Kiro Spec モード ───────────────────────────
+  Steering(任意で先に) →  Requirements → Design → Tasks → Implement
+  または                  Design → Requirements → Tasks → Implement
+  （3段+任意のSteering。Requirements-First / Design-First の2変種）
+
+  Bugfix Spec は別系統:
+  Bug Analysis(bugfix.md) → Design → Tasks → Implement</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>役割</th><th>Spec Kit</th><th>Kiro</th></tr></thead>
+      <tbody>
+        <tr><td>原則・ルール</td><td>constitution.md（明示的に書く）</td><td>.kiro/steering/*.md（複数ファイル：product.md / tech.md / structure.md）</td></tr>
+        <tr><td>What/Why</td><td>spec.md（汎用Markdown）</td><td>requirements.md（EARS記法強制）</td></tr>
+        <tr><td>曖昧解消</td><td>/speckit.clarify として独立フェーズ</td><td>Requirements中の対話で吸収</td></tr>
+        <tr><td>How / 設計</td><td>plan.md / data-model.md / contracts/ / research.md / quickstart.md（多ファイル）</td><td>design.md（1ファイル、シーケンス図含む）</td></tr>
+        <tr><td>分解</td><td>tasks.md（依存DAG・[P]マーク）</td><td>tasks.md（GUIで Run/Run all ボタン）</td></tr>
+        <tr><td>実装</td><td>/speckit.implement</td><td>各タスク横の「Start Task」or「Run all tasks」</td></tr>
+        <tr><td>バグ修正特化</td><td>—（Spec全体を通すか、軽量プロンプトで対応）</td><td>Bugfix Spec（bugfix.md でcurrent/expected/unchanged 構造）</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info">
+      📘 <strong>Kiroのフェーズが少ない理由</strong>: Spec Kit が独立フェーズにしている <code>clarify</code> や <code>plan</code> 内の補助文書（research.md / data-model.md / contracts/）を、Kiroは<strong>Requirements ↔ Design の対話</strong>に吸収している。GUIが対話を補助するのでフェーズを増やす必要が少ない、という思想。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>「設計→要件」の逆順がKiroの独自性</strong>: Spec Kit は基本的に Requirements → Plan の順。Kiroは2026年2月のv0.10で <strong>Design-First ワークフロー</strong>を追加し、技術設計から要件を導出することを正式サポート。これはbrownfield（既存資産活用）や非機能要件が厳しい場面で効く。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 4 ============================================ -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>Kiroの2ワークフロー（Requirements-First / Design-First）</h3>
+    <span class="lab-tag tag-intermediate">フェーズ比較</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Kiroが2026年2月v0.10で追加した「2ワークフロー選択」は、Spec Kitには無い独自機能。<strong>「ユーザ視点の要件から始めるか、技術アーキから始めるか」</strong>を最初に選ぶ。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 2ワークフローの違い</div>
+      <pre class="ascii-art">─── Requirements-First（標準） ─────────────────
+  「ユーザが何をできるか」から始める
+  
+  あなたのプロンプト
+       ↓
+  requirements.md（EARS記法）
+       ↓ 人間レビュー
+  design.md（要件を満たす設計を生成）
+       ↓ 人間レビュー
+  tasks.md
+       ↓
+  Implement
+
+─── Design-First（v0.10新機能） ───────────────
+  「どう作るか」から始める。要件は設計から導出
+  
+  あなたのプロンプト + 詳細レベル選択（高/低）
+       ↓
+  design.md（先に作る）
+       ↓ 人間レビュー
+  requirements.md（設計から実現可能な要件を導出）
+       ↓ 人間レビュー
+  tasks.md
+       ↓
+  Implement</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>シナリオ</th><th>Requirements-First</th><th>Design-First</th></tr></thead>
+      <tbody>
+        <tr><td>新機能を考えるとき</td><td>○ 標準的</td><td>×</td></tr>
+        <tr><td>非機能要件が厳しい（性能・コンプラ）</td><td>△ 後で実現性NG発見</td><td>○ 設計の実現性が保証される</td></tr>
+        <tr><td>技術スタックが既に決まっている</td><td>△ 重複作業</td><td>○ 設計を素直に書ける</td></tr>
+        <tr><td>brownfield（既存コードベースに追加）</td><td>△</td><td>○ 既存設計に整合させやすい</td></tr>
+        <tr><td>プロトタイプ・実現可能性検証</td><td>×</td><td>○ アーキ案を素早く試せる</td></tr>
+        <tr><td>初学者の最初の一歩</td><td>○ 直感的</td><td>×（設計知識が必要）</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info">
+      📘 <strong>Kiro公式の説明</strong>: 「Design-First は、技術的アプローチが <strong>出発点</strong> であって <strong>到達点</strong> ではないときに最適」。性能・コンプラ・既存アーキへの統合などの<strong>制約から設計をスタート</strong>させる場合に効く。Spec Kitだと plan.md フェーズで類似のことをするが、Kiroは<strong>workflow選択として明示的にサポート</strong>している点が違う。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>workflowは途中で切り替え不可</strong>: Kiroの公式FAQで明言されている。Requirements-First で始めたSpecをDesign-Firstに変えるには、新しいSpecを作って必要な内容をコピーする必要がある。<strong>最初の選択は慎重に</strong>。
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>Spec KitでDesign-First相当をやるには</strong>: <code>/speckit.constitution</code> で技術スタックを書く → <code>/speckit.plan</code> 相当の内容を先に書く → spec.md を後で作る、という順で運用すれば近いことはできる。ただしテンプレが Requirements-First を前提にしているので、AIへの追加指示が必要。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 5 ============================================ -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>EARS記法（Kiro固有）</h3>
+    <span class="lab-tag tag-intermediate">フェーズ比較</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Kiroの requirements.md は <strong>EARS（Easy Approach to Requirements Syntax）</strong>という構造化記法を使う。Spec Kit の Given/When/Then よりさらに厳密で、安全クリティカル領域（航空エンジン制御等）由来の記法。
+    </p>
+
+    <div class="info-box info">
+      📘 <strong>EARSの起源</strong>: Rolls-Royceが航空機エンジン制御ソフトウェアの安全要件記述のために開発。曖昧さの排除・テスト可能性・要件→実装のトレーサビリティを目的とする。Kiroが採用した理由は<strong>「AIが要件を機械的に解釈しやすい」</strong>から。
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>EARSの基本パターン（Kiro requirements.md）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">## User Authentication</span>
+
+<span class="cm">### User Registration</span>
+<span class="kw">WHEN</span> a user submits valid registration data
+<span class="kw">THE SYSTEM SHALL</span> create a new user account
+
+<span class="kw">WHEN</span> a user submits an email that already exists
+<span class="kw">THE SYSTEM SHALL</span> display "Email already registered" error
+
+<span class="kw">WHEN</span> a user submits invalid email format
+<span class="kw">THE SYSTEM SHALL</span> display email validation error
+
+<span class="cm">## EARS の5つの基本パターン</span>
+<span class="cm"># 1. Ubiquitous（常時）       : THE SYSTEM SHALL ...</span>
+<span class="cm"># 2. Event-driven（条件発生時）: WHEN ... THE SYSTEM SHALL ...</span>
+<span class="cm"># 3. State-driven（状態時）   : WHILE ... THE SYSTEM SHALL ...</span>
+<span class="cm"># 4. Optional（条件付き）     : WHERE ... THE SYSTEM SHALL ...</span>
+<span class="cm"># 5. Unwanted（異常時）       : IF ... THEN THE SYSTEM SHALL ...</span></pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>観点</th><th>Spec Kit (Given/When/Then)</th><th>Kiro (EARS)</th></tr></thead>
+      <tbody>
+        <tr><td>由来</td><td>BDD（Cucumber等）</td><td>形式手法・安全クリティカル系</td></tr>
+        <tr><td>主語の扱い</td><td>暗黙（テスト視点）</td><td>明示（"THE SYSTEM SHALL"が必須）</td></tr>
+        <tr><td>記述の自由度</td><td>高め（自然言語寄り）</td><td>低め（パターン縛り）</td></tr>
+        <tr><td>AIの解釈</td><td>テストコードへ落としやすい</td><td>システム振る舞いとして解釈・検証しやすい</td></tr>
+        <tr><td>テスタビリティ</td><td>○</td><td>◎（Property-Based Testに乗せやすい）</td></tr>
+        <tr><td>習得コスト</td><td>低い（広く知られている）</td><td>中（最初は窮屈に感じる）</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box ok">
+      ✅ <strong>EARSが強い場面</strong>: ① 要件の曖昧さを最小化したいとき（規制業界・医療・金融） ② AIに「これを必ず満たして」と強い制約を与えたいとき ③ レビュアーが多人数で「この要件はどう解釈する？」を減らしたいとき。<strong>普段の自由記述に慣れた人ほど、最初は窮屈に感じる</strong>が、慣れると曖昧さが激減する効果が出る。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>EARSは万能ではない</strong>: 探索的なUI/UXや「ここはユーザに任せる」のような曖昧さを残したい要件には不向き。すべてEARSで書こうとすると窮屈で、結果的に網羅できないことがある。Kiroも実運用では <strong>EARSベース + 自然言語の補足</strong> が一般的。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 6 ============================================ -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>Bugfix Spec（Kiro固有）</h3>
+    <span class="lab-tag tag-intermediate">フェーズ比較</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Kiroがv0.10で追加した <strong>Bugfix Spec</strong> は、SDDの「Sledgehammer問題（小修正に重い）」を解決する仕組み。バグ修正専用の軽量フローで、<strong>「変える挙動 / 変えない挙動」</strong>を構造化して扱う。Spec Kitには対応する仕組みがない。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 Bugfix Spec の構造（bugfix.md）</div>
+      <pre class="ascii-art">┌── bugfix.md ──────────────────────┐
+│  ## Current Behavior（今の挙動）        │
+│  ─ バグの再現条件と現状の動作            │
+│                                          │
+│  ## Expected Behavior（期待する挙動）  │
+│  ─ 修正後の正しい動作                    │
+│                                          │
+│  ## Unchanged Behavior（変えない挙動） │
+│  ─ 触ってはいけない既存機能              │
+│  ─ ここが Bugfix Spec の核心             │
+└────────────────────────────────┘
+            ↓
+    design.md（修正設計）
+            ↓
+    tasks.md（surgical fix のステップ）
+            ↓
+    Property-Based Testing（PBT）で検証
+      - 現状にバグがあることを検証する PBT
+      - 修正後にバグが解消することを検証する PBT
+      - 変わらない挙動が変わらないことを検証する PBT</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>「Unchanged Behavior」がブレイクスルー</strong>: AIが「ついでに直す」傾向（前回手順書でも警告した暴走パターン）を、<strong>仕様レベルで明示的にブロック</strong>する。「ここは触らない」を明記し、PBTで検証することで、サージカルな修正を保証する。これは Spec Kit にはない独特のアプローチ。
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>Property-Based Testing（PBT）の役割</strong>: ランダムな入力を大量に生成して、与えた性質（property）が常に成り立つかを検証する手法。Bugfix Specでは「変わらない挙動が本当に変わらないか」を網羅的に検証する。<strong>具体的なテストケースだけだと見落とす副作用</strong>を捕まえる。
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>シナリオ</th><th>Spec Kit</th><th>Kiro Bugfix Spec</th></tr></thead>
+      <tbody>
+        <tr><td>typo 修正</td><td>軽量プロンプト or Spec全部通す（重い）</td><td>Bugfix Spec で軽量に</td></tr>
+        <tr><td>1関数のロジックバグ</td><td>同上</td><td>Bugfix Spec が最適</td></tr>
+        <tr><td>影響範囲が広い修正</td><td>Spec を通す</td><td>Bugfix Specで影響範囲を明示</td></tr>
+        <tr><td>regression防止が重要</td><td>テスト追加を手動指示</td><td>PBTが組み込みで生成される</td></tr>
+        <tr><td>レガシーコードの修正</td><td>brownfield的に進める</td><td>Bugfix Spec＋既存挙動の保護</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box warn">
+      ⚠️ <strong>Spec Kitで類似のことをやるには</strong>: <code>/speckit.specify</code> 内に「Constraints: 既存の○○機能は変更しない」と明記し、<code>/speckit.tasks</code> 生成時に「touchable / untouchable」セクションを書かせる工夫が必要。Kiroのように構造化されたテンプレが提供されないので、<strong>運用で補う</strong>必要がある。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 7 ============================================ -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>Steering Files vs Constitution</h3>
+    <span class="lab-tag tag-advanced">運用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      プロジェクト全体に常に適用するルール群。Spec Kitは<strong>1ファイルに集約</strong>（constitution.md）、Kiroは<strong>用途別に複数ファイル</strong>（steering files）。同じ目的でも構造が違う。
+    </p>
+
+    <div class="dual">
+      <div class="dual-col dual-spec">
+        <h4>🔵 Spec Kit: constitution.md</h4>
+        <p style="margin:6px 0 6px;">場所: <code>.specify/memory/constitution.md</code></p>
+        <ul>
+          <li>1ファイルに全原則を集約</li>
+          <li>条文形式（Section X.Y）</li>
+          <li>明示的に <code>/speckit.constitution</code> で生成・更新</li>
+          <li>すべてのフェーズで自動参照</li>
+        </ul>
+      </div>
+      <div class="dual-col dual-kiro">
+        <h4>🟢 Kiro: Steering Files</h4>
+        <p style="margin:6px 0 6px;">場所: <code>.kiro/steering/*.md</code></p>
+        <ul>
+          <li>用途別に複数ファイル</li>
+          <li>標準: product.md / tech.md / structure.md</li>
+          <li>追加可（specs.md でSpec生成挙動を変更等）</li>
+          <li>すべての対話で自動的に文脈に含まれる</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 Kiro Steering Files の典型構成</div>
+      <pre class="ascii-art">.kiro/steering/
+├── product.md      ← 何を作っているプロダクトか
+│                     対象ユーザ・主要機能・差別化要素
+├── tech.md         ← 技術スタック・コーディング規約・依存
+│                     使うフレームワーク・禁止事項
+├── structure.md    ← ディレクトリ構造・モジュール境界
+│                     ファイル命名・配置ルール
+└── specs.md        ← (任意) Spec生成挙動のカスタム
+                      「テストファースト」等の追加ルール</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>観点</th><th>Spec Kit constitution</th><th>Kiro Steering</th></tr></thead>
+      <tbody>
+        <tr><td>ファイル数</td><td>1個（constitution.md）</td><td>3〜N個（用途別）</td></tr>
+        <tr><td>初期生成</td><td><code>/speckit.constitution</code> 必須</td><td>任意（ない状態でも動く）</td></tr>
+        <tr><td>更新方法</td><td>同コマンド再実行 or 直接編集</td><td>直接編集 or チャットで指示</td></tr>
+        <tr><td>適用範囲</td><td>全フェーズで参照</td><td>全対話で自動文脈に</td></tr>
+        <tr><td>個別Specへの上書き</td><td>spec.md に明記すれば可能</td><td>specs.md で挙動カスタム可</td></tr>
+        <tr><td>チームで共有</td><td>Gitで.specify/全体を共有</td><td>Gitで.kiro/全体を共有</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info">
+      📘 <strong>Kiroの「Hooks」も合わせて理解</strong>: Steeringとは別に <code>.kiro/hooks/</code> でファイル変更イベントに反応する自動化を仕掛けられる。「テストファイル保存時にカバレッジ計算」「コミット直前にSpec同期チェック」など。Spec Kitには対応する組み込み機構はなく、Git Hooksで自前実装する必要がある。
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>どちらが優れているわけではない</strong>: 1ファイル集約は<strong>シンプルで読みやすい</strong>、複数ファイルは<strong>関心ごとに分離されメンテしやすい</strong>。Tomさんが慣れたOutSystems的に言えば、Spec Kit constitution は「1つのSettings Module」、Kiro Steering は「用途別の複数Settings」のような違い。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 8 ============================================ -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>テスト戦略の違い</h3>
+    <span class="lab-tag tag-advanced">運用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      両者ともテスト統合を重視するが、<strong>「何をテストとして組み込むか」</strong>が違う。Spec Kitは伝統的なTDD志向、KiroはProperty-Based Testing（PBT）を組み込んでいる。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>観点</th><th>Spec Kit</th><th>Kiro</th></tr></thead>
+      <tbody>
+        <tr><td>テスト戦略</td><td>TDD（constitution で「テストファースト必須」を明文化）</td><td>機能Spec: 通常テスト + Bugfix: PBT必須</td></tr>
+        <tr><td>強制度</td><td>constitution に書けば強制（緩い）</td><td>BugfixではPBTが組み込み（強い）</td></tr>
+        <tr><td>テストの順序</td><td>tasks.md でテスト→実装の順を明示</td><td>同上（steering でカスタム可）</td></tr>
+        <tr><td>網羅性検証</td><td>カバレッジツールを自前で組み込む</td><td>PBTがランダム入力で網羅</td></tr>
+        <tr><td>テスト実行UI</td><td>ターミナルで pytest 等</td><td>IDE内タスク実行UI、結果可視化</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info">
+      📘 <strong>Property-Based Testing（PBT）とは</strong>: 「すべての入力xに対してf(x)>0」のような<strong>性質（property）</strong>を宣言し、ランダムな入力を大量生成して反例を探す手法。Pythonの<code>hypothesis</code>、JSの <code>fast-check</code> 等が代表的。具体的なテストケースを書くより<strong>仕様の不変条件</strong>を表現できる。
+    </div>
+
+    <div class="dual">
+      <div class="dual-col dual-spec">
+        <h4>🔵 Spec Kit のテスト</h4>
+        <pre style="font-family:var(--mono);font-size:.78rem;line-height:1.55;background:rgba(0,0,0,.05);padding:8px 10px;border-radius:5px;margin-top:6px;color:#003d8f;">def test_add_task():
+  todo = Todo()
+  todo.add("buy milk")
+  assert len(todo.tasks) == 1
+
+def test_add_empty_raises():
+  todo = Todo()
+  with pytest.raises(ValueError):
+    todo.add("")</pre>
+        <p style="margin-top:6px;">具体例ベース・分かりやすい・伝統的</p>
+      </div>
+      <div class="dual-col dual-kiro">
+        <h4>🟢 Kiro Bugfix の PBT</h4>
+        <pre style="font-family:var(--mono);font-size:.78rem;line-height:1.55;background:rgba(0,0,0,.05);padding:8px 10px;border-radius:5px;margin-top:6px;color:#154f1e;">@given(text(min_size=1))
+def test_add_any_string(s):
+  todo = Todo()
+  todo.add(s)
+  assert s in [t.title for t in todo.tasks]
+
+@given(integers())
+def test_complete_idempotent(id):
+  # complete を2回呼んでも同結果</pre>
+        <p style="margin-top:6px;">性質ベース・網羅的・副作用検出に強い</p>
+      </div>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>Kiro が PBT を採用した理由</strong>: 公式ブログ曰く「PBT がないと、エージェントが本当にバグを修正したかと、変更が本当にサージカルだったかを確認するのが難しい」。AIが書いたコードを<strong>機械的に検証する手段</strong>として、PBT が最適だと判断したと考えられる。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>PBTは万能ではない</strong>: ① UI・IO 重視のテストには向かない ② 性質を見つける思考が必要で初心者には難しい ③ 実行時間が長くなりがち。<strong>通常のテスト+ピンポイントでPBT</strong>のハイブリッドが現実的。Kiroもこのバランスで運用される想定。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 9 ============================================ -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>強み・弱みマトリクス</h3>
+    <span class="lab-tag tag-advanced">運用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ここまでの違いを総合した強み・弱み比較。<strong>どちらかが優れているわけではなく、解こうとしている問題と組織制約で選ぶ</strong>。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>観点</th><th>Spec Kit</th><th>Kiro</th></tr></thead>
+      <tbody>
+        <tr><td>導入の手軽さ</td><td><span class="yes">◎ CLIだけ</span></td><td><span class="partial">○ IDEインストール必要</span></td></tr>
+        <tr><td>初学者の理解しやすさ</td><td><span class="partial">△ ターミナル前提</span></td><td><span class="yes">◎ GUIで進捗が見える</span></td></tr>
+        <tr><td>エージェント自由度</td><td><span class="yes">◎ Claude/Copilot/Gemini等選べる</span></td><td><span class="partial">△ Kiro内蔵モデルのみ</span></td></tr>
+        <tr><td>料金透明性</td><td><span class="partial">△ 裏のエージェント次第</span></td><td><span class="yes">◎ クレジット制で見える</span></td></tr>
+        <tr><td>カスタマイズ性</td><td><span class="yes">◎ テンプレ全部編集可</span></td><td><span class="partial">○ Steeringで一定範囲</span></td></tr>
+        <tr><td>機能Spec の体験</td><td><span class="partial">○ コマンド連打</span></td><td><span class="yes">◎ ペインで進捗管理</span></td></tr>
+        <tr><td>バグ修正</td><td><span class="no">× Sledgehammer問題</span></td><td><span class="yes">◎ Bugfix Spec専用</span></td></tr>
+        <tr><td>要件記法の厳密さ</td><td><span class="partial">○ Given/When/Then</span></td><td><span class="yes">◎ EARS強制</span></td></tr>
+        <tr><td>テスト統合</td><td><span class="partial">○ TDDをconstitutionで強制</span></td><td><span class="yes">◎ PBT組み込み</span></td></tr>
+        <tr><td>brownfield対応</td><td><span class="partial">○ 自分で工夫</span></td><td><span class="yes">◎ Design-First / Bugfix Spec</span></td></tr>
+        <tr><td>拡張機能エコシステム</td><td><span class="yes">◎ 既存IDEの拡張全部</span></td><td><span class="partial">△ Open VSXのみ</span></td></tr>
+        <tr><td>規制業界・コンプラ</td><td><span class="partial">○ 自前で証跡管理</span></td><td><span class="yes">◎ チェックポイント組み込み</span></td></tr>
+        <tr><td>ベンダーロックイン</td><td><span class="yes">◎ 低い</span></td><td><span class="partial">△ AWSエコシステム志向</span></td></tr>
+        <tr><td>OSS・透明性</td><td><span class="yes">◎ 全OSS</span></td><td><span class="partial">△ クライアントOSS / バックエンドはAWS</span></td></tr>
+        <tr><td>コスト（個人開発）</td><td><span class="yes">◎ Claude.ai既契約あれば追加0円</span></td><td><span class="partial">△ 月$20〜（消費税別）</span></td></tr>
+      </tbody>
+    </table>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 各ツールの「光る場面」</div>
+      <ul class="usecase-list">
+        <li><strong>Spec Kit</strong>: 既にClaude Code/Copilotに慣れている / 既存IDEを変えたくない / 複数AIエージェントを使い分けたい / 自社用にテンプレをカスタマイズしたい</li>
+        <li><strong>Kiro</strong>: SDDを最短で体験したい / GUIで進捗管理したい / バグ修正と新機能で違うフローを使い分けたい / 厳密な要件記法（EARS）が必要 / brownfield資産を扱う</li>
+      </ul>
+    </div>
+
+    <div class="info-box err">
+      🚨 <strong>両方が苦手な領域</strong>: ① 探索的プロトタイピング（仕様未確定） → vibe codingが速い ② 緊急インシデント対応（数分で復旧したい） → 軽量プロンプトで対応 ③ 1行修正・タイポ → どちらも過剰
+    </div>
+  </div>
+</div>
+
+<!-- LAB 10 =========================================== -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>使い分け指針</h3>
+    <span class="lab-tag tag-advanced">選び方</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      実用上の選択フローチャート。<strong>「どちらを学ぶか」と「どちらを使うか」は別問題</strong>。両方触れた上で使い分けるのが理想だが、最初は1つに絞る方が混乱しない。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 選択フローチャート</div>
+      <pre class="ascii-art">START
+  │
+  ▼
+  Q1: 既にClaude Code / Copilot を毎日使っている？
+  ├─ はい → Spec Kit が自然（既存ワークフロー継続）
+  └─ いいえ
+       │
+       ▼
+  Q2: GUI で進捗を見ながら進めたい？
+  ├─ はい → Kiro が向く（Specs ペイン・タスク UI）
+  └─ いいえ → Spec Kit
+       │
+       ▼
+  Q3: バグ修正中心のワークフローが多い？
+  ├─ はい → Kiro（Bugfix Spec専用フロー）
+  └─ いいえ
+       │
+       ▼
+  Q4: 厳密な要件記法（EARS）が必要？
+       例: 規制業界・医療・金融・公共
+  ├─ はい → Kiro
+  └─ いいえ → どちらでも
+       │
+       ▼
+  Q5: 月額コストを抑えたい？
+       既にClaude.ai有料プランあり
+  ├─ はい → Spec Kit（追加コスト0）
+  └─ いいえ → Kiro でも可</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>シナリオ</th><th>推奨</th><th>理由</th></tr></thead>
+      <tbody>
+        <tr><td>SDD初体験・GUIで学びたい</td><td>Kiro</td><td>視覚的に進捗が見える、最短で雰囲気を掴める</td></tr>
+        <tr><td>SDD初体験・既存環境を活かしたい</td><td>Spec Kit</td><td>Claude Codeに慣れていればすぐ始められる</td></tr>
+        <tr><td>業務で導入検討・PoC段階</td><td>両方試す</td><td>Kiro Free Trial + Spec Kit を1機能ずつ通す</td></tr>
+        <tr><td>規制業界・監査が重要</td><td>Kiro</td><td>EARS + 強制チェックポイント + 証跡が組み込み</td></tr>
+        <tr><td>レガシー保守・バグ修正中心</td><td>Kiro</td><td>Bugfix Spec が surgical fix に最適</td></tr>
+        <tr><td>新規プロダクト開発・自由度欲しい</td><td>Spec Kit</td><td>テンプレ全カスタマイズ・複数エージェント</td></tr>
+        <tr><td>個人副業・コスト最小</td><td>Spec Kit</td><td>既存Claude.ai契約で追加0円</td></tr>
+        <tr><td>AWSサービス連携が多い</td><td>Kiro</td><td>MCP統合・AWS Builder ID で導入が滑らか</td></tr>
+        <tr><td>VS Code 拡張に強く依存</td><td>Spec Kit</td><td>Kiroは Open VSX のみ対応、Microsoft専有拡張不可</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info">
+      📘 <strong>Tomさんの場合の推奨</strong>: 既にClaude Codeに慣れていて、業務でOutSystems等のbrownfield資産を扱うことが多い → <strong>まずSpec Kit を1〜2本通す</strong>（前回手順書）→ <strong>Kiro Free Trialで同じ題材をやってみて違いを体感</strong> → 業務で使うなら継続する方を選ぶ、が無理なく身につく。
+    </div>
+  </div>
+</div>
+
+<!-- LAB 11 =========================================== -->
+<div class="lab" id="lab11">
+  <div class="lab-header">
+    <div class="lab-num">11</div>
+    <h3>移行・併用パターン</h3>
+    <span class="lab-tag tag-advanced">選び方</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      実務では「片方に決める」よりも<strong>使い分け・移行・併用</strong>になることが多い。両者は同じSDDなので、Markdownの中身は相互に持ち運び可能。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 ファイル対応関係（移行マップ）</div>
+      <pre class="ascii-art">─── Spec Kit → Kiro へ持ち込む ────────────
+  spec.md         → requirements.md（EARSに変換）
+  plan.md +
+  data-model.md +
+  contracts/      → design.md（1ファイルに集約）
+  tasks.md        → tasks.md（ほぼそのまま）
+  constitution.md → .kiro/steering/tech.md 等に分散
+
+─── Kiro → Spec Kit へ持ち込む ────────────
+  requirements.md → spec.md（EARS情報は補足として残す）
+  design.md       → plan.md（必要なら data-model.md / contracts/ に分割）
+  tasks.md        → tasks.md
+  .kiro/steering/ → constitution.md に集約 or 分割保持</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>パターン</th><th>運用イメージ</th></tr></thead>
+      <tbody>
+        <tr><td>① Kiroで設計 → Spec Kitで実装</td><td>Kiroで仕様作成（GUIが楽）→ requirements.md/design.md を Spec Kit形式に整えて、実装はClaude Codeで /speckit.implement</td></tr>
+        <tr><td>② 個人はSpec Kit、チームはKiro</td><td>普段の実験は無料のSpec Kit、レビューが必要な業務機能はKiroのGUIで共有レビュー</td></tr>
+        <tr><td>③ 機能はSpec Kit、バグはKiro</td><td>新機能は普段ツール、バグ修正のときだけKiroのBugfix Specを使う（Bugfix特化メリット最大化）</td></tr>
+        <tr><td>④ 学習はKiro、本番はSpec Kit</td><td>SDDを学ぶ間はGUIのKiroが分かりやすい、慣れたら自由度の高いSpec Kitに移行</td></tr>
+        <tr><td>⑤ Steering と Constitution を共有</td><td>同じ <code>tech.md</code> 相当を両ツールで参照（symlink or 自動同期スクリプト）</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>パターン①の具体プロンプト（Kiro→Spec Kit持ち込み）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># Kiroで requirements.md / design.md / tasks.md が完成済み</span>
+<span class="cm"># Claude Codeに切り替えて Spec Kit プロジェクトに取り込む</span>
+
+<span class="cm"># 1. Spec Kit プロジェクトを新規作成（あるいは既存）</span>
+specify init my-feature --ai claude
+cd my-feature
+
+<span class="cm"># 2. Kiroの成果物をコピー</span>
+mkdir -p specs/001-feature-from-kiro
+cp /path/to/kiro/.kiro/specs/feature-name/*.md specs/001-feature-from-kiro/
+
+<span class="cm"># 3. Claude Code起動して、変換指示</span>
+claude</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>変換プロンプト</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>specs/001-feature-from-kiro/ 配下に Kiro形式のファイル
+（requirements.md / design.md / tasks.md）があります。
+
+これを Spec Kit形式に整えてください:
+
+1. requirements.md（EARS記法）を <span class="str">spec.md</span> に変換
+   - User Story（As a/I want/So that）形式を併記
+   - Acceptance Criteria は EARS の表現を残しつつ Given/When/Then を追加
+
+2. design.md を <span class="str">plan.md</span> として再構成
+   - データモデル部分は <span class="str">data-model.md</span> に分離
+   - API契約があれば <span class="str">contracts/</span> 配下に切り出し
+
+3. tasks.md は構造を保持しつつ、Spec Kit の[P]マーカーと依存関係表記に揃える
+
+4. constitution.md がない場合、Kiroのsteering（あれば渡す）から原則を抽出して生成
+
+各変換結果は元ファイルを残したまま、新しいファイルとして作成してください。</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>「両方使う」のがメインストリーム化</strong>: 2026年に入って、Tessl のような<strong>仕様の中立フォーマット</strong>を提唱する動きや、「Spec-as-Source」（仕様だけ保守・コードは毎回生成）の流れもある。Spec Kit と Kiro の競合関係も<strong>1〜2年で再編される可能性</strong>があるので、特定ツールに過剰投資せず<strong>SDDの考え方を身につける</strong>ことを優先するのが安全。
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>Tomさんの3部作の位置づけ</strong>: ① <strong>AI-DLC手順書</strong>（プロセスの規律を学ぶ）② <strong>Spec Kit手順書</strong>（仕様を実行契約として扱う）③ 本Lab（仕様駆動の主要2ツールの違いを把握）。これで「いつ何を選ぶか」の判断軸ができる。次は実機で1本通すだけ。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 次の1歩の提案</div>
+      <ul class="usecase-list">
+        <li>Spec Kit手順書のTODO CLI題材を、KiroのFree Trialでもやってみる（同じ題材で比較体験）</li>
+        <li>Kiroで Bugfix Spec を体験する（OutSystems由来のバグ題材を持ち込んでもよい）</li>
+        <li>普段のClaude Code作業に <code>.kiro/steering/</code> 相当のステアリング思想を取り入れて、CLAUDE.mdを <code>product.md / tech.md / structure.md</code> 風に分割してみる</li>
+        <li>3〜4プロジェクト試した後で、自分の使い分けルールを <strong>個人版 SDDプレイブック</strong> としてMarkdownにまとめる</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+function copyCode(btn) {
+  const block = btn.closest('.code-block') || btn.parentElement;
+  const pre = block.querySelector('pre');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+  const map = new Map();
+  links.forEach(a => {
+    const el = document.getElementById(a.getAttribute('href').slice(1));
+    if (el) map.set(el, a);
+  });
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) {
+      const l = map.get(e.target);
+      if (l) { links.forEach(n => n.classList.remove('active')); l.classList.add('active'); }
+    }
+  }), { rootMargin: '-30% 0px -60% 0px' });
+  document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+  document.querySelectorAll('.code-block').forEach((cb, i) => {
+    if (cb.querySelector('.code-block-header')) return;
+    const header = document.createElement('div');
+    header.className = 'code-block-header';
+    header.innerHTML = `<span>Code #${i+1}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+    cb.insertBefore(header, cb.firstChild);
+  });
+});
+</script>
+
+</body>
+</html>
