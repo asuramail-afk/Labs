@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GoF 生成パターン Before/After Lab — なぜ new を整理するのか</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+      --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+      --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+      --success:#22863a; --error:#cb2431;
+      --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+    /* Sidebar */
+    #sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+      background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+      border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+    #sidebar::-webkit-scrollbar { width:4px; }
+    #sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+    #sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+      padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+    #sidebar .nav-title span { color:var(--text-dim); }
+    #sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+      color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+    #sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+      color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+      transition:background .15s,color .15s,border-color .15s;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    #sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+    #sidebar .nav-item.active { border-left-color:var(--accent);
+      background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+    #sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+      font-size:.72rem; margin-right:8px; opacity:.8; }
+
+    /* Hero */
+    .hero { padding:60px 40px 40px; text-align:center;
+      background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+      border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+    .hero::before { content:''; position:absolute; top:-120px; right:-120px;
+      width:400px; height:400px;
+      background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+      pointer-events:none; }
+    .hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+      background:linear-gradient(135deg,var(--accent),var(--accent2));
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+    .hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+    /* TOC */
+    .toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+    .toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+    .toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+    .toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+      background:var(--surface); border:1px solid var(--border); border-radius:8px;
+      text-decoration:none; color:var(--text); font-size:.88rem;
+      transition:border-color .2s,transform .15s; }
+    .toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+    .toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+      font-size:.8rem; min-width:28px; }
+
+    /* Container & Lab cards */
+    .container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+    .lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+      overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+    .lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+      background:var(--surface2); border-bottom:1px solid var(--border); }
+    .lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+      background:var(--accent); width:30px; height:30px; display:flex;
+      align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+    .lab-header h3 { font-size:1.15rem; font-weight:600; }
+    .lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+      padding:3px 10px; border-radius:20px; border:1px solid; }
+    .tag-basic { color:var(--accent); border-color:var(--accent); }
+    .tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+    .tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+    .lab-body { padding:24px; }
+    .lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+    .lab-desc code { font-family:var(--mono); background:var(--code-bg);
+      padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+    /* Code block */
+    .code-block { position:relative; background:var(--code-bg);
+      border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+    .code-block pre { padding:12px 16px 14px; overflow-x:auto;
+      font-family:var(--mono); font-size:.82rem; line-height:1.65;
+      color:var(--text); white-space:pre; tab-size:2; }
+    .code-block-header { display:flex; align-items:center; justify-content:space-between;
+      padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+      font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+    .copy-btn { background:transparent; border:1px solid var(--border);
+      color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+      padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+    .copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+    .copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+    /* Syntax token colors (GitHub light) */
+    .kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+    .cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+    .attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+    .ty { color:#005cc5; }
+
+    /* info-box */
+    .info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+      line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+    .info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+    .info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+    .info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+    .info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+    .info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+      padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+    /* verify Before / After */
+    .verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+    .verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+      line-height:1.7; border:1px solid; }
+    .verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+    .verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+    .verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+      text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+    .verify-before .verify-label { color:var(--error); }
+    .verify-after  .verify-label { color:var(--success); }
+
+    /* check-steps */
+    .check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+      border-left:3px solid var(--accent4); border-radius:7px;
+      padding:11px 14px 11px 16px; margin:16px 0 4px;
+      font-size:.86rem; line-height:1.8; color:#5c4400; }
+    .check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+      text-transform:uppercase; font-weight:700; color:var(--accent4);
+      margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+    .check-steps ol { margin-left:20px; margin-top:2px; }
+    .check-steps li { margin-bottom:3px; }
+    .check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+      padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+    /* compare-table */
+    .compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+      margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+      border-radius:7px; overflow:hidden; }
+    .compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+      font-family:var(--mono); font-size:.72rem; color:var(--accent);
+      letter-spacing:.05em; border-bottom:1px solid var(--border); }
+    .compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+      color:var(--text); vertical-align:top; }
+    .compare-table tr:last-child td { border-bottom:none; }
+    .compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+    .compare-table .yes { color:var(--success); } .compare-table .no { color:var(--error); }
+
+    /* beginner-box */
+    .beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+      border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+      margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+    .beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+      color:var(--accent3); font-weight:700; margin-bottom:5px; }
+    .beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+      line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+      margin-top:8px; color:var(--text); overflow-x:auto; }
+
+    /* usecase-box */
+    .usecase-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+      border-left:3px solid var(--accent3); border-radius:7px; padding:12px 14px;
+      margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+    .usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+      color:var(--accent3); font-weight:700; margin-bottom:6px; }
+    .usecase-list { margin-left:20px; margin-bottom:10px; }
+    .usecase-list li { margin-bottom:4px; }
+    .usecase-trigger { background:rgba(0,92,197,.05); border-left:3px solid var(--accent);
+      padding:8px 12px; border-radius:5px; font-size:.82rem; color:#003d8f; margin-top:8px; }
+    .usecase-trigger ul { margin:4px 0 0 20px; }
+
+    /* try-box */
+    .try-box { background:rgba(34,134,58,.06); border:1px solid rgba(34,134,58,.30);
+      border-left:3px solid var(--success); border-radius:7px;
+      padding:12px 14px; margin:14px 0; font-size:.86rem; line-height:1.8; color:#154f1e; }
+    .try-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+      color:var(--success); font-weight:700; margin-bottom:6px; }
+    .try-box ol { margin-left:20px; margin-top:4px; }
+    .try-box ol li { margin-bottom:4px; }
+    .try-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+      padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--success); }
+    .try-tip { background:rgba(176,136,0,.06); border-left:3px solid var(--accent4);
+      padding:8px 12px; border-radius:5px; font-size:.82rem; color:#5c4400; margin-top:8px; }
+    .try-tip strong { color:var(--accent4); }
+    .try-skeleton { background:#f0f4f8; border:1px solid var(--border); border-radius:5px;
+      padding:10px 12px; margin-top:8px; font-family:var(--mono); font-size:.78rem;
+      color:var(--text); white-space:pre; overflow-x:auto; line-height:1.5; }
+
+    /* code-pair */
+    .code-pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; }
+    .code-pair-col { display:flex; flex-direction:column; min-width:0; }
+    .code-pair-label { font-family:var(--mono); font-size:.72rem; letter-spacing:.05em;
+      font-weight:700; padding:6px 10px; border-radius:6px 6px 0 0; }
+    .code-pair-before .code-pair-label { background:rgba(203,36,49,.10); color:#9a1320;
+      border:1px solid rgba(203,36,49,.30); border-bottom:none; }
+    .code-pair-after  .code-pair-label { background:rgba(34,134,58,.10); color:#154f1e;
+      border:1px solid rgba(34,134,58,.30); border-bottom:none; }
+    .code-pair-col .code-block { margin:0; border-radius:0 0 8px 8px; flex:1; }
+    .code-pair-before .code-block { border-color:rgba(203,36,49,.30); }
+    .code-pair-after  .code-block { border-color:rgba(34,134,58,.30); }
+    @media (max-width:900px){ .code-pair { grid-template-columns:1fr; } }
+
+    /* Responsive */
+    @media (max-width:900px) {
+      body { padding-left:0; }
+      #sidebar { position:static; width:100%; height:auto; border-right:none;
+        border-bottom:1px solid var(--border); padding:8px 0; }
+      #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+      .verify { grid-template-columns:1fr; }
+      .hero h1 { font-size:1.6rem; }
+      .toc-grid { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// GoF 生成 <span>Creational</span></div>
+  <div class="nav-section">概観</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>なぜ生成パターンが要る</a>
+  <div class="nav-section">5 パターン</div>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>Abstract Factory</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>Builder</a>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>Factory Method</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>Prototype</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>Singleton</a>
+  <div class="nav-section">総合</div>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>使い分けマップ</a>
+</nav>
+
+<div class="hero">
+  <h1>GoF 生成パターン Before/After Lab</h1>
+  <p class="subtitle">「なぜ <code>new</code> をそのまま書いたら困るのか」を Before/After のコードで体感する</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>なぜ生成パターンが要るのか</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>Abstract Factory — 整合性を型で守る</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>Builder — 引数地獄を組立手順に</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>Factory Method — 骨格は親、生成だけ子</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>Prototype — 重い初期化を1回だけ</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>Singleton — 1つだけを保証する代償</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>使い分け即決マップ</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ==================== LAB 0: 概観 ==================== -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>なぜ生成パターンが必要なのか — 4 大症状</h3>
+    <span class="lab-tag tag-basic">概観</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      生成パターンはどれも「<code>new</code> の書かれ方を整える」ためにある。
+      具体クラスを直接 <code>new</code> する状態だと、変更のたびにコード中の <code>new</code> を全部探して直す羽目になる。
+      まず「どの症状にどのパターンが効くか」の全体像を頭に入れる。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 4 大症状 → 候補パターン</div>
+      <pre class="ascii-art">┌─────────────────────────────────────────────┐
+│ 症状                              │ パターン  │
+├───────────────────────────────────┼──────────┤
+│ ① 関連するモノの整合性が崩れる    │ Abstract │
+│   (Win Button と Mac Check が混在) │ Factory  │
+├───────────────────────────────────┼──────────┤
+│ ② コンストラクタの引数が多すぎる  │ Builder  │
+│   ("thin", true, false, null...)  │          │
+├───────────────────────────────────┼──────────┤
+│ ③ 共通処理に new XxxImpl() が直書き│ Factory  │
+│   (派生で再利用できない)          │ Method   │
+├───────────────────────────────────┼──────────┤
+│ ④ 重い初期化を毎回繰り返す        │ Prototype│
+│   (DB アクセス、計算、etc)         │          │
+├───────────────────────────────────┼──────────┤
+│ ⑤ 1 つだけのはずが複数できる      │ Singleton│
+│   (設定が画面ごとにバラバラ)      │          │
+└───────────────────────────────────┴──────────┘</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead>
+        <tr><th>パターン</th><th>何を分離するか</th><th>主な目的</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Abstract Factory</td><td>部品のセット</td><td>整合性の保証</td></tr>
+        <tr><td>Builder</td><td>組み立て手順</td><td>可読性・任意項目</td></tr>
+        <tr><td>Factory Method</td><td>生成の一行</td><td>共通フローの再利用</td></tr>
+        <tr><td>Prototype</td><td>初期化と複製</td><td>性能・状態継承</td></tr>
+        <tr><td>Singleton</td><td>インスタンス数</td><td>一意性の保証</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ==================== LAB 1: Abstract Factory ==================== -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>Abstract Factory — 「セットの整合性」を型で守る</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      OS 別 UI を作るとき、ボタン・チェックボックス・ダイアログをそれぞれ独立に作ると、
+      「Windows のボタン」と「Mac のチェックボックス」が混在する事故が起こりうる。
+      Abstract Factory は <strong>「整合性」をランタイムの注意力からコンパイル時の型に格上げする</strong> パターン。
+    </p>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before — OS 分岐があちこち</div>
+        <div class="code-block">
+<pre><span class="cm">// 利用側1: ログイン画面</span>
+<span class="kw">const</span> button   = isMac ? <span class="kw">new</span> <span class="fn">MacButton</span>()   : <span class="kw">new</span> <span class="fn">WinButton</span>();
+<span class="kw">const</span> checkbox = isMac ? <span class="kw">new</span> <span class="fn">MacCheckbox</span>() : <span class="kw">new</span> <span class="fn">WinCheckbox</span>();
+
+<span class="cm">// 利用側2: 設定画面（同じ分岐をまた書く）</span>
+<span class="kw">const</span> button2   = isMac ? <span class="kw">new</span> <span class="fn">MacButton</span>()   : <span class="kw">new</span> <span class="fn">WinButton</span>();
+<span class="kw">const</span> checkbox2 = isMac ? <span class="kw">new</span> <span class="fn">MacCheckbox</span>() : <span class="kw">new</span> <span class="fn">WinCheckbox</span>();
+
+<span class="cm">// 利用側3: ダイアログ画面</span>
+<span class="kw">const</span> button3   = isWin ? <span class="kw">new</span> <span class="fn">WinButton</span>()   : <span class="kw">new</span> <span class="fn">MacButton</span>();
+<span class="cm">//                ^^^^^ うっかり判定反転 → 不整合発生</span>
+<span class="kw">const</span> checkbox3 = isMac ? <span class="kw">new</span> <span class="fn">MacCheckbox</span>() : <span class="kw">new</span> <span class="fn">WinCheckbox</span>();
+<span class="cm">// → Win Button + Mac Checkbox の混在事故</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After — ファクトリ選択は1回だけ</div>
+        <div class="code-block">
+<pre><span class="kw">interface</span> <span class="ty">UIFactory</span> {
+  <span class="fn">createButton</span>():   <span class="ty">Button</span>;
+  <span class="fn">createCheckbox</span>(): <span class="ty">Checkbox</span>;
+}
+
+<span class="cm">// OS 判定はアプリ起動時の1箇所だけ</span>
+<span class="kw">const</span> factory: <span class="ty">UIFactory</span> = isMac
+  ? <span class="kw">new</span> <span class="fn">MacFactory</span>()
+  : <span class="kw">new</span> <span class="fn">WinFactory</span>();
+
+<span class="cm">// 以降、利用側はすべて同じ — 整合性は型が保証</span>
+<span class="kw">const</span> button   = factory.<span class="fn">createButton</span>();
+<span class="kw">const</span> checkbox = factory.<span class="fn">createCheckbox</span>();
+<span class="cm">// factory が Mac/Win を覚えているので絶対混ざらない</span>
+
+<span class="cm">// 別画面でも同じ factory を使い回す</span>
+<span class="kw">const</span> button2   = factory.<span class="fn">createButton</span>();
+<span class="kw">const</span> checkbox2 = factory.<span class="fn">createCheckbox</span>();</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>Before/After の核心</strong>: Before は「OS 判定」が画面の数だけ複製され、判定ミスで混在事故が起こる。
+      After は OS 判定が <strong>アプリ起動時の1箇所だけ</strong>。利用側コードは具体クラスを一切知らず、
+      整合性はファクトリオブジェクト経由で <strong>型システムが構造的に保証</strong> する。
+    </div>
+
+    <table class="compare-table">
+      <thead>
+        <tr><th>観点</th><th>Before</th><th>After</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>OS 判定箇所</td><td class="no">画面 × 部品の数だけ重複</td><td class="yes">アプリ起動時に1箇所</td></tr>
+        <tr><td>混在事故</td><td class="no">判定ミスで起こりうる</td><td class="yes">型で構造的に防止</td></tr>
+        <tr><td>OS 追加コスト</td><td class="no">全画面を修正</td><td class="yes">LinuxFactory を1クラス追加</td></tr>
+        <tr><td>テスト</td><td class="no">画面ごとに OS 別テスト要</td><td class="yes">MockFactory で一発置換</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ==================== LAB 2: Builder ==================== -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>Builder — 「読めないコンストラクタ」を組み立て手順に</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      引数が多いコンストラクタは「位置」で意味が決まるため、読めない・間違えやすい・型が通っても意味は壊れる、という三重苦。
+      Builder は <strong>「位置」依存を「名前付きメソッド呼び出し」に置き換えて読みやすさを取り戻す</strong> パターン。
+    </p>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before — 位置引数地獄</div>
+        <div class="code-block">
+<pre><span class="kw">class</span> <span class="ty">Pizza</span> {
+  <span class="fn">constructor</span>(
+    dough: <span class="ty">string</span>, sauce: <span class="ty">string</span>,
+    cheese: <span class="ty">boolean</span>, pepperoni: <span class="ty">boolean</span>,
+    mushroom: <span class="ty">boolean</span>, olive: <span class="ty">string</span>|<span class="kw">null</span>,
+    size: <span class="ty">string</span>
+  ) { }
+}
+
+<span class="cm">// これ読んで意味が分かるか？</span>
+<span class="kw">const</span> p1 = <span class="kw">new</span> <span class="fn">Pizza</span>(
+  <span class="str">"thin"</span>, <span class="str">"tomato"</span>,
+  <span class="kw">true</span>, <span class="kw">false</span>, <span class="kw">true</span>,
+  <span class="kw">null</span>, <span class="str">"regular"</span>
+);
+
+<span class="cm">// うっかり順番ミス（型は通る）</span>
+<span class="kw">const</span> p2 = <span class="kw">new</span> <span class="fn">Pizza</span>(
+  <span class="str">"tomato"</span>, <span class="str">"thin"</span>, <span class="cm">// ← 逆</span>
+  <span class="kw">true</span>, <span class="kw">false</span>, <span class="kw">true</span>, <span class="kw">null</span>, <span class="str">"regular"</span>
+);
+<span class="cm">// → 実行時に「謎の生地: tomato」</span>
+
+<span class="cm">// 「キノコ抜きでオリーブだけ」</span>
+<span class="kw">const</span> p3 = <span class="kw">new</span> <span class="fn">Pizza</span>(
+  <span class="str">"thin"</span>, <span class="str">"tomato"</span>,
+  <span class="kw">false</span>, <span class="kw">false</span>, <span class="kw">false</span>, <span class="cm">// 全部 false 並ぶ虚しさ</span>
+  <span class="str">"黒"</span>, <span class="str">"regular"</span>
+);</pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After — 自己説明的なチェーン</div>
+        <div class="code-block">
+<pre><span class="kw">class</span> <span class="ty">PizzaBuilder</span> {
+  <span class="kw">private</span> toppings: <span class="ty">string</span>[] = [];
+  <span class="fn">constructor</span>(
+    <span class="kw">private</span> dough: <span class="ty">string</span>,
+    <span class="kw">private</span> sauce: <span class="ty">string</span>
+  ) {} <span class="cm">// 必須はここ</span>
+
+  <span class="fn">addTopping</span>(t: <span class="ty">string</span>) {
+    <span class="kw">this</span>.toppings.<span class="fn">push</span>(t); <span class="kw">return</span> <span class="kw">this</span>;
+  }
+  <span class="fn">build</span>() {
+    <span class="kw">return</span> <span class="kw">new</span> <span class="fn">Pizza</span>(
+      <span class="kw">this</span>.dough, <span class="kw">this</span>.sauce, <span class="kw">this</span>.toppings
+    );
+  }
+}
+
+<span class="cm">// 各行が意図を語る</span>
+<span class="kw">const</span> pizza = <span class="kw">new</span> <span class="fn">PizzaBuilder</span>(<span class="str">"thin"</span>, <span class="str">"tomato"</span>)
+  .<span class="fn">addTopping</span>(<span class="str">"cheese"</span>)
+  .<span class="fn">addTopping</span>(<span class="str">"basil"</span>)
+  .<span class="fn">build</span>();
+
+<span class="cm">// 「キノコ抜きでオリーブだけ」も自然</span>
+<span class="kw">const</span> pizza2 = <span class="kw">new</span> <span class="fn">PizzaBuilder</span>(<span class="str">"thin"</span>, <span class="str">"tomato"</span>)
+  .<span class="fn">addTopping</span>(<span class="str">"olive-黒"</span>)
+  .<span class="fn">build</span>();
+<span class="cm">// 不要なものは「呼ばない」だけで済む</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>Before/After の核心</strong>: Before は <code>(true, false, true, null)</code> という意味不明な並び。
+      After は各メソッド呼び出しが「何を追加しているか」を自己説明する。<strong>任意項目は「呼ばない」だけ</strong> で済むので、
+      <code>null</code> や <code>false</code> をプレースホルダとして並べる必要が消える。
+    </div>
+
+    <table class="compare-table">
+      <thead>
+        <tr><th>観点</th><th>Before（位置引数）</th><th>After（Builder）</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>可読性</td><td class="no">引数の意味が読めない</td><td class="yes">各行が意図を語る</td></tr>
+        <tr><td>順番ミス</td><td class="no">型が通れば実行時バグ</td><td class="yes">名前付きで発生不能</td></tr>
+        <tr><td>任意項目</td><td class="no">null / false を並べる</td><td class="yes">メソッドを呼ばないだけ</td></tr>
+        <tr><td>必須項目</td><td class="no">区別不能</td><td class="yes">コンストラクタに置けば必須化</td></tr>
+        <tr><td>拡張</td><td class="no">引数追加で全呼出を改変</td><td class="yes">メソッド追加で既存呼出は無傷</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ==================== LAB 3: Factory Method ==================== -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>Factory Method — 「骨格は親、生成だけ子」</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      共通処理の中で「具体クラスを new する一行」だけが派生先で違うとき、
+      共通処理ごと派生クラスにコピペすると DRY 違反。
+      Factory Method は <strong>共通処理を親に1回だけ書き、生成の一行を「穴」として子に埋めさせる</strong> パターン。
+    </p>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before — 共通処理がコピペ</div>
+        <div class="code-block">
+<pre><span class="kw">class</span> <span class="ty">WinDialog</span> {
+  <span class="fn">render</span>() {
+    <span class="kw">this</span>.<span class="fn">layout</span>();           <span class="cm">// 共通</span>
+    <span class="kw">const</span> btn = <span class="kw">new</span> <span class="fn">WinButton</span>(); <span class="cm">// ★Win 固有</span>
+    btn.<span class="fn">render</span>();
+    <span class="kw">this</span>.<span class="fn">cleanup</span>();          <span class="cm">// 共通</span>
+  }
+  <span class="fn">layout</span>()  { <span class="cm">/* 共通実装 */</span> }
+  <span class="fn">cleanup</span>() { <span class="cm">/* 共通実装 */</span> }
+}
+
+<span class="kw">class</span> <span class="ty">WebDialog</span> {
+  <span class="fn">render</span>() {
+    <span class="kw">this</span>.<span class="fn">layout</span>();           <span class="cm">// ← コピペ</span>
+    <span class="kw">const</span> btn = <span class="kw">new</span> <span class="fn">HtmlButton</span>();<span class="cm">// ★Web 固有</span>
+    btn.<span class="fn">render</span>();
+    <span class="kw">this</span>.<span class="fn">cleanup</span>();          <span class="cm">// ← コピペ</span>
+  }
+  <span class="fn">layout</span>()  { <span class="cm">/* ← コピペ */</span> }
+  <span class="fn">cleanup</span>() { <span class="cm">/* ← コピペ */</span> }
+}
+
+<span class="cm">// layout() のバグを直すと、両クラスを修正</span>
+<span class="cm">// する必要 → 必ず修正漏れが出る</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After — 生成だけ子に委譲</div>
+        <div class="code-block">
+<pre><span class="kw">abstract class</span> <span class="ty">Dialog</span> {
+  <span class="cm">// 共通処理は親に1回だけ</span>
+  <span class="fn">render</span>() {
+    <span class="kw">this</span>.<span class="fn">layout</span>();
+    <span class="kw">const</span> btn = <span class="kw">this</span>.<span class="fn">createButton</span>(); <span class="cm">// 穴</span>
+    btn.<span class="fn">render</span>();
+    <span class="kw">this</span>.<span class="fn">cleanup</span>();
+  }
+  <span class="fn">layout</span>()  { <span class="cm">/* 親で1回だけ */</span> }
+  <span class="fn">cleanup</span>() { <span class="cm">/* 親で1回だけ */</span> }
+  <span class="kw">protected abstract</span> <span class="fn">createButton</span>(): <span class="ty">Button</span>;
+}
+
+<span class="kw">class</span> <span class="ty">WinDialog</span> <span class="kw">extends</span> <span class="ty">Dialog</span> {
+  <span class="kw">protected</span> <span class="fn">createButton</span>() {
+    <span class="kw">return</span> <span class="kw">new</span> <span class="fn">WinButton</span>();   <span class="cm">// 穴埋め</span>
+  }
+}
+<span class="kw">class</span> <span class="ty">WebDialog</span> <span class="kw">extends</span> <span class="ty">Dialog</span> {
+  <span class="kw">protected</span> <span class="fn">createButton</span>() {
+    <span class="kw">return</span> <span class="kw">new</span> <span class="fn">HtmlButton</span>();  <span class="cm">// 穴埋め</span>
+  }
+}
+
+<span class="cm">// layout() のバグ修正は親1箇所</span>
+<span class="cm">// → 全派生に自動反映</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 「穴を埋める」イメージ</div>
+      <pre class="ascii-art">親 Dialog.render() の流れ：
+   ┌─────────────┐
+   │ layout()    │ ← 親で実装済
+   ├─────────────┤
+   │ createButton│ ← 「穴」 abstract method
+   │  ()         │   サブクラスが埋める
+   ├─────────────┤
+   │ btn.render()│ ← 親で実装済
+   ├─────────────┤
+   │ cleanup()   │ ← 親で実装済
+   └─────────────┘
+       ↑
+       WinDialog: createButton → WinButton
+       WebDialog: createButton → HtmlButton</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>Abstract Factory との対比</strong>: Abstract Factory は「セット工場」を <strong>別オブジェクトとして</strong> 持つ（コンポジション）。
+      Factory Method は「親メソッドの一部を子で埋める」（継承）。
+      前者は <strong>複数部品の整合性</strong> が主目的、後者は <strong>共通フローの再利用</strong> が主目的。
+    </div>
+
+    <table class="compare-table">
+      <thead>
+        <tr><th>観点</th><th>Before</th><th>After</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>共通処理</td><td class="no">派生ごとに重複</td><td class="yes">親で1回だけ</td></tr>
+        <tr><td>バグ修正</td><td class="no">全派生を直す</td><td class="yes">親1箇所で全派生に反映</td></tr>
+        <tr><td>新派生追加</td><td class="no">render() 全体をコピペ</td><td class="yes">createButton() だけ書く</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ==================== LAB 4: Prototype ==================== -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>Prototype — 「重い初期化」を 1 回だけ</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      DB アクセスや複雑計算を伴う初期化を、毎回 <code>new</code> で繰り返すとパフォーマンスが死ぬ。
+      Prototype は <strong>「初期化コスト」を「メモリコピーコスト」にすり替える</strong> パターン。
+      <strong>Flyweight が「同じものを共有」</strong> なのに対して、<strong>Prototype は「同じものを増殖」</strong> が目的。
+    </p>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before — 毎回 DB アクセス</div>
+        <div class="code-block">
+<pre><span class="kw">class</span> <span class="ty">CustomerProfile</span> {
+  <span class="fn">constructor</span>(customerId: <span class="ty">string</span>) {
+    <span class="cm">// 重い初期化（毎回走る）</span>
+    <span class="kw">this</span>.basicInfo    = db.<span class="fn">query</span>(...); <span class="cm">// 100ms</span>
+    <span class="kw">this</span>.permissions  = db.<span class="fn">query</span>(...); <span class="cm">//  80ms</span>
+    <span class="kw">this</span>.preferences  = db.<span class="fn">query</span>(...); <span class="cm">//  50ms</span>
+    <span class="kw">this</span>.computedTier = <span class="fn">computeTier</span>(...);<span class="cm">// 30ms</span>
+  }
+}
+
+<span class="cm">// テスト用に 100 個のバリエーションを作りたい</span>
+<span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i &lt; <span class="num">100</span>; i++) {
+  <span class="kw">const</span> v = <span class="kw">new</span> <span class="fn">CustomerProfile</span>(<span class="str">"base-001"</span>);
+  v.preferences.theme = themes[i % <span class="num">10</span>];
+}
+<span class="cm">// 100 × 260ms = 26 秒</span>
+<span class="cm">// DB に 400 回クエリが飛ぶ → 本番なら DBA に怒られる</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After — 雛形 1 回 + clone</div>
+        <div class="code-block">
+<pre><span class="kw">class</span> <span class="ty">CustomerProfile</span> {
+  <span class="fn">constructor</span>(customerId: <span class="ty">string</span>) {
+    <span class="cm">// 重い初期化（1 回だけ実行される）</span>
+    <span class="kw">this</span>.basicInfo   = db.<span class="fn">query</span>(...);
+    <span class="kw">this</span>.permissions = db.<span class="fn">query</span>(...);
+    <span class="cm">/* ... */</span>
+  }
+  <span class="fn">clone</span>(): <span class="ty">CustomerProfile</span> {
+    <span class="kw">const</span> c = <span class="ty">Object</span>.<span class="fn">create</span>(<span class="ty">CustomerProfile</span>.prototype);
+    c.basicInfo   = { ...<span class="kw">this</span>.basicInfo };
+    c.permissions = [...<span class="kw">this</span>.permissions];
+    c.preferences = { ...<span class="kw">this</span>.preferences };
+    <span class="kw">return</span> c; <span class="cm">// DB アクセスなし</span>
+  }
+}
+
+<span class="kw">const</span> template = <span class="kw">new</span> <span class="fn">CustomerProfile</span>(<span class="str">"base-001"</span>); <span class="cm">// 260ms 1回</span>
+<span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i &lt; <span class="num">100</span>; i++) {
+  <span class="kw">const</span> v = template.<span class="fn">clone</span>(); <span class="cm">// メモリコピー ≈ 1ms</span>
+  v.preferences.theme = themes[i % <span class="num">10</span>];
+}
+<span class="cm">// 合計 ≈ 360ms</span>
+<span class="cm">// DB に 4 回しかクエリが飛ばない</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>Before/After の核心</strong>: Before は 100 個のインスタンスを作るのに 26 秒・DB クエリ 400 回。
+      After は <strong>雛形を1回作って clone を100回</strong> で、合計 0.36 秒・DB クエリ 4 回。
+      クラスが変わらず、利用方法も変わらないまま、<strong>コスト構造だけが激変</strong> する。
+    </div>
+
+    <table class="compare-table">
+      <thead>
+        <tr><th>観点</th><th>Before</th><th>After</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>100 個生成の時間</td><td class="no">≈ 26 秒</td><td class="yes">≈ 0.36 秒</td></tr>
+        <tr><td>DB クエリ数</td><td class="no">400 回</td><td class="yes">4 回</td></tr>
+        <tr><td>「現在の状態」を保持したコピー</td><td class="no">不可（再初期化）</td><td class="yes">可能（clone 時点を継承）</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ==================== LAB 5: Singleton ==================== -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>Singleton — 「1 つだけ」を保証する代わりに支払う代償</h3>
+    <span class="lab-tag tag-advanced">注意</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      設定オブジェクトが複数できると「ある画面は古い設定、別の画面は新しい設定」という不整合が発生する。
+      Singleton は <strong>「インスタンス数」を1に固定</strong> するパターンだが、
+      テスタビリティを犠牲にする副作用がある。<strong>使うかどうかの判断こそが本パターンの肝</strong>。
+    </p>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before — 自由に new されてバラバラ</div>
+        <div class="code-block">
+<pre><span class="kw">class</span> <span class="ty">Config</span> {
+  <span class="fn">constructor</span>(
+    <span class="kw">public</span> env = <span class="str">"production"</span>,
+    <span class="kw">public</span> apiUrl = <span class="str">"https://api.example.com"</span>
+  ) {}
+}
+
+<span class="cm">// 画面 A — テストモードに切替えたつもり</span>
+<span class="kw">const</span> configA = <span class="kw">new</span> <span class="fn">Config</span>();
+configA.apiUrl = <span class="str">"https://test.example.com"</span>;
+
+<span class="cm">// 画面 B — 別インスタンスができてしまう</span>
+<span class="kw">const</span> configB = <span class="kw">new</span> <span class="fn">Config</span>();
+<span class="cm">// configB.apiUrl = "https://api.example.com" のまま</span>
+
+<span class="cm">// 画面 C</span>
+<span class="kw">const</span> configC = <span class="kw">new</span> <span class="fn">Config</span>();
+
+<span class="cm">// 結果:</span>
+<span class="cm">// 画面 A だけ test URL を叩く</span>
+<span class="cm">// 画面 B/C は本番 URL を叩く</span>
+<span class="cm">// → デバッグで何時間も溶ける</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After — getInstance 経由のみ</div>
+        <div class="code-block">
+<pre><span class="kw">class</span> <span class="ty">Config</span> {
+  <span class="kw">private static</span> instance: <span class="ty">Config</span>;
+
+  <span class="kw">private</span> <span class="fn">constructor</span>(
+    <span class="kw">public</span> env = <span class="str">"production"</span>,
+    <span class="kw">public</span> apiUrl = <span class="str">"https://api.example.com"</span>
+  ) {} <span class="cm">// ← private で外部 new を禁止</span>
+
+  <span class="kw">static</span> <span class="fn">getInstance</span>(): <span class="ty">Config</span> {
+    <span class="kw">if</span> (!<span class="ty">Config</span>.instance)
+      <span class="ty">Config</span>.instance = <span class="kw">new</span> <span class="ty">Config</span>();
+    <span class="kw">return</span> <span class="ty">Config</span>.instance;
+  }
+}
+
+<span class="cm">// new Config() ← コンパイルエラー</span>
+<span class="kw">const</span> a = <span class="ty">Config</span>.<span class="fn">getInstance</span>();
+a.apiUrl = <span class="str">"https://test.example.com"</span>;
+
+<span class="kw">const</span> b = <span class="ty">Config</span>.<span class="fn">getInstance</span>();
+<span class="fn">console.log</span>(b.apiUrl); <span class="cm">// "https://test..."</span>
+<span class="fn">console.log</span>(a === b);  <span class="cm">// true — 同じ実体</span>
+
+<span class="cm">// 画面 A/B/C すべて同じインスタンス</span>
+<span class="cm">// → 設定の不整合は構造的に起こらない</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box err">
+      ⚠️ <strong>Singleton の副作用</strong>: After のコードはテストで <code>Config</code> をモック化したいときに困る。
+      <code>getInstance()</code> はコード中のどこからでも呼べるグローバルアクセスなので、
+      テスト用に差し替える仕組みを別途用意する必要がある。<strong>「グローバル変数の言い換え」になりがち</strong>な点が最大の弱点。
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>現代的な代替: DI（依存性注入）</strong>。
+      クラスのコンストラクタで <code>Config</code> を引数として受け取れば、
+      本番では本物、テストではモックを <strong>呼び出し側が選んで渡せる</strong>。
+      迷ったら DI を優先し、Singleton は <strong>本当に1つでないと困るもの</strong>（OS のクロック、起動時環境変数）に限定する。
+    </div>
+
+    <div class="code-block">
+<pre><span class="cm">// DI 版（推奨）</span>
+<span class="kw">class</span> <span class="ty">OrderService</span> {
+  <span class="fn">constructor</span>(<span class="kw">private</span> config: <span class="ty">Config</span>) {} <span class="cm">// ← 引数で受け取る</span>
+  <span class="fn">process</span>(order: <span class="ty">Order</span>) {
+    <span class="kw">const</span> url = <span class="kw">this</span>.config.apiUrl;
+  }
+}
+
+<span class="cm">// 本番</span>
+<span class="kw">const</span> service     = <span class="kw">new</span> <span class="fn">OrderService</span>(realConfig);
+<span class="cm">// テスト</span>
+<span class="kw">const</span> testService = <span class="kw">new</span> <span class="fn">OrderService</span>(mockConfig); <span class="cm">// ← 簡単に差替</span></pre>
+    </div>
+
+    <table class="compare-table">
+      <thead>
+        <tr><th>観点</th><th>Before</th><th>After (Singleton)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>インスタンス数</td><td class="no">制御不能</td><td class="yes">構造的に1つ</td></tr>
+        <tr><td>設定の不整合</td><td class="no">起こりうる</td><td class="yes">起こりえない</td></tr>
+        <tr><td>リソース重複</td><td class="no">接続プール多重生成リスク</td><td class="yes">1つに収束</td></tr>
+        <tr><td>テスタビリティ</td><td class="yes">○ 自由にモック作成</td><td class="no">× 差し替えづらい</td></tr>
+        <tr><td>依存関係の可視性</td><td class="yes">○ 引数から見える</td><td class="no">× コード中に隠れる</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ==================== LAB 6: 使い分けマップ ==================== -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>使い分け即決マップ — 症状からパターンへ</h3>
+    <span class="lab-tag tag-basic">総合</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      実務でパターンを思い出すための「<strong>症状 → 候補</strong>」逆引き。
+      最初から「Builder で設計する」と決めるのではなく、
+      <strong>「コードがこう見えてきた」という症状からパターンに到達する</strong> のが健全な使い方。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 症状別 即決チャート</div>
+      <pre class="ascii-art">「コンストラクタの引数が4個以上 / null 飛ばし」     → Builder
+「new XXX が画面の数だけ散らばっている」              → Factory Method
+「関連する複数の部品の混在事故が起きそう」            → Abstract Factory
+「インスタンスは1つだけ欲しい（が DI も検討）」       → Singleton
+「重い初期化を何度もやっている」                      → Prototype
+
+  ─────────── 判定の優先順序 ───────────
+  ① まず Builder か検討（引数の見た目）
+  ② new が散らばっていたら Factory Method
+  ③ 部品セットの整合性が要るなら Abstract Factory
+  ④ 性能問題なら Prototype
+  ⑤ 最後に Singleton（できれば DI で代用）</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead>
+        <tr><th>パターン</th><th>適用シグナル（こう見えたら検討）</th><th>避ける場合</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Abstract Factory</td>
+          <td>OS / DB / テーマ など軸ごとに「セット」が必要</td>
+          <td>部品が1つだけなら Factory Method で十分</td>
+        </tr>
+        <tr>
+          <td>Builder</td>
+          <td>boolean が4個以上並ぶコンストラクタ / null を飛ばし用に使う</td>
+          <td>引数2-3個なら普通のコンストラクタで足りる</td>
+        </tr>
+        <tr>
+          <td>Factory Method</td>
+          <td>共通処理の中に <code>new XxxImpl()</code> が1行だけある</td>
+          <td>派生が1種類しかないなら不要</td>
+        </tr>
+        <tr>
+          <td>Prototype</td>
+          <td>初期化が重い / 状態を持ったまま増殖したい</td>
+          <td>初期化が軽いなら普通の <code>new</code> で十分</td>
+        </tr>
+        <tr>
+          <td>Singleton</td>
+          <td>OS のクロック / 起動時環境変数など本当に1つだけ</td>
+          <td>テスト容易性が要るなら DI を選ぶ</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info">
+      📘 <strong>パターンは目的ではなく道具</strong>。
+      「このコードがこう変わった結果、たまたまそのパターンになっていた」が本来の使い方。
+      <strong>23 パターン全部を覚える必要はない</strong>。生成パターンで実務によく使うのは
+      Factory Method・Builder・Singleton（または DI）の3つで、残りは「そういう発想がある」と知っておけば
+      出会った時に逆引きできる。
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>Tom さんの実務との接続</strong>:
+      <ul style="margin-left:20px;margin-top:6px;">
+        <li><strong>OutSystems の Server Action</strong> — 多 Input パラメータのラッパーで Builder の発想が活きる</li>
+        <li><strong>Wijmo FlexGrid の列定義組み立て</strong> — Builder で可読性を確保</li>
+        <li><strong>VB.NET バッチ共通基盤</strong> — Factory Method で「ジョブ種類別の処理オブジェクト生成」を整理</li>
+        <li><strong>OutSystems Extensions の DB 接続</strong> — Singleton ではなく DI で渡すのがテスト容易</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+</div><!-- /.container -->
+
+<script>
+  function copyCode(btn) {
+    const block = btn.closest('.code-block') || btn.parentElement;
+    const pre = block.querySelector('pre');
+    if (!pre) return;
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    });
+  }
+
+  // LAB_META — ラボごとに usecase / try / check を宣言
+  const LAB_META = {
+    lab0: {
+      usecase: {
+        scenes: [
+          'コードレビューで「new XXX が増えてる」と感じた瞬間にこの表で逆引き',
+          'チーム勉強会で「どのパターンを学ぶべきか」を選ぶ指針として',
+          'リファクタリング着手前に「どのパターンを当てるか」のセルフチェック',
+          'OutSystems / VB.NET / TypeScript いずれの言語でも同じ判断軸として'
+        ],
+        triggers: [
+          'コード中に new XxxImpl() が画面の数だけある',
+          'コンストラクタの引数が4個以上並んでいる',
+          '同じクラスのインスタンスが複数できて挙動がバラついている'
+        ]
+      },
+      try: 'まず自分のプロジェクトのコードを開いて、「new」でgrep検索してみる。何箇所ヒットするか・どこに集中しているかが症状診断の出発点',
+      check: [
+        '①4大症状のうち、自分のコードで該当しそうなものを1つ選ぶ',
+        '②該当パターンのラボ（01〜05）にジャンプし、Before のコードに既視感があるか確認',
+        '③自分のコードを After に書き換えるとどうなるか、頭の中でシミュレートしてみる'
+      ]
+    },
+    lab1: {
+      usecase: {
+        scenes: [
+          'マルチテナント SaaS で顧客ごとの UI / 帳票テンプレ切替',
+          'OS 別 / ブラウザ別の UI コンポーネント生成',
+          'OutSystems のテーマ別 Web Block 群（Light/Dark セット）',
+          'DB 種別ごとの接続オブジェクト群（Azure SQL / Oracle / PostgreSQL のセット）'
+        ],
+        triggers: [
+          'isMac / isWin / isLinux を画面のあちこちで分岐している',
+          '関連する複数の部品（ボタン+チェックボックス）を毎回同時に作っている',
+          '「OS追加するとき何箇所修正するか」と聞かれて即答できない'
+        ]
+      },
+      try: 'TypeScript Playground (https://typescriptplayground.com) でコピペして実行できる。 isMac の値を変えるだけで全部品が一気に切り替わる挙動を確認',
+      check: [
+        '①Before の code-pair を見て、isMac の判定が何箇所あるか数える',
+        '②After の factory.createButton() を呼ぶ箇所が、Before の new XxxButton() の数と同じか確認',
+        '③もし「Linux 対応」を追加するとき、Before/After それぞれで修正箇所が何箇所になるか書き出してみる',
+        '④比較表で「型で構造的に防止」が何を意味するか、自分の言葉で説明できるか確認'
+      ]
+    },
+    lab2: {
+      usecase: {
+        scenes: [
+          'SQL クエリビルダ（Knex.js / Prisma の .select().where().orderBy() 形式）',
+          'HTTP リクエスト構築（OkHttp、axios のリクエスト組み立て）',
+          'テストフィクスチャの組立（似たデータの少しずつ違うバリエーション）',
+          'OutSystems の多 Input Server Action のラッパー'
+        ],
+        triggers: [
+          'コンストラクタに boolean が4個以上並んでいる',
+          'new X(null, null, "a", null, ...) で null を「飛ばし」に使っている',
+          '同じクラスを「微妙に違う初期状態」で何度も作っている'
+        ]
+      },
+      try: 'PizzaBuilder の addTopping を 0 回 / 1 回 / 5 回 と呼び分けて、build() で生成された Pizza オブジェクトの toppings 配列がどう変わるか console.log で確認',
+      check: [
+        '①Before の Pizza コンストラクタ呼び出しを見て、どの引数が何を意味するか引数なしで答えられるか試す',
+        '②After のチェーン呼び出しでは、各行を読むだけで何を追加しているか分かるか確認',
+        '③「キノコ抜きでオリーブだけ」のケースで、Before と After の記述量を比較',
+        '④もし「グルテンフリー対応」を追加するとき、Before/After の改修箇所を比較'
+      ]
+    },
+    lab3: {
+      usecase: {
+        scenes: [
+          'フレームワークのライフサイクルメソッド（React の componentDidMount など）',
+          'JUnit / pytest のテストフレームワーク（setUp / tearDown は親、本体は子）',
+          'OutSystems の Action Flow（フローの大枠は固定、各ノードでカスタムロジック）',
+          'バッチ処理の共通骨格（接続→読込→処理→書込→切断 のうち「処理」だけ子で実装）'
+        ],
+        triggers: [
+          '複数のサブクラスで「ほぼ同じ処理」を書いていて1行だけ違う',
+          '共通処理にバグがあって、全派生クラスを直して回った経験',
+          '「テンプレート」「フレームワーク」と呼ばれる自作クラスがある'
+        ]
+      },
+      try: 'WinDialog と WebDialog をそれぞれ new して render() を呼び、layout() / cleanup() の出力が同じで createButton() の出力だけが違うことを確認',
+      check: [
+        '①Before のコードで、もし layout() にバグがあったら何箇所修正が要るか数える',
+        '②After のコードで、同じバグ修正は何箇所で済むか比較',
+        '③「親が骨格・子が穴埋め」というメンタルモデルが自分の中で図示できるか確認',
+        '④Abstract Factory との違い（コンポジション vs 継承）を info-box の説明と照合'
+      ]
+    },
+    lab4: {
+      usecase: {
+        scenes: [
+          '図形ツール（Figma / PowerPoint）でオブジェクトをコピー&ペースト',
+          'ゲームの敵キャラ大量生成（雛形1体を作って clone）',
+          'テストデータ: ベースを作って属性を少し変えたバリエーション',
+          'OutSystems で重い JOIN のある初期化済みオブジェクトを大量生成したいとき'
+        ],
+        triggers: [
+          '初期化処理が重い／コンストラクタで外部リソースを叩いている',
+          '「同じようなインスタンスを大量に」作りたい',
+          '「実行中の状態」を持ったままコピーしたい（履歴のスナップショット等）'
+        ]
+      },
+      try: 'console.time / console.timeEnd でテンプレ生成と clone の時間差を計測。100 回生成すると差が一目で分かる',
+      check: [
+        '①Before のコードで、 100 回 new した場合のクエリ回数を計算（4 種類 × 100 = 400）',
+        '②After のコードで、 同じ 100 個生成のクエリ回数を計算（テンプレで 4 回のみ）',
+        '③clone() メソッドの実装で、なぜ ...this.preferences のスプレッドを使うのか考える（参照共有を防ぐため）',
+        '④Flyweight との違い（共有 vs 増殖）を自分の言葉で説明できるか確認'
+      ]
+    },
+    lab5: {
+      usecase: {
+        scenes: [
+          'アプリ全体の設定（環境変数の集約、API URL 等）— 慎重に',
+          'ロガー（log4j, winston のデフォルトインスタンス）',
+          'DB コネクションプール（重複作成を絶対に避けたいケース）',
+          'キャッシュマネージャ（複数あったらキャッシュの意味がない）'
+        ],
+        triggers: [
+          'グローバル変数を使いたくなる場面',
+          '「設定が画面ごとにバラバラ」というバグに遭遇したことがある',
+          '「リソースを誰がいつ初期化するか」が曖昧なオブジェクト'
+        ]
+      },
+      try: 'まず Singleton 版で動かし、次に DI 版に書き換え、テストでモックを差し替える違いを体感する',
+      check: [
+        '①Before の3つの new Config() のうち、どれが「画面 A だけテスト URL」になっている原因か特定',
+        '②After のコードで Config.getInstance() を3回呼んで、すべて === で同一かを確認',
+        '③Singleton 版と DI 版それぞれで、テスト用にモックを差し替える手順を頭の中で組み立ててみる',
+        '④「本当に1つでないと困るもの」と「DI で渡せばよいもの」を、自分のプロジェクトから例を挙げてみる'
+      ]
+    },
+    lab6: {
+      usecase: {
+        scenes: [
+          'コードレビューで「このコードどのパターンが当てはまるか？」と聞かれた時の即答用',
+          'リファクタリング会議で症状から候補を絞り込む議論ツール',
+          '新メンバー教育で「全パターン覚えるな、症状から逆引きしろ」を伝える教材',
+          'OutSystems / VB.NET / TypeScript の混在環境で共通の語彙として'
+        ],
+        triggers: [
+          '「このコード、何かパターンが効くと思うんだけど…」と思った瞬間',
+          'レガシーコードの「new だらけ」に困った時',
+          '23 パターンを丸暗記しようとして挫折した経験がある'
+        ]
+      },
+      try: 'チームの既存コードベースから new キーワードを grep で検索し、上位3ファイルがどの症状に該当するか分類してみる',
+      check: [
+        '①自分のプロジェクトで「new XXX」が一番散らばっているクラスを1つ選ぶ',
+        '②そのクラスが4大症状のどれに該当するか、ASCII チャートで判定',
+        '③候補パターンのラボに戻って Before/After を確認し、自分のコードに当てはめると After がどう書けるかメモ',
+        '④判定の優先順序（Builder→Factory Method→Abstract Factory→Prototype→Singleton）を頭に入れる'
+      ]
+    }
+  };
+
+  function usecaseHTML(m) {
+    if (!m?.usecase) return '';
+    const scenes = (m.usecase.scenes || []).map(s => `<li>${s}</li>`).join('');
+    const triggers = (m.usecase.triggers || []).map(t => `<li>${t}</li>`).join('');
+    return `<div class="usecase-box">
+      <div class="usecase-title">💡 こんな現場で効く（利用シーン）</div>
+      <ul class="usecase-list">${scenes}</ul>
+      <div class="usecase-trigger">
+        <strong>🚨 こう見えたら使える候補:</strong>
+        <ul>${triggers}</ul>
+      </div>
+    </div>`;
+  }
+
+  function tryHTML(m) {
+    const tip = m?.try ? `<div class="try-tip"><strong>💡 このラボのコツ:</strong> ${m.try}</div>` : '';
+    return `<div class="try-box">
+      <div class="try-title">💻 コード例を試す手順（コピペで動かす）</div>
+      <ol>
+        <li>上のコードブロックの <strong>Copy</strong> ボタンを押してクリップボードにコピー</li>
+        <li><a href="https://www.typescriptlang.org/play" target="_blank" rel="noopener">TypeScript Playground</a> を開いて、左側のエディタにペースト</li>
+        <li>右側の「.JS」タブで実際に走る JavaScript を確認、または「Run」で実行</li>
+        <li>下の「🔍 ブラウザ実機チェック」の項目を順に試して、想定通りの挙動になるか確認する</li>
+      </ol>
+      <pre class="try-skeleton">// または Node.js で試す場合:
+// 1. ts-node をインストール: npm i -g ts-node typescript
+// 2. test.ts に保存して実行: ts-node test.ts</pre>
+      ${tip}
+    </div>`;
+  }
+
+  function checkHTML(m) {
+    if (!m?.check?.length) return '';
+    return `<div class="check-steps">
+      <div class="check-steps-title">🔍 ブラウザ実機チェック / コード理解確認</div>
+      <ol>${m.check.map(s => `<li>${s}</li>`).join('')}</ol>
+    </div>`;
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // (1) 各ラボに usecase + try + check を自動挿入
+    document.querySelectorAll('.lab').forEach(lab => {
+      const meta = LAB_META[lab.id];
+      const body = lab.querySelector('.lab-body');
+      if (!body || !meta) return;
+      const frag = document.createElement('div');
+      frag.innerHTML = usecaseHTML(meta) + tryHTML(meta) + checkHTML(meta);
+      while (frag.firstChild) body.appendChild(frag.firstChild);
+    });
+
+    // (2) サイドバー active ハイライト
+    const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+    const map = new Map();
+    links.forEach(a => {
+      const el = document.getElementById(a.getAttribute('href').slice(1));
+      if (el) map.set(el, a);
+    });
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting) {
+        const l = map.get(e.target);
+        if (l) {
+          links.forEach(n => n.classList.remove('active'));
+          l.classList.add('active');
+        }
+      }
+    }), { rootMargin: '-30% 0px -60% 0px' });
+    document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+    // (3) 既存 .code-block に header + Copy を自動付与
+    document.querySelectorAll('.code-block').forEach((cb, i) => {
+      if (cb.querySelector('.code-block-header')) return;
+      const header = document.createElement('div');
+      header.className = 'code-block-header';
+      header.innerHTML = `<span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+      cb.insertBefore(header, cb.firstChild);
+    });
+  });
+</script>
+
+</body>
+</html>

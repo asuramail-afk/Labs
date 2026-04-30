@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GoF 振る舞いパターン Before/After Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); white-space:nowrap; }
+.compare-table .yes { color:var(--success); } .compare-table .no { color:var(--error); }
+
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; white-space:pre; }
+
+.code-pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; }
+.code-pair-col { display:flex; flex-direction:column; min-width:0; }
+.code-pair-label { font-family:var(--mono); font-size:.72rem; letter-spacing:.05em;
+  font-weight:700; padding:6px 10px; border-radius:6px 6px 0 0; }
+.code-pair-before .code-pair-label { background:rgba(203,36,49,.10); color:#9a1320;
+  border:1px solid rgba(203,36,49,.30); border-bottom:none; }
+.code-pair-after  .code-pair-label { background:rgba(34,134,58,.10); color:#154f1e;
+  border:1px solid rgba(34,134,58,.30); border-bottom:none; }
+.code-pair-col .code-block { margin:0; border-radius:0 0 8px 8px; flex:1; }
+.code-pair-before .code-block { border-color:rgba(203,36,49,.30); }
+.code-pair-after  .code-block { border-color:rgba(34,134,58,.30); }
+@media (max-width:900px){ .code-pair { grid-template-columns:1fr; } }
+
+.effect-box { background:rgba(0,92,197,.05); border:1px solid rgba(0,92,197,.25);
+  border-left:3px solid var(--accent); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.88rem; line-height:1.8; color:#003d8f; }
+.effect-title { font-family:var(--mono); font-size:.72rem; letter-spacing:.1em;
+  color:var(--accent); font-weight:700; margin-bottom:6px; }
+.effect-box ul { margin-left:20px; }
+.effect-box li { margin-bottom:4px; }
+.effect-box strong { color:#001f4d; }
+
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// Behavioral <span>11 patterns</span></div>
+  <div class="nav-section">フロー制御</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">13</span>Chain of Resp.</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">14</span>Command</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">22</span>Template Method</a>
+  <div class="nav-section">アルゴリズム選択</div>
+  <a class="nav-item" href="#lab3"><span class="nav-num">21</span>Strategy</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">20</span>State</a>
+  <div class="nav-section">通信・通知</div>
+  <a class="nav-item" href="#lab5"><span class="nav-num">19</span>Observer</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">17</span>Mediator</a>
+  <div class="nav-section">構造走査・記録</div>
+  <a class="nav-item" href="#lab7"><span class="nav-num">16</span>Iterator</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">18</span>Memento</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">23</span>Visitor</a>
+  <div class="nav-section">構文解釈</div>
+  <a class="nav-item" href="#lab10"><span class="nav-num">15</span>Interpreter</a>
+  <div class="nav-section">まとめ</div>
+  <a class="nav-item" href="#lab11"><span class="nav-num">★</span>振る舞い系の地図</a>
+</nav>
+
+<div class="hero">
+  <h1>GoF 振る舞いパターン Before/After Lab</h1>
+  <p class="subtitle">「素朴に書くとこうなる」→「パターン適用でこう変わる」を11個並べて効果を可視化</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次（カテゴリ別）</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">13</span>Chain of Responsibility</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">14</span>Command</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">22</span>Template Method</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">21</span>Strategy</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">20</span>State</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">19</span>Observer</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">17</span>Mediator</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">16</span>Iterator</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">18</span>Memento</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">23</span>Visitor</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">15</span>Interpreter</a>
+    <a class="toc-item" href="#lab11"><span class="toc-num">★</span>まとめ</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ===================== LAB 0: Chain of Responsibility ===================== -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">13</div>
+    <h3>Chain of Responsibility — 巨大if文をハンドラの数珠つなぎに</h3>
+    <span class="lab-tag tag-basic">フロー制御</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      HTTPリクエストの<code>認証→ログ→レート制限→本処理</code>のような多段処理が
+      <strong>1つの巨大関数</strong>に詰め込まれていると、項目追加・順序変更・テストのたびに本体が壊れる。
+      <strong>各処理を独立ハンドラ</strong>にして連鎖させると、追加は新クラス1個、順序変更はリストの並び替えで済む。
+    </p>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before — 巨大関数で全部書く</div>
+        <div class="code-block">
+          <pre><span class="cm">// 認証/ログ/レート制限が1関数に同居</span>
+<span class="kw">function</span> <span class="fn">handle</span>(req) {
+  <span class="cm">// 1) 認証</span>
+  <span class="kw">if</span> (!req.token) <span class="kw">return</span> <span class="str">"401"</span>;
+  <span class="kw">if</span> (!verify(req.token)) <span class="kw">return</span> <span class="str">"401"</span>;
+
+  <span class="cm">// 2) レート制限</span>
+  <span class="kw">if</span> (counter[req.ip] &gt; <span class="num">100</span>) <span class="kw">return</span> <span class="str">"429"</span>;
+  counter[req.ip]++;
+
+  <span class="cm">// 3) ログ出力</span>
+  console.<span class="fn">log</span>(<span class="str">"[req]"</span>, req.path);
+
+  <span class="cm">// 4) 本処理</span>
+  <span class="kw">return</span> <span class="fn">process</span>(req);
+}
+<span class="cm">// → 「ログだけ外したい」「順序を変えたい」</span>
+<span class="cm">//   のたびに本体を切り貼り。テスト分離も困難。</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After — ハンドラの連鎖</div>
+        <div class="code-block">
+          <pre><span class="kw">abstract class</span> Handler {
+  <span class="kw">protected</span> next?: Handler;
+  <span class="fn">setNext</span>(h: Handler) { <span class="kw">this</span>.next = h; <span class="kw">return</span> h; }
+  <span class="fn">handle</span>(req): <span class="kw">string</span> | <span class="kw">null</span> {
+    <span class="kw">return</span> <span class="kw">this</span>.next?.<span class="fn">handle</span>(req) ?? <span class="kw">null</span>;
+  }
+}
+<span class="kw">class</span> Auth <span class="kw">extends</span> Handler {
+  <span class="fn">handle</span>(req) {
+    <span class="kw">if</span> (!req.token) <span class="kw">return</span> <span class="str">"401"</span>;
+    <span class="kw">return</span> <span class="kw">super</span>.<span class="fn">handle</span>(req);
+  }
+}
+<span class="kw">class</span> RateLimit <span class="kw">extends</span> Handler { <span class="cm">/* 同様 */</span> }
+<span class="kw">class</span> Log       <span class="kw">extends</span> Handler { <span class="cm">/* 同様 */</span> }
+
+<span class="cm">// 組み立てだけで順序自由</span>
+<span class="kw">const</span> chain = <span class="kw">new</span> <span class="fn">Auth</span>();
+chain.<span class="fn">setNext</span>(<span class="kw">new</span> <span class="fn">RateLimit</span>())
+     .<span class="fn">setNext</span>(<span class="kw">new</span> <span class="fn">Log</span>());</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="effect-box">
+      <div class="effect-title">▶ 何が変わったか（効果）</div>
+      <ul>
+        <li><strong>追加コスト</strong>: 新ステップ＝新クラス1つだけ。本体ゼロ修正</li>
+        <li><strong>順序変更</strong>: <code>setNext()</code>のつなぎ替えのみ。コード本体は無傷</li>
+        <li><strong>単体テスト容易</strong>: 各ハンドラを単独で<code>handle()</code>できる</li>
+        <li><strong>条件分岐の所在</strong>: 「自分で処理 vs 次へ流す」が各クラスに自閉。横の知識不要</li>
+      </ul>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 図で見る連鎖</div>
+<pre class="ascii-art">  リクエスト
+     │
+     ▼
+  ┌──────┐ token無? ┌──────────┐ 100超? ┌──────┐
+  │ Auth │─────────▶│RateLimit │───────▶│ Log  │──▶ 本処理
+  └──────┘ 401で終了 └──────────┘ 429終了 └──────┘
+     ↑ どこか1つでも止めればチェーン終了
+     ↑ 各クラスは自分の責務だけ知っていればよい</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>典型例</strong>: Express/Koa/ASP.NET Core のミドルウェアはこの形そのもの。
+      <code>app.use(auth).use(rateLimit).use(log)</code> と並べる発想は Chain of Responsibility の応用。
+    </div>
+  </div>
+</div>
+
+<!-- ===================== LAB 1: Command ===================== -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">14</div>
+    <h3>Command — 操作を「データ」にしてUndo・キュー・ログを後付け</h3>
+    <span class="lab-tag tag-basic">フロー制御</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      関数呼び出しは<strong>その場で消費</strong>される。Undoしたい・キューに溜めたい・別マシンに送りたいときに困る。
+      操作を <code>execute()</code>＋<code>undo()</code> のオブジェクトに変換すると、操作自体を<strong>配列に積む・直列化する・逆順に走らせる</strong>ことが可能になる。
+    </p>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before — 直接呼び出し</div>
+        <div class="code-block">
+          <pre><span class="kw">class</span> Editor {
+  text = <span class="str">""</span>;
+  <span class="fn">type</span>(s) { <span class="kw">this</span>.text += s; }
+  <span class="fn">delete</span>(n) { <span class="kw">this</span>.text =
+    <span class="kw">this</span>.text.slice(<span class="num">0</span>, -n); }
+}
+
+<span class="kw">const</span> ed = <span class="kw">new</span> <span class="fn">Editor</span>();
+ed.<span class="fn">type</span>(<span class="str">"Hi"</span>);
+ed.<span class="fn">type</span>(<span class="str">" Tom"</span>);
+ed.<span class="fn">delete</span>(<span class="num">4</span>);
+
+<span class="cm">// Undoしたい？ → 履歴をどう持つ？</span>
+<span class="cm">// type/delete を文字列で覚える？</span>
+<span class="cm">// 引数も覚える？ 逆操作は誰が知る？</span>
+<span class="cm">// → 自前で全部設計する羽目に</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After — 操作をオブジェクト化</div>
+        <div class="code-block">
+          <pre><span class="kw">interface</span> Command {
+  <span class="fn">execute</span>(): <span class="kw">void</span>;
+  <span class="fn">undo</span>():    <span class="kw">void</span>;
+}
+<span class="kw">class</span> TypeCmd <span class="kw">implements</span> Command {
+  <span class="kw">constructor</span>(<span class="kw">private</span> ed, <span class="kw">private</span> s) {}
+  <span class="fn">execute</span>() { <span class="kw">this</span>.ed.<span class="fn">type</span>(<span class="kw">this</span>.s); }
+  <span class="fn">undo</span>()    { <span class="kw">this</span>.ed.<span class="fn">delete</span>(<span class="kw">this</span>.s.length); }
+}
+
+<span class="kw">const</span> history: Command[] = [];
+<span class="kw">function</span> <span class="fn">run</span>(cmd) {
+  cmd.<span class="fn">execute</span>(); history.<span class="fn">push</span>(cmd);
+}
+<span class="fn">run</span>(<span class="kw">new</span> <span class="fn">TypeCmd</span>(ed, <span class="str">"Hi"</span>));
+<span class="fn">run</span>(<span class="kw">new</span> <span class="fn">TypeCmd</span>(ed, <span class="str">" Tom"</span>));
+history.<span class="fn">pop</span>().<span class="fn">undo</span>(); <span class="cm">// 巻き戻し</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="effect-box">
+      <div class="effect-title">▶ 何が変わったか（効果）</div>
+      <ul>
+        <li><strong>Undo/Redo</strong>: 履歴スタックに<code>push/pop</code>するだけで実現</li>
+        <li><strong>遅延実行</strong>: <code>queue.push(cmd)</code>で後回し・別プロセス送信が可能</li>
+        <li><strong>JSON化</strong>: コマンド名と引数だけ持つので直列化できる→DB保存・ジョブキュー</li>
+        <li><strong>マクロ</strong>: コマンド配列をまとめて<code>execute()</code>すれば一括操作</li>
+      </ul>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>典型例</strong>: BullMQ/Sidekiq/Celery のジョブはまさにCommand。
+      テキストエディタのUndo、OutSystemsのBPTアクティビティ、トランザクションの補償処理も同じ発想。
+    </div>
+  </div>
+</div>
+
+<!-- ===================== LAB 2: Template Method ===================== -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">22</div>
+    <h3>Template Method — 流れは親、可変部分だけ子で穴埋め</h3>
+    <span class="lab-tag tag-basic">フロー制御</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      CSV/JSON/XMLそれぞれの処理クラスが<strong>同じフロー</strong>（読込→変換→保存）を毎回コピペしていると、
+      バグ修正の漏れ・流れの微妙なズレが必ず発生する。
+      流れを親で1度だけ書き、<strong>可変部分のメソッドを抽象化</strong>して子に埋めさせる。
+    </p>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before — 各クラスが流れもコピペ</div>
+        <div class="code-block">
+          <pre><span class="kw">class</span> CSVProcessor {
+  <span class="fn">process</span>() {
+    <span class="kw">const</span> data = <span class="kw">this</span>.<span class="fn">read</span>();
+    <span class="kw">const</span> result = <span class="kw">this</span>.<span class="fn">transform</span>(data);
+    <span class="kw">this</span>.<span class="fn">save</span>(result);
+  }
+  <span class="fn">read</span>() { <span class="kw">return</span> <span class="str">"a,b,c"</span>; }
+  <span class="fn">transform</span>(d) { <span class="kw">return</span> d.<span class="fn">toUpperCase</span>(); }
+  <span class="fn">save</span>(d) { console.<span class="fn">log</span>(<span class="str">"保存:"</span>, d); }
+}
+
+<span class="kw">class</span> JSONProcessor {
+  <span class="fn">process</span>() {
+    <span class="kw">const</span> data = <span class="kw">this</span>.<span class="fn">read</span>();   <span class="cm">// ← 同じ</span>
+    <span class="kw">const</span> result = <span class="kw">this</span>.<span class="fn">transform</span>(data);
+    <span class="kw">this</span>.<span class="fn">save</span>(result);          <span class="cm">// ← 同じ</span>
+  }
+  <span class="cm">// → 流れにバグがあると2箇所直す</span>
+}</pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After — 流れは親で1回だけ</div>
+        <div class="code-block">
+          <pre><span class="kw">abstract class</span> DataProcessor {
+  <span class="fn">process</span>() { <span class="cm">// テンプレ — 流れを固定</span>
+    <span class="kw">const</span> data = <span class="kw">this</span>.<span class="fn">read</span>();
+    <span class="kw">const</span> result = <span class="kw">this</span>.<span class="fn">transform</span>(data);
+    <span class="kw">this</span>.<span class="fn">save</span>(result);
+  }
+  <span class="kw">protected abstract</span> <span class="fn">read</span>(): <span class="kw">string</span>;
+  <span class="kw">protected abstract</span> <span class="fn">transform</span>(d): <span class="kw">string</span>;
+  <span class="kw">protected</span> <span class="fn">save</span>(d) { <span class="cm">// 共通実装</span>
+    console.<span class="fn">log</span>(<span class="str">"保存:"</span>, d);
+  }
+}
+<span class="kw">class</span> CSV <span class="kw">extends</span> DataProcessor {
+  <span class="fn">read</span>() { <span class="kw">return</span> <span class="str">"a,b,c"</span>; }
+  <span class="fn">transform</span>(d) { <span class="kw">return</span> d.<span class="fn">toUpperCase</span>(); }
+}
+<span class="cm">// 流れの修正は親1箇所だけで全派生に反映</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="effect-box">
+      <div class="effect-title">▶ 何が変わったか（効果）</div>
+      <ul>
+        <li><strong>共通フローのバグ修正</strong>: 親1箇所→全派生に自動反映</li>
+        <li><strong>流れの一貫性</strong>: 派生クラスが順番を勝手に変えられない（フレームワーク的強制）</li>
+        <li><strong>新形式の追加</strong>: 抽象メソッドを実装するだけ。流れの記述不要</li>
+        <li><strong>共通処理の集約</strong>: <code>save()</code>のような不変部分は親に置き、再利用</li>
+      </ul>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>Strategyとの違い</strong>: 同じ「処理を差し替える」だが、
+      <strong>Template Methodは継承</strong>（コンパイル時固定）、
+      <strong>Strategyはコンポジション</strong>（実行時切替）。
+      実行時に何度も切り替えたいなら Strategy、流れ自体を派生先に強制したいなら Template Method。
+    </div>
+  </div>
+</div>
+
+<!-- ===================== LAB 3: Strategy ===================== -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">21</div>
+    <h3>Strategy — if-else 地獄をクラスに分解して実行時に差し替え</h3>
+    <span class="lab-tag tag-basic">アルゴリズム選択</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      税額計算・決済・ソート・配送料——「同じ目的の複数アルゴリズム」を <code>if (type === ...)</code> で切り替えると、
+      新方式の追加でメソッド本体に手が入り続け、テストもしにくい。
+      各アルゴリズムを<strong>同じIFを持つクラス</strong>にして、利用側に<strong>差し込む</strong>形に変える。
+    </p>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before — switch文に固定化</div>
+        <div class="code-block">
+          <pre><span class="kw">class</span> PriceCalculator {
+  <span class="fn">calc</span>(price, type) {
+    <span class="kw">switch</span> (type) {
+      <span class="kw">case</span> <span class="str">"normal"</span>:
+        <span class="kw">return</span> price;
+      <span class="kw">case</span> <span class="str">"vip"</span>:
+        <span class="kw">return</span> price * <span class="num">0.8</span>;
+      <span class="kw">case</span> <span class="str">"student"</span>:
+        <span class="kw">return</span> price * <span class="num">0.7</span>;
+      <span class="kw">case</span> <span class="str">"coupon"</span>:
+        <span class="kw">return</span> price - <span class="num">500</span>;
+      <span class="cm">// 新区分追加 → switch を毎回触る</span>
+    }
+  }
+}
+calc.<span class="fn">calc</span>(<span class="num">1000</span>, <span class="str">"vip"</span>); <span class="cm">// 800</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After — 各方式を独立クラスに</div>
+        <div class="code-block">
+          <pre><span class="kw">interface</span> PriceStrategy {
+  <span class="fn">calc</span>(price: <span class="kw">number</span>): <span class="kw">number</span>;
+}
+<span class="kw">class</span> Normal  <span class="kw">implements</span> PriceStrategy {
+  <span class="fn">calc</span>(p) { <span class="kw">return</span> p; }
+}
+<span class="kw">class</span> Vip     <span class="kw">implements</span> PriceStrategy {
+  <span class="fn">calc</span>(p) { <span class="kw">return</span> p * <span class="num">0.8</span>; }
+}
+<span class="kw">class</span> Student <span class="kw">implements</span> PriceStrategy {
+  <span class="fn">calc</span>(p) { <span class="kw">return</span> p * <span class="num">0.7</span>; }
+}
+
+<span class="kw">class</span> Calculator {
+  <span class="kw">constructor</span>(<span class="kw">private</span> s: PriceStrategy) {}
+  <span class="fn">setStrategy</span>(s) { <span class="kw">this</span>.s = s; }
+  <span class="fn">calc</span>(p) { <span class="kw">return</span> <span class="kw">this</span>.s.<span class="fn">calc</span>(p); }
+}
+<span class="kw">const</span> c = <span class="kw">new</span> <span class="fn">Calculator</span>(<span class="kw">new</span> <span class="fn">Vip</span>());
+c.<span class="fn">setStrategy</span>(<span class="kw">new</span> <span class="fn">Student</span>()); <span class="cm">// 実行時切替</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="effect-box">
+      <div class="effect-title">▶ 何が変わったか（効果）</div>
+      <ul>
+        <li><strong>Open-Closed原則</strong>: 新区分追加で既存コード変更なし。新クラス追加のみ</li>
+        <li><strong>テスト独立</strong>: 各Strategyを単独でユニットテスト可能</li>
+        <li><strong>実行時切替</strong>: ユーザー操作・ABテスト・設定で動的に変更可能</li>
+        <li><strong>関心の分離</strong>: 「いつ使うか」と「どう計算するか」が別クラス</li>
+      </ul>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>Tomさんの実務で効く場面</strong>: Wijmo FlexGridのソート/フィルタ/集計。
+      OutSystemsで決済プロバイダ切替（クレカ/PayPay/銀行振込）、
+      料金計算のテーブル別ロジックなど、「<code>switch</code>がアプリ各所に散らばっている」現象は Strategy の出番。
+    </div>
+  </div>
+</div>
+
+<!-- ===================== LAB 4: State ===================== -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">20</div>
+    <h3>State — ステータス別ifを「状態オブジェクト」に変換</h3>
+    <span class="lab-tag tag-intermediate">アルゴリズム選択</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      注文ステータス（下書き/承認待ち/配送中/完了/キャンセル）で操作の可否が変わるとき、
+      <strong>全メソッドの先頭に <code>if (status === ...)</code></strong> が並ぶ典型的な悪臭が発生する。
+      状態を<strong>クラス化</strong>すると、状態追加で既存メソッドを触る必要がなくなり、状態遷移図がそのままコード構造になる。
+    </p>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before — 全メソッドにステータス分岐</div>
+        <div class="code-block">
+          <pre><span class="kw">class</span> Order {
+  status = <span class="str">"draft"</span>;
+
+  <span class="fn">submit</span>() {
+    <span class="kw">if</span> (<span class="kw">this</span>.status === <span class="str">"draft"</span>) {
+      <span class="kw">this</span>.status = <span class="str">"pending"</span>;
+    } <span class="kw">else</span> <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">Error</span>(<span class="str">"NG"</span>);
+  }
+  <span class="fn">approve</span>() {
+    <span class="kw">if</span> (<span class="kw">this</span>.status === <span class="str">"pending"</span>) {
+      <span class="kw">this</span>.status = <span class="str">"shipping"</span>;
+    } <span class="kw">else</span> <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">Error</span>(<span class="str">"NG"</span>);
+  }
+  <span class="fn">cancel</span>() {
+    <span class="kw">if</span> (<span class="kw">this</span>.status === <span class="str">"draft"</span> ||
+        <span class="kw">this</span>.status === <span class="str">"pending"</span>) {
+      <span class="kw">this</span>.status = <span class="str">"cancelled"</span>;
+    } <span class="kw">else</span> <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">Error</span>(<span class="str">"NG"</span>);
+  }
+  <span class="cm">// 状態追加で全メソッド要修正</span>
+}</pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After — 状態がオブジェクト</div>
+        <div class="code-block">
+          <pre><span class="kw">interface</span> OrderState {
+  <span class="fn">submit</span>(o: Order):  <span class="kw">void</span>;
+  <span class="fn">approve</span>(o: Order): <span class="kw">void</span>;
+  <span class="fn">cancel</span>(o: Order):  <span class="kw">void</span>;
+}
+<span class="kw">class</span> Draft <span class="kw">implements</span> OrderState {
+  <span class="fn">submit</span>(o)  { o.<span class="fn">setState</span>(<span class="kw">new</span> <span class="fn">Pending</span>()); }
+  <span class="fn">approve</span>(o) { <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">Error</span>(<span class="str">"NG"</span>); }
+  <span class="fn">cancel</span>(o)  { o.<span class="fn">setState</span>(<span class="kw">new</span> <span class="fn">Cancel</span>()); }
+}
+<span class="kw">class</span> Pending <span class="kw">implements</span> OrderState {
+  <span class="fn">submit</span>(o)  { <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">Error</span>(<span class="str">"NG"</span>); }
+  <span class="fn">approve</span>(o) { o.<span class="fn">setState</span>(<span class="kw">new</span> <span class="fn">Shipping</span>()); }
+  <span class="fn">cancel</span>(o)  { o.<span class="fn">setState</span>(<span class="kw">new</span> <span class="fn">Cancel</span>()); }
+}
+<span class="kw">class</span> Order {
+  <span class="kw">private</span> state: OrderState = <span class="kw">new</span> <span class="fn">Draft</span>();
+  <span class="fn">setState</span>(s) { <span class="kw">this</span>.state = s; }
+  <span class="fn">submit</span>()  { <span class="kw">this</span>.state.<span class="fn">submit</span>(<span class="kw">this</span>); }
+  <span class="fn">approve</span>() { <span class="kw">this</span>.state.<span class="fn">approve</span>(<span class="kw">this</span>); }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="effect-box">
+      <div class="effect-title">▶ 何が変わったか（効果）</div>
+      <ul>
+        <li><strong>状態追加</strong>: 新クラス1個追加のみ。既存メソッドゼロ修正</li>
+        <li><strong>状態遷移の局所化</strong>: 「Draftから何になれるか」がDraftクラスに集約</li>
+        <li><strong>不正遷移の検出</strong>: 「Pendingで<code>submit()</code>すると例外」がクラス境界で表現</li>
+        <li><strong>状態遷移図と1:1対応</strong>: ドキュメントの状態図がそのままクラス図になる</li>
+      </ul>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 Strategy との違い（よく混同される）</div>
+<pre class="ascii-art">Strategy: 利用側が能動的にアルゴリズムを選ぶ
+   ┌─────┐ setStrategy(B)  ┌─────┐
+   │利用 │────────────────▶│ B   │   外部から制御
+   └─────┘                 └─────┘
+
+State:    状態オブジェクトが「次の自分」を決めて自律遷移
+   ┌──────┐ submit()  ┌────────┐
+   │Draft │──────────▶│Pending │   内部で遷移
+   └──────┘ 自己解任   └────────┘
+   ↑ 利用側はsubmit()と呼ぶだけ。次がPendingか
+     何かを意識しない</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== LAB 5: Observer ===================== -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">19</div>
+    <h3>Observer — データ側がUI/ログ/通知を直接知る依存関係を断ち切る</h3>
+    <span class="lab-tag tag-basic">通信・通知</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      「データが更新されたら、関連UI3箇所と通知バーとログを更新」を直書きすると、
+      <strong>データ側が下流の全クラスを知る</strong>ことになり、依存方向が逆転して結合が密になる。
+      Observerでは「変化があった」と通知するだけ。<strong>誰が何をするかは購読者が自分で決める</strong>。
+    </p>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before — データ側が下流を直接呼ぶ</div>
+        <div class="code-block">
+          <pre><span class="kw">class</span> Cart {
+  items = [];
+  <span class="kw">constructor</span>(
+    <span class="kw">private</span> ui: UIRenderer,
+    <span class="kw">private</span> log: Logger,
+    <span class="kw">private</span> noti: Notifier
+  ) {}
+
+  <span class="fn">add</span>(item) {
+    <span class="kw">this</span>.items.<span class="fn">push</span>(item);
+    <span class="cm">// データ側が全員を知っている</span>
+    <span class="kw">this</span>.ui.<span class="fn">render</span>(<span class="kw">this</span>.items);
+    <span class="kw">this</span>.log.<span class="fn">write</span>(<span class="str">"add"</span>, item);
+    <span class="kw">this</span>.noti.<span class="fn">show</span>(<span class="str">"追加"</span>);
+  }
+  <span class="cm">// 集計クラスを追加 → Cart修正</span>
+  <span class="cm">// 通知を1つ削減 → Cart修正</span>
+  <span class="cm">// → Cart が下流の事情で揺れる</span>
+}</pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After — 購読者が自分で登録</div>
+        <div class="code-block">
+          <pre><span class="kw">type</span> Listener = (items) =&gt; <span class="kw">void</span>;
+
+<span class="kw">class</span> Cart {
+  <span class="kw">private</span> listeners: Listener[] = [];
+  items = [];
+  <span class="fn">subscribe</span>(l) { <span class="kw">this</span>.listeners.<span class="fn">push</span>(l); }
+  <span class="fn">add</span>(item) {
+    <span class="kw">this</span>.items.<span class="fn">push</span>(item);
+    <span class="cm">// 誰が聞いてるか知らない</span>
+    <span class="kw">this</span>.listeners.<span class="fn">forEach</span>(
+      l =&gt; <span class="fn">l</span>(<span class="kw">this</span>.items)
+    );
+  }
+}
+
+<span class="kw">const</span> cart = <span class="kw">new</span> <span class="fn">Cart</span>();
+cart.<span class="fn">subscribe</span>(items =&gt; ui.<span class="fn">render</span>(items));
+cart.<span class="fn">subscribe</span>(items =&gt; log.<span class="fn">write</span>(items));
+cart.<span class="fn">subscribe</span>(items =&gt; noti.<span class="fn">show</span>(<span class="str">"追加"</span>));
+<span class="cm">// 集計クラス追加 → subscribe追加だけ</span>
+<span class="cm">// Cart は無傷</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="effect-box">
+      <div class="effect-title">▶ 何が変わったか（効果）</div>
+      <ul>
+        <li><strong>依存方向の逆転</strong>: データ側→下流 ではなく 下流→データ側 への単方向に</li>
+        <li><strong>追加の容易さ</strong>: 新しい監視対象は<code>subscribe()</code>するだけ。データ側ゼロ修正</li>
+        <li><strong>テスト容易</strong>: <code>subscribe</code>に検証用の関数を渡すだけで通知をテストできる</li>
+        <li><strong>疎結合</strong>: データクラスがUIライブラリやロガーに依存しなくなる</li>
+      </ul>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>Tomさんの実務で効く場面</strong>: Reactの<code>useState</code>/<code>setState</code>はObserverそのもの。
+      OutSystemsのデータバインディング、Vue/MobX/RxJSのリアクティブ系、
+      DOMの<code>addEventListener</code>、Pub/Sub（Redis/Kafka）の根本概念。
+    </div>
+  </div>
+</div>
+
+<!-- ===================== LAB 6: Mediator ===================== -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">17</div>
+    <h3>Mediator — N対Nの網の目をハブ集約に変える</h3>
+    <span class="lab-tag tag-intermediate">通信・通知</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ダイアログ内の<strong>テキスト入力・チェックボックス・ボタン・リスト</strong>が互いを直接参照すると、
+      参照関係が網の目になり1つの変更が全体に波及する。
+      <strong>仲介役（Mediator）</strong>を間に置き、各部品はMediatorだけを知るようにすると N×N が N×1 に下がる。
+    </p>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before — 部品同士が直接参照</div>
+        <div class="code-block">
+          <pre><span class="kw">class</span> NameInput {
+  <span class="kw">constructor</span>(
+    <span class="kw">private</span> btn: SubmitBtn,
+    <span class="kw">private</span> label: ErrorLabel
+  ) {}
+  <span class="fn">onChange</span>(v) {
+    <span class="kw">if</span> (v.length &lt; <span class="num">3</span>) {
+      <span class="kw">this</span>.label.<span class="fn">show</span>(<span class="str">"短い"</span>);
+      <span class="kw">this</span>.btn.<span class="fn">disable</span>();
+    } <span class="kw">else</span> {
+      <span class="kw">this</span>.label.<span class="fn">hide</span>();
+      <span class="kw">this</span>.btn.<span class="fn">enable</span>();
+    }
+  }
+}
+<span class="cm">// SubmitBtn も EmailInput も</span>
+<span class="cm">// 互いを参照... 関係が網の目に</span>
+<span class="cm">// 部品Aの変更が部品B,C,Dに波及</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After — 仲介役に集約</div>
+        <div class="code-block">
+          <pre><span class="kw">class</span> FormMediator {
+  name: NameInput;
+  email: EmailInput;
+  btn: SubmitBtn;
+  label: ErrorLabel;
+
+  <span class="fn">notify</span>(sender, event) {
+    <span class="kw">if</span> (sender === <span class="str">"name"</span> &amp;&amp;
+        event === <span class="str">"changed"</span>) {
+      <span class="kw">const</span> ok = <span class="kw">this</span>.name.value.length &gt;= <span class="num">3</span>;
+      <span class="kw">this</span>.label.<span class="fn">toggle</span>(!ok);
+      <span class="kw">this</span>.btn.<span class="fn">setEnabled</span>(ok);
+    }
+  }
+}
+<span class="kw">class</span> NameInput {
+  <span class="kw">constructor</span>(<span class="kw">private</span> m: FormMediator) {}
+  <span class="fn">onChange</span>() {
+    <span class="kw">this</span>.m.<span class="fn">notify</span>(<span class="str">"name"</span>, <span class="str">"changed"</span>);
+  }
+}
+<span class="cm">// 部品は Mediator だけ知る</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="effect-box">
+      <div class="effect-title">▶ 何が変わったか（効果）</div>
+      <ul>
+        <li><strong>N×N → N×1</strong>: 部品10個でも依存先はMediator1つのみ</li>
+        <li><strong>協調ロジック集約</strong>: 「誰が何に反応するか」が1箇所で見渡せる</li>
+        <li><strong>部品の再利用性</strong>: 部品自体は他の画面でも使える（直接参照なし）</li>
+        <li><strong>変更影響の局所化</strong>: ルール変更はMediatorのみ修正</li>
+      </ul>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 図で見る依存関係の変化</div>
+<pre class="ascii-art">【Before】 N×N の結合（4部品で6本の線）
+   A ───── B
+    \  ✕  /
+     \   /
+      ╳    ← 1本の変更が全体に波及
+     /   \
+    /  ✕  \
+   C ───── D
+
+【After】 ハブ集約（4部品で4本の線、Mediator1点に集中）
+       A   B
+        \ /
+         M     ← 全ての協調ロジックがここに
+        / \
+       C   D</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>Observerとの違い</strong>: Observerは「1対多の通知（誰が反応するかは購読者の自由）」。
+      Mediatorは「<strong>多対多の協調ロジックを集約</strong>」。
+      Mediator内では「Aが変わったらBとCを更新」のような<strong>具体的なルール</strong>を持つ点が違う。
+    </div>
+  </div>
+</div>
+
+<!-- ===================== LAB 7: Iterator ===================== -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">16</div>
+    <h3>Iterator — 内部構造を隠蔽してforループを統一</h3>
+    <span class="lab-tag tag-basic">構造走査・記録</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      コレクションが配列か連結リストか木構造かを利用側が直接知っていると、
+      <strong>内部構造を変えただけで全利用箇所を書き換える</strong>羽目になる。
+      <code>next()</code>を返すIteratorに統一すれば、内部実装は<strong>後から差し替え自由</strong>になる。
+    </p>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before — 内部構造に直接アクセス</div>
+        <div class="code-block">
+          <pre><span class="kw">class</span> UserList {
+  <span class="kw">public</span> items: User[] = []; <span class="cm">// public!</span>
+  <span class="fn">add</span>(u) { <span class="kw">this</span>.items.<span class="fn">push</span>(u); }
+}
+
+<span class="kw">const</span> list = <span class="kw">new</span> <span class="fn">UserList</span>();
+
+<span class="cm">// 利用側は配列であることを前提に書く</span>
+<span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i &lt; list.items.length; i++) {
+  console.<span class="fn">log</span>(list.items[i].name);
+}
+
+<span class="cm">// 後日「DB遅延ロードに変えたい」「木構造</span>
+<span class="cm">// に変えたい」となったら、</span>
+<span class="cm">// 全利用箇所の for ループを修正する羽目に</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After — Iterator経由でアクセス</div>
+        <div class="code-block">
+          <pre><span class="kw">class</span> UserList {
+  <span class="kw">private</span> items: User[] = []; <span class="cm">// private</span>
+  <span class="fn">add</span>(u) { <span class="kw">this</span>.items.<span class="fn">push</span>(u); }
+
+  [<span class="fn">Symbol.iterator</span>]() {
+    <span class="kw">let</span> i = <span class="num">0</span>;
+    <span class="kw">const</span> arr = <span class="kw">this</span>.items;
+    <span class="kw">return</span> {
+      <span class="fn">next</span>() {
+        <span class="kw">return</span> i &lt; arr.length
+          ? { value: arr[i++], done: <span class="kw">false</span> }
+          : { value: <span class="kw">undefined</span>, done: <span class="kw">true</span> };
+      }
+    };
+  }
+}
+
+<span class="kw">const</span> list = <span class="kw">new</span> <span class="fn">UserList</span>();
+<span class="cm">// 内部構造を意識しない</span>
+<span class="kw">for</span> (<span class="kw">const</span> u <span class="kw">of</span> list) console.<span class="fn">log</span>(u.name);
+<span class="cm">// → 配列→木→DBカーソル に変えても</span>
+<span class="cm">//   この for...of は無傷</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="effect-box">
+      <div class="effect-title">▶ 何が変わったか（効果）</div>
+      <ul>
+        <li><strong>カプセル化</strong>: <code>items</code>がprivate化され、外部から構造を触れない</li>
+        <li><strong>実装差替の自由</strong>: 配列→Map→木→DB遅延ロード、利用側のforは無傷</li>
+        <li><strong>遅延評価対応</strong>: <code>next()</code>呼ばれた時に1件取る形でストリーム化可能</li>
+        <li><strong>言語標準との統合</strong>: <code>for...of</code>、<code>spread</code>、<code>Array.from</code>等が使える</li>
+      </ul>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>身近な例</strong>: JSの<code>for...of</code>、JavaのIterator、C#のIEnumerable、
+      DBカーソル、RxJS/LINQ/Java Stream。Iteratorは23パターン中<strong>最も内部に組み込まれている</strong>パターン。
+      自前で書くことは少ないが、毎日使っている。
+    </div>
+  </div>
+</div>
+
+<!-- ===================== LAB 8: Memento ===================== -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">18</div>
+    <h3>Memento — カプセル化を壊さずに状態を保存・復元</h3>
+    <span class="lab-tag tag-intermediate">構造走査・記録</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Undoのために内部変数を全部 public にすると<strong>誰でも書き換え可能</strong>になり、カプセル化が壊れる。
+      Memento は「<strong>本人が <code>save()</code>/<code>restore()</code> する</strong>」ことで、外部から内部状態を直接触らせずに復元を可能にする。
+    </p>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before — public化で破綻</div>
+        <div class="code-block">
+          <pre><span class="kw">class</span> Game {
+  <span class="cm">// Undo のために全部 public</span>
+  <span class="kw">public</span> hp = <span class="num">100</span>;
+  <span class="kw">public</span> level = <span class="num">1</span>;
+  <span class="kw">public</span> inventory = [];
+  <span class="kw">public</span> position = { x:<span class="num">0</span>, y:<span class="num">0</span> };
+}
+
+<span class="kw">const</span> g = <span class="kw">new</span> <span class="fn">Game</span>();
+
+<span class="cm">// セーブ: 自前でコピー</span>
+<span class="kw">const</span> snap = {
+  hp: g.hp, level: g.level,
+  inventory: [...g.inventory],
+  position: {...g.position}
+};
+
+<span class="cm">// 問題:</span>
+<span class="cm">// - 利用側がhpを直接書き換え可能</span>
+<span class="cm">// - フィールド追加 → セーブ漏れ</span>
+<span class="cm">// - ディープコピー漏れでバグ</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After — 本人がスナップ管理</div>
+        <div class="code-block">
+          <pre><span class="kw">class</span> Game {
+  <span class="kw">private</span> hp = <span class="num">100</span>;
+  <span class="kw">private</span> level = <span class="num">1</span>;
+  <span class="kw">private</span> inventory: <span class="kw">string</span>[] = [];
+
+  <span class="fn">attack</span>() { <span class="kw">this</span>.hp -= <span class="num">10</span>; }
+  <span class="fn">levelUp</span>() { <span class="kw">this</span>.level++; }
+
+  <span class="cm">// Memento を返す（不変）</span>
+  <span class="fn">save</span>(): GameMemento {
+    <span class="kw">return</span> {
+      hp: <span class="kw">this</span>.hp,
+      level: <span class="kw">this</span>.level,
+      inventory: [...<span class="kw">this</span>.inventory]
+    };
+  }
+  <span class="fn">restore</span>(m: GameMemento) {
+    <span class="kw">this</span>.hp = m.hp;
+    <span class="kw">this</span>.level = m.level;
+    <span class="kw">this</span>.inventory = [...m.inventory];
+  }
+}
+
+<span class="kw">const</span> g = <span class="kw">new</span> <span class="fn">Game</span>();
+<span class="kw">const</span> snap = g.<span class="fn">save</span>(); <span class="cm">// 内部は隠蔽</span>
+g.<span class="fn">attack</span>();
+g.<span class="fn">restore</span>(snap);     <span class="cm">// 巻き戻し</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="effect-box">
+      <div class="effect-title">▶ 何が変わったか（効果）</div>
+      <ul>
+        <li><strong>カプセル化保持</strong>: フィールドはprivateのまま。外部から書き換え不可</li>
+        <li><strong>ディープコピー責務の集約</strong>: 本人だけが正しいコピー方法を知る</li>
+        <li><strong>フィールド追加に強い</strong>: <code>save</code>/<code>restore</code>の両方を1箇所で更新</li>
+        <li><strong>Commandと組み合わせて強力</strong>: 各CommandがMementoを持てば完璧なUndo</li>
+      </ul>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>典型例</strong>: ゲームのセーブ/ロード、エディタのUndo、フォームの自動保存、
+      DBトランザクションの「変更前の状態」。Commandと組み合わせると履歴スタックが極めて強力になる。
+    </div>
+  </div>
+</div>
+
+<!-- ===================== LAB 9: Visitor ===================== -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">23</div>
+    <h3>Visitor — クラス階層を凍結したまま機能を増やす</h3>
+    <span class="lab-tag tag-advanced">構造走査・記録</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Shape階層に「面積」「描画」「JSON出力」「コピー」と機能を増やすたびに <strong>Circle/Square/Triangle 全クラスを修正</strong>するのは Open-Closed原則違反。
+      Visitorでは<strong>新機能＝新クラス</strong>として外部に追加し、Shape側は不変のまま操作だけ増やせる。
+    </p>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before — 機能追加で全クラス修正</div>
+        <div class="code-block">
+          <pre><span class="kw">class</span> Circle {
+  <span class="kw">constructor</span>(<span class="kw">public</span> r: <span class="kw">number</span>) {}
+  <span class="fn">area</span>()       { <span class="kw">return</span> Math.PI * <span class="kw">this</span>.r ** <span class="num">2</span>; }
+  <span class="fn">draw</span>()       { <span class="cm">/* 描画 */</span> }
+  <span class="fn">toJson</span>()     { <span class="cm">/* JSON化 */</span> }
+  <span class="fn">perimeter</span>()  { <span class="kw">return</span> <span class="num">2</span>*Math.PI*<span class="kw">this</span>.r; }
+  <span class="cm">// 機能追加 → ここに足す</span>
+}
+<span class="kw">class</span> Square {
+  <span class="kw">constructor</span>(<span class="kw">public</span> side: <span class="kw">number</span>) {}
+  <span class="fn">area</span>()       { <span class="cm">/* ... */</span> }
+  <span class="fn">draw</span>()       { <span class="cm">/* ... */</span> }
+  <span class="fn">toJson</span>()     { <span class="cm">/* ... */</span> }
+  <span class="fn">perimeter</span>()  { <span class="cm">/* ... */</span> }
+  <span class="cm">// 機能追加 → ここにも足す</span>
+}
+<span class="cm">// 「シリアライズ」機能追加</span>
+<span class="cm">// → Circle, Square, Triangle 全て修正</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After — 機能を外部Visitorに分離</div>
+        <div class="code-block">
+          <pre><span class="kw">interface</span> Shape {
+  <span class="fn">accept</span>(v: Visitor): <span class="kw">void</span>;
+}
+<span class="kw">class</span> Circle <span class="kw">implements</span> Shape {
+  <span class="kw">constructor</span>(<span class="kw">public</span> r: <span class="kw">number</span>) {}
+  <span class="fn">accept</span>(v) { v.<span class="fn">visitCircle</span>(<span class="kw">this</span>); }
+}
+<span class="kw">class</span> Square <span class="kw">implements</span> Shape {
+  <span class="kw">constructor</span>(<span class="kw">public</span> side: <span class="kw">number</span>) {}
+  <span class="fn">accept</span>(v) { v.<span class="fn">visitSquare</span>(<span class="kw">this</span>); }
+}
+<span class="cm">// Shape側はもう触らない</span>
+
+<span class="kw">interface</span> Visitor {
+  <span class="fn">visitCircle</span>(c: Circle): <span class="kw">void</span>;
+  <span class="fn">visitSquare</span>(s: Square): <span class="kw">void</span>;
+}
+<span class="cm">// 新機能 = 新Visitor</span>
+<span class="kw">class</span> AreaVisitor <span class="kw">implements</span> Visitor {
+  <span class="fn">visitCircle</span>(c) { console.<span class="fn">log</span>(Math.PI*c.r**<span class="num">2</span>); }
+  <span class="fn">visitSquare</span>(s) { console.<span class="fn">log</span>(s.side**<span class="num">2</span>); }
+}
+<span class="kw">class</span> JsonVisitor <span class="kw">implements</span> Visitor { <span class="cm">/* */</span> }</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="effect-box">
+      <div class="effect-title">▶ 何が変わったか（効果）</div>
+      <ul>
+        <li><strong>Open-Closed原則の貫徹</strong>: Shape階層は完全凍結、新機能は外で増殖</li>
+        <li><strong>機能ごとにファイル分離</strong>: AreaVisitor.ts / JsonVisitor.ts と分けられる</li>
+        <li><strong>1階層の操作を一覧</strong>: 「面積計算」のロジックが1ファイルにまとまる</li>
+        <li><strong>テスト容易</strong>: Visitor単体でモックShape相手にテストできる</li>
+      </ul>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>適用注意</strong>: Visitorは「<strong>クラス階層が固定で、操作が増える</strong>」場面に限る。
+      逆に Shape階層が頻繁に増える場合は<strong>全Visitorを修正する羽目</strong>になり逆効果。
+      コンパイラ/トランスパイラのASTのように「文法ノードは決まっているが、解析パスは増え続ける」場面が王道。
+    </div>
+  </div>
+</div>
+
+<!-- ===================== LAB 10: Interpreter ===================== -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">15</div>
+    <h3>Interpreter — 危険な eval を文法ツリーに置き換える</h3>
+    <span class="lab-tag tag-advanced">構文解釈</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ユーザーや業務担当に「<code>price &gt; 1000 AND category = '本'</code>」のような式を書かせたい。
+      <code>eval</code>は危険、独自<code>if</code>はメンテ不能、JS関数化もスコープ汚染リスク。
+      文法を<strong>ノードクラス</strong>に分解して<strong>木として評価</strong>すれば、安全に・拡張容易に・テスト可能になる。
+    </p>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before — eval / 巨大if</div>
+        <div class="code-block">
+          <pre><span class="cm">// 案1: eval — 危険すぎる</span>
+<span class="kw">function</span> <span class="fn">evalRule</span>(rule, ctx) {
+  <span class="kw">return</span> <span class="fn">eval</span>(rule); <span class="cm">// 任意コード実行可能！</span>
+}
+<span class="fn">evalRule</span>(<span class="str">"price &gt; 1000"</span>, { price:<span class="num">1500</span> });
+<span class="fn">evalRule</span>(<span class="str">"alert(1); 1"</span>, {}); <span class="cm">// XSS</span>
+
+<span class="cm">// 案2: 巨大if</span>
+<span class="kw">function</span> <span class="fn">evalRule2</span>(rule, ctx) {
+  <span class="kw">if</span> (rule === <span class="str">"price&gt;1000"</span>)
+    <span class="kw">return</span> ctx.price &gt; <span class="num">1000</span>;
+  <span class="kw">if</span> (rule === <span class="str">"vip"</span>)
+    <span class="kw">return</span> ctx.user.vip;
+  <span class="cm">// ルール追加のたびにコード追加・デプロイ</span>
+}</pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After — 式木で評価</div>
+        <div class="code-block">
+          <pre><span class="kw">interface</span> Expr {
+  <span class="fn">interpret</span>(ctx): <span class="kw">boolean</span>;
+}
+<span class="kw">class</span> Gt <span class="kw">implements</span> Expr {
+  <span class="kw">constructor</span>(<span class="kw">private</span> field, <span class="kw">private</span> v) {}
+  <span class="fn">interpret</span>(ctx) {
+    <span class="kw">return</span> ctx[<span class="kw">this</span>.field] &gt; <span class="kw">this</span>.v;
+  }
+}
+<span class="kw">class</span> And <span class="kw">implements</span> Expr {
+  <span class="kw">constructor</span>(<span class="kw">private</span> l: Expr, <span class="kw">private</span> r: Expr) {}
+  <span class="fn">interpret</span>(ctx) {
+    <span class="kw">return</span> <span class="kw">this</span>.l.<span class="fn">interpret</span>(ctx)
+        &amp;&amp; <span class="kw">this</span>.r.<span class="fn">interpret</span>(ctx);
+  }
+}
+
+<span class="cm">// price &gt; 1000 AND vip</span>
+<span class="kw">const</span> rule = <span class="kw">new</span> <span class="fn">And</span>(
+  <span class="kw">new</span> <span class="fn">Gt</span>(<span class="str">"price"</span>, <span class="num">1000</span>),
+  <span class="kw">new</span> <span class="fn">Eq</span>(<span class="str">"vip"</span>, <span class="kw">true</span>)
+);
+rule.<span class="fn">interpret</span>({ price:<span class="num">1500</span>, vip:<span class="kw">true</span> }); <span class="cm">// true</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="effect-box">
+      <div class="effect-title">▶ 何が変わったか（効果）</div>
+      <ul>
+        <li><strong>安全性</strong>: 任意コード実行不可。許可された演算子しか動かない</li>
+        <li><strong>拡張容易</strong>: 新演算子＝新クラス。<code>Or</code>、<code>Not</code>、<code>In</code>を順次追加</li>
+        <li><strong>テスト可能</strong>: 各ノードを単体でユニットテストできる</li>
+        <li><strong>業務担当が編集可</strong>: JSONで式木を表現すれば管理画面でルール編集→DB保存</li>
+      </ul>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>適用頻度は低め</strong>: 23パターン中、最も実装機会が少ない。
+      本格的な言語処理はANTLRやPEG.jsなどパーサジェネレータが現実解。
+      Interpreterパターンは「<strong>小さなDSL・ビジネスルール式</strong>」に限定するのが鉄則。
+    </div>
+  </div>
+</div>
+
+<!-- ===================== LAB 11: まとめ ===================== -->
+<div class="lab" id="lab11">
+  <div class="lab-header">
+    <div class="lab-num">★</div>
+    <h3>振る舞いパターン11個の地図 — どんな症状にどれを使うか</h3>
+    <span class="lab-tag tag-advanced">まとめ</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      11個全部覚える必要はない。重要なのは<strong>「コードの症状」から逆引き</strong>できること。
+      下表は「Beforeで現れる悪臭 → どのパターンで治るか」の早見表。
+    </p>
+
+    <table class="compare-table">
+      <thead>
+        <tr><th style="width:32%">こう見えたら（症状）</th><th style="width:18%">候補パターン</th><th>治療効果</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>1関数に多段処理が詰まり<br>順序変更で本体修正</td><td>Chain of Resp.</td><td>各処理を独立クラスにして数珠つなぎ。並べ替え自由</td></tr>
+        <tr><td>関数呼び出しが消えてしまい<br>Undo/履歴が作れない</td><td>Command</td><td>操作をオブジェクト化して履歴・キュー・直列化</td></tr>
+        <tr><td>同じ流れを派生クラスで<br>毎回コピペ実装</td><td>Template Method</td><td>流れを親で1度だけ書き、可変部だけ子で穴埋め</td></tr>
+        <tr><td><code>switch (type)</code>が<br>メソッド本体に固定化</td><td>Strategy</td><td>各方式をクラスに分けて実行時差し替え</td></tr>
+        <tr><td>全メソッド先頭に<br><code>if (status === ...)</code></td><td>State</td><td>状態をクラス化して自律遷移。状態追加で本体不変</td></tr>
+        <tr><td>データ側が<br>UI/ログ/通知を直接呼ぶ</td><td>Observer</td><td>購読モデルで依存方向逆転。下流追加でデータ側不変</td></tr>
+        <tr><td>UI部品同士が<br>互いを参照して網の目</td><td>Mediator</td><td>仲介役に協調ロジック集約。N×N → N×1</td></tr>
+        <tr><td>コレクションの<br>内部構造を直接アクセス</td><td>Iterator</td><td>走査IFを統一。実装差替で利用側無傷</td></tr>
+        <tr><td>Undoのために<br>privateをpublic化</td><td>Memento</td><td>本人がスナップ管理。カプセル化保持で復元</td></tr>
+        <tr><td>機能追加でクラス階層<br>全部修正</td><td>Visitor</td><td>機能を外部クラスに分離。階層は凍結したまま増やす</td></tr>
+        <tr><td>ユーザーに式を書かせたいが<br>evalは危険</td><td>Interpreter</td><td>文法ノード化して安全に評価。新演算子は新クラス</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box ok">
+      ✅ <strong>選び方の優先順位</strong>: 実務でよく使うのは <strong>Strategy / Observer / State / Command / Template Method / Iterator</strong> の6つ。
+      まずこの6つを「症状から逆引きできる」状態にすれば、振る舞い系は8割カバーできる。
+      残り（Mediator/Memento/Visitor/Chain/Interpreter）は「そういう発想がある」と知っておけば、実際に出会った時に思い出せる。
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 振る舞いパターンの大分類</div>
+<pre class="ascii-art">振る舞い系11個は「何を扱うか」で4グループに整理できる:
+
+┌─────────────────────────────────────────────────────┐
+│ 【フロー制御】処理の流れ・順序・実行タイミング      │
+│   Chain of Resp. / Command / Template Method        │
+├─────────────────────────────────────────────────────┤
+│ 【アルゴリズム選択】「どれで処理するか」を切り替え  │
+│   Strategy / State                                  │
+├─────────────────────────────────────────────────────┤
+│ 【通信・通知】オブジェクト間の連絡方法              │
+│   Observer / Mediator                               │
+├─────────────────────────────────────────────────────┤
+│ 【構造走査・記録】コレクション/状態のアクセス       │
+│   Iterator / Memento / Visitor                      │
+├─────────────────────────────────────────────────────┤
+│ 【構文解釈】特殊用途                                │
+│   Interpreter                                       │
+└─────────────────────────────────────────────────────┘</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>パターンは目的ではなく道具</strong>:
+      最初から「Strategyで設計する」と決めるのではなく、
+      「<code>switch</code>が散らかってきたから整理したい」という<strong>症状からパターンに到達する</strong>のが健全。
+      Beforeの状態を見つけたら、Afterの形に近づけるだけ。
+    </div>
+  </div>
+</div>
+
+</div><!-- /.container -->
+
+<script>
+  function copyCode(btn) {
+    const block = btn.closest('.code-block') || btn.parentElement;
+    const pre = block.querySelector('pre');
+    if (!pre) return;
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // (1) サイドバー active ハイライト
+    const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+    const map = new Map();
+    links.forEach(a => {
+      const el = document.getElementById(a.getAttribute('href').slice(1));
+      if (el) map.set(el, a);
+    });
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting) {
+        const l = map.get(e.target);
+        if (l) { links.forEach(n => n.classList.remove('active')); l.classList.add('active'); }
+      }
+    }), { rootMargin: '-30% 0px -60% 0px' });
+    document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+    // (2) 既存 .code-block に header + Copy を自動付与（ない場合のみ）
+    document.querySelectorAll('.code-block').forEach((cb, i) => {
+      if (cb.querySelector('.code-block-header')) return;
+      // code-pair内のラベルから種別を取る
+      const pairCol = cb.closest('.code-pair-col');
+      let labelText;
+      if (pairCol) {
+        const pairLabel = pairCol.querySelector('.code-pair-label');
+        labelText = pairLabel ? pairLabel.textContent.trim() : `Code #${i+1}`;
+      } else {
+        labelText = `Code #${i+1}`;
+      }
+      const header = document.createElement('div');
+      header.className = 'code-block-header';
+      header.innerHTML = `<span>${labelText}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+      cb.insertBefore(header, cb.firstChild);
+    });
+  });
+</script>
+
+</body>
+</html>

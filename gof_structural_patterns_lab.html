@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GoF 構造パターン Lab — Before/After で効果が分かる7パターン</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+/* Sidebar */
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+/* Hero */
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.2rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+/* TOC */
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+/* Container & Lab cards */
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+/* Code block */
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+/* Syntax token colors */
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+
+/* info-box */
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+/* verify Before/After */
+.verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+  line-height:1.7; border:1px solid; }
+.verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+.verify-before .verify-label { color:var(--error); }
+.verify-after  .verify-label { color:var(--success); }
+
+/* check-steps */
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+/* compare-table */
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+.compare-table .yes { color:var(--success); } .compare-table .no { color:var(--error); }
+
+/* beginner-box */
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+/* usecase-box */
+.usecase-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:6px; }
+.usecase-list { margin-left:20px; margin-bottom:10px; }
+.usecase-list li { margin-bottom:4px; }
+.usecase-trigger { background:rgba(0,92,197,.05); border-left:3px solid var(--accent);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#003d8f; margin-top:8px; }
+.usecase-trigger ul { margin:4px 0 0 20px; }
+
+/* livedemo */
+.livedemo { margin:14px 0; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+.livedemo-bar { display:flex; align-items:center; gap:12px; padding:8px 12px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.toggle-btn { font-family:var(--mono); font-size:.78rem; padding:5px 14px;
+  border-radius:6px; border:1px solid var(--accent); background:var(--accent);
+  color:#fff; cursor:pointer; transition:all .15s; }
+.toggle-btn:hover { opacity:.85; }
+.toggle-btn.is-before { background:var(--error); border-color:var(--error); }
+.toggle-label { font-family:var(--mono); font-size:.78rem; color:var(--text-dim); }
+.livedemo-stage { padding:16px; background:var(--bg); }
+.livedemo-stage.is-before { outline:2px dashed var(--error); outline-offset:-8px; }
+.livedemo-stage .ld-before { display:none; }
+.livedemo-stage.is-before .ld-before { display:block; }
+.livedemo-stage.is-before .ld-after { display:none; }
+.ld-panel { padding:12px; border-radius:6px; font-family:var(--mono); font-size:11px; line-height:1.6; white-space:pre-wrap; }
+.ld-panel.bad { background:#fee2e2; border:1px solid #cb2431; color:#6b1a22; }
+.ld-panel.good { background:#dcfce7; border:1px solid #22863a; color:#166534; }
+
+/* try-box */
+.try-box { background:rgba(34,134,58,.06); border:1px solid rgba(34,134,58,.30);
+  border-left:3px solid var(--success); border-radius:7px;
+  padding:12px 14px; margin:14px 0; font-size:.86rem; line-height:1.8; color:#154f1e; }
+.try-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--success); font-weight:700; margin-bottom:6px; }
+.try-box ol { margin-left:20px; margin-top:4px; }
+.try-box ol li { margin-bottom:4px; }
+.try-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--success); }
+.try-tip { background:rgba(176,136,0,.06); border-left:3px solid var(--accent4);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#5c4400; margin-top:8px; }
+.try-tip strong { color:var(--accent4); }
+.try-skeleton { background:#f0f4f8; border:1px solid var(--border); border-radius:5px;
+  padding:10px 12px; margin-top:8px; font-family:var(--mono); font-size:.78rem;
+  color:var(--text); white-space:pre; overflow-x:auto; line-height:1.5; }
+
+/* code-pair */
+.code-pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; }
+.code-pair-col { display:flex; flex-direction:column; min-width:0; }
+.code-pair-label { font-family:var(--mono); font-size:.72rem; letter-spacing:.05em;
+  font-weight:700; padding:6px 10px; border-radius:6px 6px 0 0; }
+.code-pair-before .code-pair-label { background:rgba(203,36,49,.10); color:#9a1320;
+  border:1px solid rgba(203,36,49,.30); border-bottom:none; }
+.code-pair-after  .code-pair-label { background:rgba(34,134,58,.10); color:#154f1e;
+  border:1px solid rgba(34,134,58,.30); border-bottom:none; }
+.code-pair-col .code-block { margin:0; border-radius:0 0 8px 8px; flex:1; }
+.code-pair-before .code-block { border-color:rgba(203,36,49,.30); }
+.code-pair-after  .code-block { border-color:rgba(34,134,58,.30); }
+@media (max-width:900px){ .code-pair { grid-template-columns:1fr; } }
+
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .verify { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+  </style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// GoF Structural <span>Patterns</span></div>
+  <div class="nav-section">A. 包む系</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">06</span>Adapter</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">09</span>Decorator</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">12</span>Proxy</a>
+  <div class="nav-section">B. 切る系</div>
+  <a class="nav-item" href="#lab3"><span class="nav-num">07</span>Bridge</a>
+  <div class="nav-section">C. まとめる系</div>
+  <a class="nav-item" href="#lab4"><span class="nav-num">08</span>Composite</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">10</span>Facade</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">11</span>Flyweight</a>
+  <div class="nav-section">総合</div>
+  <a class="nav-item" href="#lab7"><span class="nav-num">★</span>使い分け早見表</a>
+</nav>
+
+<div class="hero">
+  <h1>GoF 構造パターン Lab</h1>
+  <p class="subtitle">Before/Afterで効果が分かる7パターン — 包む / 切る / まとめる</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">06</span>Adapter — IFを変換する</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">09</span>Decorator — 機能を積み重ねる</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">12</span>Proxy — アクセスを制御する</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">07</span>Bridge — 2軸を分離する</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">08</span>Composite — 単体=集合</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">10</span>Facade — 統一窓口</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">11</span>Flyweight — 共有で節約</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">★</span>使い分け早見表</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ============== LAB 0: Adapter ============== -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>Adapter — 互換性のないIFを変換する</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      既存クラスのIFが「期待される形」と違うとき、間に変換層を挟んで使えるようにする。<strong>レガシーAPIを新規システムから呼ぶ</strong>典型場面。新規コードを<code>OutputDevice</code>などの統一IFだけに依存させ、レガシーは無傷で隔離する。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 イメージ図 — 変換コンセント</div>
+<pre class="ascii-art">新規システム                       既存レガシー
+   │                                    │
+   │  modernPrinter.send(text)          │
+   ├──────────► ┌──────────────┐ ──────►│
+                │   Adapter    │        │  printLegacy(text, "A4", false)
+                └──────────────┘ ◄──────┤
+              "新IFで受けて旧IFを呼ぶ"</pre>
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before — レガシーIFが業務コードに漏れる</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 既存のレガシークラス（変更不可）</span>
+<span class="kw">class</span> <span class="fn">OldPrinter</span> {
+  <span class="fn">printLegacy</span>(text: <span class="kw">string</span>, paperSize: <span class="kw">string</span>, duplex: <span class="kw">boolean</span>) {
+    console.log(<span class="str">`OLD[${paperSize}/${duplex}]: ${text}`</span>);
+  }
+}
+<span class="kw">class</span> <span class="fn">OldFaxMachine</span> {
+  <span class="fn">sendFax</span>(content: <span class="kw">string</span>, phoneNum: <span class="kw">string</span>, retry: <span class="kw">number</span>) {
+    console.log(<span class="str">`FAX[${phoneNum}]: ${content}`</span>);
+  }
+}
+
+<span class="cm">// 業務コード — 旧IFの形が染み出る</span>
+<span class="kw">function</span> <span class="fn">generateInvoice</span>(customer: <span class="kw">string</span>, amount: <span class="kw">number</span>) {
+  <span class="kw">const</span> text = <span class="str">`請求書: ${customer} ¥${amount}`</span>;
+  <span class="kw">const</span> p = <span class="kw">new</span> <span class="fn">OldPrinter</span>();
+  p.<span class="fn">printLegacy</span>(text, <span class="str">"A4"</span>, <span class="kw">false</span>);   <span class="cm">// 引数仕様を覚える</span>
+  <span class="kw">const</span> f = <span class="kw">new</span> <span class="fn">OldFaxMachine</span>();
+  f.<span class="fn">sendFax</span>(text, <span class="str">"06-1234-5678"</span>, <span class="num">3</span>); <span class="cm">// 旧IFを直接</span>
+}</pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After — 統一IFに変換層をかぶせる</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 新IF</span>
+<span class="kw">interface</span> <span class="fn">OutputDevice</span> { <span class="fn">send</span>(text: <span class="kw">string</span>): <span class="kw">void</span>; }
+
+<span class="cm">// Adapter1: 旧プリンタ → 新IF</span>
+<span class="kw">class</span> <span class="fn">PrinterAdapter</span> <span class="kw">implements</span> <span class="fn">OutputDevice</span> {
+  <span class="fn">constructor</span>(<span class="kw">private</span> old: <span class="fn">OldPrinter</span>) {}
+  <span class="fn">send</span>(text: <span class="kw">string</span>) { <span class="kw">this</span>.old.<span class="fn">printLegacy</span>(text, <span class="str">"A4"</span>, <span class="kw">false</span>); }
+}
+<span class="cm">// Adapter2: 旧FAX → 新IF</span>
+<span class="kw">class</span> <span class="fn">FaxAdapter</span> <span class="kw">implements</span> <span class="fn">OutputDevice</span> {
+  <span class="fn">constructor</span>(<span class="kw">private</span> old: <span class="fn">OldFaxMachine</span>, <span class="kw">private</span> phone: <span class="kw">string</span>) {}
+  <span class="fn">send</span>(text: <span class="kw">string</span>) { <span class="kw">this</span>.old.<span class="fn">sendFax</span>(text, <span class="kw">this</span>.phone, <span class="num">3</span>); }
+}
+
+<span class="cm">// 業務コード — 新IFしか知らない</span>
+<span class="kw">function</span> <span class="fn">generateInvoice</span>(c: <span class="kw">string</span>, a: <span class="kw">number</span>, dev: <span class="fn">OutputDevice</span>) {
+  dev.<span class="fn">send</span>(<span class="str">`請求書: ${c} ¥${a}`</span>); <span class="cm">// 同じ呼び方</span>
+}
+<span class="fn">generateInvoice</span>(<span class="str">"Tom"</span>, <span class="num">10000</span>, <span class="kw">new</span> <span class="fn">PrinterAdapter</span>(<span class="kw">new</span> <span class="fn">OldPrinter</span>()));
+<span class="fn">generateInvoice</span>(<span class="str">"Tom"</span>, <span class="num">10000</span>, <span class="kw">new</span> <span class="fn">FaxAdapter</span>(<span class="kw">new</span> <span class="fn">OldFaxMachine</span>(), <span class="str">"06-..."</span>));</pre>
+        </div>
+      </div>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>観点</th><th>Before</th><th>After</th></tr></thead>
+      <tbody>
+        <tr><td>業務コードが知るIF数</td><td>旧プリンタ + 旧FAX = 2種類</td><td><code>OutputDevice</code> 1種類</td></tr>
+        <tr><td>出力先追加の影響範囲</td><td class="no">業務コード全箇所を修正</td><td class="yes">新Adapter追加のみ</td></tr>
+        <tr><td>旧クラスの寿命</td><td class="no">業務コードと運命共同体</td><td class="yes">廃止時もAdapterだけ捨てる</td></tr>
+        <tr><td>テスト容易性</td><td class="no">具象に依存して困難</td><td class="yes">モックOutputDeviceで楽</td></tr>
+      </tbody>
+    </table>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="ld-adapter">Beforeを見る</button>
+        <span class="toggle-label" id="ld-adapter-label">現在: After（Adapter経由）</span>
+      </div>
+      <div class="livedemo-stage" id="ld-adapter">
+        <div class="ld-panel good ld-after">✓ After: generateInvoice("Tom", 10000, dev) — 統一IF
+1呼び出しで「プリンタ」も「FAX」も透過的に切替可能
+新しい出力先（Slack/Email）追加は Adapter を1つ書くだけ</div>
+        <div class="ld-panel bad ld-before">✗ Before: 業務コードに OldPrinter.printLegacy の3引数仕様が直書き
+出力先を増やすたびに引数の意味、順序、デフォルト値を毎回調べる
+レガシー廃止 = 業務コード全箇所の修正</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============== LAB 1: Decorator ============== -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>Decorator — 機能をラップで積み重ねる</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      継承で「機能の組み合わせ」を表現すると <strong>2<sup>N</sup> 個のクラス</strong> が必要になる。同じIFを保ったままラッパーを「積む」ことで、N+1個の<strong>線形</strong>な拡張に変える。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 ラップの積み重ねイメージ</div>
+<pre class="ascii-art">  Espresso (300円)
+    ↓ MilkDecorator がラップ → cost = 元 + 50
+    ↓ SugarDecorator がラップ → cost = 元 + 20
+    ↓ WhipDecorator がラップ → cost = 元 + 80
+
+  最終: WhipDecorator(SugarDecorator(MilkDecorator(Espresso)))
+       cost() = 300 + 50 + 20 + 80 = 450</pre>
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before — 継承で組み合わせ爆発</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">class</span> <span class="fn">Espresso</span> {
+  <span class="fn">cost</span>() { <span class="kw">return</span> <span class="num">300</span>; }
+}
+<span class="kw">class</span> <span class="fn">EspressoMilk</span> <span class="kw">extends</span> <span class="fn">Espresso</span> {
+  <span class="fn">cost</span>() { <span class="kw">return</span> <span class="kw">super</span>.<span class="fn">cost</span>() + <span class="num">50</span>; }
+}
+<span class="kw">class</span> <span class="fn">EspressoSugar</span> <span class="kw">extends</span> <span class="fn">Espresso</span> {
+  <span class="fn">cost</span>() { <span class="kw">return</span> <span class="kw">super</span>.<span class="fn">cost</span>() + <span class="num">20</span>; }
+}
+<span class="cm">// ❌ ミルク+砂糖が必要に…</span>
+<span class="kw">class</span> <span class="fn">EspressoMilkSugar</span> <span class="kw">extends</span> <span class="fn">Espresso</span> {
+  <span class="fn">cost</span>() { <span class="kw">return</span> <span class="kw">super</span>.<span class="fn">cost</span>() + <span class="num">50</span> + <span class="num">20</span>; }
+}
+<span class="cm">// ❌ ホイップ追加で…</span>
+<span class="cm">// EspressoMilkWhip / EspressoSugarWhip / </span>
+<span class="cm">// EspressoMilkSugarWhip ... 2^N クラス必要</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After — Decoratorでラップを積む</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">interface</span> <span class="fn">Coffee</span> { <span class="fn">cost</span>(): <span class="kw">number</span>; }
+
+<span class="kw">class</span> <span class="fn">Espresso</span> <span class="kw">implements</span> <span class="fn">Coffee</span> {
+  <span class="fn">cost</span>() { <span class="kw">return</span> <span class="num">300</span>; }
+}
+<span class="kw">class</span> <span class="fn">MilkDecorator</span> <span class="kw">implements</span> <span class="fn">Coffee</span> {
+  <span class="fn">constructor</span>(<span class="kw">private</span> c: <span class="fn">Coffee</span>) {}
+  <span class="fn">cost</span>() { <span class="kw">return</span> <span class="kw">this</span>.c.<span class="fn">cost</span>() + <span class="num">50</span>; }
+}
+<span class="kw">class</span> <span class="fn">SugarDecorator</span> <span class="kw">implements</span> <span class="fn">Coffee</span> {
+  <span class="fn">constructor</span>(<span class="kw">private</span> c: <span class="fn">Coffee</span>) {}
+  <span class="fn">cost</span>() { <span class="kw">return</span> <span class="kw">this</span>.c.<span class="fn">cost</span>() + <span class="num">20</span>; }
+}
+<span class="kw">class</span> <span class="fn">WhipDecorator</span> <span class="kw">implements</span> <span class="fn">Coffee</span> {
+  <span class="fn">constructor</span>(<span class="kw">private</span> c: <span class="fn">Coffee</span>) {}
+  <span class="fn">cost</span>() { <span class="kw">return</span> <span class="kw">this</span>.c.<span class="fn">cost</span>() + <span class="num">80</span>; }
+}
+
+<span class="cm">// 任意の組み合わせを実行時に「積む」</span>
+<span class="kw">const</span> drink = <span class="kw">new</span> <span class="fn">WhipDecorator</span>(
+  <span class="kw">new</span> <span class="fn">SugarDecorator</span>(
+    <span class="kw">new</span> <span class="fn">MilkDecorator</span>(<span class="kw">new</span> <span class="fn">Espresso</span>())));
+console.log(drink.<span class="fn">cost</span>()); <span class="cm">// 450</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>観点</th><th>Before（継承）</th><th>After（Decorator）</th></tr></thead>
+      <tbody>
+        <tr><td>トッピング3種</td><td>2³ = 8クラス</td><td>4クラス（基本+3デコ）</td></tr>
+        <tr><td>トッピング5種</td><td>32クラス</td><td>6クラス</td></tr>
+        <tr><td>トッピングN種</td><td class="no">2<sup>N</sup>（指数）</td><td class="yes">N+1（<strong>線形</strong>）</td></tr>
+        <tr><td>実行時の組み替え</td><td class="no">不可能</td><td class="yes">自由に積める</td></tr>
+      </tbody>
+    </table>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li><strong>Java I/O</strong>: <code>BufferedReader(InputStreamReader(FileInputStream))</code></li>
+        <li><strong>HTTPミドルウェア</strong>: 認証 → ログ → 圧縮 → ハンドラ の積み重ね</li>
+        <li><strong>React HOC</strong>: <code>withAuth(withLogging(MyComponent))</code></li>
+        <li><strong>ロギング/メトリクスの後付け</strong>: 既存IFを保ったまま横断的関心を追加</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>こう見えたら使える候補:</strong>
+        <ul>
+          <li>機能の有無の組み合わせで継承クラスが指数的に増えている</li>
+          <li>「あるメソッドの前後でログ取りたい」など横断的関心事が散らばる</li>
+          <li>機能を実行時に動的にON/OFFしたい</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============== LAB 2: Proxy ============== -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">12</div>
+    <h3>Proxy — 本物の前に「代理」を置く</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      本物オブジェクトと<strong>同じIFの代理</strong>を間に挟み、遅延ロード・アクセス制御・キャッシュ・ログ取得を透過的に追加する。利用側は本物を使っているつもりで Proxy を呼んでいる。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 代理が本物の手前に立つ</div>
+<pre class="ascii-art">          利用側
+           │
+           ▼
+        ┌──────────┐
+        │  Proxy   │  ← 本物と同じIF
+        │ (lazy /  │     必要時に...
+        │  auth /  │       ▼
+        │  cache)  │   ┌──────────┐
+        └────┬─────┘   │ RealImage│
+             └────────►│ (重い)   │
+                       └──────────┘</pre>
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before — 本物に副次関心が混ざる</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">class</span> <span class="fn">HighResImage</span> {
+  <span class="fn">constructor</span>(<span class="kw">private</span> file: <span class="kw">string</span>) {
+    console.log(<span class="str">`重い画像ロード: ${file}`</span>); <span class="cm">// 数秒</span>
+  }
+  <span class="fn">display</span>() {
+    <span class="cm">// ❌ 本物クラスが認可を持つ</span>
+    <span class="kw">if</span> (!<span class="fn">checkPermission</span>(currentUser))
+      <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">Error</span>(<span class="str">"Forbidden"</span>);
+    <span class="cm">// ❌ ログも</span>
+    <span class="fn">log</span>(<span class="str">`User viewed ${this.file}`</span>);
+    <span class="cm">// ❌ キャッシュも</span>
+    <span class="kw">if</span> (cache.<span class="fn">has</span>(<span class="kw">this</span>.file)) <span class="kw">return</span>;
+    console.log(<span class="str">`表示: ${this.file}`</span>);
+  }
+}
+
+<span class="cm">// 起動時に100枚全ロード</span>
+<span class="kw">const</span> imgs = files.<span class="fn">map</span>(f => <span class="kw">new</span> <span class="fn">HighResImage</span>(f));
+<span class="cm">// 500MB消費、なのに見るのは1枚</span>
+imgs[<span class="num">0</span>].<span class="fn">display</span>();</pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After — 同じIFのProxyで責務分離</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">interface</span> <span class="fn">Image</span> { <span class="fn">display</span>(): <span class="kw">void</span>; }
+
+<span class="kw">class</span> <span class="fn">RealImage</span> <span class="kw">implements</span> <span class="fn">Image</span> {
+  <span class="fn">constructor</span>(<span class="kw">private</span> file: <span class="kw">string</span>) {
+    console.log(<span class="str">`重い画像ロード: ${file}`</span>);
+  }
+  <span class="fn">display</span>() { console.log(<span class="str">`表示: ${this.file}`</span>); }
+}
+
+<span class="cm">// Proxy1: 遅延ロード</span>
+<span class="kw">class</span> <span class="fn">LazyImageProxy</span> <span class="kw">implements</span> <span class="fn">Image</span> {
+  <span class="kw">private</span> real?: <span class="fn">RealImage</span>;
+  <span class="fn">constructor</span>(<span class="kw">private</span> file: <span class="kw">string</span>) {} <span class="cm">// ロードしない</span>
+  <span class="fn">display</span>() {
+    <span class="kw">if</span> (!<span class="kw">this</span>.real) <span class="kw">this</span>.real = <span class="kw">new</span> <span class="fn">RealImage</span>(<span class="kw">this</span>.file);
+    <span class="kw">this</span>.real.<span class="fn">display</span>();
+  }
+}
+<span class="cm">// Proxy2: 認可（同じIF）</span>
+<span class="kw">class</span> <span class="fn">ProtectedProxy</span> <span class="kw">implements</span> <span class="fn">Image</span> {
+  <span class="fn">constructor</span>(<span class="kw">private</span> inner: <span class="fn">Image</span>, <span class="kw">private</span> user: <span class="kw">string</span>) {}
+  <span class="fn">display</span>() {
+    <span class="kw">if</span> (!<span class="fn">checkPermission</span>(<span class="kw">this</span>.user)) <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">Error</span>();
+    <span class="kw">this</span>.inner.<span class="fn">display</span>();
+  }
+}
+
+<span class="kw">const</span> img = <span class="kw">new</span> <span class="fn">ProtectedProxy</span>(<span class="kw">new</span> <span class="fn">LazyImageProxy</span>(<span class="str">"a.jpg"</span>), <span class="str">"tom"</span>);
+img.<span class="fn">display</span>(); <span class="cm">// 認可OK→必要時にロード→表示</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>Decoratorとの違い</strong> — 構造はそっくりだが意図が異なる。Decoratorは<strong>機能を「足す」</strong>（cost+50円）、Proxyは<strong>アクセスを「制御する」</strong>（lazy/auth/cache）。前者は結果が変わる、後者は結果は同じでタイミングや可否が変わる。
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>Proxyの種類</th><th>用途</th><th>実例</th></tr></thead>
+      <tbody>
+        <tr><td>Virtual Proxy</td><td>遅延ロード</td><td>ORM(Hibernate)のlazy loading</td></tr>
+        <tr><td>Protection Proxy</td><td>認可制御</td><td>ファイル/API権限チェック</td></tr>
+        <tr><td>Caching Proxy</td><td>結果保持</td><td>HTTPレスポンスキャッシュ</td></tr>
+        <tr><td>Remote Proxy</td><td>通信スタブ</td><td>gRPCクライアント、Web Worker</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ============== LAB 3: Bridge ============== -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>Bridge — 抽象と実装を分離して掛け算を足し算に</h3>
+    <span class="lab-tag tag-advanced">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      「2軸で増えるもの」（図形 × 描画API、通知種類 × 送信手段）をクラスの掛け算で爆発させず、独立した2階層に切り分ける。<strong>M × N 個 → M + N 個</strong>に変換するパターン。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 クラス数の比較（図形3種 × 描画API3種）</div>
+<pre class="ascii-art">【継承だけで書く】 = 9クラス
+  CircleCanvas, CircleSVG, CircleWebGL,
+  SquareCanvas, SquareSVG, SquareWebGL,
+  TriangleCanvas, TriangleSVG, TriangleWebGL
+
+【Bridge】 = 6クラス + 1関係
+  Shape階層:    Circle / Square / Triangle    (3)
+  Renderer階層: Canvas / SVG / WebGL          (3)
+  Shape ──持つ──► Renderer  （実行時に組合せ）</pre>
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before — 継承で2軸を表現</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">class</span> <span class="fn">CircleCanvas</span> {
+  <span class="fn">draw</span>(r: <span class="kw">number</span>) { console.log(<span class="str">`Canvas: 円 r=${r}`</span>); }
+}
+<span class="kw">class</span> <span class="fn">CircleSVG</span> {
+  <span class="fn">draw</span>(r: <span class="kw">number</span>) { console.log(<span class="str">`SVG: &lt;circle r=${r}/&gt;`</span>); }
+}
+<span class="kw">class</span> <span class="fn">CircleWebGL</span> { <span class="cm">/* … */</span> }
+<span class="kw">class</span> <span class="fn">SquareCanvas</span> { <span class="cm">/* … */</span> }
+<span class="kw">class</span> <span class="fn">SquareSVG</span> { <span class="cm">/* … */</span> }
+<span class="kw">class</span> <span class="fn">SquareWebGL</span> { <span class="cm">/* … */</span> }
+<span class="kw">class</span> <span class="fn">TriangleCanvas</span> { <span class="cm">/* … */</span> }
+<span class="kw">class</span> <span class="fn">TriangleSVG</span> { <span class="cm">/* … */</span> }
+<span class="kw">class</span> <span class="fn">TriangleWebGL</span> { <span class="cm">/* … */</span> }
+
+<span class="cm">// ❌ 図形3 × 描画API3 = 9クラス</span>
+<span class="cm">// 図形を1つ追加 → 3クラス増える</span>
+<span class="cm">// 描画APIを1つ追加 → 3クラス増える</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After — 2軸を独立階層に</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 描画API階層</span>
+<span class="kw">interface</span> <span class="fn">Renderer</span> {
+  <span class="fn">drawCircle</span>(r: <span class="kw">number</span>): <span class="kw">void</span>;
+  <span class="fn">drawRect</span>(w: <span class="kw">number</span>, h: <span class="kw">number</span>): <span class="kw">void</span>;
+}
+<span class="kw">class</span> <span class="fn">CanvasRenderer</span> <span class="kw">implements</span> <span class="fn">Renderer</span> { <span class="cm">/* … */</span> }
+<span class="kw">class</span> <span class="fn">SVGRenderer</span>    <span class="kw">implements</span> <span class="fn">Renderer</span> { <span class="cm">/* … */</span> }
+<span class="kw">class</span> <span class="fn">WebGLRenderer</span>  <span class="kw">implements</span> <span class="fn">Renderer</span> { <span class="cm">/* … */</span> }
+
+<span class="cm">// 図形階層 — Renderer を「持つ」</span>
+<span class="kw">abstract class</span> <span class="fn">Shape</span> {
+  <span class="fn">constructor</span>(<span class="kw">protected</span> renderer: <span class="fn">Renderer</span>) {} <span class="cm">// Bridge!</span>
+  <span class="kw">abstract</span> <span class="fn">draw</span>(): <span class="kw">void</span>;
+}
+<span class="kw">class</span> <span class="fn">Circle</span> <span class="kw">extends</span> <span class="fn">Shape</span> {
+  <span class="fn">constructor</span>(r: <span class="fn">Renderer</span>, <span class="kw">private</span> radius: <span class="kw">number</span>) { <span class="kw">super</span>(r); }
+  <span class="fn">draw</span>() { <span class="kw">this</span>.renderer.<span class="fn">drawCircle</span>(<span class="kw">this</span>.radius); }
+}
+<span class="kw">class</span> <span class="fn">Square</span> <span class="kw">extends</span> <span class="fn">Shape</span> { <span class="cm">/* … */</span> }
+
+<span class="cm">// ✅ 実行時に組み合わせ自由</span>
+<span class="kw">new</span> <span class="fn">Circle</span>(<span class="kw">new</span> <span class="fn">SVGRenderer</span>(), <span class="num">5</span>).<span class="fn">draw</span>();
+<span class="kw">new</span> <span class="fn">Circle</span>(<span class="kw">new</span> <span class="fn">CanvasRenderer</span>(), <span class="num">5</span>).<span class="fn">draw</span>();</pre>
+        </div>
+      </div>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>拡張シナリオ</th><th>Before（継承）</th><th>After（Bridge）</th></tr></thead>
+      <tbody>
+        <tr><td>初期: 図形3 × API3</td><td>9クラス</td><td>3+3 = <strong>6クラス</strong></td></tr>
+        <tr><td>図形をTriangle追加</td><td>+3 → 12クラス</td><td>+1 → 7クラス</td></tr>
+        <tr><td>APIをWebGPU追加（前段から）</td><td>+3 → 15クラス</td><td>+1 → 8クラス</td></tr>
+        <tr><td>図形5 × API4 想定</td><td class="no">20クラス</td><td class="yes">5+4 = 9クラス</td></tr>
+        <tr><td>組み合わせ決定</td><td class="no">コンパイル時固定</td><td class="yes">実行時切替可能</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ============== LAB 4: Composite ============== -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>Composite — 木構造を「単体と同じように」扱う</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ファイルとフォルダ、UIコンポーネントとそのコンテナのように、<strong>「単体」と「集合」を同じIFで扱える</strong>ようにする。利用側は中身が単体か集合かを気にしなくてよく、<code>instanceof</code> 判定や再帰のひな形が消える。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 同じIFを単体も集合も実装する</div>
+<pre class="ascii-art">     FileNode (size()を持つ)
+       ├── File   ── 自分のbyte数を返す
+       └── Folder ── 子のsize()を全部足す
+                      ├── File
+                      ├── File
+                      └── Folder ← 入れ子も同じIF
+                            └── File</pre>
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before — 利用側が型判定+再帰</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">class</span> <span class="fn">File</span> {
+  <span class="fn">constructor</span>(<span class="kw">public</span> name: <span class="kw">string</span>, <span class="kw">public</span> bytes: <span class="kw">number</span>) {}
+}
+<span class="kw">class</span> <span class="fn">Folder</span> {
+  <span class="kw">public</span> children: (<span class="fn">File</span> | <span class="fn">Folder</span>)[] = [];
+  <span class="fn">constructor</span>(<span class="kw">public</span> name: <span class="kw">string</span>) {}
+}
+
+<span class="cm">// ❌ サイズ計算 — 利用側が型判定+再帰</span>
+<span class="kw">function</span> <span class="fn">calcSize</span>(node: <span class="fn">File</span> | <span class="fn">Folder</span>): <span class="kw">number</span> {
+  <span class="kw">if</span> (node <span class="kw">instanceof</span> <span class="fn">File</span>) <span class="kw">return</span> node.bytes;
+  <span class="kw">let</span> total = <span class="num">0</span>;
+  <span class="kw">for</span> (<span class="kw">const</span> c <span class="kw">of</span> node.children)
+    total += <span class="fn">calcSize</span>(c); <span class="cm">// 利用側が再帰</span>
+  <span class="kw">return</span> total;
+}
+
+<span class="cm">// ❌ パス列挙も同じパターンの繰り返し</span>
+<span class="kw">function</span> <span class="fn">listPaths</span>(node: <span class="fn">File</span> | <span class="fn">Folder</span>, p = <span class="str">""</span>) {
+  <span class="kw">if</span> (node <span class="kw">instanceof</span> <span class="fn">File</span>) <span class="kw">return</span> [<span class="str">`${p}/${node.name}`</span>];
+  <span class="kw">const</span> r = []; <span class="cm">/* 同じ再帰のひな形を再記述 */</span>
+  <span class="kw">return</span> r;
+}</pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After — 単体も集合も同じIF</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">interface</span> <span class="fn">FileNode</span> {
+  <span class="fn">size</span>(): <span class="kw">number</span>;
+  <span class="fn">paths</span>(prefix?: <span class="kw">string</span>): <span class="kw">string</span>[];
+}
+
+<span class="kw">class</span> <span class="fn">File</span> <span class="kw">implements</span> <span class="fn">FileNode</span> {
+  <span class="fn">constructor</span>(<span class="kw">public</span> name: <span class="kw">string</span>, <span class="kw">private</span> bytes: <span class="kw">number</span>) {}
+  <span class="fn">size</span>() { <span class="kw">return</span> <span class="kw">this</span>.bytes; }
+  <span class="fn">paths</span>(p = <span class="str">""</span>) { <span class="kw">return</span> [<span class="str">`${p}/${this.name}`</span>]; }
+}
+
+<span class="kw">class</span> <span class="fn">Folder</span> <span class="kw">implements</span> <span class="fn">FileNode</span> {
+  <span class="kw">private</span> children: <span class="fn">FileNode</span>[] = [];
+  <span class="fn">constructor</span>(<span class="kw">public</span> name: <span class="kw">string</span>) {}
+  <span class="fn">add</span>(n: <span class="fn">FileNode</span>) { <span class="kw">this</span>.children.<span class="fn">push</span>(n); }
+  <span class="cm">// ✅ 再帰は自分の責務として内側に</span>
+  <span class="fn">size</span>() {
+    <span class="kw">return</span> <span class="kw">this</span>.children.<span class="fn">reduce</span>((s, c) => s + c.<span class="fn">size</span>(), <span class="num">0</span>);
+  }
+  <span class="fn">paths</span>(p = <span class="str">""</span>) {
+    <span class="kw">return</span> <span class="kw">this</span>.children.<span class="fn">flatMap</span>(c => c.<span class="fn">paths</span>(<span class="str">`${p}/${this.name}`</span>));
+  }
+}
+
+<span class="cm">// 利用側 — 型を意識しない</span>
+<span class="kw">const</span> root = <span class="kw">new</span> <span class="fn">Folder</span>(<span class="str">"root"</span>);
+root.<span class="fn">add</span>(<span class="kw">new</span> <span class="fn">File</span>(<span class="str">"a.txt"</span>, <span class="num">100</span>));
+console.log(root.<span class="fn">size</span>()); <span class="cm">// 100</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>観点</th><th>Before</th><th>After</th></tr></thead>
+      <tbody>
+        <tr><td>利用側の型判定</td><td class="no">操作ごとに <code>instanceof</code></td><td class="yes">不要</td></tr>
+        <tr><td>再帰ロジックの所在</td><td class="no">利用側に分散</td><td class="yes">各ノード内に1箇所</td></tr>
+        <tr><td>操作追加の手間</td><td class="no">ひな形再記述</td><td class="yes">IFにメソッド追加</td></tr>
+        <tr><td>階層を深くした影響</td><td class="no">利用側で考慮必要</td><td class="yes">透過的に処理</td></tr>
+      </tbody>
+    </table>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li><strong>React/Vueのコンポーネントツリー</strong>: 各ノードが <code>render()</code> を持つ</li>
+        <li><strong>Wijmo FlexGrid の階層行・グルーピング</strong>（実務領域）</li>
+        <li><strong>HTML DOM</strong>: <code>Element</code> と <code>TextNode</code> が同じく <code>Node</code> を継承</li>
+        <li><strong>組織図・カテゴリツリー</strong>: 部署も社員も同じIFで「人数」を返す</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ============== LAB 5: Facade ============== -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>Facade — 複雑な内部に「統一窓口」を置く</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      複数のクラスを協調させて使う必要がある複雑なサブシステムに対し、<strong>1つだけシンプルな入口</strong>を用意して利用側を楽にする。<code>OutSystems の Server Action</code> はまさにFacadeそのもの。
+    </p>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before — 利用側が手順を全部知る</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">class</span> <span class="fn">CPU</span> {
+  <span class="fn">freeze</span>() {} <span class="fn">jump</span>(a: <span class="kw">number</span>) {} <span class="fn">execute</span>() {}
+}
+<span class="kw">class</span> <span class="fn">Memory</span> { <span class="fn">load</span>(addr: <span class="kw">number</span>, data: <span class="kw">string</span>) {} }
+<span class="kw">class</span> <span class="fn">Disk</span> { <span class="fn">read</span>(): <span class="kw">string</span> { <span class="kw">return</span> <span class="str">"OS"</span>; } }
+
+<span class="cm">// ❌ PC起動 — 内部構造に密結合</span>
+<span class="kw">function</span> <span class="fn">startPC1</span>() {
+  <span class="kw">const</span> cpu = <span class="kw">new</span> <span class="fn">CPU</span>();
+  <span class="kw">const</span> mem = <span class="kw">new</span> <span class="fn">Memory</span>();
+  <span class="kw">const</span> disk = <span class="kw">new</span> <span class="fn">Disk</span>();
+  cpu.<span class="fn">freeze</span>();              <span class="cm">// 順序を覚える</span>
+  mem.<span class="fn">load</span>(<span class="num">0</span>, disk.<span class="fn">read</span>()); <span class="cm">// アドレス0も外部知識</span>
+  cpu.<span class="fn">jump</span>(<span class="num">0</span>);
+  cpu.<span class="fn">execute</span>();
+}
+
+<span class="cm">// ❌ 別箇所でも同じ手順をコピペ</span>
+<span class="kw">function</span> <span class="fn">startPC2</span>() {
+  <span class="cm">/* startPC1 と同じ4行 - バグ混入リスク */</span>
+}</pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After — Facadeで手順を集約</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">class</span> <span class="fn">ComputerFacade</span> {
+  <span class="kw">private</span> cpu = <span class="kw">new</span> <span class="fn">CPU</span>();
+  <span class="kw">private</span> mem = <span class="kw">new</span> <span class="fn">Memory</span>();
+  <span class="kw">private</span> disk = <span class="kw">new</span> <span class="fn">Disk</span>();
+
+  <span class="cm">// ✅ 正しい手順をここ1箇所で定義</span>
+  <span class="fn">start</span>() {
+    <span class="kw">this</span>.cpu.<span class="fn">freeze</span>();
+    <span class="kw">this</span>.mem.<span class="fn">load</span>(<span class="num">0</span>, <span class="kw">this</span>.disk.<span class="fn">read</span>());
+    <span class="kw">this</span>.cpu.<span class="fn">jump</span>(<span class="num">0</span>);
+    <span class="kw">this</span>.cpu.<span class="fn">execute</span>();
+  }
+  <span class="fn">shutdown</span>() { <span class="cm">/* 終了処理も集約 */</span> }
+}
+
+<span class="cm">// 利用側 — 1行で完結</span>
+<span class="kw">new</span> <span class="fn">ComputerFacade</span>().<span class="fn">start</span>();
+<span class="kw">new</span> <span class="fn">ComputerFacade</span>().<span class="fn">start</span>(); <span class="cm">// 何度呼んでも同じ手順</span>
+
+<span class="cm">// 手順変更（メモリ初期化追加など）も</span>
+<span class="cm">// Facade内の1箇所修正で全利用箇所に反映</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>Adapterとの違い</strong> — Adapterは「IFの<strong>形を変える</strong>」（変換）。Facadeは「複数のクラスを<strong>束ねる</strong>」（集約）。Adapterは <strong>既存IFと新IFの1:1変換</strong>、Facadeは <strong>複数のIFの上に新しい単純な口を作る</strong>。
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 AdapterとFacadeの違い</div>
+<pre class="ascii-art">Adapter: IFの「形」を変える（1:1変換）
+  [新IF: send(text)] ─Adapter→ [旧IF: printLegacy(text, "A4", false)]
+
+Facade: 複数のIFの上に「新しい単純な口」を作る（N:1集約）
+  [Facade.start()] ──┬─→ CPU.freeze()
+                    ├─→ Disk.read()
+                    ├─→ Memory.load()
+                    └─→ CPU.execute()</pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li><strong>OutSystems の Server Action</strong> — 複数Entityアクセスをラップ</li>
+        <li><strong>BFF (Backend for Frontend)</strong>: 画面が必要とする処理を1エンドポイントに集約</li>
+        <li><strong>SDK のトップレベル API</strong>: <code>stripe.charges.create()</code> 内部で複数HTTPコール</li>
+        <li><strong>レガシー近代化</strong>: 古い複雑なコード群の前に新規Facadeを置く</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ============== LAB 6: Flyweight ============== -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">11</div>
+    <h3>Flyweight — 共有でメモリを節約する</h3>
+    <span class="lab-tag tag-advanced">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      同じデータを大量に持つ場合、<strong>共通部分（Intrinsic State）を1つだけ作って使い回す</strong>。位置・色などの<strong>個別部分（Extrinsic State）</strong>だけ各インスタンスが持つ。文字フォントのグリフ、ゲームの弾、地図の樹木など、数万単位の同種オブジェクトで効く。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 内在状態と外在状態の分離</div>
+<pre class="ascii-art">【Before】 各Treeが重いデータを個別保持
+  Tree #1 [位置(10,20) + テクスチャ4MB + メッシュ40KB]
+  Tree #2 [位置(30,50) + テクスチャ4MB + メッシュ40KB]
+  ...10万本 → 約400GB ✗ 即枯渇
+
+【After】 重い部分はFactoryが1つだけ保持
+  TreeType "pine" [テクスチャ4MB + メッシュ40KB] ← 1つだけ
+                       ▲ 参照
+  Tree #1 [位置(10,20) → TreeType]
+  Tree #2 [位置(30,50) → TreeType]   ← 各Treeは位置だけ
+  ...10万本 → 約5.6MB ✓</pre>
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before — 各自が重い情報を持つ</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">class</span> <span class="fn">Tree</span> {
+  <span class="fn">constructor</span>(
+    <span class="kw">public</span> x: <span class="kw">number</span>,
+    <span class="kw">public</span> y: <span class="kw">number</span>,
+    <span class="kw">public</span> textureName: <span class="kw">string</span>,
+    <span class="kw">public</span> textureBytes: <span class="fn">Uint8Array</span>,    <span class="cm">// 4MB</span>
+    <span class="kw">public</span> meshVertices: <span class="fn">Float32Array</span>   <span class="cm">// 40KB</span>
+  ) {}
+}
+
+<span class="cm">// ❌ 同じ松を10万本</span>
+<span class="kw">const</span> forest: <span class="fn">Tree</span>[] = [];
+<span class="kw">const</span> tex = <span class="kw">new</span> <span class="fn">Uint8Array</span>(<span class="num">4</span> * <span class="num">1024</span> * <span class="num">1024</span>);
+<span class="kw">const</span> mesh = <span class="kw">new</span> <span class="fn">Float32Array</span>(<span class="num">10000</span>);
+
+<span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i &lt; <span class="num">100_000</span>; i++) {
+  forest.<span class="fn">push</span>(<span class="kw">new</span> <span class="fn">Tree</span>(
+    Math.<span class="fn">random</span>() * <span class="num">1000</span>,
+    Math.<span class="fn">random</span>() * <span class="num">1000</span>,
+    <span class="str">"pine"</span>,
+    tex.<span class="fn">slice</span>(),  <span class="cm">// ❌ 4MB × 10万 = 400GB</span>
+    mesh.<span class="fn">slice</span>()  <span class="cm">// ❌ 同じく爆発</span>
+  ));
+}
+<span class="cm">// メモリ即枯渇</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After — Factoryで共有</div>
+        <div class="code-block">
+          <div class="code-block-header"><span>TypeScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 内在状態（Intrinsic）— 共有可能・不変</span>
+<span class="kw">class</span> <span class="fn">TreeType</span> {
+  <span class="fn">constructor</span>(
+    <span class="kw">public</span> name: <span class="kw">string</span>,
+    <span class="kw">public</span> texture: <span class="fn">Uint8Array</span>,
+    <span class="kw">public</span> mesh: <span class="fn">Float32Array</span>
+  ) {}
+  <span class="fn">draw</span>(x: <span class="kw">number</span>, y: <span class="kw">number</span>) { <span class="cm">/* 共有データで描画 */</span> }
+}
+
+<span class="cm">// Factory が一意性を保証</span>
+<span class="kw">class</span> <span class="fn">TreeTypeFactory</span> {
+  <span class="kw">private</span> cache = <span class="kw">new</span> <span class="fn">Map</span>&lt;<span class="kw">string</span>, <span class="fn">TreeType</span>&gt;();
+  <span class="fn">get</span>(name: <span class="kw">string</span>): <span class="fn">TreeType</span> {
+    <span class="kw">if</span> (!<span class="kw">this</span>.cache.<span class="fn">has</span>(name)) {
+      <span class="kw">this</span>.cache.<span class="fn">set</span>(name, <span class="kw">new</span> <span class="fn">TreeType</span>(
+        name, <span class="fn">loadTex</span>(name), <span class="fn">loadMesh</span>(name)));
+    }
+    <span class="kw">return</span> <span class="kw">this</span>.cache.<span class="fn">get</span>(name)!;
+  }
+}
+
+<span class="cm">// 外在状態（Extrinsic）— 位置だけ</span>
+<span class="kw">class</span> <span class="fn">Tree</span> {
+  <span class="fn">constructor</span>(<span class="kw">public</span> x: <span class="kw">number</span>, <span class="kw">public</span> y: <span class="kw">number</span>,
+              <span class="kw">public</span> type: <span class="fn">TreeType</span>) {} <span class="cm">// ✅ 参照のみ</span>
+}
+
+<span class="kw">const</span> factory = <span class="kw">new</span> <span class="fn">TreeTypeFactory</span>();
+<span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i &lt; <span class="num">100_000</span>; i++) {
+  forest.<span class="fn">push</span>(<span class="kw">new</span> <span class="fn">Tree</span>(rx, ry, factory.<span class="fn">get</span>(<span class="str">"pine"</span>)));
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>木の数</th><th>Before（各自保持）</th><th>After（Flyweight）</th></tr></thead>
+      <tbody>
+        <tr><td>1本</td><td>約4 MB</td><td>約4 MB + 16 B</td></tr>
+        <tr><td>1,000本</td><td>約4 GB</td><td>約4 MB + 16 KB</td></tr>
+        <tr><td>100,000本</td><td class="no">約400 GB（破綻）</td><td class="yes">約4 MB + 1.6 MB ≈ 5.6 MB</td></tr>
+        <tr><td>メモリ参照関係</td><td class="no">各Treeが独立コピー</td><td class="yes">全Treeが同じTreeTypeを共有</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info">
+      📘 <strong>核心</strong>: 可変な部分（位置・回転・色）と不変な部分（テクスチャ・メッシュ）を分離して、後者だけ共有する——これがFlyweightの本質。「同じデータを毎回コピーしている」と気づいたら適用候補。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li><strong>JS文字列のinterning</strong>: V8が同じ文字列リテラルを内部共有</li>
+        <li><strong>ゲームエンジン</strong>: Unityのメッシュ/テクスチャAsset参照</li>
+        <li><strong>DBコネクションプール</strong>: 接続オブジェクトの再利用</li>
+        <li><strong>WebGL/Canvasスプライト描画</strong>: 同じ画像を何千個配置</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ============== LAB 7: 使い分け早見表 ============== -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">★</div>
+    <h3>使い分け早見表 — 構造パターン7つの逆引き</h3>
+    <span class="lab-tag tag-advanced">総合</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      実務でパターンを思い出すための「症状 → 候補」逆引き。コードの匂い・症状から自然にパターンへ到達するのが健全な使い方。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>症状（コードに現れるサイン）</th><th>適用パターン</th><th>効果の本質</th></tr></thead>
+      <tbody>
+        <tr><td>古いAPIの形が業務コードに染み出す</td><td><strong>Adapter</strong></td><td>IFの形を1:1変換、レガシーを隔離</td></tr>
+        <tr><td>2軸（種類×実装）でクラスが指数増加</td><td><strong>Bridge</strong></td><td>M×N → M+N に変換</td></tr>
+        <tr><td><code>instanceof</code>で再帰を書いている</td><td><strong>Composite</strong></td><td>単体=集合の透過扱い</td></tr>
+        <tr><td>オプション組み合わせで2<sup>N</sup>クラス</td><td><strong>Decorator</strong></td><td>線形（N+1）に削減、実行時組替可</td></tr>
+        <tr><td>内部の正しい呼び出し順序が散らばる</td><td><strong>Facade</strong></td><td>1箇所に集約、利用側を簡素化</td></tr>
+        <tr><td>同じデータを大量複製してメモリ枯渇</td><td><strong>Flyweight</strong></td><td>共通部分を共有、位置だけ可変</td></tr>
+        <tr><td>重い初期化/認可/キャッシュを本物に書きたくない</td><td><strong>Proxy</strong></td><td>同じIFで仲介、副次関心を分離</td></tr>
+      </tbody>
+    </table>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 7パターンの3グループ俯瞰</div>
+<pre class="ascii-art">構造パターン = クラス・オブジェクトの「組み立て方」を整える
+
+┌─ A. 包む系 ──────────────────────────────────┐
+│  Adapter    形を変える（旧IF→新IF）           │
+│  Decorator  機能を足す（cost+50円）            │
+│  Proxy      アクセスを制御（lazy/auth/cache）  │
+└──────────────────────────────────────────────┘
+       ↑ 全て「同じIFを保ったまま中身をラップ」
+
+┌─ B. 切る系 ──────────────────────────────────┐
+│  Bridge     2軸を独立階層に（M×N → M+N）       │
+└──────────────────────────────────────────────┘
+
+┌─ C. まとめる系 ──────────────────────────────┐
+│  Composite  木構造を単体扱い                   │
+│  Facade     複雑な内部に統一窓口               │
+│  Flyweight  重複データを共有して軽量化          │
+└──────────────────────────────────────────────┘</pre>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>パターンは目的ではなく道具</strong>。「このコードがこう変わった結果として、たまたまそのパターンになっていた」が本来の使い方。最初から「Decoratorで設計する」と決めるのではなく、<code>if-else</code>や<code>new</code>の散乱、クラス爆発、メモリ枯渇といった<strong>症状</strong>から逆引きで到達するのが健全。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>似ているパターンの混同に注意</strong>:
+      <br>・<strong>Adapter vs Facade</strong>: 形変換(1:1) vs 集約(N:1)
+      <br>・<strong>Decorator vs Proxy</strong>: 機能を足す vs アクセスを制御する
+      <br>・<strong>Bridge vs Strategy</strong>: 構造の分離 vs アルゴリズム差替（こちらは振る舞いパターン）
+    </div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<script>
+function copyCode(btn) {
+  const block = btn.closest('.code-block') || btn.parentElement;
+  const pre = block.querySelector('pre');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+const LAB_META = {
+  lab0: {
+    info: { type:'info', html:'📘 <strong>核心</strong>: 既存IFと新IFの<strong>1:1変換</strong>。レガシークラスは無傷で、業務コードは新IFだけに依存させる。OutSystems Integration Studioで外部DB/APIをエンティティ化するのもこの思想。' },
+    verify: {
+      before: '業務コードに <code>printLegacy(text, "A4", false)</code> の3引数仕様が直書き。出力先追加で全箇所を修正',
+      after: '業務コードは <code>device.send(text)</code> だけ。新出力先は新Adapterを書くだけで対応'
+    },
+    check: [
+      '①コードを写経して TypeScript Playground (https://www.typescriptlang.org/play) に貼る',
+      '②Beforeコードで OldPrinter / OldFaxMachine の引数仕様が generateInvoice に染み出ていることを確認',
+      '③Afterコードで OutputDevice IFだけが業務コードに現れていることを確認',
+      '④新出力先 SlackAdapter を実装してみる（5分）— Adapterだけで済むことを体感'
+    ],
+    try: 'TypeScript Playgroundでコンパイルエラーが出ない最小コードに調整して、Adapterの数を1→2→3と増やしてみる'
+  },
+  lab1: {
+    info: { type:'info', html:'📘 <strong>核心</strong>: 同じIFを実装したラッパーを「積む」。継承の<strong>2<sup>N</sup>個</strong>から<strong>N+1個</strong>へ削減。Java I/Oの <code>BufferedReader(InputStreamReader(FileInputStream))</code> が典型。' },
+    verify: {
+      before: 'トッピング3種で 2³=8クラス、5種で32クラス。新組み合わせ追加で既存クラスに影響',
+      after: 'N+1クラスで完結。実行時に <code>new WhipDecorator(new MilkDecorator(...))</code> で自由に積める'
+    },
+    check: [
+      '①TypeScript PlaygroundでAfterコードを実行し <code>cost()</code> が 450 になることを確認',
+      '②積む順序を変える（Sugar→Milk→Whip vs Whip→Sugar→Milk）— 結果が同じことを確認',
+      '③新Decorator <code>CinnamonDecorator</code>(+30円) を追加してみる — 既存コードが無傷であることを実感',
+      '④Beforeの継承版で「シナモン+ホイップ」を追加するために何クラス増えるか数えてみる'
+    ],
+    try: 'console.log でラップ順を可視化すると「ロシアの入れ子人形」構造が体感できる'
+  },
+  lab2: {
+    info: { type:'info', html:'📘 <strong>核心</strong>: 本物と同じIFの代理を挟む。Decoratorと構造はそっくりだが、Decoratorが「機能を<strong>足す</strong>」のに対しProxyは「アクセスを<strong>制御する</strong>」。Vue 3のリアクティビティもJS Proxyで実装されている。' },
+    verify: {
+      before: 'コンストラクタで即時ロード。100枚分(500MB)を起動時に消費、なのに見るのは1枚',
+      after: 'LazyImageProxyのコンストラクタはロード抑制。display() 初回時にだけ本物を生成→ロード'
+    },
+    check: [
+      '①TypeScript PlaygroundでProxyを実行し、最初の <code>console.log</code> ログ位置を確認',
+      '②<code>new LazyImageProxy("a.jpg")</code> 直後にはロードログが出ないことを確認',
+      '③<code>img.display()</code> を呼んだ瞬間に「重い画像ロード」ログが出ることを確認',
+      '④2回目の <code>display()</code> ではロードログが再度出ないことを確認（インスタンスキャッシュ）'
+    ],
+    try: 'ProtectedProxy(LazyImageProxy) のように Proxy を積み重ねて、認可チェック→遅延ロードの順で動くか確認'
+  },
+  lab3: {
+    info: { type:'info', html:'📘 <strong>核心</strong>: 図形階層（抽象）と描画API階層（実装）を独立させ、抽象側が実装を「持つ」関係にする。<strong>クラス数の掛け算→足し算</strong>。マルチデバイスUI、通知種類×送信手段の典型的設計。' },
+    verify: {
+      before: '図形3 × API3 = 9クラス。新図形/新APIで掛け算で増殖',
+      after: '図形3 + API3 = 6クラス + 1関係。組み合わせは <code>new Circle(new SVGRenderer(), 5)</code> で実行時自由'
+    },
+    check: [
+      '①Afterコードで <code>new Circle(new SVGRenderer(), 5).draw()</code> と <code>new Circle(new CanvasRenderer(), 5).draw()</code> の出力を比較',
+      '②同じ Circle インスタンスを別Renderer で描画できることを実感',
+      '③新Renderer <code>WebGPURenderer</code> を追加 — 既存のShape階層が無傷であることを確認',
+      '④新Shape <code>Triangle</code> を追加 — 全Renderer で動くことを確認'
+    ],
+    try: 'クラス数を Before / After それぞれ数えて記録すると「掛け算→足し算」の効果が数値で実感できる'
+  },
+  lab4: {
+    info: { type:'info', html:'📘 <strong>核心</strong>: 利用側が <code>instanceof</code> 判定や再帰を書かなくて済むよう、<strong>単体と集合に同じIFを実装</strong>させる。React/Vueのコンポーネントツリー、HTML DOM、Wijmo FlexGridの階層行が典型。' },
+    verify: {
+      before: '操作（size計算/パス列挙/検索）追加のたびに <code>if (instanceof File)</code> + 再帰のひな形を再記述',
+      after: '<code>node.size()</code> 1呼び出しで階層を意識せず処理。新操作はIFにメソッド追加するだけ'
+    },
+    check: [
+      '①TypeScript PlaygroundでAfterコードを実行し、ネストしたフォルダ構造で <code>root.size()</code> の合計を確認',
+      '②<code>root.paths()</code> で全ファイルのパスが取れることを確認',
+      '③新操作 <code>count(): number</code> をIFに追加 — File / Folder の両方に実装が必要だが、利用側は1呼び出し',
+      '④Beforeの型判定版とコード行数を比較'
+    ],
+    try: '深さ3〜4階層のフォルダツリーを作って <code>size()</code> を呼ぶと再帰が透過的に動くのを実感できる'
+  },
+  lab5: {
+    info: { type:'info', html:'📘 <strong>核心</strong>: 複数クラスの正しい呼び出し順を<strong>1箇所に集約</strong>。OutSystemsのServer Action、SDKのトップレベルAPI、BFFが典型。利用側はFacadeだけ知っていればよく、内部構造の変更影響を受けない。' },
+    verify: {
+      before: '利用側が <code>cpu.freeze() → mem.load() → cpu.jump() → cpu.execute()</code> の順序と引数を全部把握',
+      after: '<code>new ComputerFacade().start()</code> 1行で完結。手順変更もFacade内の修正だけ'
+    },
+    check: [
+      '①TypeScript PlaygroundでAfterコードを実行し、出力ログで起動手順が走ることを確認',
+      '②起動手順に「Memory初期化」を追加してみる — Facade内の1箇所修正だけで全利用箇所に反映',
+      '③Beforeコード（直接呼び出し）と比較して利用側のコード行数の差を測る',
+      '④AdapterとFacadeの違いを言語化: 「Adapterは形変換(1:1)、Facadeは集約(N:1)」'
+    ],
+    try: 'Facadeに <code>shutdown()</code> や <code>restart()</code> を追加してみると「窓口の拡張」感覚が掴める'
+  },
+  lab6: {
+    info: { type:'info', html:'📘 <strong>核心</strong>: 共有可能な<strong>内在状態</strong>(Intrinsic)と個別の<strong>外在状態</strong>(Extrinsic)に分離。Factoryが内在状態の一意性を保証。同じデータを大量に持つ場面（フォントグリフ、ゲームの弾、地図の樹木）で効く。' },
+    verify: {
+      before: '10万本 × 4MB = 約400GB → メモリ即枯渇',
+      after: 'TreeType 4MB(共有) + Tree×10万 約1.6MB = 約5.6MB で完結'
+    },
+    check: [
+      '①TypeScript PlaygroundでFactory版を書き、<code>factory.get("pine") === factory.get("pine")</code> が true になることを確認',
+      '②Map.size でキャッシュ件数を確認 — 種類数だけで木の本数ではない',
+      '③Tree インスタンス自体の数（10万本）と TreeType の数（1〜数個）の比を計算',
+      '④可変属性（位置）と不変属性（テクスチャ）の分離が正しくできているか確認'
+    ],
+    try: '実測: ブラウザのDevTools→Memory→Heap snapshotで Before/After の差を見ると効果が数値で分かる'
+  },
+  lab7: {
+    info: { type:'info', html:'✨ <strong>パターンは「症状から逆引きする道具」</strong>。最初から「これはBridgeだ」と決めるのではなく、コードの匂い（クラス爆発、if-else散乱、メモリ枯渇）に出会ってから「あ、これBridge使える」と気づくのが正しい順序。' },
+    check: [
+      '①自分が今関わっているコードベースで「クラス数が掛け算で増える箇所」を1つ見つける → Bridge候補',
+      '②「同じ手順がコピペされている箇所」を1つ見つける → Facade候補',
+      '③「<code>instanceof</code>+再帰のひな形が散らばる箇所」を1つ見つける → Composite候補',
+      '④「外部APIの呼び方が業務コードに染み出す箇所」を1つ見つける → Adapter候補',
+      '⑤実際にリファクタリングする前に、「症状」を言語化してメモに残す（パターン適用前の状態を記録）'
+    ],
+    try: '構造パターンの3グループ（包む/切る/まとめる）を覚えると、新しいコードを見たときの分類速度が上がる'
+  }
+};
+
+function infoHTML(m){ return m?.info ? `<div class="info-box ${m.info.type||'info'}">${m.info.html}</div>` : ''; }
+function verifyHTML(m){ if (!m?.verify) return '';
+  const {before, after} = m.verify;
+  return `<div class="verify">
+    <div class="verify-col verify-before"><div class="verify-label">Before ▶︎ パターン適用前</div>${before||''}</div>
+    <div class="verify-col verify-after"><div class="verify-label">After ▶︎ パターン適用後</div>${after||''}</div>
+  </div>`; }
+function checkHTML(m){ if (!m?.check?.length) return '';
+  return `<div class="check-steps">
+    <div class="check-steps-title">🔍 ブラウザ実機チェック</div>
+    <ol>${m.check.map(s=>`<li>${s}</li>`).join('')}</ol>
+  </div>`; }
+function tryHTML(m){
+  const tip = m?.try ? `<div class="try-tip"><strong>💡 このラボのコツ:</strong> ${m.try}</div>` : '';
+  return `<div class="try-box">
+    <div class="try-title">💻 コード例を試す手順（TypeScript Playgroundで動かす）</div>
+    <ol>
+      <li>上のコードブロックの <strong>Copy</strong> ボタンを押してクリップボードにコピー</li>
+      <li>ブラウザで <a href="https://www.typescriptlang.org/play" target="_blank" rel="noopener" style="color:var(--success);text-decoration:underline">TypeScript Playground</a> を開く</li>
+      <li>左側エディタにペースト、右側「.JS」または「Run」で実行結果を確認</li>
+      <li>下の「🔍 ブラウザ実機チェック」の項目を順に試して、想定通りの挙動になるか確認する</li>
+    </ol>
+    ${tip}
+  </div>`;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.lab').forEach(lab => {
+    const meta = LAB_META[lab.id];
+    const body = lab.querySelector('.lab-body');
+    if (!body || !meta) return;
+    const frag = document.createElement('div');
+    frag.innerHTML = infoHTML(meta) + verifyHTML(meta) + tryHTML(meta) + checkHTML(meta);
+    while (frag.firstChild) body.appendChild(frag.firstChild);
+  });
+
+  const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+  const map = new Map();
+  links.forEach(a => {
+    const el = document.getElementById(a.getAttribute('href').slice(1));
+    if (el) map.set(el, a);
+  });
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) {
+      const l = map.get(e.target);
+      if (l) { links.forEach(n => n.classList.remove('active')); l.classList.add('active'); }
+    }
+  }), { rootMargin: '-30% 0px -60% 0px' });
+  document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+  document.querySelectorAll('.code-block').forEach((cb, i) => {
+    if (cb.querySelector('.code-block-header')) return;
+    const header = document.createElement('div');
+    header.className = 'code-block-header';
+    header.innerHTML = `<span>Code #${i+1}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+    cb.insertBefore(header, cb.firstChild);
+  });
+});
+
+document.addEventListener('click', (e) => {
+  if (!e.target.matches('.toggle-btn')) return;
+  const btn = e.target;
+  const stage = document.getElementById(btn.dataset.target);
+  if (!stage) return;
+  const isBefore = stage.classList.toggle('is-before');
+  btn.classList.toggle('is-before', isBefore);
+  const label = document.getElementById(btn.dataset.target + '-label');
+  if (label) label.textContent = isBefore ? '現在: Before（パターン未適用）' : '現在: After（パターン適用済み）';
+});
+</script>
+
+</body>
+</html>
