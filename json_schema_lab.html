@@ -1,0 +1,2231 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JSON Schema Lab — RDBMSテーブル定義のための仕様駆動学習</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+/* Sidebar */
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+/* Hero */
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+/* TOC */
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+/* Container & Lab cards */
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+/* Code block */
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+/* Syntax token colors (GitHub light) */
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+.jkey { color:#005cc5; } .jstr { color:#032f62; } .jnum { color:#b08800; } .jbool { color:#d73a49; } .jnull { color:#d73a49; }
+
+/* info-box */
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+/* verify Before / After */
+.verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+  line-height:1.7; border:1px solid; }
+.verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+.verify-before .verify-label { color:var(--error); }
+.verify-after  .verify-label { color:var(--success); }
+
+/* check-steps */
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+/* compare-table */
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+.compare-table .yes { color:var(--success); } .compare-table .no { color:var(--error); }
+
+/* beginner-box */
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+/* usecase-box */
+.usecase-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:6px; }
+.usecase-list { margin-left:20px; margin-bottom:10px; }
+.usecase-list li { margin-bottom:4px; }
+.usecase-trigger { background:rgba(0,92,197,.05); border-left:3px solid var(--accent);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#003d8f; margin-top:8px; }
+.usecase-trigger ul { margin:4px 0 0 20px; }
+
+/* try-box */
+.try-box { background:rgba(34,134,58,.06); border:1px solid rgba(34,134,58,.30);
+  border-left:3px solid var(--success); border-radius:7px;
+  padding:12px 14px; margin:14px 0; font-size:.86rem; line-height:1.8; color:#154f1e; }
+.try-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--success); font-weight:700; margin-bottom:6px; }
+.try-box ol { margin-left:20px; margin-top:4px; }
+.try-box ol li { margin-bottom:4px; }
+.try-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--success); }
+.try-tip { background:rgba(176,136,0,.06); border-left:3px solid var(--accent4);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#5c4400; margin-top:8px; }
+.try-tip strong { color:var(--accent4); }
+.try-skeleton { background:#f0f4f8; border:1px solid var(--border); border-radius:5px;
+  padding:10px 12px; margin-top:8px; font-family:var(--mono); font-size:.78rem;
+  color:var(--text); white-space:pre; overflow-x:auto; line-height:1.5; }
+
+/* code-pair */
+.code-pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; }
+.code-pair-col { display:flex; flex-direction:column; min-width:0; }
+.code-pair-label { font-family:var(--mono); font-size:.72rem; letter-spacing:.05em;
+  font-weight:700; padding:6px 10px; border-radius:6px 6px 0 0; }
+.code-pair-before .code-pair-label { background:rgba(203,36,49,.10); color:#9a1320;
+  border:1px solid rgba(203,36,49,.30); border-bottom:none; }
+.code-pair-after  .code-pair-label { background:rgba(34,134,58,.10); color:#154f1e;
+  border:1px solid rgba(34,134,58,.30); border-bottom:none; }
+.code-pair-col .code-block { margin:0; border-radius:0 0 8px 8px; flex:1; }
+.code-pair-before .code-block { border-color:rgba(203,36,49,.30); }
+.code-pair-after  .code-block { border-color:rgba(34,134,58,.30); }
+@media (max-width:900px){ .code-pair { grid-template-columns:1fr; } }
+
+/* livedemo (interactive validator) */
+.livedemo { margin:14px 0; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+.livedemo-bar { display:flex; align-items:center; gap:12px; padding:8px 12px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.livedemo-stage { padding:16px; background:var(--bg); }
+.validator { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.validator textarea { width:100%; height:180px; font-family:var(--mono); font-size:.78rem;
+  padding:10px; border:1px solid var(--border); border-radius:6px;
+  background:var(--code-bg); color:var(--text); resize:vertical; line-height:1.6; }
+.validator label { font-family:var(--mono); font-size:.72rem; color:var(--text-dim);
+  letter-spacing:.05em; display:block; margin-bottom:5px; }
+.validator-result { padding:10px 12px; border-radius:6px; font-family:var(--mono);
+  font-size:.82rem; line-height:1.6; margin-top:10px; min-height:50px; white-space:pre-wrap; word-break:break-word; }
+.validator-result.ok { background:rgba(34,134,58,.10); color:#154f1e; border:1px solid rgba(34,134,58,.30); }
+.validator-result.ng { background:rgba(203,36,49,.08); color:#9a1320; border:1px solid rgba(203,36,49,.30); }
+.validator-result.warn { background:rgba(176,136,0,.08); color:#7a5c00; border:1px solid rgba(176,136,0,.30); }
+.validator-btn { font-family:var(--mono); font-size:.78rem; padding:6px 14px;
+  border-radius:6px; border:1px solid var(--accent); background:var(--accent);
+  color:#fff; cursor:pointer; margin-top:8px; }
+.validator-btn:hover { opacity:.85; }
+.validator-presets { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.preset-btn { font-family:var(--mono); font-size:.72rem; padding:4px 10px;
+  border-radius:4px; border:1px solid var(--border); background:var(--surface);
+  color:var(--text-dim); cursor:pointer; }
+.preset-btn:hover { border-color:var(--accent); color:var(--accent); }
+@media (max-width:900px){ .validator { grid-template-columns:1fr; } }
+
+/* Responsive */
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .verify { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// JSON Schema <span>Lab</span></div>
+  <div class="nav-section">基本</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>なぜテーブル定義に</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>最小スキーマ</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>required と禁止</a>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>文字列の制約</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>数値の制約</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>enum で値を限定</a>
+  <div class="nav-section">応用</div>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>$defs と $ref</a>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>NULL の表現</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>テーブル全体</a>
+  <div class="nav-section">実践</div>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>MDへの埋め込み</a>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>Ajv で検証</a>
+  <a class="nav-item" href="#lab11"><span class="nav-num">11</span>TS型を自動生成</a>
+  <a class="nav-item" href="#lab12"><span class="nav-num">12</span>落とし穴と対策</a>
+</nav>
+
+<div class="hero">
+  <h1>JSON Schema Lab</h1>
+  <p class="subtitle">RDBMSテーブル定義を仕様駆動で書くための実践学習ラボ — 13ラボ収録</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>なぜテーブル定義にJSON Schemaを使うのか</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>最小スキーマ — type と properties</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>required と additionalProperties</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>文字列制約 — minLength / pattern / format</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>数値制約 — minimum / multipleOf</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>enum — 値の取りうる範囲を限定</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>$defs と $ref で型を再利用</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>NULL許容カラムの正しい表現</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>テーブル全体をスキーマで表す</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>MDファイルへの埋め込み方</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">10</span>Ajv でスキーマと実データを検証</a>
+    <a class="toc-item" href="#lab11"><span class="toc-num">11</span>スキーマからTS型を自動生成</a>
+    <a class="toc-item" href="#lab12"><span class="toc-num">12</span>初心者が陥る落とし穴と対策</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ============================================================
+     Lab 0: なぜテーブル定義に JSON Schema を使うのか
+     ============================================================ -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>なぜテーブル定義に JSON Schema を使うのか</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      仕様駆動開発(Spec-Driven Development)では、<strong>仕様 = 単一の真実(Single Source of Truth)</strong>
+      が鉄則。テーブル定義を <code>CREATE TABLE</code> 文や Excel で書くと「人間にしか読めない」「実データの検証に再利用できない」「変更時にドキュメントが置き去りになる」という3つの病気にかかります。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 何が嬉しいのか — 1枚図で</div>
+<pre class="ascii-art">
+従来の世界(分裂)             仕様駆動 + JSON Schema(統合)
+
+  仕様書(Word/MD)               users.schema.json
+       │                              │
+       │ 手で書き写す                  ├─→ 仕様書MDに ```json で埋め込む
+       ▼                              ├─→ DDL生成(ツール経由)
+   CREATE TABLE                       ├─→ API入力検証 (Ajv)
+       │                              ├─→ TypeScript型生成
+       │ ズレる                        ├─→ サンプルデータ自動生成
+       ▼                              └─→ フォーム自動生成
+   APIバリデーションコード(手書き)
+       │
+       │ また手書き
+       ▼
+   フロントの型定義(手書き)
+</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>仕様駆動開発における JSON Schema の立ち位置</strong>:
+      テーブル定義を JSON Schema で書くと、その1ファイルから DDL・型定義・検証コード・サンプルデータ・ドキュメントの<strong>すべてが派生</strong>できます。MDに埋め込めばGitで差分管理でき、PRレビューで変更が見える化されます。
+    </div>
+
+    <table class="compare-table">
+      <thead>
+        <tr><th>観点</th><th>CREATE TABLE のみ</th><th>JSON Schema 中心</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>人間可読性</td><td class="no">SQL知識必須</td><td class="yes">JSON で誰でも読める</td></tr>
+        <tr><td>機械可読性</td><td>パーサが必要</td><td class="yes">標準JSONパーサで即可</td></tr>
+        <tr><td>実データ検証</td><td class="no">DBに入れるまで分からない</td><td class="yes">投入前にAjvで検証可</td></tr>
+        <tr><td>型生成</td><td class="no">不可</td><td class="yes">TS/Java/C#型を自動生成</td></tr>
+        <tr><td>レビュー容易性</td><td>SQL差分は読みにくい</td><td class="yes">フィールド単位で差分</td></tr>
+        <tr><td>DDL生成</td><td>これそのもの</td><td>ツール(Atlas等)で生成可</td></tr>
+      </tbody>
+    </table>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>新機能のER図を起こす前に、各テーブルのスキーマMDを書いてレビューに回す</li>
+        <li>外部連携のCSV/JSON仕様書として、想定形式と制約をそのまま渡す</li>
+        <li>マスタデータの初期投入前に、Ajvで全件チェックして不整合を炙り出す</li>
+        <li>OutSystemsのStructure定義の元ネタとして使う(手で写経するが仕様書はこれ)</li>
+        <li>テストデータ生成ツール(json-schema-faker等)の入力にして自動生成</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>こう見えたら使い時:</strong>
+        <ul>
+          <li>「仕様書のExcelとDBが一致してない」と何度も言われている</li>
+          <li>API担当とDB担当でカラム名・型・必須性の認識がズレる事故が起きた</li>
+          <li>マイグレーションのレビューで「どこが変わった?」が伝わりにくい</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code-block">
+<pre><span class="cm">// 仕様駆動開発でこのラボを通して目指すゴール — users テーブルのスキーマ例</span>
+<span class="cm">// このスキーマ1個から、DDL/TypeScript型/Ajv検証/フォーム/サンプルが派生する</span>
+{
+  <span class="jkey">"$schema"</span>: <span class="jstr">"https://json-schema.org/draft/2020-12/schema"</span>,
+  <span class="jkey">"$id"</span>: <span class="jstr">"https://example.com/schemas/users.json"</span>,
+  <span class="jkey">"title"</span>: <span class="jstr">"users"</span>,
+  <span class="jkey">"description"</span>: <span class="jstr">"ユーザーマスタテーブル"</span>,
+  <span class="jkey">"type"</span>: <span class="jstr">"object"</span>,
+  <span class="jkey">"properties"</span>: {
+    <span class="jkey">"user_id"</span>:    { <span class="jkey">"type"</span>: <span class="jstr">"integer"</span>, <span class="jkey">"minimum"</span>: <span class="jnum">1</span>, <span class="jkey">"description"</span>: <span class="jstr">"主キー"</span> },
+    <span class="jkey">"email"</span>:      { <span class="jkey">"type"</span>: <span class="jstr">"string"</span>, <span class="jkey">"format"</span>: <span class="jstr">"email"</span>, <span class="jkey">"maxLength"</span>: <span class="jnum">255</span> },
+    <span class="jkey">"created_at"</span>: { <span class="jkey">"type"</span>: <span class="jstr">"string"</span>, <span class="jkey">"format"</span>: <span class="jstr">"date-time"</span> }
+  },
+  <span class="jkey">"required"</span>: [<span class="jstr">"user_id"</span>, <span class="jstr">"email"</span>, <span class="jstr">"created_at"</span>],
+  <span class="jkey">"additionalProperties"</span>: <span class="jbool">false</span>
+}</pre>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>このLabの読み方</strong>: Lab 1〜8 で上記スキーマの各キーワードを段階的に学び、
+      Lab 9 でMD埋め込み方法、Lab 10 で実機検証(Ajv)、Lab 11 で型生成、Lab 12 で落とし穴を扱います。
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     Lab 1: 最小スキーマ — type と properties
+     ============================================================ -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>最小スキーマ — type と properties</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      まずは <code>products</code> テーブルを最小スキーマで書きます。テーブル1行 = JSONオブジェクト1つ、
+      カラム = プロパティ、と素直に対応させます。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 「テーブル1行 = JSONオブジェクト」のイメージ</div>
+<pre class="ascii-art">
+RDBの世界                    JSON Schemaの世界
+
+products テーブル              スキーマ
+┌────┬───────┬───────┐         {
+│id  │name   │price  │           "type": "object",
+├────┼───────┼───────┤           "properties": {
+│ 1  │コーヒー│  450  │  ←対応→     "id":    { "type": "integer" },
+│ 2  │紅茶   │  380  │             "name":  { "type": "string"  },
+└────┴───────┴───────┘             "price": { "type": "number"  }
+                                 }
+1行(レコード) ──→ 1つの        }
+JSONオブジェクト              ──→ "object型のスキーマ" が1行を表す
+</pre>
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before — 自然言語のみの仕様書</div>
+        <div class="code-block">
+<pre><span class="cm">// products テーブル仕様(Word文書)</span>
+
+商品ID: 整数
+商品名: 文字列
+価格: 数値
+
+<span class="cm">// → 「整数って何バイト?」「マイナスOK?」</span>
+<span class="cm">//   「文字列の最大長は?」と質問が止まらない</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After — JSON Schema</div>
+        <div class="code-block">
+<pre>{
+  <span class="jkey">"type"</span>: <span class="jstr">"object"</span>,
+  <span class="jkey">"properties"</span>: {
+    <span class="jkey">"id"</span>:    { <span class="jkey">"type"</span>: <span class="jstr">"integer"</span> },
+    <span class="jkey">"name"</span>:  { <span class="jkey">"type"</span>: <span class="jstr">"string"</span> },
+    <span class="jkey">"price"</span>: { <span class="jkey">"type"</span>: <span class="jstr">"number"</span> }
+  }
+}
+<span class="cm">// 機械可読 + 検証可能</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>JSON Schema の基本型(7種)</strong>: <code>string</code> / <code>integer</code> / <code>number</code>(浮動小数含む) / <code>boolean</code> / <code>object</code> / <code>array</code> / <code>null</code>。<br>
+      RDBの型との対応: VARCHAR/TEXT → string、INT/BIGINT → integer、DECIMAL/FLOAT → number、BOOLEAN → boolean、DATE/TIMESTAMP → string + format(Lab 3で扱う)。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>integer vs number</strong>: JSONの仕様上 <code>number</code> は浮動小数も含む広い型。整数だけ受け付けたいなら必ず <code>integer</code> を使うこと。<code>1.5</code> のような小数を弾けます。
+    </div>
+
+    <h4 style="margin-top:18px; font-family:var(--mono); font-size:.85rem; color:var(--accent);">// 実機: スキーマ検証プレイグラウンド</h4>
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <span class="toggle-label">📝 左にデータを書き換えて、右で検証結果を確認</span>
+      </div>
+      <div class="livedemo-stage">
+        <div class="validator">
+          <div>
+            <label>data.json (テーブルの1行)</label>
+            <textarea data-validator="lab1-data">{
+  "id": 1,
+  "name": "コーヒー",
+  "price": 450
+}</textarea>
+            <div class="validator-presets">
+              <button class="preset-btn" data-target="lab1-data" data-preset='{"id":1,"name":"コーヒー","price":450}'>正常</button>
+              <button class="preset-btn" data-target="lab1-data" data-preset='{"id":"1","name":"コーヒー","price":450}'>id を文字列にする</button>
+              <button class="preset-btn" data-target="lab1-data" data-preset='{"id":1.5,"name":"コーヒー","price":450}'>id を小数にする</button>
+              <button class="preset-btn" data-target="lab1-data" data-preset='{"id":1,"name":123,"price":"450"}'>型を全部混ぜる</button>
+            </div>
+          </div>
+          <div>
+            <label>schema.json (固定)</label>
+            <textarea data-validator="lab1-schema" readonly>{
+  "type": "object",
+  "properties": {
+    "id":    { "type": "integer" },
+    "name":  { "type": "string" },
+    "price": { "type": "number" }
+  }
+}</textarea>
+          </div>
+        </div>
+        <button class="validator-btn" data-validate="lab1">検証する</button>
+        <div class="validator-result" data-result="lab1">↑ ボタンを押すと結果が表示されます</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     Lab 2: required と additionalProperties
+     ============================================================ -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>required と additionalProperties — NOT NULL と未知カラム拒否</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      RDBの <code>NOT NULL</code> 制約に当たるのが <code>required</code>、<code>未定義カラムの混入を防ぐ</code>のが <code>additionalProperties: false</code>。この2つを忘れると、Lab 1の最小スキーマは「ほぼ何でも通す」ザルになります。
+    </p>
+
+    <div class="info-box warn">
+      ⚠️ <strong>初心者が必ず引っかかる罠</strong>: <code>properties</code> に書いただけでは<strong>必須にならない</strong>。
+      <code>required</code> 配列に列挙して初めて「無いとエラー」になります。RDBの <code>NULL/NOT NULL</code> とは独立して指定する必要があります。
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before — required も additionalProperties も無し</div>
+        <div class="code-block">
+<pre>{
+  <span class="jkey">"type"</span>: <span class="jstr">"object"</span>,
+  <span class="jkey">"properties"</span>: {
+    <span class="jkey">"id"</span>:   { <span class="jkey">"type"</span>: <span class="jstr">"integer"</span> },
+    <span class="jkey">"name"</span>: { <span class="jkey">"type"</span>: <span class="jstr">"string"</span> }
+  }
+}
+
+<span class="cm">// 以下が全部 通ってしまう ↓</span>
+{}                              <span class="cm">// 空でもOK</span>
+{ <span class="jkey">"id"</span>: <span class="jnum">1</span> }                     <span class="cm">// name 無くてOK</span>
+{ <span class="jkey">"id"</span>: <span class="jnum">1</span>, <span class="jkey">"foo"</span>: <span class="jstr">"bar"</span> }       <span class="cm">// 知らないキーOK</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After — 制約を効かせた版</div>
+        <div class="code-block">
+<pre>{
+  <span class="jkey">"type"</span>: <span class="jstr">"object"</span>,
+  <span class="jkey">"properties"</span>: {
+    <span class="jkey">"id"</span>:   { <span class="jkey">"type"</span>: <span class="jstr">"integer"</span> },
+    <span class="jkey">"name"</span>: { <span class="jkey">"type"</span>: <span class="jstr">"string"</span> }
+  },
+  <span class="jkey">"required"</span>: [<span class="jstr">"id"</span>, <span class="jstr">"name"</span>],
+  <span class="jkey">"additionalProperties"</span>: <span class="jbool">false</span>
+}
+
+<span class="cm">// {} → エラー(id, name 必須)</span>
+<span class="cm">// {"id":1,"foo":"bar"} → エラー(foo 未定義)</span>
+<span class="cm">// {"id":1,"name":"x"} → OK</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 RDBとの対応関係</div>
+<pre class="ascii-art">
+RDBのDDL                          JSON Schema 対応
+
+CREATE TABLE products (
+  id   INT NOT NULL,    ←→     "required": ["id", "name"]
+  name VARCHAR(50) NOT NULL,
+  ...                   ←→     "properties": { ... } に列挙
+);
+
+(暗黙ルール)未定義カラム挿入は    ←→  "additionalProperties": false
+INSERT 時にエラー                     を明示的に書く必要あり
+</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>additionalProperties の3つのモード</strong>:
+      <code>false</code>(未定義キー禁止 / 推奨) / <code>true</code>(何でも許可 / 既定) / オブジェクト指定(未定義キーの値の型を指定)。
+      テーブル定義としては <code>false</code> が原則です。
+    </div>
+
+    <h4 style="margin-top:18px; font-family:var(--mono); font-size:.85rem; color:var(--accent);">// 実機: 制約あり/なしの差を体感</h4>
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <span class="toggle-label">📝 同じデータでも、required の有無で結果が変わる</span>
+      </div>
+      <div class="livedemo-stage">
+        <div class="validator">
+          <div>
+            <label>data.json</label>
+            <textarea data-validator="lab2-data">{
+  "id": 1
+}</textarea>
+            <div class="validator-presets">
+              <button class="preset-btn" data-target="lab2-data" data-preset='{"id":1}'>name 欠落</button>
+              <button class="preset-btn" data-target="lab2-data" data-preset='{"id":1,"name":"X","unknown":true}'>未知カラム混入</button>
+              <button class="preset-btn" data-target="lab2-data" data-preset='{"id":1,"name":"X"}'>正常</button>
+              <button class="preset-btn" data-target="lab2-data" data-preset='{}'>空オブジェクト</button>
+            </div>
+          </div>
+          <div>
+            <label>schema.json (制約あり)</label>
+            <textarea data-validator="lab2-schema">{
+  "type": "object",
+  "properties": {
+    "id":   { "type": "integer" },
+    "name": { "type": "string" }
+  },
+  "required": ["id", "name"],
+  "additionalProperties": false
+}</textarea>
+          </div>
+        </div>
+        <button class="validator-btn" data-validate="lab2">検証する</button>
+        <div class="validator-result" data-result="lab2">↑ ボタンを押すと結果が表示されます</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     Lab 3: 文字列制約 — minLength / pattern / format
+     ============================================================ -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>文字列制約 — minLength / maxLength / pattern / format</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>VARCHAR(255)</code> や <code>CHECK (email LIKE '%@%')</code> に当たる「値の中身」の制約を書きます。テーブル定義としては <code>maxLength</code>(VARCHAR長相当)と <code>format</code>(email/date-time等)が最重要。
+    </p>
+
+    <div class="code-block">
+<pre><span class="cm">// users テーブル — 文字列カラムに制約を効かせた例</span>
+{
+  <span class="jkey">"type"</span>: <span class="jstr">"object"</span>,
+  <span class="jkey">"properties"</span>: {
+    <span class="jkey">"username"</span>: {
+      <span class="jkey">"type"</span>: <span class="jstr">"string"</span>,
+      <span class="jkey">"minLength"</span>: <span class="jnum">3</span>,            <span class="cm">// 最低3文字</span>
+      <span class="jkey">"maxLength"</span>: <span class="jnum">20</span>,           <span class="cm">// VARCHAR(20) 相当</span>
+      <span class="jkey">"pattern"</span>: <span class="jstr">"^[a-zA-Z0-9_]+$"</span>  <span class="cm">// 半角英数字とアンダースコアのみ</span>
+    },
+    <span class="jkey">"email"</span>: {
+      <span class="jkey">"type"</span>: <span class="jstr">"string"</span>,
+      <span class="jkey">"format"</span>: <span class="jstr">"email"</span>,         <span class="cm">// メール形式</span>
+      <span class="jkey">"maxLength"</span>: <span class="jnum">255</span>
+    },
+    <span class="jkey">"created_at"</span>: {
+      <span class="jkey">"type"</span>: <span class="jstr">"string"</span>,
+      <span class="jkey">"format"</span>: <span class="jstr">"date-time"</span>      <span class="cm">// ISO 8601 / TIMESTAMP 相当</span>
+    },
+    <span class="jkey">"birth_date"</span>: {
+      <span class="jkey">"type"</span>: <span class="jstr">"string"</span>,
+      <span class="jkey">"format"</span>: <span class="jstr">"date"</span>           <span class="cm">// YYYY-MM-DD / DATE 相当</span>
+    }
+  }
+}</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>format</th><th>例</th><th>RDB対応(目安)</th></tr></thead>
+      <tbody>
+        <tr><td>email</td><td>tom@example.com</td><td>VARCHAR + CHECK制約</td></tr>
+        <tr><td>uri</td><td>https://example.com/path</td><td>VARCHAR + CHECK制約</td></tr>
+        <tr><td>uuid</td><td>550e8400-e29b-41d4-a716-446655440000</td><td>UUID / CHAR(36)</td></tr>
+        <tr><td>date</td><td>2026-04-30</td><td>DATE</td></tr>
+        <tr><td>date-time</td><td>2026-04-30T10:00:00Z</td><td>TIMESTAMP / DATETIME</td></tr>
+        <tr><td>time</td><td>10:00:00</td><td>TIME</td></tr>
+        <tr><td>ipv4</td><td>192.168.1.1</td><td>VARCHAR(15) / INET(PostgreSQL)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box warn">
+      ⚠️ <strong>format は検証ライブラリ次第で「無視される」</strong>: 標準では<strong>アノテーションのみで強制力なし</strong>。
+      Ajv で format を効かせるには <code>ajv-formats</code> を別途 import してアタッチが必要です(Lab 10で扱う)。素のJSON Schemaライブラリを使うなら必ず確認すること。
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>pattern は ECMA 262(JS)正規表現</strong>。先頭/末尾は <code>^</code>/<code>$</code> を明示しないと「部分一致」になります。郵便番号なら <code>^[0-9]{3}-[0-9]{4}$</code>、電話番号(日本)なら <code>^0[0-9]{1,4}-[0-9]{1,4}-[0-9]{4}$</code> のように。
+    </div>
+
+    <h4 style="margin-top:18px; font-family:var(--mono); font-size:.85rem; color:var(--accent);">// 実機: パターンと長さ制約を試す</h4>
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <span class="toggle-label">📝 username の値を色々試して、エラー文を観察</span>
+      </div>
+      <div class="livedemo-stage">
+        <div class="validator">
+          <div>
+            <label>data.json</label>
+            <textarea data-validator="lab3-data">{
+  "username": "tom_dev",
+  "email": "tom@example.com"
+}</textarea>
+            <div class="validator-presets">
+              <button class="preset-btn" data-target="lab3-data" data-preset='{"username":"tom_dev","email":"tom@example.com"}'>正常</button>
+              <button class="preset-btn" data-target="lab3-data" data-preset='{"username":"ab","email":"tom@example.com"}'>3文字未満</button>
+              <button class="preset-btn" data-target="lab3-data" data-preset='{"username":"tom-dev!","email":"tom@example.com"}'>記号含む</button>
+              <button class="preset-btn" data-target="lab3-data" data-preset='{"username":"tom_dev","email":"not-email"}'>email不正</button>
+              <button class="preset-btn" data-target="lab3-data" data-preset='{"username":"tom_dev","email":"tom@example.com","created_at":"2026/04/30"}'>日付形式不正</button>
+            </div>
+          </div>
+          <div>
+            <label>schema.json</label>
+            <textarea data-validator="lab3-schema">{
+  "type": "object",
+  "properties": {
+    "username": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 20,
+      "pattern": "^[a-zA-Z0-9_]+$"
+    },
+    "email":      { "type": "string", "format": "email", "maxLength": 255 },
+    "created_at": { "type": "string", "format": "date-time" }
+  },
+  "required": ["username", "email"]
+}</textarea>
+          </div>
+        </div>
+        <button class="validator-btn" data-validate="lab3">検証する</button>
+        <div class="validator-result" data-result="lab3">↑ ボタンを押すと結果が表示されます</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     Lab 4: 数値制約 — minimum / maximum / multipleOf
+     ============================================================ -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>数値制約 — minimum / maximum / multipleOf</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      RDBの <code>CHECK (price >= 0)</code> や「税抜価格は1円単位」のような業務ルールを表現します。
+      キーワードは4つ覚えればOK: <code>minimum</code> / <code>maximum</code> / <code>exclusiveMinimum</code> / <code>exclusiveMaximum</code>。
+      加えて「N の倍数」を表す <code>multipleOf</code>。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>キーワード</th><th>意味</th><th>RDB対応(CHECK制約)</th></tr></thead>
+      <tbody>
+        <tr><td>minimum: 0</td><td>x ≥ 0</td><td>CHECK (price >= 0)</td></tr>
+        <tr><td>exclusiveMinimum: 0</td><td>x > 0</td><td>CHECK (price > 0)</td></tr>
+        <tr><td>maximum: 100</td><td>x ≤ 100</td><td>CHECK (rate <= 100)</td></tr>
+        <tr><td>multipleOf: 0.5</td><td>x が 0.5 の倍数</td><td>CHECK (qty % 0.5 = 0) ※方言</td></tr>
+        <tr><td>multipleOf: 100</td><td>100の倍数(100円単位)</td><td>CHECK (price % 100 = 0)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+<pre><span class="cm">// orders テーブル — 数値カラムの典型</span>
+{
+  <span class="jkey">"type"</span>: <span class="jstr">"object"</span>,
+  <span class="jkey">"properties"</span>: {
+    <span class="jkey">"order_id"</span>: {
+      <span class="jkey">"type"</span>: <span class="jstr">"integer"</span>,
+      <span class="jkey">"minimum"</span>: <span class="jnum">1</span>            <span class="cm">// AUTO_INCREMENT は1始まり想定</span>
+    },
+    <span class="jkey">"quantity"</span>: {
+      <span class="jkey">"type"</span>: <span class="jstr">"integer"</span>,
+      <span class="jkey">"minimum"</span>: <span class="jnum">1</span>,            <span class="cm">// 0個の注文は不可</span>
+      <span class="jkey">"maximum"</span>: <span class="jnum">9999</span>
+    },
+    <span class="jkey">"unit_price"</span>: {
+      <span class="jkey">"type"</span>: <span class="jstr">"number"</span>,
+      <span class="jkey">"exclusiveMinimum"</span>: <span class="jnum">0</span>,   <span class="cm">// 価格は0円超</span>
+      <span class="jkey">"multipleOf"</span>: <span class="jnum">0.01</span>      <span class="cm">// 小数2桁まで(円単位の通貨に有効)</span>
+    },
+    <span class="jkey">"discount_rate"</span>: {
+      <span class="jkey">"type"</span>: <span class="jkey">"number"</span>,
+      <span class="jkey">"minimum"</span>: <span class="jnum">0</span>,
+      <span class="jkey">"maximum"</span>: <span class="jnum">1</span>             <span class="cm">// 0%~100% を 0.0~1.0 で</span>
+    }
+  }
+}</pre>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>浮動小数の罠</strong>: <code>multipleOf: 0.1</code> + 値 <code>0.3</code> は IEEE 754 の都合でライブラリにより通ったり通らなかったりします。金額のように厳密性が必要なら <strong>整数で「銭」単位で持つ</strong>(例: ¥450 → 45000銭)か、<code>multipleOf: 0.01</code> 程度の粗い倍数にとどめるのが安全です。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>金額カラムで「マイナスはあり得ない」をスキーマで明示する</li>
+        <li>パーセント率カラムで 0〜100 / 0.0〜1.0 の流儀を仕様書で明確化</li>
+        <li>在庫数で <code>minimum: 0</code> を入れて「マイナス在庫」事故を未然に防ぐ</li>
+        <li>年齢カラムで <code>minimum: 0, maximum: 150</code> を仕様化(150超は誤入力)</li>
+      </ul>
+    </div>
+
+    <h4 style="margin-top:18px; font-family:var(--mono); font-size:.85rem; color:var(--accent);">// 実機: 数値の境界を試す</h4>
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <span class="toggle-label">📝 0や負数、少数を入れて挙動を確認</span>
+      </div>
+      <div class="livedemo-stage">
+        <div class="validator">
+          <div>
+            <label>data.json</label>
+            <textarea data-validator="lab4-data">{
+  "order_id": 1,
+  "quantity": 5,
+  "unit_price": 1280.50
+}</textarea>
+            <div class="validator-presets">
+              <button class="preset-btn" data-target="lab4-data" data-preset='{"order_id":1,"quantity":5,"unit_price":1280.50}'>正常</button>
+              <button class="preset-btn" data-target="lab4-data" data-preset='{"order_id":1,"quantity":0,"unit_price":1280}'>quantity 0</button>
+              <button class="preset-btn" data-target="lab4-data" data-preset='{"order_id":1,"quantity":-5,"unit_price":1280}'>負の数量</button>
+              <button class="preset-btn" data-target="lab4-data" data-preset='{"order_id":1,"quantity":5,"unit_price":1280.555}'>3桁少数</button>
+              <button class="preset-btn" data-target="lab4-data" data-preset='{"order_id":1,"quantity":5,"unit_price":0}'>0円</button>
+            </div>
+          </div>
+          <div>
+            <label>schema.json</label>
+            <textarea data-validator="lab4-schema">{
+  "type": "object",
+  "properties": {
+    "order_id":   { "type": "integer", "minimum": 1 },
+    "quantity":   { "type": "integer", "minimum": 1, "maximum": 9999 },
+    "unit_price": { "type": "number", "exclusiveMinimum": 0, "multipleOf": 0.01 }
+  },
+  "required": ["order_id", "quantity", "unit_price"]
+}</textarea>
+          </div>
+        </div>
+        <button class="validator-btn" data-validate="lab4">検証する</button>
+        <div class="validator-result" data-result="lab4">↑ ボタンを押すと結果が表示されます</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     Lab 5: enum — 取りうる値を限定する
+     ============================================================ -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>enum — 取りうる値を限定する</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ステータスや区分のように<strong>固定の選択肢</strong>から1つを選ぶカラムは <code>enum</code> で表現します。
+      MySQL の ENUM 型や PostgreSQL の CHECK制約 + 列挙、あるいは「マスタテーブル + FK」のシンプル版です。
+    </p>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before — string で済ませる</div>
+        <div class="code-block">
+<pre>{
+  <span class="jkey">"status"</span>: { <span class="jkey">"type"</span>: <span class="jstr">"string"</span> }
+}
+
+<span class="cm">// 何でも通る</span>
+{ <span class="jkey">"status"</span>: <span class="jstr">"active"</span> }      <span class="cm">// OK</span>
+{ <span class="jkey">"status"</span>: <span class="jstr">"Active"</span> }      <span class="cm">// 大文字違いだが OK</span>
+{ <span class="jkey">"status"</span>: <span class="jstr">"アクティブ"</span> } <span class="cm">// 日本語も OK</span>
+{ <span class="jkey">"status"</span>: <span class="jstr">"typo"</span> }        <span class="cm">// タイポも OK</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After — enum で限定</div>
+        <div class="code-block">
+<pre>{
+  <span class="jkey">"status"</span>: {
+    <span class="jkey">"type"</span>: <span class="jstr">"string"</span>,
+    <span class="jkey">"enum"</span>: [<span class="jstr">"active"</span>, <span class="jstr">"inactive"</span>, <span class="jstr">"deleted"</span>]
+  }
+}
+
+<span class="cm">// 3つだけ通る</span>
+{ <span class="jkey">"status"</span>: <span class="jstr">"active"</span> }      <span class="cm">// OK</span>
+{ <span class="jkey">"status"</span>: <span class="jstr">"Active"</span> }      <span class="cm">// ✗ 大文字違いはNG</span>
+{ <span class="jkey">"status"</span>: <span class="jstr">"typo"</span> }        <span class="cm">// ✗</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 enum と const の違い</div>
+<pre class="ascii-art">
+enum: 複数候補から1つ                    const: 1つの値だけ
+─────────────────────                    ─────────────────────
+"enum": ["A", "B", "C"]                  "const": "A"
+
+→ "A"も"B"も"C"もOK                       → "A"だけOK
+→ ステータス、種別、区分               → 判別タグ(後述のoneOfで活用)
+</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>enum はデータ型に依存しない</strong>: 数値の選択肢にも使えます。例: 評価スコアを 1〜5 の整数に限定するなら
+      <code>{"type":"integer","enum":[1,2,3,4,5]}</code>。文字列・数値・boolean・nullを混在もできますが、テーブル定義では型を揃えるのが推奨。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>enum値はソースコード上の定数と一致させる</strong>: スキーマで <code>"active"</code> と書いたなら、TypeScriptの定数も <code>"active"</code> にする。「DBは <code>ACTIVE</code>(大文字)、APIは <code>active</code>(小文字)」のような<strong>ケース揺れ</strong>が事故の温床。スキーマを真実として全層で統一しましょう。
+    </div>
+
+    <div class="code-block">
+<pre><span class="cm">// orders テーブル — ステータス遷移の典型例</span>
+{
+  <span class="jkey">"type"</span>: <span class="jstr">"object"</span>,
+  <span class="jkey">"properties"</span>: {
+    <span class="jkey">"order_id"</span>: { <span class="jkey">"type"</span>: <span class="jstr">"integer"</span> },
+    <span class="jkey">"status"</span>: {
+      <span class="jkey">"type"</span>: <span class="jstr">"string"</span>,
+      <span class="jkey">"enum"</span>: [<span class="jstr">"pending"</span>, <span class="jstr">"paid"</span>, <span class="jstr">"shipped"</span>, <span class="jstr">"delivered"</span>, <span class="jstr">"cancelled"</span>],
+      <span class="jkey">"description"</span>: <span class="jstr">"注文ステータス。状態遷移は別途状態遷移図を参照"</span>
+    },
+    <span class="jkey">"payment_method"</span>: {
+      <span class="jkey">"type"</span>: <span class="jstr">"string"</span>,
+      <span class="jkey">"enum"</span>: [<span class="jstr">"credit_card"</span>, <span class="jstr">"bank_transfer"</span>, <span class="jstr">"convenience_store"</span>, <span class="jstr">"cod"</span>]
+    },
+    <span class="jkey">"priority"</span>: {
+      <span class="jkey">"type"</span>: <span class="jstr">"integer"</span>,
+      <span class="jkey">"enum"</span>: [<span class="jnum">1</span>, <span class="jnum">2</span>, <span class="jnum">3</span>],
+      <span class="jkey">"description"</span>: <span class="jstr">"1=高 / 2=中 / 3=低"</span>
+    }
+  }
+}</pre>
+    </div>
+
+    <h4 style="margin-top:18px; font-family:var(--mono); font-size:.85rem; color:var(--accent);">// 実機: enum の境界を試す</h4>
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <span class="toggle-label">📝 enum以外の値が確実に弾かれることを確認</span>
+      </div>
+      <div class="livedemo-stage">
+        <div class="validator">
+          <div>
+            <label>data.json</label>
+            <textarea data-validator="lab5-data">{
+  "order_id": 1,
+  "status": "paid",
+  "priority": 1
+}</textarea>
+            <div class="validator-presets">
+              <button class="preset-btn" data-target="lab5-data" data-preset='{"order_id":1,"status":"paid","priority":1}'>正常</button>
+              <button class="preset-btn" data-target="lab5-data" data-preset='{"order_id":1,"status":"PAID","priority":1}'>大文字</button>
+              <button class="preset-btn" data-target="lab5-data" data-preset='{"order_id":1,"status":"complete","priority":1}'>未定義値</button>
+              <button class="preset-btn" data-target="lab5-data" data-preset='{"order_id":1,"status":"paid","priority":5}'>priority範囲外</button>
+              <button class="preset-btn" data-target="lab5-data" data-preset='{"order_id":1,"status":"paid","priority":"1"}'>priority文字列</button>
+            </div>
+          </div>
+          <div>
+            <label>schema.json</label>
+            <textarea data-validator="lab5-schema">{
+  "type": "object",
+  "properties": {
+    "order_id": { "type": "integer", "minimum": 1 },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "paid", "shipped", "delivered", "cancelled"]
+    },
+    "priority": {
+      "type": "integer",
+      "enum": [1, 2, 3]
+    }
+  },
+  "required": ["order_id", "status"]
+}</textarea>
+          </div>
+        </div>
+        <button class="validator-btn" data-validate="lab5">検証する</button>
+        <div class="validator-result" data-result="lab5">↑ ボタンを押すと結果が表示されます</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     Lab 6: $defs と $ref で型を再利用
+     ============================================================ -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>$defs と $ref で型を再利用 — 共通カラムの定義</h3>
+    <span class="lab-tag tag-intermediate">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      多くのテーブルに共通する <code>created_at</code> / <code>updated_at</code> や、住所のような複合型を毎回書き直すのは無駄。
+      <code>$defs</code> に定義し <code>$ref</code> で参照すると、<strong>型の再利用</strong>と<strong>変更の一元化</strong>ができます。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 $ref の読み方 — JSON Pointer記法</div>
+<pre class="ascii-art">
+"$ref": "#/$defs/timestamp"
+         │  │      │
+         │  │      └── $defs オブジェクトの "timestamp" キー
+         │  └────── $defs プロパティ
+         └──────── # は「このスキーマのルート」を指す
+
+つまり「このスキーマ自身の $defs.timestamp を参照」という意味。
+別ファイル参照なら "https://example.com/common.json#/$defs/timestamp" の形に。
+</pre>
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before — 同じ定義を毎回書く</div>
+        <div class="code-block">
+<pre>{
+  <span class="jkey">"type"</span>: <span class="jstr">"object"</span>,
+  <span class="jkey">"properties"</span>: {
+    <span class="jkey">"id"</span>: { <span class="jkey">"type"</span>: <span class="jstr">"integer"</span> },
+    <span class="jkey">"created_at"</span>: {
+      <span class="jkey">"type"</span>: <span class="jstr">"string"</span>,
+      <span class="jkey">"format"</span>: <span class="jstr">"date-time"</span>
+    },
+    <span class="jkey">"updated_at"</span>: {
+      <span class="jkey">"type"</span>: <span class="jstr">"string"</span>,
+      <span class="jkey">"format"</span>: <span class="jstr">"date-time"</span>
+    }
+  }
+}
+
+<span class="cm">// テーブル数十個 × 毎回 created_at/updated_at</span>
+<span class="cm">// → 仕様変更で全部直す羽目に</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After — $defs と $ref</div>
+        <div class="code-block">
+<pre>{
+  <span class="jkey">"$defs"</span>: {
+    <span class="jkey">"timestamp"</span>: {
+      <span class="jkey">"type"</span>: <span class="jstr">"string"</span>,
+      <span class="jkey">"format"</span>: <span class="jstr">"date-time"</span>
+    }
+  },
+  <span class="jkey">"type"</span>: <span class="jstr">"object"</span>,
+  <span class="jkey">"properties"</span>: {
+    <span class="jkey">"id"</span>:         { <span class="jkey">"type"</span>: <span class="jstr">"integer"</span> },
+    <span class="jkey">"created_at"</span>: { <span class="jkey">"$ref"</span>: <span class="jstr">"#/$defs/timestamp"</span> },
+    <span class="jkey">"updated_at"</span>: { <span class="jkey">"$ref"</span>: <span class="jstr">"#/$defs/timestamp"</span> }
+  }
+}
+
+<span class="cm">// 一箇所修正すれば全箇所に効く</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>テーブル定義での $defs 典型パターン</strong>:
+      <code>id</code>(主キー型) / <code>timestamp</code>(date-time) / <code>email</code>(format+maxLength) /
+      <code>postal_code</code>(pattern) / <code>address</code>(住所オブジェクト) など、
+      アプリ全体で型を揃えたい「再利用可能な型」を <code>$defs</code> に集約します。
+    </div>
+
+    <div class="code-block">
+<pre><span class="cm">// 実践例: アプリ共通の $defs を定義したスキーマ</span>
+{
+  <span class="jkey">"$schema"</span>: <span class="jstr">"https://json-schema.org/draft/2020-12/schema"</span>,
+  <span class="jkey">"$id"</span>: <span class="jstr">"https://example.com/schemas/customers.json"</span>,
+  <span class="jkey">"title"</span>: <span class="jstr">"customers"</span>,
+
+  <span class="jkey">"$defs"</span>: {
+    <span class="jkey">"primary_key"</span>: { <span class="jkey">"type"</span>: <span class="jstr">"integer"</span>, <span class="jkey">"minimum"</span>: <span class="jnum">1</span> },
+    <span class="jkey">"timestamp"</span>:   { <span class="jkey">"type"</span>: <span class="jstr">"string"</span>, <span class="jkey">"format"</span>: <span class="jstr">"date-time"</span> },
+    <span class="jkey">"email"</span>: {
+      <span class="jkey">"type"</span>: <span class="jstr">"string"</span>,
+      <span class="jkey">"format"</span>: <span class="jstr">"email"</span>,
+      <span class="jkey">"maxLength"</span>: <span class="jnum">255</span>
+    },
+    <span class="jkey">"address"</span>: {
+      <span class="jkey">"type"</span>: <span class="jstr">"object"</span>,
+      <span class="jkey">"properties"</span>: {
+        <span class="jkey">"postal_code"</span>: { <span class="jkey">"type"</span>: <span class="jstr">"string"</span>, <span class="jkey">"pattern"</span>: <span class="jstr">"^[0-9]{3}-[0-9]{4}$"</span> },
+        <span class="jkey">"prefecture"</span>:  { <span class="jkey">"type"</span>: <span class="jstr">"string"</span>, <span class="jkey">"maxLength"</span>: <span class="jnum">10</span> },
+        <span class="jkey">"city"</span>:        { <span class="jkey">"type"</span>: <span class="jstr">"string"</span>, <span class="jkey">"maxLength"</span>: <span class="jnum">100</span> },
+        <span class="jkey">"street"</span>:      { <span class="jkey">"type"</span>: <span class="jstr">"string"</span>, <span class="jkey">"maxLength"</span>: <span class="jnum">100</span> }
+      },
+      <span class="jkey">"required"</span>: [<span class="jstr">"postal_code"</span>, <span class="jstr">"prefecture"</span>, <span class="jstr">"city"</span>, <span class="jstr">"street"</span>]
+    }
+  },
+
+  <span class="jkey">"type"</span>: <span class="jstr">"object"</span>,
+  <span class="jkey">"properties"</span>: {
+    <span class="jkey">"customer_id"</span>:     { <span class="jkey">"$ref"</span>: <span class="jstr">"#/$defs/primary_key"</span> },
+    <span class="jkey">"email"</span>:           { <span class="jkey">"$ref"</span>: <span class="jstr">"#/$defs/email"</span> },
+    <span class="jkey">"billing_address"</span>: { <span class="jkey">"$ref"</span>: <span class="jstr">"#/$defs/address"</span> },
+    <span class="jkey">"shipping_address"</span>:{ <span class="jkey">"$ref"</span>: <span class="jstr">"#/$defs/address"</span> },
+    <span class="jkey">"created_at"</span>:      { <span class="jkey">"$ref"</span>: <span class="jstr">"#/$defs/timestamp"</span> },
+    <span class="jkey">"updated_at"</span>:      { <span class="jkey">"$ref"</span>: <span class="jstr">"#/$defs/timestamp"</span> }
+  },
+  <span class="jkey">"required"</span>: [<span class="jstr">"customer_id"</span>, <span class="jstr">"email"</span>, <span class="jstr">"created_at"</span>],
+  <span class="jkey">"additionalProperties"</span>: <span class="jbool">false</span>
+}</pre>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>address は「複合型」のサブオブジェクト</strong>: RDBでは住所カラム群(郵便番号・都道府県・市区町村・番地)を別テーブルに切り出すか、複数カラムにバラすかの設計判断があります。<br>
+      JSON Schema では<strong>論理的に1つの住所</strong>として扱える点が便利。DDL生成時に「JSONB列 / 別テーブルJOIN / カラムバラし」のいずれを選ぶかは、生成側の実装で判断します。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>共通カラム(id, created_at, updated_at, deleted_at)を <code>$defs/audit_columns</code> として一元化</li>
+        <li>住所・電話番号・氏名(姓名分割)など複合型を再利用</li>
+        <li>マスタデータの基本構造(code/name/sort_order)を <code>$defs/master_record</code> として揃える</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     Lab 7: NULL 許容カラムの正しい表現
+     ============================================================ -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>NULL 許容カラムの正しい表現 — type 配列とOpenAPI流の違い</h3>
+    <span class="lab-tag tag-intermediate">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      RDBで <code>NULLABLE</code> なカラム(例: <code>deleted_at</code>)をJSON Schemaで表現する方法は<strong>2種類あり、流派が分かれます</strong>。初心者がまず混乱するポイントなので、ここで決着をつけます。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 NULL に関する3つの状態を区別する</div>
+<pre class="ascii-art">
+RDBの NULL                JSON での「無い/null」
+─────────────             ─────────────────────────────
+NULL の1状態のみ           ① キー自体が無い:    {}
+                          ② キーはあるがnull: { "x": null }
+                          ③ 値がある:        { "x": "..." }
+
+→ JSON Schema では ② と ① を別々に制御する必要がある
+   ・② を許可するか    → "type": ["string", "null"]
+   ・① を許可するか    → required に入れない / 入れる
+</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>カラム仕様</th><th>required</th><th>type</th><th>動作</th></tr></thead>
+      <tbody>
+        <tr><td>NOT NULL</td><td>含める</td><td>"string"</td><td>キー必須・null不可</td></tr>
+        <tr><td>NULLABLE(キーは必須)</td><td>含める</td><td>["string","null"]</td><td>キー必須・null可</td></tr>
+        <tr><td>キー自体が省略可</td><td>外す</td><td>"string"</td><td>あれば検証・無くてもOK</td></tr>
+        <tr><td>省略可かつnullも可</td><td>外す</td><td>["string","null"]</td><td>3状態すべて許可</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before — OpenAPI 3.0流(古い)</div>
+        <div class="code-block">
+<pre>{
+  <span class="jkey">"type"</span>: <span class="jstr">"object"</span>,
+  <span class="jkey">"properties"</span>: {
+    <span class="jkey">"deleted_at"</span>: {
+      <span class="jkey">"type"</span>: <span class="jstr">"string"</span>,
+      <span class="jkey">"format"</span>: <span class="jstr">"date-time"</span>,
+      <span class="jkey">"nullable"</span>: <span class="jbool">true</span>      <span class="cm">// ← OpenAPI 3.0 のみ有効</span>
+    }
+  }
+}
+
+<span class="cm">// ⚠ 純粋なJSON Schemaではない</span>
+<span class="cm">// Ajv等は nullable を無視する</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After — JSON Schema標準</div>
+        <div class="code-block">
+<pre>{
+  <span class="jkey">"type"</span>: <span class="jstr">"object"</span>,
+  <span class="jkey">"properties"</span>: {
+    <span class="jkey">"deleted_at"</span>: {
+      <span class="jkey">"type"</span>: [<span class="jstr">"string"</span>, <span class="jstr">"null"</span>],
+      <span class="jkey">"format"</span>: <span class="jstr">"date-time"</span>
+    }
+  }
+}
+
+<span class="cm">// type を配列にしてnullを並列に許す</span>
+<span class="cm">// これが標準。OpenAPI 3.1 もこの形式に統一</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>format と null の組み合わせ注意</strong>: <code>type: ["string", "null"]</code> + <code>format: "date-time"</code> の場合、
+      値が null のときは format チェックがスキップされます(Ajv の挙動)。「null か、ちゃんとした日付」のどちらかを許す、で正しい解釈です。
+    </div>
+
+    <div class="code-block">
+<pre><span class="cm">// 実践: users テーブルでNULL許容パターンを総ざらい</span>
+{
+  <span class="jkey">"type"</span>: <span class="jstr">"object"</span>,
+  <span class="jkey">"properties"</span>: {
+    <span class="jkey">"user_id"</span>:    { <span class="jkey">"type"</span>: <span class="jstr">"integer"</span> },
+    <span class="jkey">"email"</span>:      { <span class="jkey">"type"</span>: <span class="jstr">"string"</span>, <span class="jkey">"format"</span>: <span class="jstr">"email"</span> },
+
+    <span class="cm">// 退会日時: nullable / レコードにキーは必ず存在</span>
+    <span class="jkey">"deleted_at"</span>: { <span class="jkey">"type"</span>: [<span class="jstr">"string"</span>, <span class="jstr">"null"</span>], <span class="jkey">"format"</span>: <span class="jstr">"date-time"</span> },
+
+    <span class="cm">// 任意のニックネーム: キー自体が無くてもよい</span>
+    <span class="jkey">"nickname"</span>:   { <span class="jkey">"type"</span>: <span class="jstr">"string"</span>, <span class="jkey">"maxLength"</span>: <span class="jnum">50</span> }
+  },
+  <span class="cm">// nickname は required に含めない → 省略OK</span>
+  <span class="jkey">"required"</span>: [<span class="jstr">"user_id"</span>, <span class="jstr">"email"</span>, <span class="jstr">"deleted_at"</span>],
+  <span class="jkey">"additionalProperties"</span>: <span class="jbool">false</span>
+}</pre>
+    </div>
+
+    <h4 style="margin-top:18px; font-family:var(--mono); font-size:.85rem; color:var(--accent);">// 実機: NULLの3パターンを試す</h4>
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <span class="toggle-label">📝 deleted_at が null/省略/値あり、で挙動を比較</span>
+      </div>
+      <div class="livedemo-stage">
+        <div class="validator">
+          <div>
+            <label>data.json</label>
+            <textarea data-validator="lab7-data">{
+  "user_id": 1,
+  "email": "tom@example.com",
+  "deleted_at": null
+}</textarea>
+            <div class="validator-presets">
+              <button class="preset-btn" data-target="lab7-data" data-preset='{"user_id":1,"email":"tom@example.com","deleted_at":null}'>deleted_at: null</button>
+              <button class="preset-btn" data-target="lab7-data" data-preset='{"user_id":1,"email":"tom@example.com","deleted_at":"2026-04-30T10:00:00Z"}'>deleted_at: 値</button>
+              <button class="preset-btn" data-target="lab7-data" data-preset='{"user_id":1,"email":"tom@example.com"}'>deleted_at省略</button>
+              <button class="preset-btn" data-target="lab7-data" data-preset='{"user_id":1,"email":"tom@example.com","deleted_at":null,"nickname":"Tom"}'>nickname追加</button>
+              <button class="preset-btn" data-target="lab7-data" data-preset='{"user_id":1,"email":"tom@example.com","deleted_at":"invalid-date"}'>不正日付</button>
+            </div>
+          </div>
+          <div>
+            <label>schema.json</label>
+            <textarea data-validator="lab7-schema">{
+  "type": "object",
+  "properties": {
+    "user_id":    { "type": "integer" },
+    "email":      { "type": "string", "format": "email" },
+    "deleted_at": { "type": ["string", "null"], "format": "date-time" },
+    "nickname":   { "type": "string", "maxLength": 50 }
+  },
+  "required": ["user_id", "email", "deleted_at"],
+  "additionalProperties": false
+}</textarea>
+          </div>
+        </div>
+        <button class="validator-btn" data-validate="lab7">検証する</button>
+        <div class="validator-result" data-result="lab7">↑ ボタンを押すと結果が表示されます</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     Lab 8: テーブル全体をスキーマで表す
+     ============================================================ -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>テーブル全体をスキーマで表す — レコード型 vs 全件配列</h3>
+    <span class="lab-tag tag-intermediate">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ここまでは「<strong>1レコード分</strong>」のスキーマを書いてきました。「<strong>テーブル全件</strong>(=配列)」を表すには、レコード型を <code>items</code> に入れた <code>array</code> を作ります。さらに「テーブル定義そのもの」と「実データ」の二層構造を意識すると整理が楽になります。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 二層構造で考える</div>
+<pre class="ascii-art">
+レイヤー1: 1レコードの型(これまでのLabで書いてきたもの)
+┌──────────────────────────────────────┐
+│ ProductRecord = {                    │
+│   "type": "object",                  │
+│   "properties": { id, name, price }, │
+│   "required": [...]                  │
+│ }                                    │
+└──────────────────────────────────────┘
+                  │
+                  │ 配列として束ねる
+                  ▼
+レイヤー2: テーブル全件(レコードの配列)
+┌──────────────────────────────────────┐
+│ ProductTable = {                     │
+│   "type": "array",                   │
+│   "items": { $ref: ProductRecord },  │
+│   "minItems": 0,                     │
+│   "uniqueItems": false               │
+│ }                                    │
+└──────────────────────────────────────┘
+</pre>
+    </div>
+
+    <div class="code-block">
+<pre><span class="cm">// products.schema.json — レコード型と全件型を1ファイルに</span>
+{
+  <span class="jkey">"$schema"</span>: <span class="jstr">"https://json-schema.org/draft/2020-12/schema"</span>,
+  <span class="jkey">"$id"</span>: <span class="jstr">"https://example.com/schemas/products.json"</span>,
+  <span class="jkey">"title"</span>: <span class="jstr">"products"</span>,
+
+  <span class="jkey">"$defs"</span>: {
+    <span class="jkey">"ProductRecord"</span>: {
+      <span class="jkey">"type"</span>: <span class="jstr">"object"</span>,
+      <span class="jkey">"properties"</span>: {
+        <span class="jkey">"product_id"</span>: { <span class="jkey">"type"</span>: <span class="jstr">"integer"</span>, <span class="jkey">"minimum"</span>: <span class="jnum">1</span> },
+        <span class="jkey">"name"</span>:       { <span class="jkey">"type"</span>: <span class="jstr">"string"</span>, <span class="jkey">"maxLength"</span>: <span class="jnum">100</span> },
+        <span class="jkey">"price"</span>:      { <span class="jkey">"type"</span>: <span class="jstr">"integer"</span>, <span class="jkey">"minimum"</span>: <span class="jnum">0</span> },
+        <span class="jkey">"category"</span>:   { <span class="jkey">"type"</span>: <span class="jstr">"string"</span>, <span class="jkey">"enum"</span>: [<span class="jstr">"food"</span>, <span class="jstr">"drink"</span>, <span class="jstr">"other"</span>] }
+      },
+      <span class="jkey">"required"</span>: [<span class="jstr">"product_id"</span>, <span class="jstr">"name"</span>, <span class="jstr">"price"</span>, <span class="jstr">"category"</span>],
+      <span class="jkey">"additionalProperties"</span>: <span class="jbool">false</span>
+    }
+  },
+
+  <span class="cm">// このスキーマのトップレベル = テーブル全件(配列)</span>
+  <span class="jkey">"type"</span>: <span class="jstr">"array"</span>,
+  <span class="jkey">"items"</span>: { <span class="jkey">"$ref"</span>: <span class="jstr">"#/$defs/ProductRecord"</span> },
+  <span class="jkey">"minItems"</span>: <span class="jnum">0</span>
+}</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>array の主要キーワード</strong>:
+      <code>items</code>(各要素の型) / <code>minItems</code> / <code>maxItems</code>(要素数) / <code>uniqueItems</code>(重複禁止)。
+      テーブル全件で <code>uniqueItems: true</code> にしてしまうとレコード単位の完全一致重複しか弾かないので、主キー一意性の検証には別途ロジックが必要(Lab 10で扱う)。
+    </div>
+
+    <div class="code-block">
+<pre><span class="cm">// 上のスキーマで検証されるデータの形</span>
+[
+  { <span class="jkey">"product_id"</span>: <span class="jnum">1</span>, <span class="jkey">"name"</span>: <span class="jstr">"コーヒー"</span>, <span class="jkey">"price"</span>: <span class="jnum">450</span>, <span class="jkey">"category"</span>: <span class="jstr">"drink"</span> },
+  { <span class="jkey">"product_id"</span>: <span class="jnum">2</span>, <span class="jkey">"name"</span>: <span class="jstr">"おにぎり"</span>, <span class="jkey">"price"</span>: <span class="jnum">180</span>, <span class="jkey">"category"</span>: <span class="jstr">"food"</span> },
+  { <span class="jkey">"product_id"</span>: <span class="jnum">3</span>, <span class="jkey">"name"</span>: <span class="jstr">"紅茶"</span>,    <span class="jkey">"price"</span>: <span class="jnum">380</span>, <span class="jkey">"category"</span>: <span class="jstr">"drink"</span> }
+]</pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>マスタデータの初期投入JSONをこのスキーマで全件検証してからINSERT</li>
+        <li>外部システムからのCSVをJSONに変換し、配列スキーマで検証</li>
+        <li>テストデータ生成時にスキーマを <code>json-schema-faker</code> に渡して大量レコード自動生成</li>
+        <li>バックアップ/エクスポートデータの整合性チェック</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>こう見えたら使い時:</strong>
+        <ul>
+          <li>「マスタの初期データのExcelをCSVにしてINSERTしたら制約違反で半分失敗」になったとき</li>
+          <li>外部から送られてくるJSONの「想定外の型」で本番障害が起きたとき</li>
+        </ul>
+      </div>
+    </div>
+
+    <h4 style="margin-top:18px; font-family:var(--mono); font-size:.85rem; color:var(--accent);">// 実機: テーブル全件を検証</h4>
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <span class="toggle-label">📝 配列の中の1要素にエラーがあれば全体エラー</span>
+      </div>
+      <div class="livedemo-stage">
+        <div class="validator">
+          <div>
+            <label>data.json (テーブル全件)</label>
+            <textarea data-validator="lab8-data">[
+  { "product_id": 1, "name": "コーヒー", "price": 450, "category": "drink" },
+  { "product_id": 2, "name": "おにぎり", "price": 180, "category": "food" }
+]</textarea>
+            <div class="validator-presets">
+              <button class="preset-btn" data-target="lab8-data" data-preset='[{"product_id":1,"name":"コーヒー","price":450,"category":"drink"},{"product_id":2,"name":"おにぎり","price":180,"category":"food"}]'>正常</button>
+              <button class="preset-btn" data-target="lab8-data" data-preset='[{"product_id":1,"name":"コーヒー","price":450,"category":"drink"},{"product_id":2,"name":"おにぎり","price":-100,"category":"food"}]'>2件目priceマイナス</button>
+              <button class="preset-btn" data-target="lab8-data" data-preset='[{"product_id":1,"name":"コーヒー","price":450,"category":"electronics"}]'>カテゴリ未定義値</button>
+              <button class="preset-btn" data-target="lab8-data" data-preset='[]'>空配列</button>
+            </div>
+          </div>
+          <div>
+            <label>schema.json</label>
+            <textarea data-validator="lab8-schema">{
+  "$defs": {
+    "ProductRecord": {
+      "type": "object",
+      "properties": {
+        "product_id": { "type": "integer", "minimum": 1 },
+        "name":       { "type": "string", "maxLength": 100 },
+        "price":      { "type": "integer", "minimum": 0 },
+        "category":   { "type": "string", "enum": ["food", "drink", "other"] }
+      },
+      "required": ["product_id", "name", "price", "category"],
+      "additionalProperties": false
+    }
+  },
+  "type": "array",
+  "items": { "$ref": "#/$defs/ProductRecord" }
+}</textarea>
+          </div>
+        </div>
+        <button class="validator-btn" data-validate="lab8">検証する</button>
+        <div class="validator-result" data-result="lab8">↑ ボタンを押すと結果が表示されます</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     Lab 9: MD ファイルへの埋め込み方
+     ============================================================ -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>MD ファイルへの埋め込み方 — 仕様駆動開発のテンプレ</h3>
+    <span class="lab-tag tag-advanced">実践</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ここからが本題。テーブル定義MDの「型」を決めましょう。
+      <strong>説明文 + JSON Schemaブロック + サンプルデータブロック</strong>の3点セットがおすすめ。
+      レビューしやすく、ツールがJSONブロックを抽出して再利用できます。
+    </p>
+
+    <div class="info-box info">
+      📘 <strong>MD埋め込みのコツ</strong>: コードフェンス言語タグを必ず <code>```json</code> にする。
+      これによりエディタのシンタックスハイライトが効き、抽出ツールで <code>language=json</code> ブロックだけを取り出せます。
+    </div>
+
+    <div class="code-block">
+<pre><span class="cm"># users テーブル仕様</span>
+
+<span class="cm">## 概要</span>
+
+ユーザーマスタテーブル。アプリ全体で参照される基本情報を保持する。
+
+<span class="cm">## カラム定義表</span>
+
+| カラム名     | 型           | 必須 | NULL可 | 制約                  | 説明           |
+|--------------|--------------|------|--------|------------------------|----------------|
+| user_id      | integer      | ✓    |        | 主キー / 1以上         | ユーザーID     |
+| email        | string       | ✓    |        | メール形式 / 255字以下 | ログイン用メール|
+| status       | string(enum) | ✓    |        | active/inactive/deleted | アカウント状態 |
+| deleted_at   | string(datetime) | ✓ | ✓     | 削除日時(物理削除前) | 退会日時      |
+| created_at   | string(datetime) | ✓ |       | ISO 8601               | 作成日時      |
+
+<span class="cm">## JSON Schema (1レコード)</span>
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/users.json",
+  "title": "users",
+  "description": "ユーザーマスタ",
+  "type": "object",
+  "properties": {
+    "user_id":    { "type": "integer", "minimum": 1 },
+    "email":      { "type": "string", "format": "email", "maxLength": 255 },
+    "status":     { "type": "string", "enum": ["active", "inactive", "deleted"] },
+    "deleted_at": { "type": ["string", "null"], "format": "date-time" },
+    "created_at": { "type": "string", "format": "date-time" }
+  },
+  "required": ["user_id", "email", "status", "deleted_at", "created_at"],
+  "additionalProperties": false
+}
+```
+
+<span class="cm">## サンプルデータ</span>
+
+```json
+[
+  {
+    "user_id": 1,
+    "email": "tom@example.com",
+    "status": "active",
+    "deleted_at": null,
+    "created_at": "2026-04-30T10:00:00Z"
+  },
+  {
+    "user_id": 2,
+    "email": "old@example.com",
+    "status": "deleted",
+    "deleted_at": "2026-03-15T12:00:00Z",
+    "created_at": "2025-11-01T09:00:00Z"
+  }
+]
+```
+
+<span class="cm">## 補足ルール(スキーマで表現できないもの)</span>
+
+- status="deleted" の場合、deleted_at は必ず非null
+- email はアプリ全体で一意(UNIQUE制約 / スキーマでは表現しない)
+- 削除後30日経過したレコードは物理削除される(別バッチで処理)</pre>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>スキーマで表現できないものは「補足ルール」セクションで明文化</strong>:
+      ・テーブル間のFK制約 ・ユニーク制約 ・複数カラムにまたがる業務ルール ・遷移ルール ・パフォーマンス要件 など。
+      これらはJSON Schemaの守備範囲外なので、人間が読むセクションを設けて明示します。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 仕様駆動開発でのワークフロー</div>
+      <ul class="usecase-list">
+        <li><strong>① 設計</strong>: 上記テンプレでテーブル仕様MDを作成 → PRレビュー</li>
+        <li><strong>② DDL生成</strong>: スキーマブロックを抽出して別ツール(Atlas / カスタムスクリプト)でDDL生成</li>
+        <li><strong>③ 型生成</strong>: 同じスキーマからTS型を自動生成(Lab 11)</li>
+        <li><strong>④ 検証</strong>: APIエンドポイントでAjvで入力検証(Lab 10)</li>
+        <li><strong>⑤ テストデータ</strong>: <code>json-schema-faker</code> で大量サンプル自動生成</li>
+        <li><strong>⑥ ドキュメント</strong>: MDがそのまま仕様書として読める(変換ツール不要)</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>このテンプレが効くサイン:</strong>
+        <ul>
+          <li>「Excel仕様書とDDLが乖離していないか心配」と思った瞬間</li>
+          <li>新メンバーに「このテーブルのカラムって…」と毎回口頭説明している</li>
+          <li>API設計書とDB設計書を別々に書いていて整合性に不安がある</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code-block">
+<pre><span class="cm">// 抽出スクリプト例(Node.js) — MDからJSON Schemaブロックを取り出す</span>
+<span class="kw">import</span> fs <span class="kw">from</span> <span class="str">"fs"</span>;
+
+<span class="kw">function</span> <span class="fn">extractSchemas</span>(<span class="cm">/* MDファイルパス */</span> path) {
+  <span class="kw">const</span> md = fs.<span class="fn">readFileSync</span>(path, <span class="str">"utf-8"</span>);
+  <span class="cm">// ```json ... ``` の中で $schema キーを持つもの = JSON Schema</span>
+  <span class="kw">const</span> regex = <span class="str">/```json\n([\s\S]*?)\n```/</span>g;
+  <span class="kw">const</span> schemas = [];
+  <span class="kw">let</span> m;
+  <span class="kw">while</span> ((m = regex.<span class="fn">exec</span>(md)) !== <span class="kw">null</span>) {
+    <span class="kw">try</span> {
+      <span class="kw">const</span> obj = <span class="fn">JSON.parse</span>(m[<span class="num">1</span>]);
+      <span class="kw">if</span> (obj.<span class="prop">$schema</span>) schemas.<span class="fn">push</span>(obj);
+    } <span class="kw">catch</span> (e) { <span class="cm">/* 無視 */</span> }
+  }
+  <span class="kw">return</span> schemas;
+}
+
+<span class="kw">const</span> schemas = <span class="fn">extractSchemas</span>(<span class="str">"./specs/users.md"</span>);
+console.<span class="fn">log</span>(schemas[<span class="num">0</span>].title); <span class="cm">// → "users"</span></pre>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     Lab 10: Ajv でスキーマと実データを検証
+     ============================================================ -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>Ajv で実機検証 — スキーマを動かす</h3>
+    <span class="lab-tag tag-advanced">実践</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      仕様書として書いたスキーマを<strong>実行可能なバリデータ</strong>に化けさせる工程。
+      JavaScript/Node.js では <a href="https://ajv.js.org/" target="_blank" style="color:var(--accent);">Ajv</a> がデファクト。Python なら <code>jsonschema</code>、Java なら <code>networknt/json-schema-validator</code> など各言語に存在します。
+    </p>
+
+    <div class="code-block">
+<pre><span class="cm">// セットアップ</span>
+<span class="cm">// $ npm install ajv ajv-formats</span>
+
+<span class="kw">import</span> Ajv <span class="kw">from</span> <span class="str">"ajv/dist/2020.js"</span>;  <span class="cm">// 2020-12 ドラフト用</span>
+<span class="kw">import</span> addFormats <span class="kw">from</span> <span class="str">"ajv-formats"</span>;
+
+<span class="kw">const</span> ajv = <span class="kw">new</span> <span class="fn">Ajv</span>({
+  allErrors: <span class="kw">true</span>,    <span class="cm">// 全エラー集める(初回のみで止めない)</span>
+  strict: <span class="kw">true</span>,        <span class="cm">// 仕様外キーでスキーマ自体を弾く</span>
+  useDefaults: <span class="kw">true</span>    <span class="cm">// default キーで値補完</span>
+});
+<span class="fn">addFormats</span>(ajv);            <span class="cm">// email/date-time 等を有効化</span>
+
+<span class="cm">// スキーマ読み込み(Lab 9のMDから抽出したものでもOK)</span>
+<span class="kw">const</span> schema = <span class="fn">JSON.parse</span>(fs.<span class="fn">readFileSync</span>(<span class="str">"./schemas/users.json"</span>, <span class="str">"utf-8"</span>));
+
+<span class="cm">// コンパイル(1回だけ)→ 高速な検証関数を取得</span>
+<span class="kw">const</span> validate = ajv.<span class="fn">compile</span>(schema);
+
+<span class="cm">// 何度でも検証実行</span>
+<span class="kw">const</span> data = {
+  user_id: <span class="num">1</span>,
+  email: <span class="str">"tom@example.com"</span>,
+  status: <span class="str">"active"</span>,
+  deleted_at: <span class="kw">null</span>,
+  created_at: <span class="str">"2026-04-30T10:00:00Z"</span>
+};
+
+<span class="kw">if</span> (<span class="fn">validate</span>(data)) {
+  console.<span class="fn">log</span>(<span class="str">"OK"</span>);
+} <span class="kw">else</span> {
+  console.<span class="fn">log</span>(<span class="str">"NG"</span>, validate.errors);
+  <span class="cm">// errors: [{ instancePath, message, params, ... }, ...]</span>
+}</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>Ajv の主要オプション</strong>:
+      <code>allErrors: true</code>(全エラー収集 / フォーム検証で必須) /
+      <code>strict: true</code>(スキーマミスを早期検出) /
+      <code>useDefaults: true</code>(default値補完) /
+      <code>removeAdditional: true</code>(未定義プロパティを自動削除)。
+    </div>
+
+    <div class="code-block">
+<pre><span class="cm">// マスタデータ全件を検証する実用パターン</span>
+<span class="kw">const</span> records = <span class="fn">JSON.parse</span>(fs.<span class="fn">readFileSync</span>(<span class="str">"./data/users.json"</span>, <span class="str">"utf-8"</span>));
+
+<span class="cm">// テーブル全件用スキーマ(items に1レコード型)</span>
+<span class="kw">const</span> tableSchema = {
+  <span class="str">"type"</span>: <span class="str">"array"</span>,
+  <span class="str">"items"</span>: schema    <span class="cm">// 上で読んだ1レコード型</span>
+};
+<span class="kw">const</span> validateTable = ajv.<span class="fn">compile</span>(tableSchema);
+
+<span class="kw">if</span> (!<span class="fn">validateTable</span>(records)) {
+  <span class="cm">// エラーを行番号付きで出力</span>
+  validateTable.errors.<span class="fn">forEach</span>(e => {
+    console.<span class="fn">error</span>(<span class="str">`[${e.instancePath}] ${e.message}`</span>);
+  });
+  <span class="fn">process.exit</span>(<span class="num">1</span>);
+}
+
+<span class="cm">// → INSERT文生成 / DBに投入 へ</span></pre>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>主キー一意性は別途検証</strong>: JSON Schemaは「配列内オブジェクトの<strong>特定プロパティのユニーク</strong>」を検証する標準キーワードを持ちません。<code>uniqueItems: true</code> はオブジェクト全体の完全一致重複しか弾かないので、主キー一意性はループでSet照合する独自処理が必要です。
+    </div>
+
+    <div class="code-block">
+<pre><span class="cm">// 主キー一意性を独自検証</span>
+<span class="kw">function</span> <span class="fn">checkUniquePK</span>(records, pkField) {
+  <span class="kw">const</span> seen = <span class="kw">new</span> <span class="fn">Set</span>();
+  <span class="kw">const</span> dups = [];
+  records.<span class="fn">forEach</span>((r, i) => {
+    <span class="kw">const</span> v = r[pkField];
+    <span class="kw">if</span> (seen.<span class="fn">has</span>(v)) dups.<span class="fn">push</span>({ index: i, value: v });
+    <span class="kw">else</span> seen.<span class="fn">add</span>(v);
+  });
+  <span class="kw">return</span> dups;
+}
+
+<span class="kw">const</span> dups = <span class="fn">checkUniquePK</span>(records, <span class="str">"user_id"</span>);
+<span class="kw">if</span> (dups.length > <span class="num">0</span>) {
+  console.<span class="fn">error</span>(<span class="str">"PK重複:"</span>, dups);
+  <span class="fn">process.exit</span>(<span class="num">1</span>);
+}</pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>マスタデータ初期投入のCI: PR時にスキーマ違反があればfailさせる</li>
+        <li>Express等のAPIで <code>req.body</code> を検証してから業務ロジックに渡す</li>
+        <li>外部連携のJSONをファイル受領した瞬間に検証して、ダーティデータがDBに入る前に弾く</li>
+        <li>OutSystemsから送られるJSONをサーバ側でAjv検証(Structure定義の二重チェック)</li>
+      </ul>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>このページのプレイグラウンドについて</strong>: Lab 1〜8 の検証ボタンには、本Lab用の軽量ミニバリデータが内蔵されています(Ajvがブラウザ単体で動かないため)。サポートキーワードは本Labで扱うものに限定していますが、本物のAjvと同等の判定結果を返します。実プロジェクトではNode.js + Ajvの構成をご利用ください。
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     Lab 11: TypeScript型を自動生成
+     ============================================================ -->
+<div class="lab" id="lab11">
+  <div class="lab-header">
+    <div class="lab-num">11</div>
+    <h3>スキーマから TypeScript 型を自動生成</h3>
+    <span class="lab-tag tag-advanced">実践</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      JSON Schemaは「実行時の検証」が得意ですが、「<strong>コンパイル時の型チェック</strong>」はTypeScriptに任せます。
+      両者を結ぶのが <code>json-schema-to-typescript</code>。スキーマ1個から両方が派生する世界が完成します。
+    </p>
+
+    <div class="code-block">
+<pre><span class="cm">// セットアップ</span>
+<span class="cm">// $ npm install -D json-schema-to-typescript</span>
+
+<span class="cm">// generate-types.mjs</span>
+<span class="kw">import</span> { compileFromFile } <span class="kw">from</span> <span class="str">"json-schema-to-typescript"</span>;
+<span class="kw">import</span> fs <span class="kw">from</span> <span class="str">"fs"</span>;
+
+<span class="kw">const</span> ts = <span class="kw">await</span> <span class="fn">compileFromFile</span>(<span class="str">"./schemas/users.json"</span>);
+fs.<span class="fn">writeFileSync</span>(<span class="str">"./types/users.d.ts"</span>, ts);
+console.<span class="fn">log</span>(<span class="str">"types/users.d.ts を生成しました"</span>);</pre>
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">入力: users.schema.json</div>
+        <div class="code-block">
+<pre>{
+  <span class="jkey">"$schema"</span>: <span class="jstr">"https://json-schema.org/draft/2020-12/schema"</span>,
+  <span class="jkey">"title"</span>: <span class="jstr">"User"</span>,
+  <span class="jkey">"type"</span>: <span class="jstr">"object"</span>,
+  <span class="jkey">"properties"</span>: {
+    <span class="jkey">"user_id"</span>: { <span class="jkey">"type"</span>: <span class="jstr">"integer"</span> },
+    <span class="jkey">"email"</span>:   { <span class="jkey">"type"</span>: <span class="jstr">"string"</span>, <span class="jkey">"format"</span>: <span class="jstr">"email"</span> },
+    <span class="jkey">"status"</span>:  {
+      <span class="jkey">"type"</span>: <span class="jstr">"string"</span>,
+      <span class="jkey">"enum"</span>: [<span class="jstr">"active"</span>, <span class="jstr">"inactive"</span>, <span class="jstr">"deleted"</span>]
+    },
+    <span class="jkey">"deleted_at"</span>: {
+      <span class="jkey">"type"</span>: [<span class="jstr">"string"</span>, <span class="jstr">"null"</span>],
+      <span class="jkey">"format"</span>: <span class="jstr">"date-time"</span>
+    }
+  },
+  <span class="jkey">"required"</span>: [<span class="jstr">"user_id"</span>, <span class="jstr">"email"</span>, <span class="jstr">"status"</span>]
+}</pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">出力: types/users.d.ts</div>
+        <div class="code-block">
+<pre><span class="kw">export interface</span> <span class="fn">User</span> {
+  user_id: <span class="kw">number</span>;
+  email: <span class="kw">string</span>;
+  status: <span class="str">"active"</span> | <span class="str">"inactive"</span> | <span class="str">"deleted"</span>;
+  deleted_at?: <span class="kw">string</span> | <span class="kw">null</span>;
+  [k: <span class="kw">string</span>]: <span class="kw">unknown</span>;
+}
+
+<span class="cm">// enum は文字列リテラル型に変換される</span>
+<span class="cm">// type:["string","null"] は string|null に変換</span>
+<span class="cm">// required から外れたものは ? が付く</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>型と検証の連携イメージ</strong>:
+      <pre style="margin-top:8px; font-size:.78rem;">
+   users.schema.json (Single Source of Truth)
+        │
+        ├─→ json-schema-to-typescript → users.d.ts (コンパイル時)
+        ├─→ Ajv.compile()             → validate() (実行時)
+        └─→ DDL生成ツール              → users.sql  (DB)</pre>
+    </div>
+
+    <div class="code-block">
+<pre><span class="cm">// アプリ側での合体使用例(TypeScript)</span>
+<span class="kw">import type</span> { User } <span class="kw">from</span> <span class="str">"./types/users"</span>;
+<span class="kw">import</span> { validateUser } <span class="kw">from</span> <span class="str">"./validators"</span>;  <span class="cm">// Ajv compile結果のラッパ</span>
+
+<span class="kw">function</span> <span class="fn">parseUser</span>(<span class="cm">/* unknown JSON */</span> raw: <span class="kw">unknown</span>): User {
+  <span class="kw">if</span> (!<span class="fn">validateUser</span>(raw)) {  <span class="cm">// ← 実行時検証(Ajv)</span>
+    <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">"Invalid user data"</span>);
+  }
+  <span class="kw">return</span> raw <span class="kw">as</span> User;       <span class="cm">// ← ここで型がUserに narrowing される(コンパイル時)</span>
+}
+
+<span class="cm">// 呼び出し側は型安全にUserを使える</span>
+<span class="kw">const</span> u = <span class="fn">parseUser</span>(<span class="fn">await</span> <span class="fn">fetch</span>(...).<span class="fn">then</span>(r => r.<span class="fn">json</span>()));
+console.<span class="fn">log</span>(u.email);  <span class="cm">// IDE補完が効く</span></pre>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>OutSystems Structureとの対比</strong>: OutSystemsのStructureもJSON Schemaも「機械可読なデータ型定義」という意味では同じ。違いは「配布先」で、Structureは閉じたOutSystems世界、JSON Schemaは外部世界(他言語・他チーム・他システム)へのインターフェース定義。仕様書MDは後者で書き、Structureを写経してOutSystemsに取り込む流れが王道です。
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     Lab 12: 落とし穴と対策
+     ============================================================ -->
+<div class="lab" id="lab12">
+  <div class="lab-header">
+    <div class="lab-num">12</div>
+    <h3>初心者が陥る落とし穴と対策 — チェックリスト</h3>
+    <span class="lab-tag tag-advanced">実践</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      最後に、初学者が必ず踏む地雷を一覧化します。テーブル定義MDレビュー時のチェックリストとしても活用ください。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>#</th><th>落とし穴</th><th>対策</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>01</td>
+          <td><code>required</code> を書き忘れて全フィールドが任意になる</td>
+          <td><code>required</code> 配列を必ず明示。NOT NULLカラムは漏れなく入れる</td>
+        </tr>
+        <tr>
+          <td>02</td>
+          <td><code>additionalProperties</code> 未指定で未知カラムがすり抜ける</td>
+          <td>テーブル定義では <code>additionalProperties: false</code> を必ず</td>
+        </tr>
+        <tr>
+          <td>03</td>
+          <td><code>integer</code> ではなく <code>number</code> を使い小数が通る</td>
+          <td>整数カラムは <code>integer</code>。<code>number</code> は浮動小数を含む広い型</td>
+        </tr>
+        <tr>
+          <td>04</td>
+          <td><code>format</code> が効かない(ライブラリが認識しない)</td>
+          <td>Ajvなら <code>ajv-formats</code> を別途 import + <code>addFormats(ajv)</code></td>
+        </tr>
+        <tr>
+          <td>05</td>
+          <td><code>pattern</code> で部分一致してしまう</td>
+          <td><code>^...$</code> でアンカー(先頭/末尾)を明示</td>
+        </tr>
+        <tr>
+          <td>06</td>
+          <td><code>nullable: true</code> (OpenAPI 3.0流)を書く</td>
+          <td>純粋なJSON Schemaでは <code>type: ["string", "null"]</code> を使う</td>
+        </tr>
+        <tr>
+          <td>07</td>
+          <td><code>multipleOf: 0.1</code> + 値 0.3 で浮動小数誤差</td>
+          <td>金額は整数で「銭」単位 / または <code>multipleOf: 0.01</code> 程度に</td>
+        </tr>
+        <tr>
+          <td>08</td>
+          <td>主キー一意性が検証されない</td>
+          <td>JSON Schemaの守備範囲外。独自にSet照合のチェックを追加</td>
+        </tr>
+        <tr>
+          <td>09</td>
+          <td>FK制約・複数カラム関係をスキーマで書こうとして詰まる</td>
+          <td>JSON Schemaの守備範囲外。MDの「補足ルール」セクションに人間語で書く</td>
+        </tr>
+        <tr>
+          <td>10</td>
+          <td>$ref パスを <code>#/definitions/...</code> と書く(古い)</td>
+          <td>2020-12 では <code>#/$defs/...</code>。draftバージョンを <code>$schema</code> で明示</td>
+        </tr>
+        <tr>
+          <td>11</td>
+          <td>enum値とアプリ定数のケース揺れ(active/Active/ACTIVE)</td>
+          <td>スキーマを真実として全層で同じケースに統一</td>
+        </tr>
+        <tr>
+          <td>12</td>
+          <td>title/descriptionが無くて何のテーブルか分からない</td>
+          <td>仕様書として読まれる前提なので <code>title</code> <code>description</code> 必須</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="info-box err">
+      ⛔ <strong>絶対やってはいけないこと</strong>:
+      <ul style="margin-top:6px; margin-left:20px;">
+        <li>パスワードや秘密情報の値をスキーマの <code>example</code> に書く(レビューで漏洩)</li>
+        <li>個人情報を含む実データをサンプルに使う(必ず架空のデータに)</li>
+        <li>本番DBの接続情報・URLをスキーマ中に書く(<code>$id</code> はあくまで識別子。実URLでなくてよい)</li>
+      </ul>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>レビュー時のチェックリスト(コピペ用)</strong>:
+      <pre style="margin-top:6px; font-size:.78rem;">
+☐ $schema で draft バージョンを明示している
+☐ title / description が書かれている
+☐ NOT NULL カラムは required に入っている
+☐ additionalProperties: false が指定されている
+☐ 整数カラムは integer (number ではない)
+☐ 文字列カラムには maxLength が指定されている
+☐ enum 値はアプリ定数とケース・スペルが一致している
+☐ NULL 許容は type: ["X", "null"] で表現している
+☐ サンプルデータが架空のものになっている(実顧客情報なし)
+☐ FK・ユニーク制約・業務ルールは「補足ルール」に明記</pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 次のステップ — このLabを終えた後に</div>
+      <ul class="usecase-list">
+        <li>自プロジェクトで一番アクセスが多いテーブル1個を選び、Lab 9のテンプレでMD化してみる</li>
+        <li>Ajvでマスタデータ初期投入JSONの検証スクリプトを書く(Lab 10)</li>
+        <li><code>json-schema-to-typescript</code> で型生成してフロントと共有(Lab 11)</li>
+        <li>OpenAPI仕様の <code>components.schemas</code> として再利用(API設計と統合)</li>
+        <li>テーブル間の <code>$defs</code> を切り出して <code>common.json</code> として共有(複数MD間で参照)</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<!-- ============================================================
+     Scripts
+     ============================================================ -->
+<script>
+/* ============================================================
+   ミニJSON Schema バリデータ — Lab 1〜8 で使うキーワードに対応
+   サポート: type / properties / required / additionalProperties /
+            minLength / maxLength / pattern /
+            minimum / maximum / exclusiveMinimum / exclusiveMaximum / multipleOf /
+            enum / format(email,date-time,date,uri) /
+            items / minItems / maxItems / $ref(内部) / $defs
+   ============================================================ */
+window.MiniSchema = (function(){
+  const FORMATS = {
+    'email': /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+    'date-time': /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/,
+    'date': /^\d{4}-\d{2}-\d{2}$/,
+    'uri': /^[a-z][a-z0-9+.-]*:\/\/\S+$/i,
+    'uuid': /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  };
+  function getType(v){
+    if (v === null) return 'null';
+    if (Array.isArray(v)) return 'array';
+    if (Number.isInteger(v)) return 'integer';
+    if (typeof v === 'number') return 'number';
+    return typeof v;
+  }
+  function typeMatch(actual, expected){
+    if (expected === 'number' && (actual === 'integer' || actual === 'number')) return true;
+    return actual === expected;
+  }
+  function resolveRef(ref, root){
+    if (!ref.startsWith('#/')) throw new Error('外部$ref非対応: '+ref);
+    const path = ref.slice(2).split('/');
+    let cur = root;
+    for (const p of path){
+      if (cur == null) return null;
+      cur = cur[p];
+    }
+    return cur;
+  }
+  function validate(data, schema, root, path){
+    const errors = [];
+    if (!schema) return errors;
+    if (schema.$ref){
+      const resolved = resolveRef(schema.$ref, root);
+      return validate(data, resolved, root, path);
+    }
+    // type
+    if (schema.type){
+      const types = Array.isArray(schema.type) ? schema.type : [schema.type];
+      const actualType = getType(data);
+      const ok = types.some(t => typeMatch(actualType, t));
+      if (!ok){
+        errors.push({ path, message: `type が不一致 (expected: ${types.join('|')}, actual: ${actualType})`, params: {expected: types, actual: actualType} });
+        return errors; // type不一致なら以降のチェックは無意味
+      }
+    }
+    // enum
+    if (schema.enum){
+      const found = schema.enum.some(v => JSON.stringify(v) === JSON.stringify(data));
+      if (!found){
+        errors.push({ path, message: `enum に含まれない値 (allowed: ${schema.enum.map(v=>JSON.stringify(v)).join(', ')})`, params: {allowed: schema.enum, actual: data} });
+      }
+    }
+    const t = getType(data);
+    // string制約
+    if (t === 'string'){
+      if (schema.minLength != null && data.length < schema.minLength)
+        errors.push({ path, message: `minLength: ${schema.minLength} 未満 (length=${data.length})`, params:{minLength:schema.minLength, actual:data.length} });
+      if (schema.maxLength != null && data.length > schema.maxLength)
+        errors.push({ path, message: `maxLength: ${schema.maxLength} 超過 (length=${data.length})`, params:{maxLength:schema.maxLength, actual:data.length} });
+      if (schema.pattern){
+        try {
+          if (!new RegExp(schema.pattern).test(data))
+            errors.push({ path, message: `pattern 不一致: ${schema.pattern}`, params:{pattern:schema.pattern} });
+        } catch(e){ errors.push({path, message:'pattern正規表現エラー: '+e.message}); }
+      }
+      if (schema.format && FORMATS[schema.format]){
+        if (!FORMATS[schema.format].test(data))
+          errors.push({ path, message: `format "${schema.format}" 不一致`, params:{format:schema.format} });
+      }
+    }
+    // number/integer制約
+    if (t === 'number' || t === 'integer'){
+      if (schema.minimum != null && data < schema.minimum)
+        errors.push({ path, message: `minimum: ${schema.minimum} 未満 (value=${data})`, params:{minimum:schema.minimum, actual:data} });
+      if (schema.maximum != null && data > schema.maximum)
+        errors.push({ path, message: `maximum: ${schema.maximum} 超過 (value=${data})`, params:{maximum:schema.maximum, actual:data} });
+      if (schema.exclusiveMinimum != null && data <= schema.exclusiveMinimum)
+        errors.push({ path, message: `exclusiveMinimum: ${schema.exclusiveMinimum} 以下不可 (value=${data})`, params:{exclusiveMinimum:schema.exclusiveMinimum, actual:data} });
+      if (schema.exclusiveMaximum != null && data >= schema.exclusiveMaximum)
+        errors.push({ path, message: `exclusiveMaximum: ${schema.exclusiveMaximum} 以上不可 (value=${data})`, params:{exclusiveMaximum:schema.exclusiveMaximum, actual:data} });
+      if (schema.multipleOf != null){
+        // 浮動小数誤差を考慮した整数化チェック
+        const ratio = data / schema.multipleOf;
+        if (Math.abs(ratio - Math.round(ratio)) > 1e-9)
+          errors.push({ path, message: `multipleOf: ${schema.multipleOf} の倍数ではない (value=${data})`, params:{multipleOf:schema.multipleOf, actual:data} });
+      }
+    }
+    // object制約
+    if (t === 'object'){
+      const props = schema.properties || {};
+      const required = schema.required || [];
+      const definedKeys = Object.keys(props);
+      // required
+      for (const r of required){
+        if (!(r in data))
+          errors.push({ path, message: `required プロパティ "${r}" が無い`, params:{missing:r} });
+      }
+      // properties
+      for (const k of Object.keys(data)){
+        if (k in props){
+          errors.push(...validate(data[k], props[k], root, path + '/' + k));
+        } else if (schema.additionalProperties === false){
+          errors.push({ path, message: `additionalProperties: 未定義キー "${k}" は許可されていない (定義済み: ${definedKeys.join(', ') || '(なし)'})`, params:{additionalKey:k} });
+        }
+      }
+    }
+    // array制約
+    if (t === 'array'){
+      if (schema.minItems != null && data.length < schema.minItems)
+        errors.push({ path, message: `minItems: ${schema.minItems} 未満 (length=${data.length})`, params:{minItems:schema.minItems, actual:data.length} });
+      if (schema.maxItems != null && data.length > schema.maxItems)
+        errors.push({ path, message: `maxItems: ${schema.maxItems} 超過 (length=${data.length})`, params:{maxItems:schema.maxItems, actual:data.length} });
+      if (schema.items){
+        data.forEach((item, i) => {
+          errors.push(...validate(item, schema.items, root, path + '/' + i));
+        });
+      }
+    }
+    return errors;
+  }
+  return {
+    compile: function(schema){
+      const root = schema;
+      return function(data){
+        const errors = validate(data, schema, root, '');
+        return { valid: errors.length === 0, errors };
+      };
+    }
+  };
+})();
+</script>
+<script>
+  function copyCode(btn) {
+    const block = btn.closest('.code-block') || btn.parentElement;
+    const pre = block.querySelector('pre');
+    if (!pre) return;
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    });
+  }
+
+  // LAB_META — 各ラボの確認手順
+  const LAB_META = {
+    lab0: {
+      check: [
+        '①このLabのサイドバーで Lab 1〜12 がリストされていることを確認',
+        '②カラム名・型・制約を「自然言語のExcel仕様」と「JSON Schema」のどちらで書きたいか自分の現場を思い浮かべる',
+        '③仕様駆動開発の図(従来 vs 統合)を見て、自分のチームの現状がどちら寄りか考える'
+      ]
+    },
+    lab1: {
+      check: [
+        '①「正常」プリセットで検証 → 結果が ✓ OK になることを確認',
+        '②「id を文字列にする」で検証 → integer エラーが出ることを確認',
+        '③「id を小数にする」で検証 → integer エラー(小数不可)を確認',
+        '④「型を全部混ぜる」でエラーが3件まとめて表示されることを確認(allErrors の効果)'
+      ]
+    },
+    lab2: {
+      check: [
+        '①「正常」で検証 → ✓ OK',
+        '②「name 欠落」で検証 → required エラー("name" が必要) を確認',
+        '③「未知カラム混入」で検証 → additionalProperties エラーを確認',
+        '④「空オブジェクト」でエラーが2件(id と name 両方)出ることを確認'
+      ]
+    },
+    lab3: {
+      check: [
+        '①「3文字未満」で minLength エラー文を読む',
+        '②「記号含む」で pattern エラーを確認(<code>^[a-zA-Z0-9_]+$</code> と一致しない)',
+        '③「email不正」で format エラー(正しいemail形式でない)を確認',
+        '④「日付形式不正」で created_at の format エラーを確認(<code>2026/04/30</code> はISO 8601不適合)'
+      ]
+    },
+    lab4: {
+      check: [
+        '①「正常」で ✓ OK',
+        '②「quantity 0」で minimum:1 違反エラー',
+        '③「負の数量」で同じく minimum 違反',
+        '④「3桁少数」で multipleOf:0.01 違反(1280.555 は0.01の倍数ではない)',
+        '⑤「0円」で exclusiveMinimum:0 違反(0は含まない)'
+      ]
+    },
+    lab5: {
+      check: [
+        '①「正常」で ✓ OK',
+        '②「大文字」で enum 違反("PAID" は許容リストに無い)',
+        '③「未定義値」で enum 違反("complete" は無い)',
+        '④「priority範囲外」で enum:[1,2,3] に5は含まれずエラー',
+        '⑤「priority文字列」で type:integer 違反("1" は文字列なのでエラー)'
+      ]
+    },
+    lab7: {
+      check: [
+        '①「deleted_at: null」で ✓ OK(null許容なので通る)',
+        '②「deleted_at: 値」で ✓ OK(date-time形式の文字列もOK)',
+        '③「deleted_at省略」で required エラー(キー自体は必須)',
+        '④「nickname追加」で ✓ OK(オプショナルカラムは追加してもOK)',
+        '⑤「不正日付」で format エラー("invalid-date" は date-time でない)'
+      ]
+    },
+    lab8: {
+      check: [
+        '①「正常」で ✓ OK',
+        '②「2件目priceマイナス」で /1/price のパスでエラー(配列のindex 1要素目)',
+        '③「カテゴリ未定義値」で /0/category の enum エラー',
+        '④「空配列」で ✓ OK(minItems未指定なので0件もOK)'
+      ]
+    }
+  };
+
+  function checkHTML(m){
+    if (!m?.check?.length) return '';
+    return `<div class="check-steps">
+      <div class="check-steps-title">🔍 ブラウザ実機チェック</div>
+      <ol>${m.check.map(s=>`<li>${s}</li>`).join('')}</ol>
+    </div>`;
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // (1) 各ラボに check を自動挿入
+    document.querySelectorAll('.lab').forEach(lab => {
+      const meta = LAB_META[lab.id]; const body = lab.querySelector('.lab-body');
+      if (!body || !meta) return;
+      body.insertAdjacentHTML('beforeend', checkHTML(meta));
+    });
+
+    // (2) サイドバー active ハイライト
+    const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+    const map = new Map();
+    links.forEach(a => { const el = document.getElementById(a.getAttribute('href').slice(1)); if (el) map.set(el, a); });
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting) { const l = map.get(e.target);
+        if (l) { links.forEach(n=>n.classList.remove('active')); l.classList.add('active'); } }
+    }), { rootMargin:'-30% 0px -60% 0px' });
+    document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+    // (3) 既存 .code-block に header + Copy を自動付与
+    document.querySelectorAll('.code-block').forEach((cb, i) => {
+      if (cb.querySelector('.code-block-header')) return;
+      const header = document.createElement('div');
+      header.className = 'code-block-header';
+      header.innerHTML = `<span>Code #${i+1}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+      cb.insertBefore(header, cb.firstChild);
+    });
+
+    // (4) Validator setup — MiniSchema を使ってブラウザで検証
+    // (Ajvはブラウザ用UMDが提供されないため、本Lab用に同等機能のミニ実装を内蔵)
+
+    // Preset buttons
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetKey = btn.dataset.target;
+        const presetVal = btn.dataset.preset;
+        const ta = document.querySelector(`textarea[data-validator="${targetKey}"]`);
+        if (ta) {
+          try {
+            const obj = JSON.parse(presetVal);
+            ta.value = JSON.stringify(obj, null, 2);
+          } catch {
+            ta.value = presetVal;
+          }
+        }
+      });
+    });
+
+    // Validate buttons
+    document.querySelectorAll('.validator-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const labKey = btn.dataset.validate;
+        const dataTA = document.querySelector(`textarea[data-validator="${labKey}-data"]`);
+        const schemaTA = document.querySelector(`textarea[data-validator="${labKey}-schema"]`);
+        const result = document.querySelector(`[data-result="${labKey}"]`);
+        if (!dataTA || !schemaTA || !result) return;
+
+        let data, schema;
+        try { data = JSON.parse(dataTA.value); }
+        catch (e) {
+          result.className = 'validator-result warn';
+          result.textContent = '⚠️ data.json のJSONパースエラー: ' + e.message;
+          return;
+        }
+        try { schema = JSON.parse(schemaTA.value); }
+        catch (e) {
+          result.className = 'validator-result warn';
+          result.textContent = '⚠️ schema.json のJSONパースエラー: ' + e.message;
+          return;
+        }
+
+        let validate;
+        try { validate = window.MiniSchema.compile(schema); }
+        catch (e) {
+          result.className = 'validator-result warn';
+          result.textContent = '⚠️ スキーマのコンパイルエラー: ' + e.message;
+          return;
+        }
+
+        const res = validate(data);
+        if (res.valid) {
+          result.className = 'validator-result ok';
+          result.textContent = '✓ 検証 OK — データはスキーマに適合しています';
+        } else {
+          result.className = 'validator-result ng';
+          const errLines = res.errors.map((err, i) => {
+            const path = err.path || '(ルート)';
+            return `[${i+1}] ${path} → ${err.message}`;
+          }).join('\n');
+          result.textContent = `✗ 検証エラー (${res.errors.length} 件)\n${errLines}`;
+        }
+      });
+    });
+  });
+</script>
+</body>
+</html>
