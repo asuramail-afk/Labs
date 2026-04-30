@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spec Kit × Claude Code 追体験Lab — 最小TODO CLI完走の全記録</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+.verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+  line-height:1.7; border:1px solid; }
+.verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+.verify-before .verify-label { color:var(--error); }
+.verify-after  .verify-label { color:var(--success); }
+
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+.compare-table .yes { color:var(--success); } .compare-table .no { color:var(--error); }
+
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+.usecase-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:6px; }
+.usecase-list { margin-left:20px; margin-bottom:10px; }
+.usecase-list li { margin-bottom:4px; }
+.usecase-trigger { background:rgba(0,92,197,.05); border-left:3px solid var(--accent);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#003d8f; margin-top:8px; }
+.usecase-trigger ul { margin:4px 0 0 20px; }
+
+.try-box { background:rgba(34,134,58,.06); border:1px solid rgba(34,134,58,.30);
+  border-left:3px solid var(--success); border-radius:7px;
+  padding:12px 14px; margin:14px 0; font-size:.86rem; line-height:1.8; color:#154f1e; }
+.try-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--success); font-weight:700; margin-bottom:6px; }
+.try-box ol { margin-left:20px; margin-top:4px; }
+.try-box ol li { margin-bottom:4px; }
+.try-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--success); }
+.try-tip { background:rgba(176,136,0,.06); border-left:3px solid var(--accent4);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#5c4400; margin-top:8px; }
+.try-tip strong { color:var(--accent4); }
+
+.code-pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; }
+.code-pair-col { display:flex; flex-direction:column; min-width:0; }
+.code-pair-label { font-family:var(--mono); font-size:.72rem; letter-spacing:.05em;
+  font-weight:700; padding:6px 10px; border-radius:6px 6px 0 0; }
+.code-pair-before .code-pair-label { background:rgba(203,36,49,.10); color:#9a1320;
+  border:1px solid rgba(203,36,49,.30); border-bottom:none; }
+.code-pair-after  .code-pair-label { background:rgba(34,134,58,.10); color:#154f1e;
+  border:1px solid rgba(34,134,58,.30); border-bottom:none; }
+.code-pair-col .code-block { margin:0; border-radius:0 0 8px 8px; flex:1; }
+.code-pair-before .code-block { border-color:rgba(203,36,49,.30); }
+.code-pair-after  .code-block { border-color:rgba(34,134,58,.30); }
+@media (max-width:900px){ .code-pair { grid-template-columns:1fr; } }
+
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .verify { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+  </style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// Spec Kit 追体験</div>
+  <div class="nav-section">準備</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>全体像と所要時間</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>環境準備の罠</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>SKILL形式の発見</a>
+  <div class="nav-section">仕様策定</div>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>Constitution</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>Specify</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>自動チェックリスト</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>Clarify</a>
+  <div class="nav-section">設計と分解</div>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>Plan多層成果物</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>日本語化とMemory</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>Tasks分解</a>
+  <div class="nav-section">実装</div>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>Phase単位TDD</a>
+  <a class="nav-item" href="#lab11"><span class="nav-num">11</span>実機動作確認</a>
+  <div class="nav-section">検証と振り返り</div>
+  <a class="nav-item" href="#lab12"><span class="nav-num">12</span>Analyze全体検証</a>
+  <a class="nav-item" href="#lab13"><span class="nav-num">13</span>Sledgehammer問題</a>
+</nav>
+
+<div class="hero">
+  <h1>Spec Kit × Claude Code 追体験Lab</h1>
+  <p class="subtitle">最小TODO CLI完走の全記録 — Constitution → Specify → Clarify → Plan → Tasks → Implement → Analyze の14ラボ</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>全体像・所要時間・最終成果</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>環境準備の罠（uv・venv・PATH）</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>SKILL形式の発見（v0.7→v0.8）</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>Constitution — 不変原則6条</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>Specify — 技術用語禁止のWhat/Why</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>自動チェックリスト（新機能）</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>Clarify — 5問対話で曖昧解消</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>Plan — 多層成果物の連鎖生成</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>日本語化と Project Memory</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>Tasks — 依存関係付き分解</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">10</span>Phase単位の段階実装（TDD）</a>
+    <a class="toc-item" href="#lab11"><span class="toc-num">11</span>実機動作確認</a>
+    <a class="toc-item" href="#lab12"><span class="toc-num">12</span>/speckit-analyze で全体検証</a>
+    <a class="toc-item" href="#lab13"><span class="toc-num">13</span>Sledgehammer問題と業務適用</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ============================ LAB 00 ============================ -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>全体像・所要時間・最終成果</h3>
+    <span class="lab-tag tag-basic">準備</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Spec Kit は GitHub 公式の<strong>仕様駆動開発 (SDD) ツールキット</strong>。本ラボは Tom が実際に Claude Code 上で
+      <code>最小TODO CLI</code> を完走した全12コミットの記録を、第三者が追体験できる形で再構成したもの。
+      実機操作で約6〜8時間（レビュー込み）。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm"># 完走時の git log（masterブランチ → 機能ブランチ → 実装7コミット）</span>
+* <span class="num">67efbf1</span> (HEAD -> 001-todo-cli) Phase 3: README + final QA
+* <span class="num">1f37ee2</span> Phase 2: clear + corrupted file E2E
+* <span class="num">c5cd2f4</span> Phase 1 CLI: argparse + add/list/done
+* <span class="num">aa78455</span> Phase 1 storage: XDG paths, JSON I/O, atomic write
+* <span class="num">b689d69</span> Phase 1 models: Task dataclass with validation
+* <span class="num">1d6dc79</span> Phase 0: scaffold + conftest + errors
+* <span class="num">5fa70df</span> Add task breakdown (Lab09)
+* <span class="num">2a1656d</span> Add Lab08 plan + translate spec docs to Japanese
+* <span class="num">6fc2161</span> Clarify spec: 5 design decisions
+* <span class="num">b58ab8b</span> Add spec for minimal TODO CLI
+* <span class="num">ed80806</span> (master) Add constitution: 6 core principles
+* <span class="num">197fd4a</span> Initial commit from Specify template</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>項目</th><th>結果</th><th>備考</th></tr></thead>
+      <tbody>
+        <tr><td>テスト数</td><td><span class="yes">49 passed</span></td><td>models 15 + storage 12 + cli 22</td></tr>
+        <tr><td>実装行数</td><td>224行</td><td>5モジュール全て100行以下</td></tr>
+        <tr><td>Constitution違反</td><td><span class="yes">0</span></td><td>6原則すべて遵守</td></tr>
+        <tr><td>Contract違反</td><td><span class="yes">0</span></td><td>16の入出力契約すべて一致</td></tr>
+        <tr><td>FR Coverage</td><td><span class="yes">9/9 = 100%</span></td><td>全機能要件にタスクと実装あり</td></tr>
+        <tr><td>SC Coverage</td><td><span class="yes">5/5 = 100%</span></td><td>全成功基準を実機検証</td></tr>
+        <tr><td>Task完了</td><td><span class="yes">19/19</span></td><td>4フェーズ全完了</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ============================ LAB 01 ============================ -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>環境準備の罠（uv・venv・PATH）</h3>
+    <span class="lab-tag tag-basic">準備</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Tom の業務PC（Windows）では Python 3.12.10、Git、Claude Code はすでに揃っていた。<strong>不足は uv だけ</strong>。
+      ただし uv インストール後は<strong>必ず PowerShell を再起動</strong>する必要がある。これが Lab 全体で最初の罠。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm"># Step 1: 既存環境の確認（PowerShell）</span>
+python --version    <span class="cm"># 期待: Python 3.12.x</span>
+git --version       <span class="cm"># 期待: git version x.x.x</span>
+claude --version    <span class="cm"># 期待: 2.x.x (Claude Code)</span>
+uv --version        <span class="cm"># 「認識されません」が出れば次のStep 2へ</span></pre>
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm"># Step 2: uv インストール（Windows / PowerShell）</span>
+powershell -ExecutionPolicy ByPass -c <span class="str">"irm https://astral.sh/uv/install.ps1 | iex"</span>
+
+<span class="cm"># Step 3: PowerShell を一度閉じて再起動（PATH 反映のため）</span>
+<span class="cm"># Step 4: Spec Kit 本体をインストール</span>
+uv tool install specify-cli --from git+https://github.com/github/spec-kit.git
+
+<span class="cm"># Step 5: 環境診断</span>
+specify check       <span class="cm"># Python・Git・Claude を自動チェック</span></pre>
+    </div>
+
+    <div class="info-box err">
+      ⚠️ <strong>PyPI の偽パッケージに注意</strong>: <code>specify-cli</code> という同名パッケージが PyPI にあるが、これは公式と無関係。
+      <strong>必ず</strong> <code>--from git+https://github.com/github/spec-kit.git</code> を付ける。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>venv の罠（Phase 0 で発覚）</strong>: <code>specify init</code> 後、Claude Code が内部で <code>uv run</code> を使うため動くが、
+      Tom が PowerShell から直接 <code>python -m todo</code> を打つと <code>No module named todo</code> になる。
+      これは venv が活性化されていないため。
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before — venv 未活性化</div>
+        <div class="code-block">
+          <pre>PS> python -m todo --help
+C:\...\Python312\python.exe:
+<span class="kw">No module</span> named todo</pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After — venv 活性化済み</div>
+        <div class="code-block">
+          <pre>PS> .venv\Scripts\Activate.ps1
+(my-todo-spec) PS> python -m todo --help
+<span class="cm"># 正常動作（プロンプト先頭に名前）</span></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ LAB 02 ============================ -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>SKILL形式の発見（v0.7→v0.8の差異）</h3>
+    <span class="lab-tag tag-intermediate">発見</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Lab手順書は v0.7.x（スラッシュコマンド形式）想定だが、実機で入った Spec Kit は <strong>v0.8.4.dev</strong>。
+      <code>.claude/commands/</code> ではなく <code>.claude/skills/</code> 配下に <strong>SKILL.md 形式</strong> で配置されていた。
+      これは Anthropic の Claude Skills 公式仕組みに合わせた進化。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>観点</th><th>v0.7（旧）</th><th>v0.8（実機）</th></tr></thead>
+      <tbody>
+        <tr><td>ファイル形式</td><td>.md（シンプル）</td><td>SKILL.md（YAML+構造化）</td></tr>
+        <tr><td>配置場所</td><td>.claude/commands/</td><td>.claude/skills/{name}/</td></tr>
+        <tr><td>起動</td><td>/コマンド名 のみ</td><td>明示+自然文の両対応</td></tr>
+        <tr><td>コマンド数</td><td>6個</td><td><strong>14個</strong>（Git連携追加）</td></tr>
+        <tr><td>区切り</td><td>/speckit.specify</td><td>/speckit-specify（ハイフン）</td></tr>
+        <tr><td>Git連携</td><td>ブランチ作成のみ</td><td>コミットまで自動化可</td></tr>
+        <tr><td>品質チェック</td><td>手動</td><td>checklist で自動</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+      <pre><span class="cm"># SKILL.md の YAML フロントマター（実機で確認）</span>
+---
+<span class="prop">name</span>: <span class="str">"speckit-constitution"</span>
+<span class="prop">description</span>: <span class="str">"Create or update the project constitution..."</span>
+<span class="prop">user-invocable</span>: <span class="num">true</span>          <span class="cm"># /コマンド名で起動可</span>
+<span class="prop">disable-model-invocation</span>: <span class="num">false</span>  <span class="cm"># 自然文でもAIが自律起動</span>
+---</pre>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 SKILL とスラッシュコマンドの違い</div>
+      <p>スラッシュコマンドは「<strong>テンプレート展開</strong>」が中心。SKILL は「<strong>能動的な振る舞いを記述</strong>」できる。
+      たとえば「<code>.specify/extensions.yml</code> を読んで条件付きフックを実行する」というロジックを SKILL.md 内に書ける。
+      Tom が普段書いている <code>~/mnt/skills/user/</code> のカスタムスキルと<strong>同じ仕組み</strong>。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ LAB 03 ============================ -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>Constitution — 不変原則6条</h3>
+    <span class="lab-tag tag-intermediate">仕様策定</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Spec Kit 最初のステップは「<strong>憲章 (Constitution)</strong>」。プロジェクト全体に常に適用される不変原則を定める。
+      これがあると AI が勝手にフレームワーク導入や過剰抽象化をしなくなる。
+    </p>
+
+    <div class="code-block">
+      <pre>/speckit-constitution
+
+このプロジェクトは Python <span class="num">3.12</span> で作る最小TODO CLI です。
+以下を不変原則として明文化してください:
+
+<span class="num">1.</span> テストファースト（実装前にpytestを書く）
+<span class="num">2.</span> 標準ライブラリ優先、外部依存は必要最低限
+<span class="num">3.</span> 型ヒントを全関数に付ける
+<span class="num">4.</span> 1ファイル100行を目安に分割
+<span class="num">5.</span> README に使い方を必ず書く
+<span class="num">6.</span> CLI は --help で全機能が分かる設計</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>生成物の質が高かった理由</strong>: AI は RFC2119 の MUST/SHOULD/MAY を使い分け、各原則に
+      <code>__post_init__</code> や <code>mypy --strict</code> など<strong>具体的な検証手段</strong>まで提示した。
+      Tom が指示しなくても「Test-First (NON-NEGOTIABLE)」のような強度を自動で付与。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>Technology Constraints がやや先走り</strong>: 生成された Constitution に「Storage: JSON file」など
+      <strong>Lab08 plan で決めるべき技術選定</strong>が含まれてしまった。許容範囲だが、本来は plan 領域。
+      Lab学習としては「過剰原則の検出」を体験する機会と捉えた。
+    </div>
+  </div>
+</div>
+
+<!-- ============================ LAB 04 ============================ -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>Specify — 技術用語禁止のWhat/Why</h3>
+    <span class="lab-tag tag-intermediate">仕様策定</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Spec Kit の本丸の入口。<code>/speckit-specify</code> は<strong>「何を作るか・なぜか」</strong>を仕様書にまとめる。
+      <strong>How（技術スタック）は書かない</strong>のが鉄則。Pythonとか言わず「ユーザがコマンドラインで…」のような利用者視点だけ書く。
+    </p>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before — 技術が混入</div>
+        <div class="code-block">
+          <pre><span class="cm"># NG: argparseで実装、JSONで保存…</span>
+データは Python の json モジュールで
+ローカルに保存する CLI ツール
+<span class="cm"># 仕様レベルで技術を縛ってしまう</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After — 利用者視点</div>
+        <div class="code-block">
+          <pre><span class="cm"># OK: 技術抜き</span>
+- タスクを1行で追加できる
+- 全タスクを一覧表示できる
+- データはローカルに永続化される
+<span class="cm"># 「再起動しても残る」が本質</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>生成物</th><th>内容</th><th>件数</th></tr></thead>
+      <tbody>
+        <tr><td>User Stories</td><td>P1×4 + P2×1 = 5本</td><td>5</td></tr>
+        <tr><td>Acceptance Scenarios</td><td>Given/When/Then形式</td><td>13</td></tr>
+        <tr><td>Functional Requirements</td><td>FR-001〜FR-009</td><td>9</td></tr>
+        <tr><td>Edge Cases</td><td>異常系シナリオ</td><td>3</td></tr>
+        <tr><td>Success Criteria</td><td>SC-001〜SC-005（測定可能）</td><td>5</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box ok">
+      ✓ <strong>Spec Kitの裏側挙動</strong>: <code>/speckit-specify</code> は単なる文書生成ではなく
+      ① <code>specs/001-todo-cli/</code> ディレクトリ作成 ② <strong>Gitブランチ自動切替</strong>
+      ③ テンプレに沿った spec.md 生成 ④ Review &amp; Acceptance Checklist 末尾添付 を一括実行する。
+    </div>
+  </div>
+</div>
+
+<!-- ============================ LAB 05 ============================ -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>自動チェックリスト（v0.8新機能）</h3>
+    <span class="lab-tag tag-intermediate">発見</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Lab手順書には記載がない v0.8 の新機能。<code>/speckit-specify</code> 完了時に
+      <code>specs/001-todo-cli/checklists/requirements.md</code> が自動生成される。
+      <strong>spec.md の品質を16観点で AI が自己採点</strong>。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm"># 自動生成された requirements.md の判定結果</span>
+## Content Quality        [4/4]
+- [x] 実装の詳細なし（言語、フレームワーク、API）
+- [x] ユーザー価値とビジネスニーズに焦点
+- [x] 非技術ステークホルダー向けに記述
+- [x] すべての必須セクションが完成
+
+## Requirement Completeness  [8/8]
+- [x] [NEEDS CLARIFICATION] マーカーが残っていない
+- [x] 要件がテスト可能で曖昧でない
+- [x] 成功基準が測定可能
+- [x] 成功基準が技術非依存（実装詳細なし）
+...
+
+## Feature Readiness       [4/4]
+- [x] すべての機能要件に明確な受け入れ基準がある
+- [x] ユーザーシナリオが主要フローをカバー
+...
+
+<span class="cm"># 結論: 16/16 PASS — /speckit-clarify or /speckit-plan に進める</span></pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>spec.md レビューに使う時間を短縮（AIが先に16観点でチェック）</li>
+        <li>クライアントレビュー前のセルフチェック</li>
+        <li>新人が書いた spec.md の品質を機械的に評価</li>
+        <li>大量の spec をバッチで品質判定する自動化基盤</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>こう見えたら使えるサイン:</strong>
+        <ul>
+          <li>「この仕様書、抜けがないか自信がない」と思った</li>
+          <li>spec を 5本以上並列で書く必要がある</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ LAB 06 ============================ -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>Clarify — 5問対話で曖昧解消</h3>
+    <span class="lab-tag tag-intermediate">仕様策定</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>/speckit-clarify</code> は <strong>仕様の曖昧さを AI が質問形式で洗い出す</strong>。最大5問。
+      Plan に進む前にここで詰めるとAIの暴走リスクが減る。<strong>初回は必ずやる</strong>のが推奨。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>#</th><th>質問領域</th><th>選択</th><th>趣旨</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>保存場所</td><td>B</td><td>XDG準拠、~/.local/share/todo/</td></tr>
+        <tr><td>2</td><td>バリデーション</td><td>B</td><td>200文字、空白拒否、絵文字OK</td></tr>
+        <tr><td>3</td><td>破損時挙動</td><td>B</td><td>エラー停止、ユーザに委ねる</td></tr>
+        <tr><td>4</td><td>並行アクセス</td><td>A</td><td>last-write-wins、ロックなし</td></tr>
+        <tr><td>5</td><td>出力形式</td><td>A</td><td>プレーンテキストのみ</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+      <pre><span class="cm"># 5問完答後、AI が spec.md に「明確化事項」セクションを自動追記</span>
+## 明確化事項
+
+### セッション 2026-04-30
+
+- Q: データ永続化の保存先は？ → A: XDG Base Directory 準拠...
+- Q: タイトルの入力バリデーション制約は？ → A: 最大200文字...
+- Q: データファイル破損時の挙動は？ → A: エラーメッセージで...
+- Q: 複数プロセス同時起動時の挙動は？ → A: Last-write-wins...
+- Q: 一覧表示の出力フォーマットは？ → A: プレーンテキストのみ...</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>賢い設計判断</strong>: 質問4で AI が <code>fcntl.flock / msvcrt.locking</code> を提示しつつ
+      「複雑さに対して得られる安全性が釣り合わない」と<strong>選択肢A（ロックなし）を推奨</strong>した。
+      これは Constitution の「最小」原則と整合する妥当な判断。
+    </div>
+  </div>
+</div>
+
+<!-- ============================ LAB 07 ============================ -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>Plan — 多層成果物の連鎖生成</h3>
+    <span class="lab-tag tag-advanced">設計と分解</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>/speckit-plan</code> でついに技術スタックを決める。<strong>plan.md だけでなく関連ファイル群が芋づる式に生成</strong>される。
+      これらが「契約」として後段の tasks.md 生成に効く。Spec Kit の真価はこの多層成果物の連動にある。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm"># /speckit-plan で生成される全ファイル</span>
+specs/001-todo-cli/
+├── plan.md                     <span class="cm"># アーキテクチャ概要</span>
+├── data-model.md               <span class="cm"># データ構造とJSONスキーマ</span>
+├── quickstart.md               <span class="cm"># クローンから動作確認まで</span>
+├── research.md                 <span class="cm"># 技術選定の検討メモ</span>
+└── contracts/
+    └── cli-commands.md         <span class="cm"># CLI入出力契約（v0.8追加）</span></pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>ファイル</th><th>サイズ</th><th>役割</th></tr></thead>
+      <tbody>
+        <tr><td>plan.md</td><td>5.5KB（〜200行）</td><td>5モジュール構成、Constitution Check表</td></tr>
+        <tr><td>data-model.md</td><td>3.3KB</td><td>JSONスキーマ + 不変条件5項目 + 状態遷移図</td></tr>
+        <tr><td>quickstart.md</td><td>1.8KB</td><td>uv/pip インストール、5コマンドワークフロー</td></tr>
+        <tr><td>research.md</td><td>5.5KB</td><td>argparse vs click vs typer など6項目の比較</td></tr>
+        <tr><td>contracts/cli-commands.md</td><td>2.3KB</td><td>4コマンドの stdout/stderr/exit code 契約</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box ok">
+      ✓ <strong>AI が spec.md にない設計判断を追加</strong>: research.md の最終セクションで AI は
+      <strong>Atomic File Writes</strong>（<code>tempfile.NamedTemporaryFile</code> + <code>os.replace</code>）を
+      自発的に追加。last-write-wins の腐敗リスクを軽減する保険として、後段で正式タスク化される。
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 「契約 (Contract)」とは</div>
+      <p>contracts/cli-commands.md は<strong>CLI の完全契約書</strong>。各コマンドの stdout / stderr / exit code を
+      正確な文字列レベルで定義する。これが pytest の<strong>期待値そのもの</strong>として使える:</p>
+      <pre class="ascii-art">contracts          tests              implementation
+─────────          ─────────          ─────────────
+"Added task 1: x"  → assert "Added"  → print(f"Added...")
+                       in stdout         in cli.py</pre>
+      <p>仕様→テスト→実装が<strong>1本の文字列でつながる</strong>。これが Spec-Driven の追跡性の真髄。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ LAB 08 ============================ -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>日本語化と Project Memory</h3>
+    <span class="lab-tag tag-advanced">発見</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Plan 完了後、Tom は「日本語で生成して」と依頼。AI は8ファイル全部を日本語化（コードブロック・識別子・パスは英語維持）。
+      副次効果として <code>.claude/projects/.../memory/</code> に<strong>プロジェクトメモリが自動生成</strong>された。
+      これが Claude Code 2.x の隠れた新機能。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm"># 翻訳依頼プロンプト（要点）</span>
+specs/001-todo-cli/ 配下と .specify/memory/ 配下のMarkdownを日本語化:
+
+英語のまま維持:
+- コードブロック内
+- 識別子・関数名・コマンド名（todo add, Task, done など）
+- ファイルパス（~/.local/share/todo/todos.json など）
+- ID表記（FR-001、SC-001、Q1〜Q5）
+- 環境変数名（TODO_DATA_FILE）
+
+今後の /speckit-tasks、/speckit-implement の出力もすべて日本語で
+生成するよう設定として記憶してください。</pre>
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm"># 自動生成された Project Memory</span>
+.claude/projects/C--Users-user-ClaudeCode-my-todo-spec/
+└── memory/
+    ├── MEMORY.md                          <span class="cm"># インデックス</span>
+    └── feedback_japanese_output.md        <span class="cm"># 実体（YAML+本文）</span>
+
+<span class="cm"># feedback_japanese_output.md の中身</span>
+---
+<span class="prop">name</span>: <span class="str">Japanese output for Spec Kit commands</span>
+<span class="prop">type</span>: <span class="str">feedback</span>
+---
+**Why:** ユーザーが明示的に日本語での出力を要求した（2026-04-30）
+**How:** /speckit-tasks、/speckit-implement の出力を生成する際、
+セクション見出し・本文を日本語にする。コードブロック内、識別子、
+ファイルパス、ID表記、環境変数名は英語のまま維持。</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>記憶の階層</th><th>スコープ</th><th>例</th></tr></thead>
+      <tbody>
+        <tr><td>~/mnt/skills/user/</td><td>グローバル（全セッション）</td><td>flashcard-json-builder</td></tr>
+        <tr><td>.claude/projects/{path}/memory/</td><td>プロジェクト固有</td><td>Japanese output preference</td></tr>
+        <tr><td>.specify/memory/constitution.md</td><td>Spec Kit 専用</td><td>不変原則6条</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info">
+      📘 <strong>3層構造で記憶を分離</strong>。業務PCで OutSystems 用プロジェクトを作るとき、
+      「<strong>このプロジェクトでだけ覚えさせたいルール</strong>」をプロジェクトメモリに永続化できる。
+      Tom が普段 SKILL.md を書くスタイルと相互運用可能。
+    </div>
+  </div>
+</div>
+
+<!-- ============================ LAB 09 ============================ -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>Tasks — 依存関係付き分解</h3>
+    <span class="lab-tag tag-advanced">設計と分解</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>/speckit-tasks</code> は plan.md を <strong>実行可能な単位タスクに分解</strong>。
+      各タスクには触るファイルパス、依存関係、並行可能なものに <code>[P]</code> マーカー、完了条件まで含まれる。
+      生成された tasks.md は<strong>4フェーズ・19タスク・10〜15時間見積もり</strong>。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm"># tasks.md の構造</span>
+## Phase 0: プロジェクト基盤              [3 tasks]
+T-001 [P] プロジェクトスケルトン作成
+T-002 [P] conftest.py 共有フィクスチャ
+T-003 [P] エラー型定義
+
+## Phase 1: コア機能（P1 ユーザーストーリー）  [10 tasks]
+### モデル層
+T-010    test_models.py（テスト先行）
+T-011    models.py 実装
+
+### ストレージ層
+T-020 [P] test_storage.py — パス解決
+T-021    test_storage.py — 読み書き・破損
+T-022    test_storage.py — アトミック書き込み
+T-023    storage.py 実装
+
+### CLI層
+T-030 [P] test_cli.py — add
+T-031 [P] test_cli.py — list
+T-032 [P] test_cli.py — done
+T-033    test_cli.py — 永続化
+T-034    cli.py + __main__.py 実装
+
+## Phase 2: 拡張機能（P2）                [3 tasks]
+T-040 [P] clear テスト
+T-041    clear 実装
+T-042    破損ファイル E2E
+
+## Phase 3: ドキュメントと仕上げ          [3 tasks]
+T-050 [P] README.md
+T-051 [P] quickstart.md 確認
+T-060    全テスト実行と最終確認</pre>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>[P]マーカーの注意点</strong>: <code>T-030/T-031/T-032</code> はすべて
+      <strong>同じファイル</strong> <code>tests/test_cli.py</code> を編集する。
+      個人作業では実質逐次実行になるが、チーム作業で別関数を別人が並行で書く前提なら成立。
+      Lab で「並行可能」のマーカー解釈を体感する機会になった。
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 タスク分解の品質判定</div>
+      <p>Lab手順書では「<strong>20以上は過剰、10個以内に統合してとAIに依頼すべき</strong>」と書かれている。
+      今回の19タスクは「機能規模に対してやや多め、許容範囲」。本ラボで Tom はそのまま進めたが、
+      業務適用時は <code>tasks.md</code> 生成時に「最大8個まで」と数を縛るのが実務的。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ LAB 10 ============================ -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>Phase単位の段階実装（TDD）</h3>
+    <span class="lab-tag tag-advanced">実装</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>/speckit-implement</code> は最も重要かつ最も危険なフェーズ。
+      Lab では<strong>Phase 単位（さらにサブフェーズ単位）で区切って実行</strong>し、
+      毎回コミットして「戻れる場所」を確保した。これが Lab 完走の生命線。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm"># 安全運転の段階実行プロンプト（Phase 1 モデル層の例）</span>
+/speckit-implement
+
+tasks.md の T-010 と T-011 のみを実装してください。
+T-020 以降にはまだ進まないでください。
+
+実行ルール:
+- TDD原則を厳守: T-010（テスト）を完成させて pytest で失敗確認
+  → T-011（実装）でテストを通す
+- tasks.md に書かれていないファイルには手を出さないでください
+- constitution.md の原則を厳守
+
+<span class="cm"># これにより AI が Phase 全体を一気に走らせるのを防止</span></pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>フェーズ</th><th>テスト数</th><th>実装行数</th><th>所要時間</th></tr></thead>
+      <tbody>
+        <tr><td>Phase 0 — 基盤</td><td>0</td><td>(scaffold) 109行</td><td>5分</td></tr>
+        <tr><td>Phase 1 モデル層</td><td>15</td><td>43行</td><td>10分</td></tr>
+        <tr><td>Phase 1 ストレージ層</td><td>12</td><td>68行</td><td>15分</td></tr>
+        <tr><td>Phase 1 CLI層</td><td>15</td><td>87行</td><td>20分</td></tr>
+        <tr><td>Phase 2 — 拡張</td><td>7</td><td>(cli.pyに追記)</td><td>10分</td></tr>
+        <tr><td>Phase 3 — 仕上げ</td><td>0</td><td>README作成</td><td>10分</td></tr>
+        <tr><td><strong>合計</strong></td><td><strong>49</strong></td><td><strong>224行</strong></td><td><strong>約70分</strong>(レビュー除く)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box err">
+      ⚠️ <strong>暴走監視（必須）</strong>: 万が一以下が起きたら<strong>即 Esc / Ctrl+C で中断</strong>:
+      <ul style="margin-left:20px;margin-top:6px;">
+        <li>指定外の Phase に進む</li>
+        <li>外部ライブラリ（pydantic, click 等）導入</li>
+        <li>tasks.md にないファイル作成（Dockerfile, .github/workflows/ 等）</li>
+        <li>git コマンドの自動実行</li>
+      </ul>
+      中断後は <code>git checkout .</code> で戻し、tasks.md を見直してから再実行。
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm"># Phase 1 モデル層の実装結果（抜粋）</span>
+@<span class="fn">dataclass</span>
+<span class="kw">class</span> Task:
+    id: <span class="kw">int</span>
+    title: <span class="kw">str</span>
+    done: <span class="kw">bool</span>
+
+    <span class="kw">def</span> <span class="fn">__post_init__</span>(<span class="kw">self</span>) -> <span class="kw">None</span>:
+        <span class="kw">if not</span> <span class="kw">self</span>.title.strip():
+            <span class="kw">raise</span> ValidationError(<span class="str">"title must not be empty"</span>)
+        <span class="kw">if</span> <span class="str">"\n"</span> <span class="kw">in</span> <span class="kw">self</span>.title <span class="kw">or</span> <span class="str">"\r"</span> <span class="kw">in</span> <span class="kw">self</span>.title:
+            <span class="kw">raise</span> ValidationError(<span class="str">"title must not contain newlines"</span>)
+        <span class="kw">if</span> <span class="fn">len</span>(<span class="kw">self</span>.title) > <span class="num">200</span>:
+            <span class="kw">raise</span> ValidationError(<span class="str">"title must be 200 characters or fewer"</span>)</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ LAB 11 ============================ -->
+<div class="lab" id="lab11">
+  <div class="lab-header">
+    <div class="lab-num">11</div>
+    <h3>実機動作確認 — 仕様の物理実体化</h3>
+    <span class="lab-tag tag-advanced">実装</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Phase 1 CLI 層完了で初めて<strong>実機で動く</strong>。
+      Lab06 で書いた仕様書「ユーザがコマンドラインで…」が、ターミナルの実コマンドとして実体化する瞬間。
+      これが Spec-Driven Development の最高に楽しい瞬間。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm"># Phase 2 完了後の手動動作確認シナリオ</span>
+PS> Remove-Item $env:LOCALAPPDATA\todo\todos.json -ErrorAction SilentlyContinue
+
+PS> todo add <span class="str">"Buy milk"</span>
+Added task <span class="num">1</span>: Buy milk
+
+PS> todo add <span class="str">"Walk dog"</span>
+Added task <span class="num">2</span>: Walk dog
+
+PS> todo add <span class="str">"Read book"</span>
+Added task <span class="num">3</span>: Read book
+
+PS> todo done <span class="num">1</span>
+Completed task <span class="num">1</span>: Buy milk
+
+PS> todo done <span class="num">3</span>
+Completed task <span class="num">3</span>: Read book
+
+PS> todo list
+<span class="num">1</span> [x] Buy milk
+<span class="num">2</span> [ ] Walk dog
+<span class="num">3</span> [x] Read book</pre>
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm"># clear 後の ID 非再利用を確認（最重要シナリオ）</span>
+PS> todo clear
+Cleared <span class="num">2</span> completed task(s).
+
+PS> todo add <span class="str">"New task"</span>
+Added task <span class="num">4</span>: New task        <span class="cm"># ← !!! ID=4 を取得（1, 3は欠番）</span>
+
+PS> todo list
+<span class="num">2</span> [ ] Walk dog
+<span class="num">4</span> [ ] New task
+
+<span class="cm"># データファイルを直接見て不変条件を確認</span>
+PS> Get-Content $env:LOCALAPPDATA\todo\todos.json
+{<span class="str">"next_id"</span>: <span class="num">5</span>, <span class="str">"tasks"</span>: [
+  {<span class="str">"id"</span>: <span class="num">2</span>, <span class="str">"title"</span>: <span class="str">"Walk dog"</span>, <span class="str">"done"</span>: false},
+  {<span class="str">"id"</span>: <span class="num">4</span>, <span class="str">"title"</span>: <span class="str">"New task"</span>, <span class="str">"done"</span>: false}
+]}</pre>
+    </div>
+
+    <div class="verify">
+      <div class="verify-col verify-before">
+        <div class="verify-label">Before — Lab06 で書いた仕様</div>
+        「タスク ID は連番整数であり、完了済みタスクの削除後も再利用されない」<br>
+        <em>(spec.md / Assumptions セクション)</em>
+      </div>
+      <div class="verify-col verify-after">
+        <div class="verify-label">After — 実機での実現</div>
+        <code>next_id: 5</code>、削除された ID 1, 3 は<strong>永久欠番</strong>。<br>
+        新規追加は ID 4 を取得。仕様が物理ファイルに刻まれた。
+      </div>
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm"># 破損ファイル検出の実機確認</span>
+PS> <span class="str">"{ this is not valid json"</span> | Set-Content $env:LOCALAPPDATA\todo\todos.json
+PS> todo list
+error: data file is corrupted: C:\Users\user\AppData\Local\todo\todos.json
+
+<span class="cm"># 復旧パスも動く（ファイル削除→自動再作成）</span>
+PS> Remove-Item $env:LOCALAPPDATA\todo\todos.json
+PS> todo add <span class="str">"Fresh start"</span>
+Added task <span class="num">1</span>: Fresh start</pre>
+    </div>
+
+    <div class="info-box ok">
+      ✓ <strong>Lab07 Clarify Q3 が実機で実現</strong>: 破損時のエラーメッセージに<strong>絶対パスが含まれている</strong>。
+      これは Tom が Q3 で「ユーザーに手動修正を委ねる」と決めた仕様の<strong>物理実体</strong>。
+    </div>
+  </div>
+</div>
+
+<!-- ============================ LAB 12 ============================ -->
+<div class="lab" id="lab12">
+  <div class="lab-header">
+    <div class="lab-num">12</div>
+    <h3>/speckit-analyze で全体検証</h3>
+    <span class="lab-tag tag-advanced">検証と振り返り</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Lab手順書には記載がない v0.8 の隠し機能。<code>/speckit-analyze</code> は
+      <strong>constitution / spec / plan / tasks / 実装の整合性を非破壊的に分析</strong>する。
+      Lab10 完走後の最終健康診断として動かすと壮観。
+    </p>
+
+    <div class="code-block">
+      <pre>/speckit-analyze
+
+このプロジェクト全体（constitution、spec、plan、tasks、実装）の
+整合性を分析してください。
+
+確認したい観点:
+<span class="num">1.</span> constitution.md の各原則が実装で守られているか
+<span class="num">2.</span> spec.md の Functional Requirements が実装でカバーされているか
+<span class="num">3.</span> plan.md の設計判断と実際の実装に乖離がないか
+<span class="num">4.</span> tasks.md の各タスクが完了しているか
+<span class="num">5.</span> contracts/cli-commands.md の入出力契約と実装の整合性
+
+レポート形式:
+- 各カテゴリで合格項目と問題項目を列挙
+- 全体評価サマリー</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>分析カテゴリ</th><th>結果</th><th>備考</th></tr></thead>
+      <tbody>
+        <tr><td>Constitution Alignment</td><td><span class="yes">6/6 PASS</span></td><td>違反 0 件</td></tr>
+        <tr><td>FR Coverage</td><td><span class="yes">9/9 = 100%</span></td><td>各FRに対応タスク・実装あり</td></tr>
+        <tr><td>SC Coverage</td><td><span class="yes">5/5 = 100%</span></td><td>実機検証済み</td></tr>
+        <tr><td>Plan vs Implementation</td><td><span class="yes">PASS</span></td><td>3件のLOW（行数差異）</td></tr>
+        <tr><td>Tasks Completion</td><td><span class="yes">19/19</span></td><td>全フェーズ完了</td></tr>
+        <tr><td>Contracts vs Implementation</td><td><span class="yes">16/16 PASS</span></td><td>違反 0 件</td></tr>
+        <tr><td>CRITICAL Issues</td><td><span class="yes">0</span></td><td>—</td></tr>
+        <tr><td>HIGH Issues</td><td><span class="yes">0</span></td><td>—</td></tr>
+        <tr><td>MEDIUM Issues</td><td><span class="yes">0</span></td><td>—</td></tr>
+        <tr><td>LOW Issues</td><td>3</td><td>すべて修正不要レベル</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box ok">
+      ✓ <strong>「PASS — 全アーティファクト間で完全な整合性を確認」</strong>判定。
+      LOW 3件はすべて plan.md の<strong>行数見積もりと実際の差異</strong>（実装の方が少ない＝過小実装ではない）で、
+      品質に影響なし。これが Spec-Driven Development の<strong>閉ループ完成形</strong>。
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 「閉ループ」の意味</div>
+      <p>Lab06で書いた仕様（FR-001〜FR-009、SC-001〜SC-005）が、Lab10 の最後で<strong>全部実機検証された</strong>。
+      これは要件→実装→検証の<strong>サイクルが閉じた</strong>ということ。書いた仕様で漏れたものがない。</p>
+      <pre class="ascii-art">spec.md (Lab06)              実装 (Lab10)             analyze (Lab12)
+─────────────                ─────────                ──────────────
+FR-001 add  ────────────→  cli.py:_add  ────────→ 9/9 = 100%
+FR-002 ID  ─────────────→  storage.py  ─────────→ FR Coverage
+...
+SC-001  ───────────────→  実機5コマンド ───────→ 5/5 = 100%</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ LAB 13 ============================ -->
+<div class="lab" id="lab13">
+  <div class="lab-header">
+    <div class="lab-num">13</div>
+    <h3>Sledgehammer問題と業務適用の判断</h3>
+    <span class="lab-tag tag-advanced">検証と振り返り</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Tom は Lab 完走後に「<strong>前回手書きで2時間で作れた、これ Sledgehammer だった？</strong>」と問うた。
+      鋭い問い。答え: <strong>学習目的としては適切、業務として同じ規模なら過剰</strong>。
+      機能規模に応じて Spec Kit のフローを取捨選択するのが実務的。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>項目</th><th>前回（手書き）</th><th>今回（Spec Kit）</th></tr></thead>
+      <tbody>
+        <tr><td>所要時間</td><td>約2時間</td><td>約6〜8時間</td></tr>
+        <tr><td>テスト数</td><td>数個〜10個</td><td>49個</td></tr>
+        <tr><td>ドキュメント</td><td>READMEのみ</td><td>10ファイル</td></tr>
+        <tr><td>明示的設計判断</td><td>即興</td><td>7件（research.md）</td></tr>
+        <tr><td>実装の堅牢性</td><td>普通</td><td>アトミック書込・XDG・破損検出</td></tr>
+      </tbody>
+    </table>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 業務適用時の規模ベース判断</div>
+      <ul class="usecase-list">
+        <li><strong>バグ修正・小改修（1〜2h）</strong>: Spec Kit 不使用、通常の Claude Code</li>
+        <li><strong>中規模機能（半日〜2日）</strong>: constitution + specify + plan + implement のみ。clarify と tasks はスキップ</li>
+        <li><strong>大規模機能（数日〜数週間）</strong>: 全フロー使用、本Lab通り</li>
+        <li><strong>新規プロジェクト</strong>: 全フロー使用、特に constitution に時間をかける</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>こう見えたら使えるサイン:</strong>
+        <ul>
+          <li>「設計書を残さないと3ヶ月後の自分が困る」と思った</li>
+          <li>チーム内で機能の振る舞いに認識ズレが起きた経験がある</li>
+          <li>仕様→実装の追跡性を監査で求められる</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm"># Sledgehammer 回避のプロンプトテクニック</span>
+
+<span class="cm"># 1. tasks 数を意識的に絞る</span>
+/speckit-tasks ...
+タスク数は最大<span class="num">8</span>個に絞ってください。
+<span class="num">1</span>タスク<span class="num">2</span>〜<span class="num">4</span>時間の粒度で。
+
+<span class="cm"># 2. research.md を求めない</span>
+/speckit-plan ...
+research.md は不要です。plan.md と data-model.md のみ生成してください。
+既知の技術スタックなので代替案検討は省略します。
+
+<span class="cm"># 3. clarify をスキップ判定</span>
+spec.md の checklist が 16/16 PASS なら clarify は省略可</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>機能IDの追跡性向上テクニック</strong>: テスト関数の docstring に <code>FR-XXX</code> / <code>T-XXX</code> を記載すると、
+      <code>grep "FR-001" tests/</code> で関連テスト全件抽出可能。
+      <code>@pytest.mark.fr001</code> で <code>pytest -m fr001</code> によるフィルタも実用的。
+      Tom の業務（OutSystems エンタープライズ品質要求）には強く推奨。
+    </div>
+
+    <div class="info-box ok">
+      ✓ <strong>このLabで Tom が達成したこと</strong>:
+      <ul style="margin-left:20px;margin-top:6px;">
+        <li>Spec Kit の全フロー体験（Constitution → Implement → Analyze）</li>
+        <li>v0.8 新機能を網羅（Skills 形式・自動 checklist・contracts/・Project Memory）</li>
+        <li>TDD 厳格適用（49テスト全PASS）</li>
+        <li>クロスプラットフォーム実装（XDG準拠、Windows/Linux/macOS）</li>
+        <li>Phase 単位の Git コミット（戻れる場所の確保）</li>
+        <li>仕様→実装の完全追跡性（FR/SC/Contract 100%）</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+</div><!-- /.container -->
+
+<script>
+  function copyCode(btn) {
+    const block = btn.closest('.code-block') || btn.parentElement;
+    const pre = block.querySelector('pre');
+    if (!pre) return;
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    });
+  }
+
+  const LAB_META = {
+    lab0: {
+      info: { type:'info', html:'📘 <strong>追体験Labの読み方</strong>: 各ラボはサイドバーから1クリックで遷移。コードブロックは Copy ボタンで即コピー可能。各ラボ末尾の「ブラウザ実機チェック」が最重要。' },
+      check: [
+        '①サイドバーから「13. Sledgehammer問題」までスクロールして読了時間を測る（30〜60分目安）',
+        '②各ラボの compare-table（比較表）を見て、自分の業務でどの観点が刺さるか書き出す',
+        '③Lab 末尾の info-box の色分け（ok/info/warn/err）が、警戒度の優先順位として読めるか確認'
+      ]
+    },
+    lab1: {
+      info: { type:'warn', html:'⚠️ <strong>環境準備の3つの罠</strong>: ① uv インストール後の PowerShell 再起動忘れ ② venv 未活性化での <code>python -m</code> 失敗 ③ PyPI 偽パッケージ。順に踏み抜くと Lab 開始まで30分ロスする。' },
+      check: [
+        '①PowerShell で <code>python --version / git --version / claude --version / uv --version</code> を順に打つ',
+        '②uv が無ければインストール → 必ず PowerShell を閉じて再起動 → <code>uv --version</code> 確認',
+        '③<code>specify check</code> が「すべてOK」相当の出力か確認',
+        '④作業フォルダで <code>specify init my-todo-spec --ai claude --script ps</code> 実行（OS本体の PowerShell から）'
+      ]
+    },
+    lab2: {
+      info: { type:'info', html:'📘 <strong>v0.7 と v0.8 の見分け方</strong>: <code>.specify/integration.json</code> の <code>version</code> フィールドを見る。<code>0.8.x.dev</code> なら新形式（Skills）、<code>0.7.x</code> なら旧形式（commands）。' },
+      check: [
+        '①<code>ls .claude</code> で <code>commands/</code> か <code>skills/</code> か確認',
+        '②<code>cat .specify/integration.json</code> でバージョン確認',
+        '③Claude Code を起動して <code>/</code> を入力 → <code>speckit-*</code> がハイフン区切りで14個並ぶか確認',
+        '④<code>cat .claude/skills/speckit-constitution/SKILL.md | head -15</code> で YAML フロントマター確認'
+      ]
+    },
+    lab3: {
+      info: { type:'ok', html:'✓ <strong>良い Constitution の特徴</strong>: ① RFC2119 の MUST/SHOULD/MAY 使い分け ② 各原則に「なぜ必要か」の理由 ③ <code>mypy --strict</code> など具体的検証手段 ④ 5〜10条に収まる ⑤ 3ヶ月後の自分が読んで違和感なし' },
+      check: [
+        '①<code>cat .specify/memory/constitution.md</code> で生成された憲章を読む',
+        '②6原則それぞれに「具体的な数値・ツール名」が入っているか確認（例: 100行、pytest、mypy --strict）',
+        '③Sync Impact Report（先頭コメント）でテンプレ更新の自己評価が書かれているか確認',
+        '④Governance セクションで semver の使い分け（MAJOR/MINOR/PATCH）が明示されているか確認'
+      ]
+    },
+    lab4: {
+      info: { type:'warn', html:'⚠️ <strong>Specify の鉄則</strong>: 技術用語を一切書かない。Pythonと言わない。argparseと言わない。JSONと言わない。「ユーザがコマンドラインで…」「再起動しても残る」のような<strong>利用者視点だけ</strong>。これが守れないと plan の柔軟性が失われる。' },
+      check: [
+        '①<code>git branch</code> で機能ブランチ <code>001-todo-cli</code> に切り替わったか確認',
+        '②<code>cat specs/001-todo-cli/spec.md</code> で User Story が As a/I want/So that 形式か確認',
+        '③Acceptance Scenarios が Given/When/Then 形式で5〜10個あるか',
+        '④spec.md 内に Python・JSON・SQLite などの技術用語が混入していないか<code>grep</code>で確認'
+      ]
+    },
+    lab5: {
+      info: { type:'info', html:'📘 <strong>checklist は監査の代替</strong>: 16観点の AI 自己採点は、人間レビューを完全に置き換えはしないが、<strong>機械的チェック可能な項目を一気に処理</strong>する効果が大きい。Tom の業務でクライアントレビュー前のセルフチェックにも応用可能。' },
+      check: [
+        '①<code>cat specs/001-todo-cli/checklists/requirements.md</code> で全項目に [x] が付いているか確認',
+        '②[NEEDS CLARIFICATION] マーカーが残っていないか確認',
+        '③Notes セクションで「次のステップ」候補が明示されているか',
+        '④もし [ ] があれば、その項目を spec.md に戻って補強する'
+      ]
+    },
+    lab6: {
+      info: { type:'ok', html:'✓ <strong>Clarify の使いどころ</strong>: 「タイトルの最大長」「並行アクセス」「破損時挙動」など、仕様レベルで決めるべき曖昧さを5問で解消。技術選定（JSON vs SQLite 等）が混じったら「Plan で決めるのでスキップ」と返す。' },
+      check: [
+        '①<code>git diff specs/001-todo-cli/spec.md</code> で「明確化事項」セクション追加を確認',
+        '②各回答が spec.md の Edge Cases / Functional Requirements に反映されているか',
+        '③Key Entities セクションが拡張されているか（例: 不変条件の追加）',
+        '④5問すべてに具体的な技術ヒント（XDG、tempfile + os.replace等）が含まれているか'
+      ]
+    },
+    lab7: {
+      info: { type:'info', html:'📘 <strong>Plan の威力は連鎖生成</strong>: plan.md 単体ではなく、data-model.md / contracts/ / research.md / quickstart.md を芋づる式に生成する。これらが「契約」として後段の tasks.md と implement に効く。' },
+      check: [
+        '①<code>ls specs/001-todo-cli/</code> で 4ファイル + contracts/ ディレクトリが揃ったか確認',
+        '②plan.md の Constitution Check セクションで6原則すべて PASS と書かれているか',
+        '③data-model.md の不変条件（Invariants）が5項目以上書かれているか',
+        '④research.md で argparse vs click vs typer などの<strong>却下理由付き</strong>比較表があるか',
+        '⑤contracts/cli-commands.md の各コマンドに stdout/stderr/exit code が文字列レベルで記載されているか'
+      ]
+    },
+    lab8: {
+      info: { type:'warn', html:'⚠️ <strong>翻訳前にコミット推奨</strong>: 翻訳は破壊的変更になるので、英語版を一度コミットしてから翻訳依頼すべき。Tom は今回コミット忘れたが結果的に問題なし。次回からは <code>git commit -m "Add plan (English)"</code> → 翻訳 → <code>git commit -m "Translate to Japanese"</code> の順。' },
+      check: [
+        '①<code>cat .claude/projects/*/memory/MEMORY.md</code> でインデックス確認',
+        '②<code>cat .claude/projects/*/memory/feedback_japanese_output.md</code> で What/Why/How の3要素構造を確認',
+        '③CLAUDE.md に <code>at specs/001-todo-cli/plan.md</code> が自動追記されているか',
+        '④翻訳後の各ファイルでコードブロック・識別子・パスが英語維持されているか<code>grep</code>で確認'
+      ]
+    },
+    lab9: {
+      info: { type:'ok', html:'✓ <strong>tasks.md の良い品質指標</strong>: ① 各タスクに完了条件（受入基準）あり ② 触るファイルパスがフルパス ③ 依存関係が ID で明示 ④ TDD 順（テスト → 実装） ⑤ ユーザーストーリー単位のフェーズ分け ⑥ 1タスク1〜4時間の粒度' },
+      check: [
+        '①<code>cat specs/001-todo-cli/tasks.md</code> でフェーズ分けと総タスク数を確認',
+        '②任意の3タスクをピックアップし、完了条件・ファイルパス・依存関係が揃っているか確認',
+        '③[P]マーカー付きタスクが本当に独立しているか（同じファイルを編集していないか）レビュー',
+        '④20以上ある場合、本当にこの粒度で必要か検討。10個以内に統合できないか考える'
+      ]
+    },
+    lab10: {
+      info: { type:'err', html:'⚠️ <strong>暴走監視は本気で</strong>: 「Phase 1 だけ」と指示したのに「Phase 2 まで一気に」走らせる、tasks.md にないライブラリを追加する、などは即 Esc/Ctrl+C で中断。コミット間隔を狭めて被害範囲を小さく保つ。' },
+      check: [
+        '①<code>git log --oneline</code> で各サブフェーズが独立コミットになっているか確認',
+        '②<code>pytest -v</code> で全テストが PASS するか確認（49 passed が期待値）',
+        '③<code>(Get-Content src\\todo\\*.py).Count</code> で各ファイル100行以下を確認',
+        '④<code>git diff master..HEAD --stat</code> で変更ファイル一覧を確認、想定外の変更がないか'
+      ]
+    },
+    lab11: {
+      info: { type:'ok', html:'✓ <strong>「仕様の物理実体化」</strong>: spec.md に書いた「ID は再利用しない」が、データファイルの <code>"next_id": 5</code> として実体化する。これが Spec-Driven Development の核心的体験。' },
+      check: [
+        '①<code>todo add "Buy milk"</code> → <code>todo list</code> で <code>1 [ ] Buy milk</code> が表示されるか',
+        '②<code>todo done 1</code> → <code>todo list</code> で <code>[x]</code> マークに変化するか',
+        '③<code>todo clear</code> 後に <code>todo add "X"</code> で ID が再利用されない（次の番号を取る）ことを確認',
+        '④<code>Get-Content $env:LOCALAPPDATA\\todo\\todos.json</code> で実 JSON ファイルの中身を確認',
+        '⑤破損ファイルでテスト: <code>"{ broken" | Set-Content $env:LOCALAPPDATA\\todo\\todos.json</code> → <code>todo list</code> でエラー＋絶対パス表示'
+      ]
+    },
+    lab12: {
+      info: { type:'info', html:'📘 <strong>Analyze は Lab10 完走後に</strong>: 全実装が終わった状態で実行すると、constitution / spec / plan / tasks / contracts / 実装の<strong>6カテゴリ整合性</strong>を一気にレポート化。Tom 案件の最終チェックリスト代わりに使える。' },
+      check: [
+        '①<code>/speckit-analyze</code> で実行（プロンプトに観点5項目を明示）',
+        '②Constitution Alignment で6原則すべて PASS か確認',
+        '③FR Coverage と SC Coverage が両方とも 100% か',
+        '④Contract Violations が 0 件か',
+        '⑤Findings Table で CRITICAL / HIGH / MEDIUM が 0 件か（LOW のみ許容）'
+      ]
+    },
+    lab13: {
+      info: { type:'warn', html:'⚠️ <strong>Spec Kit の罠</strong>: 「使えば必ず良い」ではない。小規模機能には過剰、Tom の前回手書き2時間 vs 今回6〜8時間が証左。<strong>機能規模で道具を選ぶ</strong>のが実務的。' },
+      check: [
+        '①自分の業務で扱う機能を3つ挙げ、規模ベース判断（小改修/中規模/大規模/新規）に分類する',
+        '②各機能で「Spec Kit 全フロー」「部分使用」「不使用」のどれが適切か判断する',
+        '③テスト docstring に FR-XXX / T-XXX を入れる慣習を採用するか検討（OutSystems 業務なら強推奨）',
+        '④<code>~/mnt/skills/user/spec-kit-business-adoption/SKILL.md</code> として自分用運用ガイドを作るか検討'
+      ]
+    }
+  };
+
+  function infoHTML(m){ return m?.info ? `<div class="info-box ${m.info.type||'info'}">${m.info.html}</div>` : ''; }
+  function verifyHTML(m){ if (!m?.verify) return '';
+    const {before, after} = m.verify;
+    return `<div class="verify">
+      <div class="verify-col verify-before"><div class="verify-label">Before ▶︎ 実行前</div>${before||''}</div>
+      <div class="verify-col verify-after"><div class="verify-label">After ▶︎ 実行後</div>${after||''}</div>
+    </div>`; }
+  function checkHTML(m){ if (!m?.check?.length) return '';
+    return `<div class="check-steps">
+      <div class="check-steps-title">🔍 ブラウザ実機チェック</div>
+      <ol>${m.check.map(s=>`<li>${s}</li>`).join('')}</ol>
+    </div>`; }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.lab').forEach(lab => {
+      const meta = LAB_META[lab.id]; const body = lab.querySelector('.lab-body');
+      if (!body || !meta) return;
+      const frag = document.createElement('div');
+      frag.innerHTML = checkHTML(meta);
+      while (frag.firstChild) body.appendChild(frag.firstChild);
+    });
+
+    const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+    const map = new Map();
+    links.forEach(a => { const el = document.getElementById(a.getAttribute('href').slice(1)); if (el) map.set(el, a); });
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting) { const l = map.get(e.target);
+        if (l) { links.forEach(n=>n.classList.remove('active')); l.classList.add('active'); } }
+    }), { rootMargin:'-30% 0px -60% 0px' });
+    document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+    document.querySelectorAll('.code-block').forEach((cb, i) => {
+      if (cb.querySelector('.code-block-header')) return;
+      const header = document.createElement('div');
+      header.className = 'code-block-header';
+      header.innerHTML = `<span>Code #${i+1}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+      cb.insertBefore(header, cb.firstChild);
+    });
+  });
+</script>
+
+</body>
+</html>
