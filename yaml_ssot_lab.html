@@ -1,0 +1,1721 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YAML for AI-Driven SSoT — 完全網羅Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+      --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+      --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+      --success:#22863a; --error:#cb2431;
+      --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+    /* Sidebar */
+    #sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+      background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+      border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+    #sidebar::-webkit-scrollbar { width:4px; }
+    #sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+    #sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+      padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+    #sidebar .nav-title span { color:var(--text-dim); }
+    #sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+      color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+    #sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+      color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+      transition:background .15s,color .15s,border-color .15s;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    #sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+    #sidebar .nav-item.active { border-left-color:var(--accent);
+      background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+    #sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+      font-size:.72rem; margin-right:8px; opacity:.8; }
+
+    /* Hero */
+    .hero { padding:60px 40px 40px; text-align:center;
+      background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+      border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+    .hero::before { content:''; position:absolute; top:-120px; right:-120px;
+      width:400px; height:400px;
+      background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+      pointer-events:none; }
+    .hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+      background:linear-gradient(135deg,var(--accent),var(--accent2));
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+    .hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+    /* TOC */
+    .toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+    .toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+    .toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+    .toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+      background:var(--surface); border:1px solid var(--border); border-radius:8px;
+      text-decoration:none; color:var(--text); font-size:.88rem;
+      transition:border-color .2s,transform .15s; }
+    .toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+    .toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+      font-size:.8rem; min-width:28px; }
+
+    /* Container & Lab cards */
+    .container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+    .lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+      overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+    .lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+      background:var(--surface2); border-bottom:1px solid var(--border); }
+    .lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+      background:var(--accent); width:30px; height:30px; display:flex;
+      align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+    .lab-header h3 { font-size:1.15rem; font-weight:600; }
+    .lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+      padding:3px 10px; border-radius:20px; border:1px solid; }
+    .tag-basic { color:var(--accent); border-color:var(--accent); }
+    .tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+    .tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+    .lab-body { padding:24px; }
+    .lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+    .lab-desc code { font-family:var(--mono); background:var(--code-bg);
+      padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+    /* Code block */
+    .code-block { position:relative; background:var(--code-bg);
+      border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+    .code-block pre { padding:12px 16px 14px; overflow-x:auto;
+      font-family:var(--mono); font-size:.82rem; line-height:1.65;
+      color:var(--text); white-space:pre; tab-size:2; }
+    .code-block-header { display:flex; align-items:center; justify-content:space-between;
+      padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+      font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+    .copy-btn { background:transparent; border:1px solid var(--border);
+      color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+      padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+    .copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+    .copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+    /* Syntax token colors */
+    .kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+    .cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+    .attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+
+    /* info-box */
+    .info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+      line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+    .info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+    .info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+    .info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+    .info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+    .info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+      padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+    /* verify Before / After */
+    .verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+    .verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+      line-height:1.7; border:1px solid; }
+    .verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+    .verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+    .verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+      text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+    .verify-before .verify-label { color:var(--error); }
+    .verify-after  .verify-label { color:var(--success); }
+
+    /* check-steps */
+    .check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+      border-left:3px solid var(--accent4); border-radius:7px;
+      padding:11px 14px 11px 16px; margin:16px 0 4px;
+      font-size:.86rem; line-height:1.8; color:#5c4400; }
+    .check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+      text-transform:uppercase; font-weight:700; color:var(--accent4);
+      margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+    .check-steps ol { margin-left:20px; margin-top:2px; }
+    .check-steps li { margin-bottom:3px; }
+    .check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+      padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+    /* compare-table */
+    .compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+      margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+      border-radius:7px; overflow:hidden; }
+    .compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+      font-family:var(--mono); font-size:.72rem; color:var(--accent);
+      letter-spacing:.05em; border-bottom:1px solid var(--border); }
+    .compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+      color:var(--text); vertical-align:top; }
+    .compare-table tr:last-child td { border-bottom:none; }
+    .compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+    .compare-table .yes { color:var(--success); } .compare-table .no { color:var(--error); }
+
+    /* beginner-box */
+    .beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+      border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+      margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+    .beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+      color:var(--accent3); font-weight:700; margin-bottom:5px; }
+    .beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+      line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+      margin-top:8px; color:var(--text); overflow-x:auto; }
+
+    /* usecase-box */
+    .usecase-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+      border-left:3px solid var(--accent3); border-radius:7px; padding:12px 14px;
+      margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+    .usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+      color:var(--accent3); font-weight:700; margin-bottom:6px; }
+    .usecase-list { margin-left:20px; margin-bottom:10px; }
+    .usecase-list li { margin-bottom:4px; }
+    .usecase-trigger { background:rgba(0,92,197,.05); border-left:3px solid var(--accent);
+      padding:8px 12px; border-radius:5px; font-size:.82rem; color:#003d8f; margin-top:8px; }
+    .usecase-trigger ul { margin:4px 0 0 20px; }
+
+    /* try-box */
+    .try-box { background:rgba(34,134,58,.06); border:1px solid rgba(34,134,58,.30);
+      border-left:3px solid var(--success); border-radius:7px;
+      padding:12px 14px; margin:14px 0; font-size:.86rem; line-height:1.8; color:#154f1e; }
+    .try-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+      color:var(--success); font-weight:700; margin-bottom:6px; }
+    .try-box ol { margin-left:20px; margin-top:4px; }
+    .try-box ol li { margin-bottom:4px; }
+    .try-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+      padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--success); }
+    .try-tip { background:rgba(176,136,0,.06); border-left:3px solid var(--accent4);
+      padding:8px 12px; border-radius:5px; font-size:.82rem; color:#5c4400; margin-top:8px; }
+    .try-tip strong { color:var(--accent4); }
+    .try-skeleton { background:#f0f4f8; border:1px solid var(--border); border-radius:5px;
+      padding:10px 12px; margin-top:8px; font-family:var(--mono); font-size:.78rem;
+      color:var(--text); white-space:pre; overflow-x:auto; line-height:1.5; }
+
+    /* code-pair */
+    .code-pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; }
+    .code-pair-col { display:flex; flex-direction:column; min-width:0; }
+    .code-pair-label { font-family:var(--mono); font-size:.72rem; letter-spacing:.05em;
+      font-weight:700; padding:6px 10px; border-radius:6px 6px 0 0; }
+    .code-pair-before .code-pair-label { background:rgba(203,36,49,.10); color:#9a1320;
+      border:1px solid rgba(203,36,49,.30); border-bottom:none; }
+    .code-pair-after  .code-pair-label { background:rgba(34,134,58,.10); color:#154f1e;
+      border:1px solid rgba(34,134,58,.30); border-bottom:none; }
+    .code-pair-col .code-block { margin:0; border-radius:0 0 8px 8px; flex:1; }
+    .code-pair-before .code-block { border-color:rgba(203,36,49,.30); }
+    .code-pair-after  .code-block { border-color:rgba(34,134,58,.30); }
+    @media (max-width:900px){ .code-pair { grid-template-columns:1fr; } }
+
+    /* livedemo */
+    .livedemo { margin:14px 0; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+    .livedemo-bar { display:flex; align-items:center; gap:12px; padding:8px 12px;
+      background:var(--surface2); border-bottom:1px solid var(--border); }
+    .toggle-btn { font-family:var(--mono); font-size:.78rem; padding:5px 14px;
+      border-radius:6px; border:1px solid var(--accent); background:var(--accent);
+      color:#fff; cursor:pointer; transition:all .15s; }
+    .toggle-btn:hover { opacity:.85; }
+    .toggle-btn.is-before { background:var(--error); border-color:var(--error); }
+    .toggle-label { font-family:var(--mono); font-size:.78rem; color:var(--text-dim); }
+    .livedemo-stage { padding:16px; background:var(--bg); }
+    .livedemo-stage.is-before { outline:2px dashed var(--error); outline-offset:-8px; }
+    .livedemo-stage .ld-before { display:none; }
+    .livedemo-stage.is-before .ld-before { display:block; }
+    .livedemo-stage.is-before .ld-after { display:none; }
+    .ld-panel { padding:12px; border-radius:6px; font-family:var(--mono); font-size:11px; line-height:1.6; }
+    .ld-panel.bad { background:#fee2e2; border:1px solid #cb2431; color:#6b1a22; }
+    .ld-panel.good { background:#dcfce7; border:1px solid #22863a; color:#166534; }
+
+    /* Responsive */
+    @media (max-width:900px) {
+      body { padding-left:0; }
+      #sidebar { position:static; width:100%; height:auto; border-right:none;
+        border-bottom:1px solid var(--border); padding:8px 0; }
+      #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+      .verify { grid-template-columns:1fr; }
+      .hero h1 { font-size:1.6rem; }
+      .toc-grid { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// YAML for SSoT <span>v1.0</span></div>
+
+  <div class="nav-section">YAMLの基礎</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>YAMLとは何か</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>スカラー型</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>文字列の3スタイル</a>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>Norway問題と真偽値</a>
+
+  <div class="nav-section">構造</div>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>マッピング(辞書)</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>シーケンス(配列)</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>インデント規則</a>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>フロースタイル</a>
+
+  <div class="nav-section">応用機能</div>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>アンカー&エイリアス</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>マルチドキュメント</a>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>タグと型強制</a>
+  <a class="nav-item" href="#lab11"><span class="nav-num">11</span>コメントの作法</a>
+
+  <div class="nav-section">SSoT実践</div>
+  <a class="nav-item" href="#lab12"><span class="nav-num">12</span>AIエージェント仕様</a>
+  <a class="nav-item" href="#lab13"><span class="nav-num">13</span>検証とlinter</a>
+</nav>
+
+<div class="hero">
+  <h1>YAML for AI-Driven SSoT</h1>
+  <p class="subtitle">AIエージェント駆動開発で「壊れない仕様書」を書くための YAML 完全網羅Lab — 14ラボ</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>YAMLとは何か / SSoTで選ばれる理由</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>スカラー型(文字列・数値・真偽値・null)</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>文字列の3スタイル(plain/single/double)</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>Norway問題と真偽値の罠</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>マッピング(キー:値の辞書)</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>シーケンス(リスト/配列)</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>インデント規則とハイフンの位置</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>フロースタイル{}と[]</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>アンカー&amp;エイリアス&amp;マージキー</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>マルチドキュメント(---)</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">10</span>タグと明示的な型強制</a>
+    <a class="toc-item" href="#lab11"><span class="toc-num">11</span>コメントの作法</a>
+    <a class="toc-item" href="#lab12"><span class="toc-num">12</span>AIエージェント仕様パターン</a>
+    <a class="toc-item" href="#lab13"><span class="toc-num">13</span>検証&amp;linter&amp;スキーマ</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ============================================================ -->
+<!-- LAB 00 — YAMLとは何か / SSoTで選ばれる理由                    -->
+<!-- ============================================================ -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>YAMLとは何か / SSoTで選ばれる理由</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      YAML は <code>YAML Ain't Markup Language</code>(再帰的略称) の構造化データ形式。<strong>人間が読み書きしやすく、機械が確実にパースできる</strong>ことを両立させる目的で設計された。AIエージェント駆動開発の Single Source of Truth (SSoT)では、この「両立」が決定的に重要になる。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 SSoT (Single Source of Truth) とは</div>
+      <strong>「同じ事実を複数箇所に書かない。1ヶ所にだけ書いて、皆そこを参照する」</strong>という設計原則。<br>
+      AIエージェント駆動開発では、人間 → AI → コード生成 → 実装 のパイプライン全体が同じ仕様書を参照するため、SSoT文書の<strong>記述精度がそのまま成果物の精度</strong>になる。
+<pre class="ascii-art">
+      ┌───────────────────────────────┐
+      │  spec.yaml  ← Single Source   │
+      │  ・要件                          │
+      │  ・データモデル                   │
+      │  ・API契約                       │
+      └─────┬──────────┬──────────┬───┘
+            ↓          ↓          ↓
+       人間レビュー  AIエージェント  自動テスト
+            │          │          │
+            └──────────┴──────────┘
+            全員が「ここだけ」を見る
+</pre>
+    </div>
+
+    <div class="code-block">
+<pre><span class="cm"># spec.yaml — AIエージェントへの指示書(SSoT例)</span>
+<span class="prop">project</span>: <span class="str">order-service</span>
+<span class="prop">version</span>: <span class="str">1.0.0</span>
+<span class="prop">api</span>:
+  <span class="prop">endpoints</span>:
+    - <span class="prop">path</span>: <span class="str">/orders</span>
+      <span class="prop">method</span>: <span class="str">POST</span>
+      <span class="prop">request</span>:
+        <span class="prop">user_id</span>: <span class="str">integer</span>
+        <span class="prop">items</span>: <span class="str">array</span>
+      <span class="prop">response</span>:
+        <span class="prop">order_id</span>: <span class="str">uuid</span>
+        <span class="prop">status</span>: <span class="str">enum[pending,confirmed]</span></pre>
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ JSON — SSoT用途には不向き</div>
+        <div class="code-block">
+<pre><span class="cm">// コメント書けない / 行末カンマで構文エラー</span>
+{
+  <span class="str">"project"</span>: <span class="str">"order-service"</span>,
+  <span class="str">"version"</span>: <span class="str">"1.0.0"</span>,
+  <span class="str">"endpoints"</span>: [
+    {<span class="str">"path"</span>: <span class="str">"/orders"</span>, <span class="str">"method"</span>: <span class="str">"POST"</span>}
+  ]
+}</pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ YAML — SSoTに最適</div>
+        <div class="code-block">
+<pre><span class="cm"># コメントOK、可読性高い、差分も読みやすい</span>
+<span class="prop">project</span>: <span class="str">order-service</span>
+<span class="prop">version</span>: <span class="str">1.0.0</span>
+<span class="prop">endpoints</span>:
+  - <span class="prop">path</span>: <span class="str">/orders</span>     <span class="cm"># 注文作成</span>
+    <span class="prop">method</span>: <span class="str">POST</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>観点</th><th>YAML</th><th>JSON</th><th>TOML</th></tr></thead>
+      <tbody>
+        <tr><td>コメント</td><td class="yes">✓ #で記述</td><td class="no">✗ 不可</td><td class="yes">✓ #で記述</td></tr>
+        <tr><td>多行文字列</td><td class="yes">✓ |, &gt;</td><td class="no">✗ \nのみ</td><td class="yes">✓ """</td></tr>
+        <tr><td>アンカー/参照</td><td class="yes">✓ &amp;, *</td><td class="no">✗</td><td class="no">✗</td></tr>
+        <tr><td>差分の読みやすさ</td><td class="yes">✓ 行指向</td><td class="no">△ 括弧多い</td><td class="yes">✓ 行指向</td></tr>
+        <tr><td>仕様の単純さ</td><td class="no">△ 複雑(罠多い)</td><td class="yes">✓ 単純</td><td class="yes">✓ 単純</td></tr>
+        <tr><td>SSoT適性</td><td class="yes">◎ 第一候補</td><td>△ 構造化のみ</td><td>○ 設定向き</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- LAB 01 — スカラー型                                          -->
+<!-- ============================================================ -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>スカラー型(文字列・数値・真偽値・null)</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      YAMLのスカラー(単一値)は <strong>クォート無しでも自動的に型推論</strong>される。これは便利だが、<code>1.0</code>と書くと<code>"1.0"</code>(文字列)ではなく<code>1.0</code>(浮動小数)になるなど、SSoTでは<strong>意図しない型変換</strong>が最大の事故源。
+    </p>
+
+    <div class="code-block">
+<pre><span class="cm"># 自動型推論される例</span>
+<span class="prop">name</span>: <span class="str">Alice</span>          <span class="cm"># 文字列</span>
+<span class="prop">age</span>: <span class="num">30</span>                <span class="cm"># 整数(int)</span>
+<span class="prop">price</span>: <span class="num">19.99</span>           <span class="cm"># 浮動小数(float)</span>
+<span class="prop">active</span>: <span class="num">true</span>           <span class="cm"># 真偽値(bool)</span>
+<span class="prop">manager</span>: <span class="num">null</span>          <span class="cm"># null値</span>
+<span class="prop">manager2</span>: ~              <span class="cm"># これも null</span>
+<span class="prop">manager3</span>:                <span class="cm"># これも null (値なし)</span>
+<span class="prop">hex</span>: <span class="num">0xFF</span>              <span class="cm"># 255 (16進)</span>
+<span class="prop">oct</span>: <span class="num">0o17</span>              <span class="cm"># 15  (8進・YAML 1.2)</span>
+<span class="prop">inf</span>: .inf              <span class="cm"># 無限大</span>
+<span class="prop">nan</span>: .nan              <span class="cm"># Not a Number</span>
+<span class="prop">date</span>: <span class="num">2026-05-02</span>        <span class="cm"># 自動的に日付型</span>
+<span class="prop">datetime</span>: <span class="num">2026-05-02T10:30:00Z</span></pre>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>SSoT記述で最も危険なのはバージョン番号</strong>: <code>version: 1.0</code> はパース時に<strong>float の 1</strong>になり、<code>"1.0"</code>という文字列が消える。バージョン文字列は必ずクォートする(<code>version: "1.0"</code>)。
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ 型の事故</div>
+        <div class="code-block">
+<pre><span class="prop">version</span>: <span class="num">1.0</span>          <span class="cm"># float 1 になる</span>
+<span class="prop">phone</span>: <span class="num">09012345678</span>   <span class="cm"># 数値→先頭0消える</span>
+<span class="prop">postal</span>: <span class="num">01234</span>        <span class="cm"># 同上</span>
+<span class="prop">hash</span>: <span class="num">123e4</span>          <span class="cm"># float 1230000!</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ 文字列として扱う</div>
+        <div class="code-block">
+<pre><span class="prop">version</span>: <span class="str">"1.0"</span>        <span class="cm"># 文字列のまま</span>
+<span class="prop">phone</span>: <span class="str">"09012345678"</span>
+<span class="prop">postal</span>: <span class="str">"01234"</span>
+<span class="prop">hash</span>: <span class="str">"123e4"</span>        <span class="cm"># IDなど安全</span></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- LAB 02 — 文字列の3スタイル                                    -->
+<!-- ============================================================ -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>文字列の3スタイル(plain / single / double / block)</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      YAMLの文字列には4つの記法があり、<strong>エスケープと改行の扱いが全く違う</strong>。AIエージェントへ与えるプロンプトや長文仕様を書くなら<code>|</code>(リテラルブロック)と<code>&gt;</code>(折り畳みブロック)の使い分けが必須。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>記法</th><th>例</th><th>エスケープ</th><th>改行</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr><td>plain</td><td>foo bar</td><td>不可</td><td>不可</td><td>短い識別子</td></tr>
+        <tr><td>single</td><td>'foo bar'</td><td>'' のみ</td><td>不可</td><td>機械的な文字列</td></tr>
+        <tr><td>double</td><td>"foo\nbar"</td><td>\n \t \" 等</td><td>\n で表現</td><td>制御文字含む</td></tr>
+        <tr><td>literal |</td><td>|<br>foo<br>bar</td><td>不要</td><td class="yes">そのまま保持</td><td>コード/プロンプト</td></tr>
+        <tr><td>folded &gt;</td><td>&gt;<br>foo<br>bar</td><td>不要</td><td>空白に畳む</td><td>長い説明文</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+<pre><span class="cm"># 4つの文字列スタイル</span>
+<span class="prop">plain</span>: <span class="str">Hello world</span>
+<span class="prop">single</span>: <span class="str">'It''s OK'</span>          <span class="cm"># '' で ' をエスケープ</span>
+<span class="prop">double</span>: <span class="str">"Line1\nLine2\t!"</span>     <span class="cm"># \n や \t が効く</span>
+
+<span class="prop">literal</span>: |                <span class="cm"># 改行をそのまま保持</span>
+  def hello():
+      print("hi")
+      return 0
+
+<span class="prop">folded</span>: &gt;                 <span class="cm"># 改行を空白に畳む</span>
+  これは長い説明で
+  改行は1個の空白に
+  なります。
+
+<span class="cm"># Chomping指定子</span>
+<span class="prop">keep</span>: |+               <span class="cm"># 末尾改行を全て保持</span>
+  hello
+
+<span class="prop">strip</span>: |-              <span class="cm"># 末尾改行を全て削除</span>
+  hello
+
+<span class="prop">clip</span>: |                <span class="cm"># 末尾改行を1つだけ(デフォルト)</span>
+  hello</pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン (AIエージェント駆動開発で)</div>
+      <ul class="usecase-list">
+        <li><code>|</code>(literal): AIへのプロンプト・コードスニペット・ASCII図(改行が意味を持つ)</li>
+        <li><code>&gt;</code>(folded): 要件説明・ユーザストーリー(改行は単に折り返し)</li>
+        <li><code>"..."</code>(double): URL・正規表現・絵文字を含む文字列(エスケープが必要)</li>
+        <li><code>'...'</code>(single): Windowsパス <code>'C:\Users\tom'</code> (\をそのまま)</li>
+      </ul>
+      <div class="usecase-trigger">こう見えたら使い分け候補:
+        <ul>
+          <li>「\n が文字列に混入してしまった」→ singleに変える</li>
+          <li>「複数行の指示文を書きたい」→ <code>|</code>を使う</li>
+          <li>「Markdownの段落のように書きたい」→ <code>&gt;</code>を使う</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- LAB 03 — Norway問題と真偽値の罠                              -->
+<!-- ============================================================ -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>Norway問題と真偽値の罠 (YAML 1.1 vs 1.2)</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      YAML最大の落とし穴。<strong>YAML 1.1 (PyYAMLのデフォルト)では<code>NO</code>が真偽値<code>false</code>に解釈される</strong>。国コード一覧で<code>- NO</code>(ノルウェー)と書くと配列要素が<code>false</code>になる、いわゆる<strong>Norway問題</strong>。SSoT文書では特に致命的。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 なぜ起きるか — YAML 1.1 の真偽値リスト</div>
+<pre class="ascii-art">
+YAML 1.1 で true 扱いされる: y, Y, yes, Yes, YES, true, True, TRUE, on, On, ON
+YAML 1.1 で false 扱いされる: n, N, no, No, NO,  false, False, FALSE, off, Off, OFF
+                                ^^^^^^^^^^^^^^
+                                ノルウェー(NO) ← これに刺さる
+
+YAML 1.2 で true/false 扱いされるのは: true, false (小文字のみ・大文字始まりも可)
+   → 1.2 では n / N / no / NO は普通の文字列のまま
+</pre>
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Norway問題が発火</div>
+        <div class="code-block">
+<pre><span class="cm"># YAML 1.1 で読むと…</span>
+<span class="prop">countries</span>:
+  - JP
+  - US
+  - NO          <span class="cm"># ← false になる!</span>
+  - ON          <span class="cm"># ← true  になる!</span>
+<span class="prop">enabled</span>: <span class="num">yes</span>      <span class="cm"># bool true に</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ 必ずクォート</div>
+        <div class="code-block">
+<pre><span class="cm"># 国コード等のシンボルはクォート必須</span>
+<span class="prop">countries</span>:
+  - <span class="str">"JP"</span>
+  - <span class="str">"US"</span>
+  - <span class="str">"NO"</span>        <span class="cm"># 文字列のまま</span>
+  - <span class="str">"ON"</span>        <span class="cm"># 文字列のまま</span>
+<span class="prop">enabled</span>: <span class="num">true</span>    <span class="cm"># 必ず true/false</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box err">
+      🚨 <strong>SSoTでの実害例</strong>: <code>tags: [ "ai", "ml", "no" ]</code> がYAML 1.1パーサで <code>["ai", "ml", false]</code> になり、AIエージェントが「3番目はbool値だ」と誤解して生成コードに混入。デバッグに半日かかった事例多数。
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>使うパーサのバージョンを把握する</strong>:
+      <ul style="margin-left:20px;margin-top:6px;">
+        <li>PyYAML(Python): デフォルト1.1。<code>ruamel.yaml</code>なら1.2</li>
+        <li>js-yaml(Node.js): デフォルト1.2 (4.x以降)</li>
+        <li>SnakeYAML(Java): デフォルト1.1 (2.0以降は1.2)</li>
+        <li>Go yaml.v3: 1.2準拠</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- LAB 04 — マッピング(辞書)                                    -->
+<!-- ============================================================ -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>マッピング(キー:値の辞書)</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>キー: 値</code>のペアでオブジェクト/辞書を表す。<strong>コロンの後には必ず半角スペース1つ以上</strong>が必要。階層はインデント(半角スペース)で表現し、タブ文字は禁止。
+    </p>
+
+    <div class="code-block">
+<pre><span class="cm"># 基本のマッピング(階層あり)</span>
+<span class="prop">user</span>:
+  <span class="prop">id</span>: <span class="num">1001</span>
+  <span class="prop">name</span>: <span class="str">Tom</span>
+  <span class="prop">profile</span>:
+    <span class="prop">role</span>: <span class="str">developer</span>
+    <span class="prop">team</span>: <span class="str">platform</span>
+    <span class="prop">skills</span>:
+      <span class="prop">primary</span>: <span class="str">OutSystems</span>
+      <span class="prop">secondary</span>: <span class="str">VB.NET</span>
+
+<span class="cm"># キーには文字列以外も使える(まれだが可)</span>
+<span class="num">42</span>: <span class="str">"int as key"</span>
+<span class="num">true</span>: <span class="str">"bool as key"</span>
+<span class="cm"># 複合キー(? で明示)</span>
+? [<span class="str">x</span>, <span class="str">y</span>]
+: <span class="str">"point"</span></pre>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>キー名の重複は仕様上エラー</strong>(YAML 1.2)だが、多くのパーサは警告なしで<strong>後勝ち</strong>にする。同じキーを2回書いてしまうと黙って上書きされる事故が起きる。
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ 黙って上書きされる</div>
+        <div class="code-block">
+<pre><span class="prop">database</span>:
+  <span class="prop">host</span>: <span class="str">prod.db</span>
+  <span class="prop">port</span>: <span class="num">5432</span>
+  <span class="prop">host</span>: <span class="str">staging.db</span>  <span class="cm"># 上書き</span>
+<span class="cm"># 結果: host = "staging.db"</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ 環境ごとに別キー</div>
+        <div class="code-block">
+<pre><span class="prop">database</span>:
+  <span class="prop">prod</span>:
+    <span class="prop">host</span>: <span class="str">prod.db</span>
+    <span class="prop">port</span>: <span class="num">5432</span>
+  <span class="prop">staging</span>:
+    <span class="prop">host</span>: <span class="str">staging.db</span>
+    <span class="prop">port</span>: <span class="num">5432</span></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- LAB 05 — シーケンス(配列)                                    -->
+<!-- ============================================================ -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>シーケンス(リスト/配列)</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      行頭 <code>- </code>(ハイフン+スペース)で配列要素を表す。各要素はスカラーでもマッピングでもネストしたシーケンスでもよい。AIエージェントに渡す<strong>タスクリスト・ステップ列・APIエンドポイント一覧</strong>などはこの形になる。
+    </p>
+
+    <div class="code-block">
+<pre><span class="cm"># スカラーのリスト</span>
+<span class="prop">tags</span>:
+  - <span class="str">backend</span>
+  - <span class="str">api</span>
+  - <span class="str">microservice</span>
+
+<span class="cm"># オブジェクトのリスト(SSoTで最頻出)</span>
+<span class="prop">endpoints</span>:
+  - <span class="prop">path</span>: <span class="str">/users</span>
+    <span class="prop">method</span>: <span class="str">GET</span>
+    <span class="prop">auth</span>: <span class="num">true</span>
+  - <span class="prop">path</span>: <span class="str">/users/{id}</span>
+    <span class="prop">method</span>: <span class="str">PATCH</span>
+    <span class="prop">auth</span>: <span class="num">true</span>
+
+<span class="cm"># ネストしたリスト(2次元配列)</span>
+<span class="prop">matrix</span>:
+  - [<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>]
+  - [<span class="num">4</span>, <span class="num">5</span>, <span class="num">6</span>]
+
+<span class="cm"># 1要素のリスト(よく忘れる: ハイフン必須)</span>
+<span class="prop">steps</span>:
+  - <span class="str">build</span>     <span class="cm"># ✓ リスト要素</span>
+
+<span class="cm"># これは違う!(マッピングになる)</span>
+<span class="cm"># steps: build  ← これは "steps" キーの値が "build" の文字列</span></pre>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 ハイフンのインデント — 2流派</div>
+      多くのパーサが両方サポートするが、<strong>同一ファイル内で混ぜない</strong>。
+<pre class="ascii-art">
+流派A: ハイフン揃え (Ansible/k8s 標準)
+items:
+- name: a    ← 親と同じカラム
+  qty: 1
+- name: b
+  qty: 2
+
+流派B: 2スペースインデント (Docker Compose 等)
+items:
+  - name: a  ← 親より2スペース内
+    qty: 1
+  - name: b
+    qty: 2
+</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- LAB 06 — インデント規則                                      -->
+<!-- ============================================================ -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>インデント規則とハイフンの位置</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      YAMLの構造は<strong>インデント幅で完全に決まる</strong>。Pythonと同様だが、規則はもっと厳格: <strong>(1)タブ禁止、(2)同じ階層は同じインデント幅、(3)子は親より深いこと</strong>。SSoTで一番多いパースエラーの原因はここ。
+    </p>
+
+    <div class="info-box err">
+      🚨 <strong>タブ文字は絶対NG</strong>。エディタの「Tab→スペース」設定を有効にし、<code>.editorconfig</code>で <code>indent_style = space</code>, <code>indent_size = 2</code> を強制する。
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ よくあるインデント事故</div>
+        <div class="code-block">
+<pre><span class="prop">server</span>:
+  <span class="prop">host</span>: <span class="str">localhost</span>
+   <span class="prop">port</span>: <span class="num">8080</span>     <span class="cm"># 3スペース!エラー</span>
+<span class="prop">db</span>:
+   <span class="prop">host</span>: <span class="str">db.local</span> <span class="cm"># 親と揃わない</span>
+
+<span class="cm"># 結果: ScannerError: mapping values
+# are not allowed here</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ 2スペース統一</div>
+        <div class="code-block">
+<pre><span class="prop">server</span>:
+  <span class="prop">host</span>: <span class="str">localhost</span>
+  <span class="prop">port</span>: <span class="num">8080</span>
+<span class="prop">db</span>:
+  <span class="prop">host</span>: <span class="str">db.local</span>
+  <span class="prop">port</span>: <span class="num">5432</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="code-block">
+<pre><span class="cm"># インデントを使った階層表現の意図</span>
+<span class="prop">a</span>:
+  <span class="prop">b</span>:
+    <span class="prop">c</span>: <span class="num">1</span>      <span class="cm"># a.b.c = 1</span>
+  <span class="prop">d</span>: <span class="num">2</span>        <span class="cm"># a.d   = 2 (b と同階層)</span>
+<span class="prop">e</span>: <span class="num">3</span>          <span class="cm"># e     = 3 (a と同階層)</span>
+
+<span class="cm"># JSONに変換すると…
+# { "a": { "b": { "c": 1 }, "d": 2 }, "e": 3 }</span></pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 SSoTを長期運用するためのインデント運用</div>
+      <ul class="usecase-list">
+        <li><code>.editorconfig</code>でチーム全員のエディタを統一</li>
+        <li><code>yamllint</code>のCIをPRに必須化(混在を機械的に弾く)</li>
+        <li>VSCodeなら <code>"editor.detectIndentation": false</code> + <code>"editor.tabSize": 2</code></li>
+        <li>Prettierで<code>--parser yaml</code>を使うと自動整形できる</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================ -->
+<!-- LAB 07 — フロースタイル                                       -->
+<!-- ============================================================ -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>フロースタイル {} と []</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      YAMLは<strong>JSON互換のインライン記法(flow style)</strong>もサポート。短い構造体を1行で書きたいときに便利だが、<strong>SSoT文書では原則ブロックスタイル</strong>(改行+インデント)を使う。差分の読みやすさが激減するため。
+    </p>
+
+    <div class="code-block">
+<pre><span class="cm"># ブロックスタイル(SSoT推奨)</span>
+<span class="prop">user</span>:
+  <span class="prop">name</span>: <span class="str">Tom</span>
+  <span class="prop">tags</span>:
+    - <span class="str">admin</span>
+    - <span class="str">dev</span>
+
+<span class="cm"># フロースタイル(JSON風)</span>
+<span class="prop">user</span>: { <span class="prop">name</span>: <span class="str">Tom</span>, <span class="prop">tags</span>: [<span class="str">admin</span>, <span class="str">dev</span>] }
+
+<span class="cm"># ハイブリッド(混ぜてOK)</span>
+<span class="prop">matrix</span>:
+  - [<span class="num">1</span>, <span class="num">0</span>, <span class="num">0</span>]
+  - [<span class="num">0</span>, <span class="num">1</span>, <span class="num">0</span>]
+  - [<span class="num">0</span>, <span class="num">0</span>, <span class="num">1</span>]
+
+<span class="cm"># 空のコレクション(これは block では書けない)</span>
+<span class="prop">empty_list</span>: []
+<span class="prop">empty_map</span>: {}</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>場面</th><th>推奨スタイル</th><th>理由</th></tr></thead>
+      <tbody>
+        <tr><td>仕様書本文(SSoT)</td><td>block</td><td>diff/レビューが容易</td></tr>
+        <tr><td>短い座標・行列</td><td>flow</td><td>視認性が高い</td></tr>
+        <tr><td>空のコレクション</td><td>flow</td><td>blockでは表現不可</td></tr>
+        <tr><td>テストデータ(fixture)</td><td>flow</td><td>密度を上げたい</td></tr>
+        <tr><td>API仕様(OpenAPI等)</td><td>block</td><td>ツール標準</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box warn">
+      ⚠️ <strong>flowスタイルでカンマの後にスペース必須</strong>。<code>[1,2,3]</code>はOKでも、<code>{a:1,b:2}</code>は<strong>NG</strong>(コロン後にもスペース必要)。正しくは<code>{a: 1, b: 2}</code>。
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- LAB 08 — アンカー & エイリアス & マージキー                  -->
+<!-- ============================================================ -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>アンカー(&amp;) &amp; エイリアス(*) &amp; マージキー(&lt;&lt;:)</h3>
+    <span class="lab-tag tag-advanced">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      YAML最強の機能。<code>&amp;name</code>でアンカー定義、<code>*name</code>で参照、<code>&lt;&lt;: *name</code>でマップを展開マージ。<strong>SSoTでDRY(Don't Repeat Yourself)</strong>を実現する中核手段。
+    </p>
+
+    <div class="code-block">
+<pre><span class="cm"># アンカー定義 → エイリアスで参照</span>
+<span class="prop">defaults</span>: &amp;<span class="fn">defaults</span>
+  <span class="prop">timeout</span>: <span class="num">30</span>
+  <span class="prop">retry</span>: <span class="num">3</span>
+  <span class="prop">log_level</span>: <span class="str">info</span>
+
+<span class="prop">prod</span>:
+  &lt;&lt;: *<span class="fn">defaults</span>           <span class="cm"># defaultsを展開マージ</span>
+  <span class="prop">host</span>: <span class="str">prod.example.com</span>
+
+<span class="prop">staging</span>:
+  &lt;&lt;: *<span class="fn">defaults</span>
+  <span class="prop">host</span>: <span class="str">stg.example.com</span>
+  <span class="prop">log_level</span>: <span class="str">debug</span>     <span class="cm"># ローカルで上書き</span>
+
+<span class="cm"># 個別の値もエイリアス可能</span>
+<span class="prop">port</span>: &amp;<span class="fn">default_port</span> <span class="num">8080</span>
+<span class="prop">backup_port</span>: *<span class="fn">default_port</span>     <span class="cm"># 8080 を再利用</span></pre>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 マージキー <code>&lt;&lt;:</code> の動作イメージ</div>
+<pre class="ascii-art">
+defaults: &defaults        ┐
+  timeout: 30              │  &defaults アンカーで定義
+  retry: 3                 │
+  log_level: info          ┘
+
+prod:
+  &lt;&lt;: *defaults    ──→ 展開: timeout:30, retry:3, log_level:info
+  host: prod...
+                   ↓ 結果(マージ後):
+  prod:
+    timeout: 30          ← マージで入った
+    retry: 3             ← マージで入った
+    log_level: info      ← マージで入った
+    host: prod...        ← 自分自身
+
+prod でローカルに log_level: debug を書けば、マージしたものを上書きできる。
+</pre>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>マージキー<code>&lt;&lt;:</code>はYAML 1.1の仕様、1.2では非推奨機能</strong>。js-yaml 4.x ではデフォルトでサポートされない。代替として<code>!include</code>タグ・JSON Schemaの<code>$ref</code>・テンプレートエンジンを使う流れ。SSoT用途では<strong>パーサのドキュメントで明示的に確認</strong>すること。
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ DRY違反(同じ値を繰り返す)</div>
+        <div class="code-block">
+<pre><span class="prop">prod</span>:
+  <span class="prop">timeout</span>: <span class="num">30</span>
+  <span class="prop">retry</span>: <span class="num">3</span>
+  <span class="prop">log_level</span>: <span class="str">info</span>
+  <span class="prop">host</span>: <span class="str">prod.com</span>
+
+<span class="prop">staging</span>:
+  <span class="prop">timeout</span>: <span class="num">30</span>      <span class="cm"># 重複!</span>
+  <span class="prop">retry</span>: <span class="num">3</span>         <span class="cm"># 重複!</span>
+  <span class="prop">log_level</span>: <span class="str">debug</span>
+  <span class="prop">host</span>: <span class="str">stg.com</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ アンカーでDRY</div>
+        <div class="code-block">
+<pre><span class="prop">_defaults</span>: &amp;<span class="fn">d</span>
+  <span class="prop">timeout</span>: <span class="num">30</span>
+  <span class="prop">retry</span>: <span class="num">3</span>
+  <span class="prop">log_level</span>: <span class="str">info</span>
+
+<span class="prop">prod</span>:
+  &lt;&lt;: *<span class="fn">d</span>
+  <span class="prop">host</span>: <span class="str">prod.com</span>
+
+<span class="prop">staging</span>:
+  &lt;&lt;: *<span class="fn">d</span>
+  <span class="prop">log_level</span>: <span class="str">debug</span>
+  <span class="prop">host</span>: <span class="str">stg.com</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 アンカー &amp; エイリアスの実務シーン</div>
+      <ul class="usecase-list">
+        <li>GitHub Actions: 複数ジョブで共通の<code>steps</code>を再利用</li>
+        <li>Docker Compose: 複数サービスで同じ<code>logging</code>設定を共有</li>
+        <li>Kubernetes: ProbeやResourceLimitの定型値をテンプレート化</li>
+        <li>OpenAPI: 共通レスポンスエラースキーマ($refの代替)</li>
+        <li>AIエージェント仕様: 全ステップ共通の<code>retry_policy</code>を1箇所定義</li>
+      </ul>
+      <div class="usecase-trigger">こう見えたら使い時:
+        <ul>
+          <li>「同じ3行が3箇所に書かれている」→ アンカー化</li>
+          <li>「環境ごとに少し違うが共通部分が多い」→ &lt;&lt;:でマージ</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- LAB 09 — マルチドキュメント(---)                             -->
+<!-- ============================================================ -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>マルチドキュメント (--- と ...)</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>---</code>(3つのハイフン)で1ファイルに<strong>複数の独立したYAMLドキュメント</strong>を書ける。Kubernetesマニフェスト・Helm Chartのvalues分割・AIエージェントの<strong>ステージ別仕様</strong>などで頻出。
+    </p>
+
+    <div class="code-block">
+<pre><span class="cm"># 1ファイルに3ドキュメント</span>
+---
+<span class="prop">apiVersion</span>: <span class="str">v1</span>
+<span class="prop">kind</span>: <span class="str">Service</span>
+<span class="prop">metadata</span>:
+  <span class="prop">name</span>: <span class="str">api</span>
+---
+<span class="prop">apiVersion</span>: <span class="str">v1</span>
+<span class="prop">kind</span>: <span class="str">ConfigMap</span>
+<span class="prop">metadata</span>:
+  <span class="prop">name</span>: <span class="str">api-config</span>
+<span class="prop">data</span>:
+  <span class="prop">log_level</span>: <span class="str">info</span>
+---
+<span class="prop">apiVersion</span>: <span class="str">apps/v1</span>
+<span class="prop">kind</span>: <span class="str">Deployment</span>
+<span class="prop">metadata</span>:
+  <span class="prop">name</span>: <span class="str">api</span>
+...     <span class="cm"># ドキュメント終端マーカー(任意)</span></pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong><code>---</code> と <code>...</code> の使い分け</strong>:
+      <ul style="margin-left:20px;margin-top:6px;">
+        <li><code>---</code>: ドキュメント<strong>開始</strong>。ファイル先頭に書くと「ここからYAMLですよ」の宣言にもなる</li>
+        <li><code>...</code>: ドキュメント<strong>終了</strong>。streaming処理で「ここで一旦区切り」を示すために使う(任意)</li>
+      </ul>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 SSoTでのマルチドキュメント活用</div>
+      <ul class="usecase-list">
+        <li>AIエージェント駆動開発で「Phase1の仕様」「Phase2の仕様」を1ファイルに</li>
+        <li>テストデータ: 1ファイルに複数の<code>given/when/then</code>シナリオ</li>
+        <li>Kubernetesの<code>kubectl apply -f all.yaml</code>で複数リソースを一度に展開</li>
+        <li>GitOps: 環境ごとの差分を<code>---</code>で連結し1ファイル管理</li>
+      </ul>
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ 別ファイルで管理(肥大化)</div>
+        <div class="code-block">
+<pre><span class="cm"># service.yaml</span>
+<span class="prop">kind</span>: <span class="str">Service</span>
+...
+<span class="cm"># configmap.yaml</span>
+<span class="prop">kind</span>: <span class="str">ConfigMap</span>
+...
+<span class="cm"># deployment.yaml</span>
+<span class="prop">kind</span>: <span class="str">Deployment</span>
+...
+<span class="cm"># 3ファイル管理</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ 関連リソースを1ファイル</div>
+        <div class="code-block">
+<pre><span class="cm"># api-stack.yaml (1ファイル)</span>
+---
+<span class="prop">kind</span>: <span class="str">Service</span>
+---
+<span class="prop">kind</span>: <span class="str">ConfigMap</span>
+---
+<span class="prop">kind</span>: <span class="str">Deployment</span>
+<span class="cm"># 関連性が一目で分かる</span></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- LAB 10 — タグと型強制                                        -->
+<!-- ============================================================ -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>タグと明示的な型強制 (!! と !)</h3>
+    <span class="lab-tag tag-advanced">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>!!str</code>, <code>!!int</code>, <code>!!float</code> などのタグで<strong>YAMLの型推論を強制的に上書き</strong>できる。Lab 03のNorway問題やLab 01の型事故を、クォートに頼らず<strong>意図を明示する形で解決</strong>する手段。
+    </p>
+
+    <div class="code-block">
+<pre><span class="cm"># 型タグで明示的に型を指定</span>
+<span class="prop">version</span>: !!str <span class="num">1.0</span>      <span class="cm"># "1.0" 文字列強制</span>
+<span class="prop">count</span>: !!int <span class="str">"42"</span>        <span class="cm"># 42 整数強制</span>
+<span class="prop">price</span>: !!float <span class="num">100</span>       <span class="cm"># 100.0 浮動小数強制</span>
+<span class="prop">flag</span>: !!bool <span class="str">"yes"</span>        <span class="cm"># true 真偽値強制</span>
+
+<span class="cm"># コレクションの型強制</span>
+<span class="prop">tags</span>: !!seq      <span class="cm"># 配列であることを明示</span>
+  - a
+  - b
+<span class="prop">props</span>: !!map     <span class="cm"># マップであることを明示</span>
+  <span class="prop">k</span>: <span class="str">v</span>
+
+<span class="cm"># セット型(値を持たないキー集合)</span>
+<span class="prop">unique_tags</span>: !!set
+  ? a
+  ? b
+  ? c
+
+<span class="cm"># カスタムタグ(アプリ固有)</span>
+<span class="prop">user</span>: !User
+  <span class="prop">id</span>: <span class="num">1</span>
+  <span class="prop">name</span>: <span class="str">Tom</span></pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>タグ</th><th>意味</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr><td>!!str</td><td>文字列</td><td>バージョン番号・電話番号</td></tr>
+        <tr><td>!!int</td><td>整数</td><td>"42"のような文字列を整数化</td></tr>
+        <tr><td>!!float</td><td>浮動小数</td><td>100→100.0に</td></tr>
+        <tr><td>!!bool</td><td>真偽値</td><td>"yes"を明示的にtrue化</td></tr>
+        <tr><td>!!null</td><td>null</td><td>~ や空欄と等価</td></tr>
+        <tr><td>!!seq</td><td>シーケンス</td><td>配列であることを明示</td></tr>
+        <tr><td>!!map</td><td>マッピング</td><td>辞書であることを明示</td></tr>
+        <tr><td>!!set</td><td>セット</td><td>重複なし要素集合</td></tr>
+        <tr><td>!!omap</td><td>順序付きマップ</td><td>挿入順を保持したい時</td></tr>
+        <tr><td>!!binary</td><td>バイナリ</td><td>Base64エンコード値</td></tr>
+        <tr><td>!Custom</td><td>独自タグ</td><td>アプリ独自オブジェクト</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box warn">
+      ⚠️ <strong>カスタムタグ(<code>!Foo</code>)はパーサ依存</strong>。PyYAMLでは<code>yaml.SafeLoader</code>に明示的に登録しないとエラー、Goやjs-yamlでは独自実装が必要。<strong>ポータビリティを最優先するSSoTでは<code>!!</code>系のみに留める</strong>のが安全。
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- LAB 11 — コメントの作法                                      -->
+<!-- ============================================================ -->
+<div class="lab" id="lab11">
+  <div class="lab-header">
+    <div class="lab-num">11</div>
+    <h3>コメントの作法</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>#</code>から行末までがコメント。<strong>YAMLのコメントはパース時に消える</strong>(JSONや一部YAMLライブラリで往復させると失われる)ため、SSoTで<strong>「機械が読む情報」をコメントに書いてはいけない</strong>。
+    </p>
+
+    <div class="code-block">
+<pre><span class="cm"># これはファイル冒頭の説明コメント</span>
+<span class="cm"># 複数行にまたがるなら、各行に # が必要</span>
+
+<span class="prop">user</span>:
+  <span class="prop">name</span>: <span class="str">Tom</span>            <span class="cm"># インラインコメントOK</span>
+  <span class="prop">age</span>: <span class="num">30</span>              <span class="cm"># 値の後ろに # 1個以上の空白</span>
+  <span class="cm"># 次のキーの説明コメント</span>
+  <span class="prop">role</span>: <span class="str">admin</span>
+
+<span class="cm"># セクション区切り(視覚的な区切り)</span>
+<span class="cm"># ===========================================</span>
+<span class="cm"># Database settings</span>
+<span class="cm"># ===========================================</span>
+<span class="prop">db</span>:
+  <span class="prop">host</span>: <span class="str">localhost</span></pre>
+    </div>
+
+    <div class="info-box err">
+      🚨 <strong>絶対やってはいけないアンチパターン</strong>:
+      <ul style="margin-left:20px;margin-top:6px;">
+        <li><code># enabled: true</code> ← コメントアウトで設定切替するな(履歴管理はGitで)</li>
+        <li><code># TODO: 後で消す</code> がそのまま3年残る ← TODOはチケットで</li>
+        <li>機密情報をコメントに書く ← 一見隠せたように見えるが平文</li>
+      </ul>
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ コメントで意味を持たせる</div>
+        <div class="code-block">
+<pre><span class="prop">env</span>: <span class="str">prod</span>
+<span class="cm"># env: staging  # 切替時に↑コメントアウト</span>
+<span class="cm"># env: dev      # ステージングなら有効化</span>
+
+<span class="cm"># タイムアウト(秒) — 重要なので消すな</span>
+<span class="prop">timeout</span>: <span class="num">30</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ 構造で表現</div>
+        <div class="code-block">
+<pre><span class="prop">env</span>: <span class="str">prod</span>      <span class="cm"># 環境はパラメータで切替</span>
+
+<span class="prop">timeout_seconds</span>: <span class="num">30</span>
+<span class="cm"># キー名そのものに単位を入れる
+# →コメント不要</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 SSoTで「良い」コメントとは</div>
+      <ul class="usecase-list">
+        <li><strong>Why</strong>: なぜこの値なのか(<code># ロードバランサのデフォルト維持時間に合わせる</code>)</li>
+        <li><strong>制約の出典</strong>: <code># SOC2要件 - 監査ID:AUD-2025-014</code></li>
+        <li><strong>非自明な依存</strong>: <code># ↓この設定を変えるとLab09の参照も更新</code></li>
+        <li><strong>セクション見出し</strong>: ファイル全体のナビゲーション</li>
+      </ul>
+      <div class="usecase-trigger">こう書かれていたらレビューで指摘:
+        <ul>
+          <li><code># TODO</code>のままmainにマージ → チケット化</li>
+          <li>コメントアウトされた古い設定 → Git履歴に任せて削除</li>
+          <li>What(コードと同じ内容)を繰り返すコメント → 削る</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================ -->
+<!-- LAB 12 — AIエージェント仕様パターン                          -->
+<!-- ============================================================ -->
+<div class="lab" id="lab12">
+  <div class="lab-header">
+    <div class="lab-num">12</div>
+    <h3>AIエージェント仕様パターン (SSoT実践)</h3>
+    <span class="lab-tag tag-advanced">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Lab 00〜11で学んだ要素をAIエージェント駆動開発で組み合わせる<strong>実践テンプレート</strong>。Spec-Driven Development / AI-DLC で繰り返し使うパターンを集めた。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 AIエージェント向けYAMLの3層構造</div>
+<pre class="ascii-art">
+┌──────────────────────────────────────────────┐
+│  ① meta — このSSoT文書自体の情報              │
+│     project, version, owner, schema_version   │
+├──────────────────────────────────────────────┤
+│  ② intent — 「何を」「なぜ」                   │
+│     goal, non_goals, constraints              │
+├──────────────────────────────────────────────┤
+│  ③ contract — 「どう作るか」(機械可読)        │
+│     api, data_model, behaviors, test_cases   │
+└──────────────────────────────────────────────┘
+   ↑ AIエージェントは①②③を読み、コードを生成
+   ↑ 人間はこの YAML だけをレビュー (= SSoT)
+</pre>
+    </div>
+
+    <div class="code-block">
+<pre><span class="cm"># ============================================
+# spec/feature-order-create.yaml
+# AIエージェントへの仕様 (SSoT)
+# ============================================</span>
+
+<span class="cm"># ① meta</span>
+<span class="prop">meta</span>:
+  <span class="prop">spec_id</span>: <span class="str">FEAT-2026-001</span>
+  <span class="prop">version</span>: <span class="str">"1.0.0"</span>           <span class="cm"># Lab 01: クォート必須</span>
+  <span class="prop">owner</span>: <span class="str">platform-team</span>
+  <span class="prop">schema</span>: <span class="str">spec-v2</span>           <span class="cm"># 検証用スキーマ参照</span>
+
+<span class="cm"># ② intent</span>
+<span class="prop">intent</span>:
+  <span class="prop">goal</span>: |                       <span class="cm"># Lab 02: literal で長文</span>
+    ユーザーが商品をカートに入れて
+    決済を完了できるようにする。
+  <span class="prop">non_goals</span>:                    <span class="cm"># 「やらないこと」を明示</span>
+    - <span class="str">"返品処理は別仕様"</span>          <span class="cm"># Lab 03: NOがあっても安全</span>
+    - <span class="str">"在庫予約のキャンセルは含まない"</span>
+  <span class="prop">constraints</span>:
+    - <span class="str">"PCI-DSS準拠"</span>
+    - <span class="str">"レスポンス500ms以内"</span>
+
+<span class="cm"># ③ contract — 機械可読部分</span>
+<span class="prop">_common</span>: &amp;<span class="fn">errorResponse</span>          <span class="cm"># Lab 08: アンカー</span>
+  <span class="prop">type</span>: <span class="str">object</span>
+  <span class="prop">required</span>: [<span class="str">code</span>, <span class="str">message</span>]
+  <span class="prop">properties</span>:
+    <span class="prop">code</span>: { <span class="prop">type</span>: <span class="str">string</span> }
+    <span class="prop">message</span>: { <span class="prop">type</span>: <span class="str">string</span> }
+
+<span class="prop">contract</span>:
+  <span class="prop">api</span>:
+    - <span class="prop">path</span>: <span class="str">/orders</span>             <span class="cm"># Lab 05: シーケンス</span>
+      <span class="prop">method</span>: <span class="str">POST</span>
+      <span class="prop">request</span>:
+        <span class="prop">type</span>: <span class="str">object</span>
+        <span class="prop">required</span>: [<span class="str">user_id</span>, <span class="str">items</span>]
+        <span class="prop">properties</span>:
+          <span class="prop">user_id</span>: { <span class="prop">type</span>: <span class="str">string</span>, <span class="prop">format</span>: <span class="str">uuid</span> }
+          <span class="prop">items</span>:
+            <span class="prop">type</span>: <span class="str">array</span>
+            <span class="prop">minItems</span>: <span class="num">1</span>
+            <span class="prop">items</span>:
+              <span class="prop">type</span>: <span class="str">object</span>
+              <span class="prop">properties</span>:
+                <span class="prop">sku</span>: { <span class="prop">type</span>: <span class="str">string</span> }
+                <span class="prop">qty</span>: { <span class="prop">type</span>: <span class="str">integer</span>, <span class="prop">minimum</span>: <span class="num">1</span> }
+      <span class="prop">responses</span>:
+        <span class="str">"201"</span>:
+          <span class="prop">type</span>: <span class="str">object</span>
+          <span class="prop">properties</span>:
+            <span class="prop">order_id</span>: { <span class="prop">type</span>: <span class="str">string</span>, <span class="prop">format</span>: <span class="str">uuid</span> }
+            <span class="prop">status</span>:
+              <span class="prop">type</span>: <span class="str">string</span>
+              <span class="prop">enum</span>: [<span class="str">pending</span>, <span class="str">confirmed</span>, <span class="str">failed</span>]
+        <span class="str">"400"</span>: *<span class="fn">errorResponse</span>     <span class="cm"># 共通エラー再利用</span>
+        <span class="str">"500"</span>: *<span class="fn">errorResponse</span>
+
+  <span class="prop">behaviors</span>:                   <span class="cm"># Given-When-Then</span>
+    - <span class="prop">id</span>: <span class="str">BHV-001</span>
+      <span class="prop">given</span>: <span class="str">"認証済みユーザーがログイン中"</span>
+      <span class="prop">when</span>: <span class="str">"カートに在庫ある商品で /orders POST"</span>
+      <span class="prop">then</span>: <span class="str">"201と order_id を返す"</span>
+    - <span class="prop">id</span>: <span class="str">BHV-002</span>
+      <span class="prop">given</span>: <span class="str">"在庫切れ商品が含まれる"</span>
+      <span class="prop">when</span>: <span class="str">"/orders POST"</span>
+      <span class="prop">then</span>: <span class="str">"400 と code:OUT_OF_STOCK を返す"</span>
+
+  <span class="prop">test_cases</span>:                  <span class="cm"># AIが自動生成すべきテスト</span>
+    - <span class="prop">name</span>: <span class="str">"正常系: 1商品1個"</span>
+      <span class="prop">input</span>:
+        <span class="prop">user_id</span>: <span class="str">"550e8400-e29b-41d4-a716-446655440000"</span>
+        <span class="prop">items</span>: [{ <span class="prop">sku</span>: <span class="str">"SKU-001"</span>, <span class="prop">qty</span>: <span class="num">1</span> }]
+      <span class="prop">expect</span>:
+        <span class="prop">status</span>: <span class="num">201</span>
+        <span class="prop">body.status</span>: <span class="str">"pending"</span></pre>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>このパターンの効能</strong>: AIエージェントは<code>contract</code>からコード・テスト・OpenAPI・ドキュメントを自動生成できる。人間は<code>intent</code>でレビューし、変更があれば<code>spec_id</code>と<code>version</code>を上げて再生成。<strong>仕様と実装の乖離が原理的に起きない</strong>。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 SSoT記述の7原則 (まとめ)</div>
+      <ul class="usecase-list">
+        <li><strong>1. クォート徹底</strong>: バージョン番号・国コード・電話番号は必ず<code>"..."</code></li>
+        <li><strong>2. リスト要素の構造を揃える</strong>: 同じキー集合のオブジェクトを並べる</li>
+        <li><strong>3. アンカーで重複排除</strong>: 共通部分は<code>&amp;</code>で1箇所に</li>
+        <li><strong>4. <code>|</code>でプロンプト保持</strong>: 改行が意味を持つ文字列はリテラルで</li>
+        <li><strong>5. enumを明示</strong>: <code>status: pending</code>ではなく<code>enum: [pending,...]</code>で許容値を宣言</li>
+        <li><strong>6. test_casesをinput/expectで</strong>: AIが自動でテストコード化できる形に</li>
+        <li><strong>7. schema_versionで進化</strong>: 仕様を進化させたら必ずバージョンを上げる</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- LAB 13 — 検証 & linter & スキーマ                            -->
+<!-- ============================================================ -->
+<div class="lab" id="lab13">
+  <div class="lab-header">
+    <div class="lab-num">13</div>
+    <h3>検証 &amp; linter &amp; JSON Schema</h3>
+    <span class="lab-tag tag-advanced">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      SSoTは<strong>機械的に検証可能</strong>でなければ意味がない。yamllintで構文・スタイル、JSON Schemaで<strong>意味的</strong>な妥当性を検証する。AIエージェントが生成・修正したYAMLを<strong>マージ前に必ず両方通す</strong>のが鉄則。
+    </p>
+
+    <div class="code-block">
+<pre><span class="cm"># yamllint 設定 (.yamllint)</span>
+<span class="prop">extends</span>: <span class="str">default</span>
+
+<span class="prop">rules</span>:
+  <span class="prop">line-length</span>:
+    <span class="prop">max</span>: <span class="num">120</span>
+  <span class="prop">indentation</span>:
+    <span class="prop">spaces</span>: <span class="num">2</span>
+    <span class="prop">indent-sequences</span>: <span class="num">true</span>
+    <span class="prop">check-multi-line-strings</span>: <span class="num">false</span>
+  <span class="prop">truthy</span>:
+    <span class="prop">allowed-values</span>: [<span class="str">"true"</span>, <span class="str">"false"</span>]    <span class="cm"># yes/noを禁止 → Norway対策</span>
+    <span class="prop">check-keys</span>: <span class="num">false</span>
+  <span class="prop">comments</span>:
+    <span class="prop">min-spaces-from-content</span>: <span class="num">2</span>
+  <span class="prop">empty-lines</span>:
+    <span class="prop">max</span>: <span class="num">2</span>
+  <span class="prop">trailing-spaces</span>: <span class="str">enable</span>
+  <span class="prop">key-duplicates</span>: <span class="str">enable</span>             <span class="cm"># 重複キーをエラーに</span></pre>
+    </div>
+
+    <div class="code-block">
+<pre><span class="cm"># JSON Schema (schema.yaml) — 意味的検証</span>
+<span class="prop">$schema</span>: <span class="str">"https://json-schema.org/draft/2020-12/schema"</span>
+<span class="prop">type</span>: <span class="str">object</span>
+<span class="prop">required</span>: [<span class="str">meta</span>, <span class="str">intent</span>, <span class="str">contract</span>]
+<span class="prop">properties</span>:
+  <span class="prop">meta</span>:
+    <span class="prop">type</span>: <span class="str">object</span>
+    <span class="prop">required</span>: [<span class="str">spec_id</span>, <span class="str">version</span>, <span class="str">owner</span>]
+    <span class="prop">properties</span>:
+      <span class="prop">spec_id</span>:
+        <span class="prop">type</span>: <span class="str">string</span>
+        <span class="prop">pattern</span>: <span class="str">"^FEAT-\\d{4}-\\d{3}$"</span>
+      <span class="prop">version</span>:
+        <span class="prop">type</span>: <span class="str">string</span>
+        <span class="prop">pattern</span>: <span class="str">"^\\d+\\.\\d+\\.\\d+$"</span>      <span class="cm"># SemVer強制</span>
+  <span class="prop">contract</span>:
+    <span class="prop">type</span>: <span class="str">object</span>
+    <span class="prop">required</span>: [<span class="str">api</span>, <span class="str">behaviors</span>]
+    <span class="prop">properties</span>:
+      <span class="prop">api</span>:
+        <span class="prop">type</span>: <span class="str">array</span>
+        <span class="prop">minItems</span>: <span class="num">1</span></pre>
+    </div>
+
+    <div class="code-block">
+<pre><span class="cm"># CI (GitHub Actions) — マージ前に強制</span>
+<span class="prop">name</span>: <span class="str">"Validate SSoT"</span>
+<span class="prop">on</span>: [<span class="str">pull_request</span>]      <span class="cm"># Lab 03: クォートで安全</span>
+
+<span class="prop">jobs</span>:
+  <span class="prop">validate</span>:
+    <span class="prop">runs-on</span>: <span class="str">ubuntu-latest</span>
+    <span class="prop">steps</span>:
+      - <span class="prop">uses</span>: <span class="str">actions/checkout@v4</span>
+      - <span class="prop">name</span>: <span class="str">"yamllint (構文/スタイル)"</span>
+        <span class="prop">run</span>: |
+          pip install yamllint
+          yamllint -c .yamllint spec/
+      - <span class="prop">name</span>: <span class="str">"JSON Schema (意味)"</span>
+        <span class="prop">run</span>: |
+          pip install check-jsonschema
+          check-jsonschema --schemafile schema.yaml spec/*.yaml
+      - <span class="prop">name</span>: <span class="str">"重複キー検出"</span>
+        <span class="prop">run</span>: |
+          python -c "import yaml; yaml.safe_load(open('spec/main.yaml'))"</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>検証ツール</th><th>検出するもの</th><th>言語/環境</th></tr></thead>
+      <tbody>
+        <tr><td>yamllint</td><td>構文・インデント・truthy</td><td>Python (CLI)</td></tr>
+        <tr><td>check-jsonschema</td><td>スキーマ違反・型不一致</td><td>Python (CLI)</td></tr>
+        <tr><td>ajv-cli</td><td>JSON Schema検証(高速)</td><td>Node.js</td></tr>
+        <tr><td>spectral</td><td>OpenAPI/AsyncAPI特化</td><td>Node.js</td></tr>
+        <tr><td>kubeval / kubeconform</td><td>Kubernetes特化</td><td>Go</td></tr>
+        <tr><td>VSCode YAML拡張</td><td>$schemaから即時補完・検証</td><td>エディタ</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box ok">
+      ✅ <strong>VSCodeで即時検証</strong>:
+      <pre style="margin-top:6px;font-family:var(--mono);font-size:.8rem;background:rgba(0,0,0,.05);padding:8px;border-radius:4px;">
+# .vscode/settings.json
+{
+  "yaml.schemas": {
+    "./schema.yaml": "spec/*.yaml"
+  }
+}</pre>
+      これでファイルを開いた瞬間に補完・型チェックが効く。AIエージェントが書いたYAMLも即座に検証可能。
+    </div>
+
+    <div class="info-box err">
+      🚨 <strong>SSoT運用での絶対NG</strong>:
+      <ul style="margin-left:20px;margin-top:6px;">
+        <li>linter無しで運用 → 半年で書式が3パターンに分裂する</li>
+        <li>schemaなしで運用 → AIエージェントが「それっぽい」YAMLを書いてしまい人間が気付かない</li>
+        <li>CIでブロックしない → ローカル実行を忘れた変更がmainに入る</li>
+      </ul>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 完成したSSoT運用パイプライン</div>
+<pre class="ascii-art" style="background:rgba(0,0,0,.05);padding:10px;border-radius:5px;font-family:var(--mono);font-size:.78rem;line-height:1.5;color:var(--text);overflow-x:auto;">
+[人間 / AIエージェント]
+       │ spec.yaml を編集
+       ↓
+[ローカル: pre-commit hook]
+   ├─ yamllint
+   ├─ check-jsonschema
+   └─ git commit (失敗ならブロック)
+       │
+       ↓
+[CI: PR時]
+   ├─ yamllint(再実行)
+   ├─ schema検証
+   ├─ contract互換性チェック(破壊的変更検出)
+   └─ レビュー必須
+       │
+       ↓
+[マージ後]
+   ├─ AIエージェントがコード生成
+   ├─ test_casesからテストコード生成
+   └─ デプロイ
+</pre>
+    </div>
+  </div>
+</div>
+
+</div><!-- /.container -->
+
+<script>
+  function copyCode(btn) {
+    const block = btn.closest('.code-block') || btn.parentElement;
+    const pre = block.querySelector('pre');
+    if (!pre) return;
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    });
+  }
+
+  const LAB_META = {
+    lab0: {
+      verify: {
+        before: 'JSON / 環境変数 / Markdown表 など、複数の場所に同じ事実が散らばっている状態',
+        after:  '▶︎ 1つの spec.yaml に集約され、人間・AIエージェント・テストが同じ場所を参照'
+      },
+      check: [
+        '①右クリック→ページのソース表示でこの埋め込みYAMLサンプルを直接見て、コメント(<code>#</code>)が書けることを確認',
+        '②次のラボへ進む前に、自分の手元プロジェクトで「複数箇所に書かれている同じ事実」を1つ思い浮かべる',
+        '③そのうえで、それを<code>spec.yaml</code>に集約したらどう書けそうかを頭の中で書いてみる'
+      ]
+    },
+    lab1: {
+      info: { type:'warn', html:'⚠️ <strong>SSoTで一番事故るのが型推論</strong>。バージョン番号<code>1.0</code>がfloatの1になる、電話番号<code>090...</code>の先頭0が消える、などは「読み込んだ後に数値になる」のでパース時には気づけない。<strong>必ずクォートする習慣</strong>を身につけることが最初の防壁。' },
+      verify: {
+        before: '<code>version: 1.0</code> → パース後 <code>version = 1.0</code> (float) で、文字列として比較すると失敗',
+        after:  '▶︎ <code>version: "1.0"</code> → パース後 <code>version = "1.0"</code> (str) で意図通り'
+      },
+      check: [
+        '①オンラインYAMLパーサ(<code>yaml-online-parser.appspot.com</code>等)を別ブラウザタブで開く',
+        '②本ラボのコードブロックの「型の事故」例をコピペし、JSON出力で<code>version</code>がどう変換されるか確認',
+        '③クォートを付けた版に書き換えて、出力が <code>"1.0"</code> (文字列)に変わることを確認',
+        '④<code>phone: 09012345678</code> でも先頭の0が消えることを実機確認'
+      ]
+    },
+    lab2: {
+      verify: {
+        before: '<code>plain: Line1\\nLine2</code> → 文字列<code>"Line1\\nLine2"</code> (バックスラッシュn が文字として残る)',
+        after:  '▶︎ <code>double: "Line1\\nLine2"</code> → 文字列<code>"Line1[改行]Line2"</code> (実際に改行)'
+      },
+      check: [
+        '①YAMLパーサに <code>literal: |</code> ブロックでコード片を貼り、改行がそのまま保持されることを別ブラウザで確認',
+        '②同じ内容を <code>folded: &gt;</code> に変えて、改行が空白に畳まれることを比較',
+        '③<code>|+</code> <code>|-</code> <code>|</code> の違いを末尾改行の数で確認(JSON出力末尾の<code>\\n</code>の数を数える)',
+        '④AIプロンプトを <code>|</code> で書いてみて、コピペで他ツールに移しても改行が崩れないことを確認'
+      ]
+    },
+    lab3: {
+      info: { type:'err', html:'🚨 <strong>SSoT文書で最も狡猾なバグの源</strong>。<code>NO</code>(ノルウェー)<code>ON</code>(オンタリオ州)<code>yes</code>(略号)などが知らぬ間に真偽値に変換され、<strong>パース時にエラーは出ず実行時に静かに違う動作をする</strong>。本番事故の温床。' },
+      verify: {
+        before: '<code>countries: [JP, US, NO]</code> → YAML 1.1で <code>["JP","US",false]</code>',
+        after:  '▶︎ <code>countries: ["JP","US","NO"]</code> → どのバージョンでも <code>["JP","US","NO"]</code>'
+      },
+      check: [
+        '①YAMLパーサで <code>v: NO</code> を貼り付け、出力JSONが <code>"v": false</code> になるバージョンを探す(古いPyYAML系で再現)',
+        '②同じ内容を <code>v: "NO"</code> に書き換え、JSON出力が <code>"v": "NO"</code> になることを確認',
+        '③自分の使うパーサのバージョンを公式ドキュメントで確認(README一文目に書いてあることが多い)',
+        '④yamllintの<code>truthy</code>ルールが<code>true/false</code>のみ許可になっているか<code>.yamllint</code>で確認'
+      ]
+    },
+    lab4: {
+      verify: {
+        before: '同じキーを2回書いた場合、多くのパーサで黙って後勝ちになる',
+        after:  '▶︎ yamllintの<code>key-duplicates: enable</code>で重複を機械的に検出'
+      },
+      check: [
+        '①YAMLパーサに同じキーを2回書いたサンプルを貼り、警告なしに上書きされることを別ブラウザタブで確認',
+        '②<code>yamllint</code>をローカルにインストールし、同じファイルにかけてエラーになることを確認',
+        '③深いネスト(3階層以上)を書き、JSON出力で構造が意図通りか確認',
+        '④<code>? [x, y]: "point"</code> のような複合キーがどうJSONに変換されるか別パーサで確認'
+      ]
+    },
+    lab5: {
+      verify: {
+        before: '<code>steps: build</code> ← マッピングのキー<code>steps</code>に値<code>"build"</code>が入る',
+        after:  '▶︎ <code>steps:[改行]  - build</code> ← <code>steps</code>キーに配列<code>["build"]</code>が入る'
+      },
+      check: [
+        '①ハイフン無し版とハイフン有り版を別タブのオンラインパーサに貼り、JSON出力の構造の違い(値が文字列か配列か)を比較',
+        '②流派A(揃え)と流派B(2スペース)の両方を貼って、結果が同じJSONになることを確認',
+        '③オブジェクトのリストを書いて、リスト要素ごとにキー数が違っても許容されることを確認',
+        '④空のリスト<code>tags: []</code>と1要素リストの違いをJSON出力で比較'
+      ]
+    },
+    lab6: {
+      info: { type:'warn', html:'⚠️ <strong>パースエラーの90%はインデント起因</strong>。タブとスペースの混在は目視で気づきにくいので、エディタの「不可視文字表示」を有効化しておく。VSCodeなら <code>"editor.renderWhitespace": "all"</code>。' },
+      verify: {
+        before: 'タブとスペースが混在 → ScannerError: found character that cannot start any token',
+        after:  '▶︎ 全行2スペースに統一 → 正常パース、JSON出力が階層通りになる'
+      },
+      check: [
+        '①わざと3スペースの行を1行混ぜて、オンラインパーサがエラー行番号を返すことを別ブラウザで確認',
+        '②エディタで「タブを表示」を有効にし、自分の書いたYAMLにタブが混入していないか目視確認',
+        '③<code>.editorconfig</code>ファイルをプロジェクトルートに置き、別エディタで開いても2スペース固定になるか確認',
+        '④prettierの<code>--parser yaml</code>でフォーマットすると、揃わないインデントが自動修正されることを確認'
+      ]
+    },
+    lab7: {
+      verify: {
+        before: '<code>users: [{name: A, role: admin}, {name: B, role: user}]</code> ← 1行で読みにくい、diffが汚い',
+        after:  '▶︎ ブロック形式に展開 → 1要素=数行、追加・削除のdiffが明確'
+      },
+      check: [
+        '①flowで書いたサンプルとblockで書いた等価サンプルをペアで作り、両方をパースしてJSON出力が一致することを確認',
+        '②flowスタイルで<code>{a:1,b:2}</code>(コロン後にスペースなし)を書いて、エラーになることを確認',
+        '③空のコレクション<code>tags: []</code>と<code>tags:</code>(値なし→null)の違いをJSON出力で比較',
+        '④<code>matrix: [[1,0],[0,1]]</code>のような数値だけの行列で、flowが読みやすい場面を体感する'
+      ]
+    },
+    lab8: {
+      info: { type:'info', html:'📘 <strong>アンカー・エイリアスはYAML仕様の核心機能</strong>。GitHub ActionsやKubernetes、Docker Composeで日常的に使われるが、<code>&lt;&lt;:</code>マージキーは<strong>YAML 1.2では非推奨</strong>。js-yaml 4.x ではデフォルトでサポートされないので、SSoT用途で使う前に<strong>パーサのドキュメントを必ず確認</strong>すること。' },
+      verify: {
+        before: '<code>prod</code>と<code>staging</code>に同じ3行のdefault設定をコピペで重複記述',
+        after:  '▶︎ <code>&amp;defaults</code>で1箇所定義、<code>*defaults</code>と<code>&lt;&lt;:</code>で参照・マージ'
+      },
+      check: [
+        '①アンカー・エイリアスを使ったYAMLをオンラインパーサに貼り、JSON出力で同じオブジェクトが2箇所に展開されていることを確認',
+        '②<code>&lt;&lt;: *defaults</code>のあとにローカルキーで上書きしたとき、上書きが効いていることをJSON出力で確認',
+        '③自分のパーサ(<code>python -c "import yaml; print(yaml.__version__)"</code>等)のバージョンを確認し、1.1か1.2か、マージキー対応か判定',
+        '④アンカー名を別の場所で再定義したらどうなるか試して、後勝ちになることをパーサで確認'
+      ]
+    },
+    lab9: {
+      verify: {
+        before: '3つのKubernetesリソースを3ファイルで管理 → ディレクトリが肥大、関連性が見えづらい',
+        after:  '▶︎ 1ファイルに<code>---</code>で連結 → <code>kubectl apply -f stack.yaml</code> 1発で展開'
+      },
+      check: [
+        '①<code>---</code>で区切った2つのドキュメントを書き、PythonでもNode.jsでもいい、<code>yaml.safe_load_all()</code>等で複数ドキュメントとして読めることをパーサ実行で確認',
+        '②<code>...</code>(終端)を書いた場合と書かない場合で、パース結果が同じになることを確認',
+        '③ファイル先頭に<code>---</code>を書く版と書かない版の両方が動作することを確認',
+        '④Kubernetesクラスタ無しでもいい、<code>kubectl apply --dry-run=client -f file.yaml</code>でマルチドキュメントが個別に処理されることをコマンド出力で確認'
+      ]
+    },
+    lab10: {
+      verify: {
+        before: '<code>version: 1.0</code> → 自動推論でfloat、意図と違う型に',
+        after:  '▶︎ <code>version: !!str 1.0</code> → 明示的に文字列強制、意図がコードで読める'
+      },
+      check: [
+        '①<code>!!str 100</code>と<code>!!int "100"</code>を書いてオンラインパーサで結果を比較し、JSON出力で型が変換されていることを確認',
+        '②<code>!!set</code>でセットを書き、JSON出力でキーだけが残り値がnullになる挙動を別ブラウザで確認',
+        '③自分の使うパーサで<code>!Custom</code>独自タグがエラーになるか・許容されるか試す',
+        '④<code>yaml.SafeLoader</code>と<code>yaml.Loader</code>(Python)で同じファイルを読み、独自タグの扱いの違いをコマンド実行で比較'
+      ]
+    },
+    lab11: {
+      verify: {
+        before: 'コメントアウトで設定切替 → 環境ごとに切り替え忘れ・コメントが化石化',
+        after:  '▶︎ コメントは「Why」と「制約の出典」に限定、設定切替は構造で表現'
+      },
+      check: [
+        '①YAMLをパースしてからyamlで書き戻す(round-trip)と、コメントが消えることをPython REPLで確認',
+        '②<code>ruamel.yaml</code>(コメント保持パーサ)を別途インストールし、コメントが残ることを比較確認',
+        '③自分のSSoT文書でコメントアウトされた古い設定がないかgrepで一斉チェック(<code>grep -rn "^#" spec/</code>)',
+        '④コメントに「Why」が書かれているか、「What」(コードと同じ内容を繰り返すだけ)になっているかをレビュー観点として意識'
+      ]
+    },
+    lab12: {
+      info: { type:'ok', html:'✅ <strong>このパターンを身につければAIエージェント駆動開発の生産性が劇的に変わる</strong>。<code>spec.yaml</code>を1つ書けば、AIエージェントがコード・テスト・APIドキュメント・OpenAPIスキーマを生成。仕様変更は<code>spec.yaml</code>を編集→AIに再生成依頼するだけ。<strong>仕様と実装の乖離が原理的に発生しない</strong>。' },
+      verify: {
+        before: '仕様書(Word)・コード・テストが別々に存在 → 変更時に3箇所更新、必ずどこかが古くなる',
+        after:  '▶︎ <code>spec.yaml</code>がSSoT、コード・テスト・ドキュメントは自動生成 → 変更点が1箇所'
+      },
+      check: [
+        '①このラボの<code>spec/feature-order-create.yaml</code>サンプルを自分のエディタにコピーして、構造を理解する',
+        '②<code>meta</code>/<code>intent</code>/<code>contract</code>の3層が明確に分かれていることを目視で確認',
+        '③自分の手元プロジェクトの1機能を選び、このテンプレートに当てはめて書いてみる(spec_idは<code>FEAT-2026-XXX</code>形式)',
+        '④書いた<code>spec.yaml</code>をAIエージェント(Claude Code等)に渡し、「このspecからコードを生成して」と依頼してアウトプットを比較'
+      ]
+    },
+    lab13: {
+      info: { type:'warn', html:'⚠️ <strong>linterとschemaを通さないSSoTは「ただの長文YAML」</strong>。AIエージェントは形式さえ整っていればもっともらしいYAMLを生成するため、<strong>意味的検証</strong>(JSON Schema)が必須。CIでブロックしないと半年で形式が分裂する。' },
+      verify: {
+        before: 'linter無し / CI検証無し → AIエージェントが書いた仕様の構造ミスがmainに入り、後段で発覚',
+        after:  '▶︎ pre-commit + CIでyamllint + JSON Schema検証 → マージ前に自動ブロック'
+      },
+      check: [
+        '①ローカルに<code>pip install yamllint check-jsonschema</code>でインストール',
+        '②自分のSSoTファイルに対し<code>yamllint -c .yamllint spec/</code>を実行し、警告・エラーがゼロか確認',
+        '③<code>schema.yaml</code>を1つ書き、<code>check-jsonschema --schemafile schema.yaml spec/*.yaml</code>を実行して通ることを確認',
+        '④VSCodeに<code>YAML</code>拡張をインストールし、<code>.vscode/settings.json</code>でschema関連付け。ファイルを開いた瞬間に補完候補が出ることを確認',
+        '⑤GitHub Actionsの<code>.github/workflows/validate-ssot.yml</code>を作成し、PR時に検証が走ることをactions実行履歴で確認'
+      ]
+    }
+  };
+
+  function infoHTML(m){ return m?.info ? `<div class="info-box ${m.info.type||'info'}">${m.info.html}</div>` : ''; }
+  function verifyHTML(m){ if (!m?.verify) return '';
+    const {before, after} = m.verify;
+    return `<div class="verify">
+      <div class="verify-col verify-before"><div class="verify-label">Before ▶︎ 実行前</div>${before||''}</div>
+      <div class="verify-col verify-after"><div class="verify-label">After ▶︎ 実行後</div>${after||''}</div>
+    </div>`; }
+  function checkHTML(m){ if (!m?.check?.length) return '';
+    return `<div class="check-steps">
+      <div class="check-steps-title">🔍 ブラウザ実機チェック</div>
+      <ol>${m.check.map(s=>`<li>${s}</li>`).join('')}</ol>
+    </div>`; }
+  function tryHTML(m){
+    const tip = m?.try ? `<div class="try-tip"><strong>💡 このラボのコツ:</strong> ${m.try}</div>` : '';
+    return `<div class="try-box">
+      <div class="try-title">💻 コード例を試す手順(コピペで動かす)</div>
+      <ol>
+        <li>上のコードブロックの <strong>Copy</strong> ボタンを押してクリップボードにコピー</li>
+        <li>テキストエディタで <code>試行.yaml</code> を新規作成し、ペーストして保存</li>
+        <li>オンラインYAMLパーサ(例: <code>yaml-online-parser.appspot.com</code>)に貼り付けるか、ローカルで <code>python -c "import yaml,sys; import json; print(json.dumps(yaml.safe_load(open('試行.yaml')), indent=2, ensure_ascii=False))"</code> を実行</li>
+        <li>下の「🔍 ブラウザ実機チェック」の項目を順に試して、想定通りの挙動になるか確認する</li>
+      </ol>
+      ${tip}
+    </div>`;
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.lab').forEach(lab => {
+      const meta = LAB_META[lab.id]; const body = lab.querySelector('.lab-body');
+      if (!body || !meta) return;
+      const frag = document.createElement('div');
+      frag.innerHTML = infoHTML(meta) + verifyHTML(meta) + tryHTML(meta) + checkHTML(meta);
+      while (frag.firstChild) body.appendChild(frag.firstChild);
+    });
+
+    const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+    const map = new Map();
+    links.forEach(a => { const el = document.getElementById(a.getAttribute('href').slice(1)); if (el) map.set(el, a); });
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting) { const l = map.get(e.target);
+        if (l) { links.forEach(n=>n.classList.remove('active')); l.classList.add('active'); } }
+    }), { rootMargin:'-30% 0px -60% 0px' });
+    document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+    document.querySelectorAll('.code-block').forEach((cb, i) => {
+      if (cb.querySelector('.code-block-header')) return;
+      const header = document.createElement('div');
+      header.className = 'code-block-header';
+      header.innerHTML = `<span>YAML — example #${i+1}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+      cb.insertBefore(header, cb.firstChild);
+    });
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.matches('.toggle-btn')) return;
+    const btn = e.target;
+    const stage = document.getElementById(btn.dataset.target);
+    if (!stage) return;
+    const isBefore = stage.classList.toggle('is-before');
+    btn.classList.toggle('is-before', isBefore);
+    const label = document.getElementById(btn.dataset.target + '-label');
+    if (label) label.textContent = isBefore ? '現在: Before(機能OFF/問題あり)' : '現在: After(機能ON/修正済み)';
+  });
+</script>
+
+</body>
+</html>
