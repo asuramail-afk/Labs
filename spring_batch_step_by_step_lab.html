@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spring Batch ステップバイステップ Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+.verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+  line-height:1.7; border:1px solid; }
+.verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+.verify-before .verify-label { color:var(--error); }
+.verify-after  .verify-label { color:var(--success); }
+
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+.compare-table .yes { color:var(--success); } .compare-table .no { color:var(--error); }
+
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+.usecase-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:6px; }
+.usecase-list { margin-left:20px; margin-bottom:10px; }
+.usecase-list li { margin-bottom:4px; }
+.usecase-trigger { background:rgba(0,92,197,.05); border-left:3px solid var(--accent);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#003d8f; margin-top:8px; }
+.usecase-trigger ul { margin:4px 0 0 20px; }
+
+.livedemo { margin:14px 0; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+.livedemo-bar { display:flex; align-items:center; gap:12px; padding:8px 12px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.toggle-btn { font-family:var(--mono); font-size:.78rem; padding:5px 14px;
+  border-radius:6px; border:1px solid var(--accent); background:var(--accent);
+  color:#fff; cursor:pointer; transition:all .15s; }
+.toggle-btn:hover { opacity:.85; }
+.toggle-btn.is-before { background:var(--error); border-color:var(--error); }
+.toggle-label { font-family:var(--mono); font-size:.78rem; color:var(--text-dim); }
+.livedemo-stage { padding:16px; background:var(--bg); }
+.livedemo-stage.is-before { outline:2px dashed var(--error); outline-offset:-8px; }
+.livedemo-stage .ld-before { display:none; }
+.livedemo-stage.is-before .ld-before { display:block; }
+.livedemo-stage.is-before .ld-after { display:none; }
+.ld-panel { padding:12px; border-radius:6px; font-family:var(--mono); font-size:11px; line-height:1.6; white-space:pre; overflow-x:auto; }
+.ld-panel.bad { background:#fee2e2; border:1px solid #cb2431; color:#6b1a22; }
+.ld-panel.good { background:#dcfce7; border:1px solid #22863a; color:#166534; }
+
+.try-box { background:rgba(34,134,58,.06); border:1px solid rgba(34,134,58,.30);
+  border-left:3px solid var(--success); border-radius:7px;
+  padding:12px 14px; margin:14px 0; font-size:.86rem; line-height:1.8; color:#154f1e; }
+.try-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--success); font-weight:700; margin-bottom:6px; }
+.try-box ol { margin-left:20px; margin-top:4px; }
+.try-box ol li { margin-bottom:4px; }
+.try-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--success); }
+.try-tip { background:rgba(176,136,0,.06); border-left:3px solid var(--accent4);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#5c4400; margin-top:8px; }
+.try-tip strong { color:var(--accent4); }
+.try-skeleton { background:#f0f4f8; border:1px solid var(--border); border-radius:5px;
+  padding:10px 12px; margin-top:8px; font-family:var(--mono); font-size:.78rem;
+  color:var(--text); white-space:pre; overflow-x:auto; line-height:1.5; }
+
+.code-pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; }
+.code-pair-col { display:flex; flex-direction:column; min-width:0; }
+.code-pair-label { font-family:var(--mono); font-size:.72rem; letter-spacing:.05em;
+  font-weight:700; padding:6px 10px; border-radius:6px 6px 0 0; }
+.code-pair-before .code-pair-label { background:rgba(203,36,49,.10); color:#9a1320;
+  border:1px solid rgba(203,36,49,.30); border-bottom:none; }
+.code-pair-after  .code-pair-label { background:rgba(34,134,58,.10); color:#154f1e;
+  border:1px solid rgba(34,134,58,.30); border-bottom:none; }
+.code-pair-col .code-block { margin:0; border-radius:0 0 8px 8px; flex:1; }
+.code-pair-before .code-block { border-color:rgba(203,36,49,.30); }
+.code-pair-after  .code-block { border-color:rgba(34,134,58,.30); }
+@media (max-width:900px){ .code-pair { grid-template-columns:1fr; } }
+
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .verify { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// Spring Batch <span>step-by-step</span></div>
+  <div class="nav-section">起動フェーズ</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>SpringBoot起動</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>@Configuration</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>ItemReader生成</a>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>ItemProcessor生成</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>Writer/Step/Job組立</a>
+  <div class="nav-section">実行フェーズ</div>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>JobLauncher起動</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>JobInstance決定</a>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>Step開始/Ctx復元</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>Chunk Loop ★</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>終了とメタデータ</a>
+  <div class="nav-section">応用</div>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>失敗→Restart</a>
+  <a class="nav-item" href="#lab11"><span class="nav-num">11</span>自作基盤との対応</a>
+</nav>
+
+<div class="hero">
+  <h1>Spring Batch ステップバイステップ Lab</h1>
+  <p class="subtitle">最小コード例「CSV→加工→DB」を、起動フェーズと実行フェーズに分けて1行ずつ追う</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>SpringBoot起動</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>@Configuration読み込み</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>ItemReader生成</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>ItemProcessor生成</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>Writer/Step/Job組立</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>JobLauncher起動</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>JobInstance決定</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>Step開始/Ctx復元</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>Chunk Loop ★最重要</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>終了とメタデータ確定</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">10</span>失敗→Restart シナリオ</a>
+    <a class="toc-item" href="#lab11"><span class="toc-num">11</span>自作VB.NET基盤との対応</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ========================= LAB 0 ========================= -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>Step 0 — SpringBoot起動と自動構成</h3>
+    <span class="lab-tag tag-basic">起動</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>main()</code> から <code>SpringApplication.run()</code> を呼んだ瞬間に Spring Batch の中核Beanが自動登録される。
+      ここで誰がいるかを把握しておくと、後続Labで「どこから来たBean?」と迷わない。
+    </p>
+
+    <div class="code-block">
+<pre><span class="kw">@SpringBootApplication</span>
+<span class="kw">public class</span> <span class="fn">BatchApplication</span> {
+    <span class="kw">public static void</span> <span class="fn">main</span>(<span class="kw">String</span>[] args) {
+        <span class="kw">SpringApplication</span>.<span class="fn">run</span>(<span class="kw">BatchApplication</span>.<span class="kw">class</span>, args);
+    }
+}</pre>
+    </div>
+
+    <p class="lab-desc">起動時に自動で用意される登場人物:</p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 起動直後のBean構成図</div>
+<pre class="ascii-art">ApplicationContext
+  ├── DataSource              (H2 等、組み込みなら自動)
+  ├── PlatformTransactionManager   ← chunk commit を担う
+  ├── JobRepository           ← BATCH_* テーブルを操作
+  └── JobLauncher             ← Job 起動口
+       │
+       └─ デフォルトで起動時に Job Bean を自動実行
+          (spring.batch.job.enabled=false で停止可)</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>Bean</th><th>役割</th><th>Spring Boot 5での扱い</th></tr></thead>
+      <tbody>
+        <tr><td>JobRepository</td><td>BATCH_*テーブル読み書き</td><td>自動構成</td></tr>
+        <tr><td>JobLauncher</td><td>Job実行のエントリ</td><td>自動構成</td></tr>
+        <tr><td>PlatformTransactionManager</td><td>chunk単位のtx境界</td><td>自動構成(DataSource由来)</td></tr>
+        <tr><td>BATCH_JOB_INSTANCE 他</td><td>メタデータDDL</td><td>組み込みDB時は自動実行</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ========================= LAB 1 ========================= -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>Step 1 — @Configuration の読み込み順</h3>
+    <span class="lab-tag tag-basic">起動</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>BatchConfig</code> 内の <code>@Bean</code> はソースコードに書いた順ではなく
+      <strong>依存関係順</strong>に呼ばれる。これを理解すると「なぜここでNullPointerが出ない?」が腑に落ちる。
+    </p>
+
+    <div class="code-block">
+<pre><span class="kw">@Configuration</span>
+<span class="kw">public class</span> <span class="fn">BatchConfig</span> {
+    <span class="cm">// @Bean reader, processor, writer, step1, importPersonJob ...</span>
+}</pre>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 依存グラフと呼び出し順</div>
+<pre class="ascii-art">  Job ──→ Step ──→ Reader     (Reader は親が要求した時に作る)
+              ├──→ Processor
+              ├──→ Writer ──→ DataSource
+              └──→ JobRepository, TxManager (自動Beanを参照)
+
+呼び出し順:
+  ① reader()        ← 依存なし、最初に作れる
+  ② processor()     ← 依存なし
+  ③ writer(ds)      ← DataSource(自動Bean)を要求
+  ④ step1(jr,tx,r,p,w)  ← 上3つ + 自動2つを要求
+  ⑤ importPersonJob(jr, step1) ← 最後</pre>
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ 誤解: ソース順に呼ばれる</div>
+        <div class="code-block">
+<pre><span class="cm">// 「上から順に呼ばれる」と勘違いすると、</span>
+<span class="cm">// step1 が reader をどう取るか説明できない。</span>
+<span class="kw">@Bean</span> Job job(...) { ... }
+<span class="kw">@Bean</span> Step step1(...) { ... }
+<span class="kw">@Bean</span> ItemReader reader() { ... }</pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ 正解: 依存解決順</div>
+        <div class="code-block">
+<pre><span class="cm">// Spring が依存グラフを解析して</span>
+<span class="cm">// reader → processor → writer → step1 → job</span>
+<span class="cm">// の順に @Bean メソッドを呼ぶ。</span>
+<span class="cm">// ソース順は無関係。</span></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================= LAB 2 ========================= -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>Step 2 — ItemReader (FlatFileItemReader) を1行ずつ</h3>
+    <span class="lab-tag tag-intermediate">起動</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>FlatFileItemReaderBuilder</code> の各メソッドが何のために呼ばれているか、5項目を分解する。
+      特に <code>.name("personReader")</code> は <strong>Restartの要</strong>。
+    </p>
+
+    <div class="code-block">
+<pre><span class="kw">@Bean</span>
+<span class="kw">public</span> <span class="fn">FlatFileItemReader</span>&lt;<span class="kw">Person</span>&gt; <span class="fn">reader</span>() {
+    <span class="kw">return new</span> <span class="fn">FlatFileItemReaderBuilder</span>&lt;<span class="kw">Person</span>&gt;()
+        .<span class="fn">name</span>(<span class="str">"personReader"</span>)                              <span class="cm">// ① ★Restart key</span>
+        .<span class="fn">resource</span>(<span class="kw">new</span> <span class="fn">ClassPathResource</span>(<span class="str">"persons.csv"</span>)) <span class="cm">// ② file</span>
+        .<span class="fn">delimited</span>()                                       <span class="cm">// ③ CSV</span>
+        .<span class="fn">names</span>(<span class="str">"firstName"</span>, <span class="str">"lastName"</span>)                  <span class="cm">// ④ columns</span>
+        .<span class="fn">targetType</span>(<span class="kw">Person</span>.<span class="kw">class</span>)                       <span class="cm">// ⑤ bean</span>
+        .<span class="fn">build</span>();
+}</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>#</th><th>メソッド</th><th>意味</th></tr></thead>
+      <tbody>
+        <tr><td>①</td><td>name()</td><td>STEP_EXECUTION_CONTEXT に保存するキー。Restart時にこの名前で「次に読む行」を復元する</td></tr>
+        <tr><td>②</td><td>resource()</td><td>ClassPathResource なら src/main/resources 配下、FileSystemResource なら絶対パス可</td></tr>
+        <tr><td>③</td><td>delimited()</td><td>カンマ区切り解釈。固定長なら fixedLength()</td></tr>
+        <tr><td>④</td><td>names()</td><td>列を識別子に命名。Personのsetterにマップする橋渡し</td></tr>
+        <tr><td>⑤</td><td>targetType()</td><td>new Person() してsetterで値投入</td></tr>
+      </tbody>
+    </table>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="ld-reader">Before(Bean生成時) を見る</button>
+        <span class="toggle-label" id="ld-reader-label">現在: After(Step実行時)</span>
+      </div>
+      <div class="livedemo-stage" id="ld-reader">
+        <div class="ld-panel good ld-after">✓ After: Step実行時の reader.read() 動作
+
+reader.open(ctx)  // ファイルOPEN, 行カウンタ=0
+read() → Person("John","Doe")     // 1行目
+read() → Person("Jane","Smith")   // 2行目
+...
+read() → null                     // EOF = ループ終了シグナル
+reader.close()</div>
+        <div class="ld-panel bad ld-before">✗ Before: @Bean生成直後の状態
+
+new FlatFileItemReader 完了
+ファイルはまだ開かれていない
+.read() を呼ぶとエラー
+↓
+Step実行時に reader.open() が
+呼ばれて初めて動く</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================= LAB 3 ========================= -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>Step 3 — ItemProcessor の3つの役割</h3>
+    <span class="lab-tag tag-intermediate">起動</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Processor の責務は<strong>「変換 / 検証 / フィルタ」</strong>の3つ。
+      <code>null</code> を返すと「フィルタ」、例外なら「Skip or Job失敗」、それ以外は「Writerへ」。
+    </p>
+
+    <div class="code-block">
+<pre><span class="kw">@Bean</span>
+<span class="kw">public</span> <span class="fn">ItemProcessor</span>&lt;<span class="kw">Person</span>, <span class="kw">Person</span>&gt; <span class="fn">processor</span>() {
+    <span class="kw">return</span> person -&gt; {
+        person.<span class="fn">setFirstName</span>(person.<span class="fn">getFirstName</span>().<span class="fn">toUpperCase</span>());
+        person.<span class="fn">setLastName</span>(person.<span class="fn">getLastName</span>().<span class="fn">toUpperCase</span>());
+        <span class="kw">return</span> person;
+    };
+}</pre>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 Processor の判断フロー</div>
+<pre class="ascii-art">受け取った item
+   │
+   ├─ 変換して return    → Writer へ送る
+   ├─ null を return     → そのitemは捨てる(filter, エラーではない)
+   └─ throw 例外         → faultTolerant設定次第で Skip or Job失敗</pre>
+    </div>
+
+    <div class="info-box warn">
+      ⚠ <strong>副作用は禁物</strong>: Processor内でDB書き込みやAPI呼び出しをしてはいけない。
+      chunk commit境界が崩れ、Restart時に二重実行になる。書き込みは Writer に集約する。
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before: Processor で副作用</div>
+        <div class="code-block">
+<pre><span class="kw">return</span> person -&gt; {
+    person.<span class="fn">setFirstName</span>(...);
+    auditDao.<span class="fn">log</span>(person);  <span class="cm">// ★悪い: 副作用</span>
+    <span class="kw">return</span> person;
+};
+<span class="cm">// → chunk失敗時、auditだけ残ってDB不整合</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After: 純粋関数として書く</div>
+        <div class="code-block">
+<pre><span class="kw">return</span> person -&gt; {
+    person.<span class="fn">setFirstName</span>(...);
+    <span class="kw">return</span> person;  <span class="cm">// ★pureな変換のみ</span>
+};
+<span class="cm">// 監査ログは別Step or 別Writer で。</span>
+<span class="cm">// commit境界が一致して整合性が保てる。</span></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================= LAB 4 ========================= -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>Step 4 — Writer / Step / Job の組み立て</h3>
+    <span class="lab-tag tag-intermediate">起動</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>JdbcBatchItemWriter</code> は内部で <code>addBatch() + executeBatch()</code> を使い、
+      chunk内の全件を<strong>1回のJDBC呼び出しでまとめて送る</strong>。これがスループットの肝。
+    </p>
+
+    <div class="code-block">
+<pre><span class="kw">@Bean</span>
+<span class="kw">public</span> <span class="fn">JdbcBatchItemWriter</span>&lt;<span class="kw">Person</span>&gt; <span class="fn">writer</span>(<span class="kw">DataSource</span> dataSource) {
+    <span class="kw">return new</span> <span class="fn">JdbcBatchItemWriterBuilder</span>&lt;<span class="kw">Person</span>&gt;()
+        .<span class="fn">dataSource</span>(dataSource)                                    <span class="cm">// ① 自動Bean</span>
+        .<span class="fn">sql</span>(<span class="str">"INSERT INTO person (first_name, last_name) "</span> +
+             <span class="str">"VALUES (:firstName, :lastName)"</span>)                  <span class="cm">// ② named param</span>
+        .<span class="fn">beanMapped</span>()                                              <span class="cm">// ③ getterに自動マップ</span>
+        .<span class="fn">build</span>();
+}</pre>
+    </div>
+
+    <p class="lab-desc"><strong>Step</strong> = Reader/Processor/Writer + chunkサイズ + tx境界 を束ねる。</p>
+
+    <div class="code-block">
+<pre><span class="kw">@Bean</span>
+<span class="kw">public</span> <span class="fn">Step</span> <span class="fn">step1</span>(<span class="kw">JobRepository</span> jr, <span class="kw">PlatformTransactionManager</span> tx,
+                  <span class="fn">ItemReader</span>&lt;<span class="kw">Person</span>&gt; r, <span class="fn">ItemProcessor</span>&lt;<span class="kw">Person</span>,<span class="kw">Person</span>&gt; p,
+                  <span class="fn">ItemWriter</span>&lt;<span class="kw">Person</span>&gt; w) {
+    <span class="kw">return new</span> <span class="fn">StepBuilder</span>(<span class="str">"step1"</span>, jr)              <span class="cm">// ① BATCH_STEP_EXECUTION key</span>
+        .&lt;<span class="kw">Person</span>,<span class="kw">Person</span>&gt;<span class="fn">chunk</span>(<span class="num">10</span>, tx)                <span class="cm">// ② chunk=10 + tx境界</span>
+        .<span class="fn">reader</span>(r).<span class="fn">processor</span>(p).<span class="fn">writer</span>(w)            <span class="cm">// ③ DI連結</span>
+        .<span class="fn">build</span>();
+}
+
+<span class="kw">@Bean</span>
+<span class="kw">public</span> <span class="fn">Job</span> <span class="fn">importPersonJob</span>(<span class="kw">JobRepository</span> jr, <span class="fn">Step</span> step1) {
+    <span class="kw">return new</span> <span class="fn">JobBuilder</span>(<span class="str">"importPersonJob"</span>, jr)
+        .<span class="fn">start</span>(step1).<span class="fn">build</span>();
+}</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>chunk(10, tx) の意味</strong>: 「10件処理ごとに1回commit」を宣言している。
+      <code>chunk(10)</code> = read×10 + process×10 + write(10) + commit が1サイクル。
+      失敗時はそのサイクル分だけrollback、それまでのcommitは確定。
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>chunkサイズ</th><th>失敗時のロス</th><th>スループット</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>最小(1件)</td><td>低(commit多発)</td><td>クリティカルだが遅くてOK</td></tr>
+        <tr><td>10〜100</td><td>小〜中</td><td>中</td><td>標準</td></tr>
+        <tr><td>1000+</td><td>大</td><td>高</td><td>大量データ高速処理</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ========================= LAB 5 ========================= -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>Step 5 — JobLauncher.run() で実行開始</h3>
+    <span class="lab-tag tag-intermediate">実行</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Spring Boot の batch 自動構成は、起動時に Job Bean を自動実行する。
+      手動実行する場合は <code>JobLauncher</code> を直接呼ぶ。<strong>JobParameters</strong> が冪等性キーになる。
+    </p>
+
+    <div class="code-block">
+<pre><span class="kw">JobParameters</span> params = <span class="kw">new</span> <span class="fn">JobParametersBuilder</span>()
+    .<span class="fn">addString</span>(<span class="str">"inputFile"</span>, <span class="str">"persons_20260505.csv"</span>)
+    .<span class="fn">addLocalDateTime</span>(<span class="str">"ts"</span>, <span class="kw">LocalDateTime</span>.<span class="fn">now</span>())
+    .<span class="fn">toJobParameters</span>();
+
+jobLauncher.<span class="fn">run</span>(importPersonJob, params);</pre>
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before: 毎回同じparams</div>
+        <div class="code-block">
+<pre><span class="cm">// 毎回同一params → 同一JobInstance</span>
+<span class="cm">// 1回成功すると2回目は</span>
+<span class="cm">// JobInstanceAlreadyCompleteException</span>
+<span class="kw">JobParameters</span> p = <span class="kw">new</span> <span class="fn">JobParametersBuilder</span>()
+    .<span class="fn">addString</span>(<span class="str">"file"</span>, <span class="str">"a.csv"</span>)
+    .<span class="fn">toJobParameters</span>();</pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After: timestamp混入</div>
+        <div class="code-block">
+<pre><span class="cm">// ts が毎回変わる → 別JobInstance扱い</span>
+<span class="cm">// 何度でも実行可能</span>
+<span class="kw">JobParameters</span> p = <span class="kw">new</span> <span class="fn">JobParametersBuilder</span>()
+    .<span class="fn">addString</span>(<span class="str">"file"</span>, <span class="str">"a.csv"</span>)
+    .<span class="fn">addLocalDateTime</span>(<span class="str">"ts"</span>,
+        <span class="kw">LocalDateTime</span>.<span class="fn">now</span>())
+    .<span class="fn">toJobParameters</span>();</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box warn">
+      ⚠ <strong>Restart vs 別実行の使い分け</strong>: 失敗JobをやりなおしたいときはあえてSAMEparamsで実行する(=Restart)。
+      新しい処理として実行したいときはts等で差別化する。設計時にどちらが正解か明確にしておく。
+    </div>
+  </div>
+</div>
+
+<!-- ========================= LAB 6 ========================= -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>Step 6 — JobInstance の決定とJobExecution作成</h3>
+    <span class="lab-tag tag-advanced">実行</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>JobLauncher.run()</code> の最初の仕事は「このparamsはRestartか新規か」の判定。
+      <code>JobRepository</code> がDBを問い合わせて分岐する。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 JobLauncher 内部のフロー</div>
+<pre class="ascii-art">jobLauncher.run(job, params)
+   │
+   ├── JobRepository.createJobInstance(jobName, params)
+   │     │
+   │     ├─ 既存JobInstance + 前回COMPLETED
+   │     │     → JobInstanceAlreadyCompleteException
+   │     │
+   │     ├─ 既存JobInstance + 前回FAILED
+   │     │     → 既存を再利用 = Restart
+   │     │
+   │     └─ 見つからない
+   │           → 新規JobInstance作成
+   │
+   ├── JobExecution作成 (status=STARTING)
+   ├── BATCH_JOB_EXECUTION INSERT
+   └── 実行スレッドへ制御を渡す</pre>
+    </div>
+
+    <p class="lab-desc">DB上の状態(初回実行時):</p>
+
+    <div class="code-block">
+<pre><span class="cm">-- BATCH_JOB_INSTANCE</span>
+id  | job_name           | job_key (params hash)
+----+--------------------+---------------------------
+1   | importPersonJob    | a3f9c1d2...
+
+<span class="cm">-- BATCH_JOB_EXECUTION</span>
+id  | instance_id | status   | start_time
+----+-------------+----------+--------------------
+100 | 1           | STARTING | 2026-05-05 09:00:00</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>JobInstance vs JobExecution</strong>:
+      JobInstanceは「論理的な1回」、JobExecutionは「物理的な1回の試行」。
+      失敗してRestartすると JobInstance:1 → JobExecution:2 になる(1対多)。
+    </div>
+  </div>
+</div>
+
+<!-- ========================= LAB 7 ========================= -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>Step 7 — Step開始と ExecutionContext 復元</h3>
+    <span class="lab-tag tag-advanced">実行</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Step開始時、ItemReaderの <code>open(executionContext)</code> が呼ばれる。
+      Restartの場合、ここで <strong>前回の読み取り位置にseek</strong> される。これがCheckpoint復元の正体。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 Step起動シーケンス</div>
+<pre class="ascii-art">1. StepExecution作成
+     → BATCH_STEP_EXECUTION INSERT (status=STARTING)
+
+2. ItemReader.open(executionContext)
+     ├─ 新規実行: ファイルOPEN、行カウンタ=0
+     │
+     └─ Restart: BATCH_STEP_EXECUTION_CONTEXT から
+                 {"FlatFileItemReader.read.count": 20} を読む
+                 → 21行目までskipしてseek
+
+3. StepExecution.status = STARTED
+4. Chunk Loopへ</pre>
+    </div>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="ld-restart">Before(初回) を見る</button>
+        <span class="toggle-label" id="ld-restart-label">現在: After(Restart)</span>
+      </div>
+      <div class="livedemo-stage" id="ld-restart">
+        <div class="ld-panel good ld-after">✓ After: Restart時の reader.open()
+
+DBから読む:
+  STEP_EXECUTION_CONTEXT
+    ↓
+  {"FlatFileItemReader.read.count": 20}
+    ↓
+ファイルOPEN → 20行スキップ
+  ↓
+21行目から read() 開始
+  ↓
+20件目までは前回commit済みなので
+DBに二重INSERTされない</div>
+        <div class="ld-panel bad ld-before">○ Before: 初回実行時の reader.open()
+
+DBには ExecutionContext なし
+  ↓
+ファイルOPEN(行カウンタ=0)
+  ↓
+1行目から read() 開始
+
+(普通の動作。Restartではない)</div>
+      </div>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>Tomさん自作VB.NET基盤の Checkpoint との対応</strong>:
+      自作基盤で「ジョブテーブルにlast_processed_idを保存→再起動時に読む」をやっていたなら、
+      まさにそれが <code>BATCH_STEP_EXECUTION_CONTEXT</code> として標準化されている。
+    </div>
+  </div>
+</div>
+
+<!-- ========================= LAB 8 ========================= -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>Step 8 — Chunk Loop 本体 ★最重要</h3>
+    <span class="lab-tag tag-advanced">実行</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Spring Batchの心臓部。<strong>read×N → process×N → write(N) → commit</strong> のサイクルを
+      readがnullを返すまで繰り返す。chunkサイズが10、CSVが23行なら3回のcommitに分かれる。
+    </p>
+
+    <div class="code-block">
+<pre><span class="cm">// 疑似コード(StepのChunk指向実装の本体)</span>
+<span class="kw">while</span> (<span class="kw">true</span>) {
+    <span class="kw">TransactionStatus</span> tx = txManager.<span class="fn">getTransaction</span>(...);
+    <span class="kw">List</span>&lt;<span class="kw">Person</span>&gt; items = <span class="kw">new</span> <span class="fn">ArrayList</span>&lt;&gt;();
+
+    <span class="cm">// (a) read を chunk-size 回</span>
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; <span class="num">10</span>; i++) {
+        <span class="kw">Person</span> item = reader.<span class="fn">read</span>();
+        <span class="kw">if</span> (item == <span class="kw">null</span>) <span class="kw">break</span>;       <span class="cm">// EOF</span>
+        items.<span class="fn">add</span>(item);
+    }
+    <span class="kw">if</span> (items.<span class="fn">isEmpty</span>()) {
+        txManager.<span class="fn">commit</span>(tx); <span class="kw">break</span>;     <span class="cm">// ループ終了</span>
+    }
+
+    <span class="cm">// (b) process を全件</span>
+    <span class="kw">List</span>&lt;<span class="kw">Person</span>&gt; processed = <span class="kw">new</span> <span class="fn">ArrayList</span>&lt;&gt;();
+    <span class="kw">for</span> (<span class="kw">Person</span> p : items) {
+        <span class="kw">Person</span> out = processor.<span class="fn">process</span>(p);
+        <span class="kw">if</span> (out != <span class="kw">null</span>) processed.<span class="fn">add</span>(out);  <span class="cm">// null=フィルタ</span>
+    }
+
+    <span class="cm">// (c) write をまとめて1回</span>
+    writer.<span class="fn">write</span>(<span class="kw">new</span> <span class="fn">Chunk</span>&lt;&gt;(processed));
+
+    <span class="cm">// (d) ExecutionContext更新 (read.count を保存)</span>
+    <span class="cm">// (e) commit → INSERT確定 + Restart位置永続化</span>
+    txManager.<span class="fn">commit</span>(tx);
+}</pre>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 chunk=10、CSV=23行 の時系列</div>
+<pre class="ascii-art">t=0  ┃tx開始┃read×10┃process×10┃write(10)┃ctx更新┃commit┃ ← 1〜10件確定
+t=1  ┃tx開始┃read×10┃process×10┃write(10)┃ctx更新┃commit┃ ← 11〜20件確定
+t=2  ┃tx開始┃read× 3┃process× 3┃write( 3)┃ctx更新┃commit┃ ← 21〜23件確定
+t=3  ┃tx開始┃read=null → empty → commit → break┃         ← ループ脱出
+
+  total: read=23, write=23, commit=3</pre>
+    </div>
+
+    <div class="verify">
+      <div class="verify-col verify-before">
+        <div class="verify-label">Before(commit境界の理解前)</div>
+        ・「失敗したら全部やり直し」<br>
+        ・どこまで処理されたか不明<br>
+        ・冪等性は自前で実装する必要あり
+      </div>
+      <div class="verify-col verify-after">
+        <div class="verify-label">After(理解後)</div>
+        ・chunk単位で確定/巻き戻し<br>
+        ・read.countでどこまで処理済か明確<br>
+        ・冪等性はSpring Batchが保証
+      </div>
+    </div>
+
+    <div class="info-box ok">
+      ✓ <strong>commit境界 = chunkサイズ</strong>。これがSpring Batchの設計上の核心。
+      「どこから再開できるか」が「どこでcommitするか」と一致する。
+      自作基盤を作るときも、この対応を崩さないことが信頼性の基盤になる。
+    </div>
+  </div>
+</div>
+
+<!-- ========================= LAB 9 ========================= -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>Step 9 — Job終了とメタデータ確定</h3>
+    <span class="lab-tag tag-intermediate">実行</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Chunk Loopが正常終了したあと、ItemReaderクローズ → 各種カウンタDB更新 → Job終了 の順で締める。
+      最終的にDBに残る情報を確認する。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 終了シーケンス</div>
+<pre class="ascii-art">1. ItemReader.close()      → ファイルハンドル解放
+
+2. StepExecution更新
+     status = COMPLETED
+     readCount = 23
+     writeCount = 23
+     commitCount = 3
+     filterCount = 0
+     skipCount = 0
+     → BATCH_STEP_EXECUTION UPDATE
+
+3. JobExecution更新
+     status = COMPLETED
+     end_time = ...
+     → BATCH_JOB_EXECUTION UPDATE
+
+4. JobLauncher.run() がリターン</pre>
+    </div>
+
+    <p class="lab-desc">最終的なDB状態:</p>
+
+    <div class="code-block">
+<pre><span class="cm">-- BATCH_JOB_INSTANCE  (1行)</span>
+id=1, job_name=importPersonJob
+
+<span class="cm">-- BATCH_JOB_EXECUTION  (1行)</span>
+id=100, status=COMPLETED, start=09:00:00, end=09:00:05
+
+<span class="cm">-- BATCH_STEP_EXECUTION  (1行)</span>
+id=200, step_name=step1, status=COMPLETED,
+read_count=23, write_count=23, commit_count=3
+
+<span class="cm">-- BATCH_STEP_EXECUTION_CONTEXT  ★Restartの根拠</span>
+{"FlatFileItemReader.read.count": 23}
+
+<span class="cm">-- person  (アプリのテーブル: 23行)</span>
+1, JOHN, DOE
+2, JANE, SMITH
+...</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>監視のポイント</strong>: 本番運用ではこれらカウンタを監視ダッシュボードに出す。
+      <code>read_count != write_count</code> ならフィルタやSkipが発生している(意図通りか確認)。
+      <code>commit_count</code> から「想定chunk数とズレてないか」を見るとパフォーマンス劣化の早期検知になる。
+    </div>
+  </div>
+</div>
+
+<!-- ========================= LAB 10 ========================= -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>失敗→Restart シナリオ(全体観)</h3>
+    <span class="lab-tag tag-advanced">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Step 8の chunk3 (13件目以降の3件) でWriter例外が発生したケースを追う。
+      なぜRestart時に重複INSERTが起きないのか、ここで完全に腑に落ちる。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 失敗発生時のロールバック</div>
+<pre class="ascii-art">[1回目実行]
+chunk1: tx commit済    → person: 10件確定
+chunk2: tx commit済    → person: 20件確定
+chunk3: write中で例外発生
+    │
+    ├─ tx ROLLBACK     → 21〜23件目のINSERT巻き戻し
+    ├─ STEP_EXECUTION.status = FAILED
+    └─ STEP_EXECUTION_CONTEXT に
+         {"FlatFileItemReader.read.count": 20}
+       が確定保存されている (chunk2のcommit時点)
+
+[Restart: 同じJobParametersで再実行]
+    │
+    ├─ JobRepository: 既存JobInstance + FAILED → Restart判定
+    ├─ reader.open(): ctxから20を取得 → 21行目にseek
+    └─ chunk loop再開:
+         read 21,22,23 → process → write → commit
+         read=null → 終了
+         → person: 23件、二重INSERTなし</pre>
+    </div>
+
+    <div class="verify">
+      <div class="verify-col verify-before">
+        <div class="verify-label">Before: Spring Batchなし(自作)</div>
+        ・どこで失敗したか手動確認<br>
+        ・どこから再開すべきか業務ロジックで判定<br>
+        ・冪等性キー設計を自分で<br>
+        ・状態テーブルを自分で設計
+      </div>
+      <div class="verify-col verify-after">
+        <div class="verify-label">After: Spring Batchあり</div>
+        ・状態は <code>STEP_EXECUTION_CONTEXT</code> に自動保存<br>
+        ・Restartは「同じparamsで再実行」だけ<br>
+        ・冪等性はchunk commit境界で自動担保<br>
+        ・状態テーブルは <code>BATCH_*</code> 標準
+      </div>
+    </div>
+
+    <div class="info-box ok">
+      ✓ <strong>Tomさんの自作9フェーズ基盤との比較</strong>:
+      Phase「Checkpoint/Restart」「DLQ」「ETL/ELT」「Staging Table」は、
+      Spring Batchでは <code>chunk commit</code> + <code>SkipListener</code> + <code>ItemReader→Processor→Writer</code> + 後続Step に
+      ほぼ1対1で対応する。設計判断の答え合わせができる。
+    </div>
+  </div>
+</div>
+
+<!-- ========================= LAB 11 ========================= -->
+<div class="lab" id="lab11">
+  <div class="lab-header">
+    <div class="lab-num">11</div>
+    <h3>自作VB.NET基盤との対応マップ</h3>
+    <span class="lab-tag tag-advanced">応用</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      9フェーズで構築した自作バッチ基盤の各概念が、Spring Batchではどのコンポーネントで実装されているかを対照する。
+      自作の設計判断のうち、何が標準と一致し、何が独自要素だったかを可視化する。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>自作基盤の概念</th><th>Spring Batchの対応</th><th>備考</th></tr></thead>
+      <tbody>
+        <tr><td>ジョブ管理</td><td>Job + JobRepository</td><td>BATCH_JOB_INSTANCE/EXECUTION</td></tr>
+        <tr><td>スケジューリング</td><td>(範囲外)</td><td>Quartz / cron / k8s CronJob と組み合わせ</td></tr>
+        <tr><td>エラーハンドリング</td><td>faultTolerant() + Skip/Retry</td><td>Lab別途参照</td></tr>
+        <tr><td>冪等性</td><td>JobInstance一意性 + chunk commit</td><td>JobParametersがキー</td></tr>
+        <tr><td>Checkpoint/restart</td><td>STEP_EXECUTION_CONTEXT 自動</td><td>Lab07,Lab10参照</td></tr>
+        <tr><td>DLQ</td><td>SkipListener で別テーブル退避</td><td>onSkipInWrite で実装</td></tr>
+        <tr><td>ETL/ELT</td><td>Reader→Processor→Writer</td><td>パイプライン標準形</td></tr>
+        <tr><td>Staging Table</td><td>JdbcBatchItemWriter + 後続Step</td><td>Step分割で本番反映</td></tr>
+        <tr><td>ジョブ依存・分岐</td><td>JobBuilder.on(...).to(...)</td><td>ExitStatusで分岐</td></tr>
+        <tr><td>並列実行</td><td>Multi-threaded / Partitioning</td><td>taskExecutor()や分割キー</td></tr>
+      </tbody>
+    </table>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 学習を活かす場面</div>
+      <ul class="usecase-list">
+        <li>OutSystems Timer/BPTで類似処理を組むときの「業界標準命名」が手に入る</li>
+        <li>自作基盤のレビューで「Spring Batch相当の機能はあるか」をチェックリスト化できる</li>
+        <li>新規エンタープライズ案件でJava採用が出たとき、既存知識を即活用できる</li>
+        <li>VB.NETバッチ基盤のドキュメント整備で「Spring Batchの〇〇に相当」と注釈できる</li>
+      </ul>
+      <div class="usecase-trigger">
+        🎯 <strong>こう見えたら使える候補</strong>:
+        <ul>
+          <li>「ジョブ管理テーブルを自前で持っている」コード → JobRepositoryに置き換え検討</li>
+          <li>「途中失敗で全件やりなおし」設計 → chunk指向化で改善余地</li>
+          <li>「リトライをSQLとアプリ両方で書いている」 → faultTolerant().retry()に集約可能</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>次の深掘り候補</strong>:
+      (a) Skip/Retryの判定フロー詳細、(b) Multi-threaded Step時のChunk Loop変化、
+      (c) Partitioningの実装パターン、(d) JobOperatorによる運用操作(stop/restart/abandon)。
+      要素レベルカード化(<code>flashcard-element-builder</code>)で長期記憶定着もおすすめ。
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+  function copyCode(btn) {
+    const block = btn.closest('.code-block') || btn.parentElement;
+    const pre = block.querySelector('pre');
+    if (!pre) return;
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    });
+  }
+
+  const LAB_META = {
+    lab0: {
+      info: { type:'info', html:'📘 <strong>自動構成の正体</strong>: <code>spring-boot-starter-batch</code> がクラスパスにあると、Spring Bootが <code>JobRepository</code> / <code>JobLauncher</code> / <code>PlatformTransactionManager</code> を自動Bean化する。Spring Batch 5以降は <code>@EnableBatchProcessing</code> 明示不要。' },
+      check: [
+        '①BatchApplicationクラスを目視で読み、<code>@SpringBootApplication</code>が付いていることを確認',
+        '②application.properties等に<code>spring.batch.jdbc.initialize-schema=always</code>(組み込みDB時)が設定されているか確認',
+        '③依存関係に<code>spring-boot-starter-batch</code>と<code>DataSource</code>提供ライブラリ(H2等)が両方あるか',
+        '④起動ログに<code>JobRepository</code>と<code>JobLauncher</code>の作成メッセージが出るか'
+      ]
+    },
+    lab1: {
+      info: { type:'info', html:'📘 <strong>Bean呼び出し順は依存解決で決まる</strong>: Springは<code>@Bean</code>メソッドの引数を見て依存グラフを構築し、葉から根へと呼び出す。「ソース順」という直感は誤り。' },
+      check: [
+        '①BatchConfigの各@Beanメソッドを上から下に読み、引数を矢印で結んで依存グラフを描く',
+        '②葉(引数なし)から順に呼ばれることを確認: reader→processor→writer→step1→job',
+        '③writerの引数<code>DataSource</code>がどこから来るか追跡(Spring Boot自動構成由来)',
+        '④もしBean定義に循環依存があるとどんなエラーになるか想像する(BeanCurrentlyInCreationException)'
+      ]
+    },
+    lab2: {
+      info: { type:'info', html:'📘 <strong>name()がRestartの要</strong>: <code>FlatFileItemReader</code>は<code>ExecutionContext</code>に「{name}.read.count」というキーで読込行数を保存する。<code>name</code>を変えると別Readerとして扱われ、Restartが効かなくなる。' },
+      verify: {
+        before: 'FlatFileItemReader Bean生成直後: ファイル未OPEN、read()不可',
+        after: 'Step実行時にreader.open()されてから、read()で1件ずつPersonが返ってくる'
+      },
+      check: [
+        '①.name()の値とBean変数名を区別: <code>name</code>はDB保存キー、変数名はSpring内部',
+        '②.resource()のClassPathResourceがどのフォルダを指すか確認(src/main/resources)',
+        '③.delimited()と.fixedLength()の違い、CSVと固定長ファイルでどう使い分けるか',
+        '④.names()のCSVカラム名が、Personクラスのsetterメソッド名と対応しているか',
+        '⑤Reader Beanは状態(行カウンタ)を持つので、複数Stepで使い回すとバグの元'
+      ]
+    },
+    lab3: {
+      info: { type:'warn', html:'⚠ <strong>Processorは純粋関数に</strong>: 副作用(DB書込み・外部API呼出し)があるとchunk failureで巻き戻せず、整合性が崩れる。書き込みはWriterに集約。' },
+      check: [
+        '①Processor内で<code>throw new RuntimeException</code>するとどう動くか想定(Skip設定なしならJob失敗)',
+        '②<code>return null</code>するとそのitemはWriterに渡らない(filter)。エラーではなく仕様',
+        '③Processor内でログ出力はOK(副作用ではない情報出力)',
+        '④Processorの戻り値型を変えると(Person→String等)、Writerの型も合わせる必要がある',
+        '⑤<code>CompositeItemProcessor</code>で複数Processorをチェーン可能'
+      ]
+    },
+    lab4: {
+      info: { type:'info', html:'📘 <strong>chunk(N, tx)の二重宣言</strong>: 第1引数Nがchunkサイズ、第2引数txがcommit境界を担うTransactionManager。両方必須なのは「commitの単位とまとめる単位を揃える」設計の意思表示。' },
+      check: [
+        '①JdbcBatchItemWriterのSQLで<code>:firstName</code>がPersonの<code>getFirstName()</code>に対応していることを確認',
+        '②<code>.beanMapped()</code>を<code>.columnMapped()</code>に変えるとMap前提になる',
+        '③StepBuilderの第1引数"step1"がBATCH_STEP_EXECUTIONテーブルでどう使われるか想像',
+        '④chunk(10, tx)を chunk(1000, tx) に変えるとどうなるか(commit回数減・失敗時ロス増)',
+        '⑤JobBuilderの<code>.start(step1).next(step2)</code>でStep連結できる'
+      ]
+    },
+    lab5: {
+      info: { type:'warn', html:'⚠ <strong>同一params再実行は禁止</strong>: COMPLETEDのJobInstanceに同じparamsで再実行しようとすると<code>JobInstanceAlreadyCompleteException</code>。これは冪等性保証のためのバリデーション。' },
+      check: [
+        '①CLI起動時の引数<code>java -jar app.jar key=value</code>がどうJobParametersに渡るか確認',
+        '②<code>spring.batch.job.name=importPersonJob</code>で起動Jobを指定する仕組み',
+        '③CommandLineRunner実装でプログラマティックにJobLauncherを呼ぶパターンを書いてみる',
+        '④<code>addLocalDateTime("ts", LocalDateTime.now())</code>がなぜ毎回別Instance扱いになるか説明できる'
+      ]
+    },
+    lab6: {
+      info: { type:'info', html:'📘 <strong>JobInstance一意性</strong>: <code>job_name + params_hash</code>がBATCH_JOB_INSTANCEのユニーク制約。これがDB制約レベルで冪等性を保証する仕組み。' },
+      check: [
+        '①BATCH_JOB_INSTANCEテーブルの<code>JOB_KEY</code>カラムがどう生成されるか(SHA-256ハッシュ)',
+        '②同一params2回実行で<code>JobInstanceAlreadyCompleteException</code>が出ることを想定',
+        '③前回FAILED時の挙動: 同じJobInstanceに新しいJobExecutionが追加される',
+        '④BATCH_JOB_EXECUTIONをstatus別にcountすると運用状況が見える'
+      ]
+    },
+    lab7: {
+      info: { type:'ok', html:'✓ <strong>Checkpoint復元の核心</strong>: BATCH_STEP_EXECUTION_CONTEXTのJSONに保存された「読み取り済み件数」を、reader.open()時に逆方向にskipして位置合わせする。これがTomさんの自作Checkpointの標準実装。' },
+      check: [
+        '①ItemReaderが<code>ItemStream</code>インターフェースを実装していることがopen/close/update対応の条件',
+        '②BATCH_STEP_EXECUTION_CONTEXTのSHORT_CONTEXTカラムを目視で読めばJSONが見える',
+        '③カスタムReaderを書く時は<code>open(ExecutionContext)</code>と<code>update(ExecutionContext)</code>でctxに何を入れるか設計',
+        '④Restart不要なReader(例: 単発SQL)では<code>ItemStream</code>未実装でもOK'
+      ]
+    },
+    lab8: {
+      info: { type:'info', html:'📘 <strong>chunk loopの本質</strong>: 「読む→変換→書く→commit」を1サイクルとし、readがnullを返すまで繰り返す。tx境界が1サイクルに一致するから「失敗時の巻き戻しコスト=chunkサイズ」が成立する。' },
+      verify: {
+        before: 'chunk理解前: 「失敗したら全部やり直し」と思い込んでいる',
+        after: 'chunk理解後: 「commit済みは確定、未commitだけ巻き戻し」と説明できる'
+      },
+      check: [
+        '①chunk(10)とCSV23行で commit_countが3になることを暗算で確認',
+        '②chunk(100)に変えると commit_count=1 になる(全件1回でcommit)',
+        '③Processorが10件中3件をnullで返したら write件数は7件になる(filter)',
+        '④readで例外が出たらそのchunk全体がrollback、Skip設定があれば次のchunkへ',
+        '⑤writeで例外が出ると当該chunkのread済み全件がrollback対象'
+      ]
+    },
+    lab9: {
+      info: { type:'info', html:'📘 <strong>運用監視の起点</strong>: BATCH_JOB_EXECUTIONとBATCH_STEP_EXECUTIONのカウンタは、運用ダッシュボードの基本データソース。Grafana等でread_count/write_count/commit_count/skip_countを定常監視するのが定石。' },
+      check: [
+        '①Job終了後、BATCH_JOB_EXECUTIONのstatus列が COMPLETED/FAILED/STOPPED いずれかになる',
+        '②BATCH_STEP_EXECUTIONの<code>read_count != write_count</code>はフィルタかSkipの発生を示唆',
+        '③BATCH_STEP_EXECUTION_CONTEXTのJSONに最終位置が記録される',
+        '④personテーブルの実件数とwrite_countが一致するか確認'
+      ]
+    },
+    lab10: {
+      info: { type:'ok', html:'✓ <strong>Restartの黄金律</strong>: 「同じJobParametersで再実行」だけで Spring Batch が自動的に「前回の続き」から再開する。アプリ側のロジック不要。これが業界標準のCheckpoint/Restartパターン。' },
+      verify: {
+        before: '自作基盤: どこから再開するかをアプリで判定する必要',
+        after: 'Spring Batch: 同じparamsで再実行するだけ、判定はフレームワーク内'
+      },
+      check: [
+        '①FAILEDなJobExecutionに対し、SAMEparamsで再起動するとRestartになる',
+        '②NEW paramsで起動すれば別JobInstanceとして新規実行',
+        '③BATCH_STEP_EXECUTION_CONTEXTのJSONを見て、Reader位置がどう記録されているか目視',
+        '④chunk2 commit済 + chunk3 失敗の場合、Restart後はchunk3の先頭から開始する',
+        '⑤<code>JobOperator.abandon()</code>で「もうRestartしない」とマークすることも可能'
+      ]
+    },
+    lab11: {
+      info: { type:'ok', html:'✓ <strong>知識の架け橋</strong>: 自作VB.NET基盤の概念を Spring Batch の語彙で説明できると、英語ドキュメント・OSS事例・他社事例とも自然に接続できる。' },
+      check: [
+        '①自作基盤の各フェーズ実装を開いて、Spring Batchのどの部品に対応するかメモ',
+        '②自作基盤にあって Spring Batch にない概念があれば、それは独自要素として明文化',
+        '③自作基盤に「ない」が Spring Batch に「ある」機能(Partitioning等)は補強候補',
+        '④OutSystems Timerでバッチ的処理を組むときも、この対応マップが設計指針になる'
+      ]
+    }
+  };
+
+  function infoHTML(m){ return m?.info ? `<div class="info-box ${m.info.type||'info'}">${m.info.html}</div>` : ''; }
+  function verifyHTML(m){ if (!m?.verify) return '';
+    const {before, after} = m.verify;
+    return `<div class="verify">
+      <div class="verify-col verify-before"><div class="verify-label">Before ▶︎ 実行前</div>${before||''}</div>
+      <div class="verify-col verify-after"><div class="verify-label">After ▶︎ 実行後</div>${after||''}</div>
+    </div>`; }
+  function checkHTML(m){ if (!m?.check?.length) return '';
+    return `<div class="check-steps">
+      <div class="check-steps-title">🔍 コード読解チェック(目視で追う)</div>
+      <ol>${m.check.map(s=>`<li>${s}</li>`).join('')}</ol>
+    </div>`; }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.lab').forEach(lab => {
+      const meta = LAB_META[lab.id]; const body = lab.querySelector('.lab-body');
+      if (!body || !meta) return;
+      const frag = document.createElement('div');
+      frag.innerHTML = infoHTML(meta) + verifyHTML(meta) + checkHTML(meta);
+      while (frag.firstChild) body.appendChild(frag.firstChild);
+    });
+
+    const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+    const map = new Map();
+    links.forEach(a => { const el = document.getElementById(a.getAttribute('href').slice(1)); if (el) map.set(el, a); });
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting) { const l = map.get(e.target);
+        if (l) { links.forEach(n=>n.classList.remove('active')); l.classList.add('active'); } }
+    }), { rootMargin:'-30% 0px -60% 0px' });
+    document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+    document.querySelectorAll('.code-block').forEach((cb, i) => {
+      if (cb.querySelector('.code-block-header')) return;
+      const header = document.createElement('div');
+      header.className = 'code-block-header';
+      header.innerHTML = `<span>Code #${i+1}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+      cb.insertBefore(header, cb.firstChild);
+    });
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.matches('.toggle-btn')) return;
+    const btn = e.target;
+    const stage = document.getElementById(btn.dataset.target);
+    if (!stage) return;
+    const isBefore = stage.classList.toggle('is-before');
+    btn.classList.toggle('is-before', isBefore);
+    const label = document.getElementById(btn.dataset.target + '-label');
+    if (label) label.textContent = isBefore ? '現在: Before(機能OFF/問題あり)' : '現在: After(機能ON/修正済み)';
+  });
+</script>
+
+</body>
+</html>

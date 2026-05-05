@@ -1,0 +1,1876 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reference Architecture Lab — 参照アーキテクチャ網羅学習</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+/* Sidebar */
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+/* Hero */
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+/* TOC */
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+/* Container & Lab cards */
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+/* Code block */
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+/* Syntax token colors (GitHub light) */
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+
+/* info-box */
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+/* verify Before/After */
+.verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+  line-height:1.7; border:1px solid; }
+.verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+.verify-before .verify-label { color:var(--error); }
+.verify-after  .verify-label { color:var(--success); }
+
+/* check-steps */
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+/* compare-table */
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+.compare-table .yes { color:var(--success); } .compare-table .no { color:var(--error); }
+
+/* beginner-box */
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+/* usecase-box */
+.usecase-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:6px; }
+.usecase-list { margin-left:20px; margin-bottom:10px; }
+.usecase-list li { margin-bottom:4px; }
+.usecase-trigger { background:rgba(0,92,197,.05); border-left:3px solid var(--accent);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#003d8f; margin-top:8px; }
+.usecase-trigger ul { margin:4px 0 0 20px; }
+
+/* livedemo */
+.livedemo { margin:14px 0; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+.livedemo-bar { display:flex; align-items:center; gap:12px; padding:8px 12px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.toggle-btn { font-family:var(--mono); font-size:.78rem; padding:5px 14px;
+  border-radius:6px; border:1px solid var(--accent); background:var(--accent);
+  color:#fff; cursor:pointer; transition:all .15s; }
+.toggle-btn:hover { opacity:.85; }
+.toggle-btn.is-before { background:var(--error); border-color:var(--error); }
+.toggle-label { font-family:var(--mono); font-size:.78rem; color:var(--text-dim); }
+.livedemo-stage { padding:16px; background:var(--bg); }
+.livedemo-stage.is-before { outline:2px dashed var(--error); outline-offset:-8px; }
+.livedemo-stage .ld-before { display:none; }
+.livedemo-stage.is-before .ld-before { display:block; }
+.livedemo-stage.is-before .ld-after { display:none; }
+.ld-panel { padding:12px; border-radius:6px; font-family:var(--mono); font-size:11px; line-height:1.6; }
+.ld-panel.bad { background:#fee2e2; border:1px solid #cb2431; color:#6b1a22; white-space:pre; overflow-x:auto; }
+.ld-panel.good { background:#dcfce7; border:1px solid #22863a; color:#166534; white-space:pre; overflow-x:auto; }
+
+/* try-box */
+.try-box { background:rgba(34,134,58,.06); border:1px solid rgba(34,134,58,.30);
+  border-left:3px solid var(--success); border-radius:7px;
+  padding:12px 14px; margin:14px 0; font-size:.86rem; line-height:1.8; color:#154f1e; }
+.try-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--success); font-weight:700; margin-bottom:6px; }
+.try-box ol { margin-left:20px; margin-top:4px; }
+.try-box ol li { margin-bottom:4px; }
+.try-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--success); }
+.try-tip { background:rgba(176,136,0,.06); border-left:3px solid var(--accent4);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#5c4400; margin-top:8px; }
+.try-tip strong { color:var(--accent4); }
+.try-skeleton { background:#f0f4f8; border:1px solid var(--border); border-radius:5px;
+  padding:10px 12px; margin-top:8px; font-family:var(--mono); font-size:.78rem;
+  color:var(--text); white-space:pre; overflow-x:auto; line-height:1.5; }
+
+/* code-pair */
+.code-pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; }
+.code-pair-col { display:flex; flex-direction:column; min-width:0; }
+.code-pair-label { font-family:var(--mono); font-size:.72rem; letter-spacing:.05em;
+  font-weight:700; padding:6px 10px; border-radius:6px 6px 0 0; }
+.code-pair-before .code-pair-label { background:rgba(203,36,49,.10); color:#9a1320;
+  border:1px solid rgba(203,36,49,.30); border-bottom:none; }
+.code-pair-after  .code-pair-label { background:rgba(34,134,58,.10); color:#154f1e;
+  border:1px solid rgba(34,134,58,.30); border-bottom:none; }
+.code-pair-col .code-block { margin:0; border-radius:0 0 8px 8px; flex:1; }
+.code-pair-before .code-block { border-color:rgba(203,36,49,.30); }
+.code-pair-after  .code-block { border-color:rgba(34,134,58,.30); }
+@media (max-width:900px){ .code-pair { grid-template-columns:1fr; } }
+
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .verify { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+  </style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// Reference Architecture <span>Lab</span></div>
+  <div class="nav-section">基本概念</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>定義と目的</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>業界標準との関係</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>構成要素の俯瞰</a>
+  <div class="nav-section">ビューと階層</div>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>4+1ビューモデル</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>レイヤード参照</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>ヘキサゴナル/クリーン</a>
+  <div class="nav-section">代表的な参照アーキ</div>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>マイクロサービス</a>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>イベント駆動</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>クラウド参照アーキ</a>
+  <div class="nav-section">実践</div>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>OutSystems Canvas</a>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>ADRと意思決定記録</a>
+  <a class="nav-item" href="#lab11"><span class="nav-num">11</span>評価フレームワーク</a>
+  <a class="nav-item" href="#lab12"><span class="nav-num">12</span>導入ロードマップ</a>
+</nav>
+
+<div class="hero">
+  <h1>Reference Architecture Lab</h1>
+  <p class="subtitle">参照アーキテクチャを13ラボで網羅 — 定義／ビュー／代表パターン／OutSystems実践／評価まで</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>参照アーキテクチャの定義と目的</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>業界標準・フレームワークとの関係</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>構成要素の俯瞰（5+1要素）</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>4+1ビューモデル</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>レイヤード参照アーキ</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>ヘキサゴナル / クリーン</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>マイクロサービス参照アーキ</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>イベント駆動参照アーキ</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>クラウド参照アーキ（Well-Architected）</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>OutSystems Architecture Canvas</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">10</span>ADRと意思決定の記録</a>
+    <a class="toc-item" href="#lab11"><span class="toc-num">11</span>評価フレームワーク（ATAM）</a>
+    <a class="toc-item" href="#lab12"><span class="toc-num">12</span>導入ロードマップと組織展開</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ============================================================
+  Lab 00: 参照アーキテクチャの定義と目的
+============================================================ -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>参照アーキテクチャの定義と目的</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <strong>参照アーキテクチャ (Reference Architecture / RA)</strong> とは、ある領域・業界・技術スタックで「典型的に有効」とされる構造・要素・関係性をテンプレート化したもの。具体システムではなく <code>抽象パターン</code> を提示する点で <code>ソリューションアーキテクチャ</code> と区別される。SIerでは新規案件の<strong>初期構成のたたき台</strong>・<strong>レビュー基準</strong>・<strong>標準化教材</strong>として使う。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 そもそも「参照」とは？</div>
+      抽象度を3段階で押さえると混乱しない：<br>
+      <strong>① エンタープライズアーキ</strong>（経営戦略×IT全体図）→ <strong>② 参照アーキ</strong>（特定ドメイン/技術の汎用構造）→ <strong>③ ソリューションアーキ</strong>（個別案件の具体設計）。<br>
+      参照アーキは ②。具体プロダクト名は最小限、図と原則と非機能要件中心。
+<pre class="ascii-art">
+  抽象度 高
+    ↑   ┌──────────────────────────┐
+    │   │ Enterprise Architecture  │  経営×IT 全社マップ（TOGAF等）
+    │   ├──────────────────────────┤
+    │   │ Reference Architecture   │  ★ ココ：ドメイン/技術の汎用構造
+    │   ├──────────────────────────┤
+    │   │ Solution Architecture    │  個別案件の具体設計
+    │   └──────────────────────────┘
+  抽象度 低
+</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>軸</th><th>参照アーキ (RA)</th><th>ソリューションアーキ (SA)</th></tr></thead>
+      <tbody>
+        <tr><td>対象</td><td>ドメイン/技術の汎用パターン</td><td>個別プロジェクト</td></tr>
+        <tr><td>顧客</td><td>複数案件の母集団</td><td>1案件1顧客</td></tr>
+        <tr><td>具体度</td><td>製品名は最小限</td><td>製品・バージョン・台数まで</td></tr>
+        <tr><td>寿命</td><td>3〜10年</td><td>案件の稼働期間</td></tr>
+        <tr><td>所有者</td><td>標準化チーム/CoE</td><td>プロジェクトアーキ</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+      <pre><span class="cm">// 参照アーキの「最小単位」を擬似テキストで表す</span>
+<span class="kw">ReferenceArchitecture</span> {
+  <span class="prop">name</span>: <span class="str">"Web系業務システムRA v3"</span>,
+  <span class="prop">scope</span>: <span class="str">"社内向け業務Web、〜500並行ユーザ、Azure前提"</span>,
+  <span class="prop">drivers</span>: [<span class="str">"開発期間6ヶ月以内"</span>, <span class="str">"運用人数2名"</span>, <span class="str">"監査ログ7年保管"</span>],
+  <span class="prop">layers</span>: [<span class="str">"Presentation"</span>, <span class="str">"Application"</span>, <span class="str">"Domain"</span>, <span class="str">"Infrastructure"</span>],
+  <span class="prop">crossCutting</span>: [<span class="str">"AuthN/AuthZ"</span>, <span class="str">"Logging"</span>, <span class="str">"Caching"</span>, <span class="str">"Audit"</span>],
+  <span class="prop">decisions</span>: [<span class="str">"DBはAzure SQL"</span>, <span class="str">"認証はOIDC + 社内IdP"</span>],
+  <span class="prop">non-goals</span>: [<span class="str">"オンプレ固定の基幹会計"</span>, <span class="str">"&gt;10万並行のBtoC"</span>]
+}</pre>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>新規案件キックオフで「ベース構成案」を1日で出したい</li>
+        <li>顧客提案時の概念図／非機能要件のたたき台</li>
+        <li>新人/中途のオンボーディング教材（共通言語の確立）</li>
+        <li>監査・セキュリティレビューの観点リスト</li>
+        <li>調達(製品選定)時の「外せない条件」抽出</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>📍 こう見えたら出番:</strong>
+        <ul>
+          <li>「毎案件、最初の1ヶ月が構成議論で消える」</li>
+          <li>「アーキテクチャレビュー会の指摘がプロジェクト毎に違う」</li>
+          <li>「人が増えても新人が独自設計を始めてしまう」</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="ld-ra-def">Before を見る</button>
+        <span class="toggle-label" id="ld-ra-def-label">現在: After（RAあり）</span>
+      </div>
+      <div class="livedemo-stage" id="ld-ra-def">
+        <div class="ld-panel good ld-after">✓ After: RAあり
+[新規案件P]
+  └→ RAを参照「Web系業務RA v3」採用
+      ├ 構成: Presentation/Application/Domain/Infra (確定)
+      ├ 非機能: 7年監査・OIDC認証 (確定)
+      └ 議論: 案件固有の20%だけに集中 → 1週間で初期構成FIX</div>
+        <div class="ld-panel bad ld-before">✗ Before: RAなし
+[新規案件P]
+  └→ ゼロから議論
+      ├ 構成: 「DBは何？」「認証どうする？」「ログ保管期間は？」
+      ├ メンバー毎に経験差で意見対立
+      └ 1ヶ月過ぎても初期構成FIXせず → 設計工数膨張</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+  Lab 01: 業界標準・フレームワークとの関係
+============================================================ -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>業界標準・フレームワークとの関係（TOGAF/Zachman）</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      参照アーキは <code>TOGAF</code>・<code>Zachman</code> といったエンタープライズアーキテクチャ (EA) フレームワーク内では「<strong>Architecture Continuum</strong>」上に位置づけられる中間生成物。Foundation（基礎）→ Common Systems（業界横断）→ Industry（業界特化）→ Organization-Specific（社内特化）という連続性で抽象→具体に下りていく。
+    </p>
+
+    <div class="info-box info">
+      📘 <strong>TOGAF ADM上の位置</strong>: Phase B(Business)/C(Information Systems)/D(Technology) で参照アーキを参照しながら自社/案件用に具体化する。RAは「Solutions Continuum」の入口となるテンプレ群。
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm">// Architecture Continuum の階層（TOGAF）</span>
+Foundation Architecture        <span class="cm">// TRMなど最も汎用</span>
+   ↓ より具体
+Common Systems Architecture    <span class="cm">// 業界横断（例: 一般的なWebアプリ三層）</span>
+   ↓
+Industry Architecture          <span class="cm">// 業界特化（例: 金融オンラインバンキングRA）</span>
+   ↓
+Organization-Specific          <span class="cm">// 自社特化（例: A社向けWeb業務RA v3）</span></pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>フレーム</th><th>RAの位置づけ</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr><td>TOGAF</td><td>Architecture Continuum / Solutions Continuum</td><td>ADM Phase B-D の入力</td></tr>
+        <tr><td>Zachman</td><td>各セル（What/How/Where/Who/When/Why × 6視点）の標準解</td><td>網羅性チェック</td></tr>
+        <tr><td>IT4IT</td><td>Value Stream毎のリファレンス</td><td>運用プロセス標準化</td></tr>
+        <tr><td>ArchiMate</td><td>記法（モデリング言語）</td><td>RAの図示・関係表現</td></tr>
+        <tr><td>NIST CSF / ISO 27001</td><td>セキュリティ観点RA</td><td>非機能要件のチェック</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box warn">
+      ⚠️ <strong>誤解しがちな点</strong>: TOGAFやZachmanは<u>RAそのもの</u>ではなく、RAを<strong>作る・配置する・運用する</strong>ためのメタフレームワーク。「TOGAF採用」=「RAができる」ではない。RAは別途設計が必要。
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before（混同あり）</div>
+        <div class="code-block">
+          <pre><span class="cm">// 提案書での誤った表現</span>
+<span class="str">"本案件はTOGAF準拠のため、</span>
+<span class="str"> マイクロサービス構成とします。"</span>
+<span class="cm">// → TOGAFはRA選択を強制しない</span>
+<span class="cm">//   論理が飛躍している</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After（正しい）</div>
+        <div class="code-block">
+          <pre><span class="cm">// 正しい論理連鎖</span>
+<span class="str">"TOGAF ADMに従い分析した結果、</span>
+<span class="str"> ビジネス要件と非機能要件から</span>
+<span class="str"> 弊社RA カタログ中の</span>
+<span class="str"> 『MSA-参照アーキ v2』を選定。"</span>
+<span class="cm">// ← フレーム/RA/個別案件 の関係明示</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>RFP/提案書で「業界標準準拠」を語るときの引用</li>
+        <li>監査対応で「設計プロセスの正当性」を示す</li>
+        <li>大企業との取引でEAフレームに揃える必要があるとき</li>
+        <li>社内RAカタログを整備する際の階層設計</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>📍 こう見えたら出番:</strong>
+        <ul>
+          <li>「TOGAF準拠と書きたいが、何を準拠と呼ぶか曖昧」</li>
+          <li>「監査でアーキ決定の根拠を聞かれている」</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+  Lab 02: 構成要素の俯瞰（5+1要素）
+============================================================ -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>参照アーキの構成要素 — 何を必ず書くか</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      RAドキュメントが必ず備えるべき構成要素は概ね <strong>5+1</strong>。<code>① コンテキスト</code> <code>② 構成図</code> <code>③ コンポーネント定義</code> <code>④ 非機能要件</code> <code>⑤ 意思決定記録(ADR)</code> + <code>⑥ 適用ガイド</code>。これらが揃って初めて「再利用可能」と呼べる。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 RAの中身マップ</div>
+<pre class="ascii-art">
+┌─────────── Reference Architecture Document ───────────┐
+│                                                        │
+│ ① Context（誰のための・どこまでの範囲か）             │
+│    └ Drivers / Constraints / Out of Scope             │
+│                                                        │
+│ ② Structure（構成図 — 論理/物理/配備）                │
+│    └ コンポーネント図・配置図・データフロー           │
+│                                                        │
+│ ③ Components（各部品の責務・I/F・代表製品）           │
+│                                                        │
+│ ④ Quality Attributes（非機能要件マトリクス）          │
+│    └ 可用性・性能・セキュリティ・運用性 など          │
+│                                                        │
+│ ⑤ ADR（採用理由・却下理由・トレードオフ）             │
+│                                                        │
+│ ⑥ Adoption Guide（適用手順・テーラリング指針）        │
+└────────────────────────────────────────────────────────┘
+</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>要素</th><th>書く内容</th><th>抜けると起きる問題</th></tr></thead>
+      <tbody>
+        <tr><td>① Context</td><td>適用対象・前提・対象外</td><td>適用範囲外の案件に流用され炎上</td></tr>
+        <tr><td>② Structure</td><td>論理/物理構成図</td><td>絵が無く議論が空中戦になる</td></tr>
+        <tr><td>③ Components</td><td>責務とI/F定義</td><td>境界が曖昧で実装が肥大化</td></tr>
+        <tr><td>④ NFR</td><td>性能/可用/セキュ目標値</td><td>機能だけ作って本番で爆発</td></tr>
+        <tr><td>⑤ ADR</td><td>採否の根拠</td><td>「なぜこれ?」を毎回再議論</td></tr>
+        <tr><td>⑥ Adoption</td><td>テーラリング手順</td><td>RAが「飾り」になる</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+      <pre><span class="cm">// ④ NFR（非機能要件）マトリクスの例</span>
+| 観点         | 目標値                    | 検証方法            |
+|--------------|---------------------------|---------------------|
+| 可用性        | 99.9% (月43分以内停止OK)  | SLO監視ダッシュボード |
+| 応答時間      | p95 &lt; 1.0sec / Top画面    | 性能試験 (JMeter)   |
+| 同時接続      | 500並行                  | 負荷試験            |
+| RTO / RPO    | 4時間 / 1時間            | DR訓練              |
+| 監査ログ保管  | 7年                       | ストレージライフサイクル |
+| 認証          | OIDC (社内IdP)           | ペネトレーション試験 |</pre>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>抜け漏れチェックの簡易テスト</strong>: RAドキュメントを読んだ別チームが「自分の案件で使うか」「使わない場合何を変えるか」を判断できるか? できれば合格、無理なら ① Context か ⑥ Adoption Guide が不足。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>新規RA策定時のテンプレート（章立て）</li>
+        <li>既存RAの抜け漏れ監査</li>
+        <li>RAレビュー会のチェックリスト</li>
+        <li>新人にRAの読み方を教える教材</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>📍 こう見えたら出番:</strong>
+        <ul>
+          <li>「RAはあるが構成図しか無い」</li>
+          <li>「NFRが書かれていない or 数値が無い」</li>
+          <li>「適用範囲が不明で何にでも当てはめられている」</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+  Lab 03: 4+1ビューモデル
+============================================================ -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>4+1ビューモデル — 多視点でアーキを記述する</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Philippe Kruchten が提唱した <strong>4+1 View Model</strong>。<code>Logical</code>(論理) / <code>Process</code>(プロセス) / <code>Development</code>(開発) / <code>Physical</code>(配備) の4ビュー + <code>Scenarios</code>(ユースケース) でアーキを多角的に記述する。RAでも「1枚絵」では足りない時に必ず使う基本枠組み。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 4+1ビューの全体像</div>
+<pre class="ascii-art">
+                    ┌────────────────┐
+                    │   Scenarios    │  ユースケース・要件
+                    │  (+1 ビュー)    │  → 他4ビューを駆動
+                    └───────┬────────┘
+                            │
+            ┌───────────────┼───────────────┐
+            │               │               │
+   ┌────────▼─────┐  ┌──────▼──────┐  ┌────▼──────────┐
+   │  Logical     │  │  Process    │  │  Development  │
+   │  論理構造     │  │ 並行性・通信 │  │ コード/モジュール │
+   │ (機能要件)    │  │  (性能/可用) │  │ (開発の利便性)  │
+   └──────────────┘  └─────────────┘  └───────────────┘
+                            │
+                    ┌───────▼────────┐
+                    │   Physical     │
+                    │  配置・トポロジ  │
+                    │  (運用性)        │
+                    └────────────────┘
+</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>ビュー</th><th>関心事</th><th>主な読者</th><th>代表的記法</th></tr></thead>
+      <tbody>
+        <tr><td>Logical</td><td>機能・責務・継承</td><td>業務SE/分析担当</td><td>クラス図・コンポーネント図</td></tr>
+        <tr><td>Process</td><td>並行性・性能・可用性</td><td>性能担当・SRE</td><td>シーケンス図・アクティビティ図</td></tr>
+        <tr><td>Development</td><td>モジュール分割・依存</td><td>開発者・ビルド担当</td><td>パッケージ図・レイヤ図</td></tr>
+        <tr><td>Physical</td><td>サーバ配置・NW</td><td>インフラ・運用</td><td>配置図・NW構成図</td></tr>
+        <tr><td>Scenarios</td><td>ユースケース駆動</td><td>全員（共通言語）</td><td>ユースケース図・シナリオ</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info">
+      📘 <strong>Tomさんの現場対応</strong>: OutSystemsの場合、Logical = モジュール責務マップ、Process = BPT/Timer のフロー、Development = アプリ/モジュール構成図、Physical = 環境構成図 (DEV/QA/PROD/フロントエンドサーバ数) にマッピングできる。
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm">// 4+1 を OutSystems文脈に当てはめた例</span>
+[Logical View]
+  - CoreServicesモジュール: 業務エンティティ + Public Action
+  - UI Library: 共通テーマ + ブロック
+
+[Process View]
+  - BPT「申請承認フロー」: 並行3000件想定、Timer夜間バッチ
+  - 同期API: Server Action経由で平均&lt;200ms
+
+[Development View]
+  - Cross-Cutting: Auth, Audit, Logging (CS層)
+  - Foundation: Theme, Reusable Patterns (FW層)
+  - End-User: HR_Portal, Approval_App
+
+[Physical View]
+  - Front-end Server x2 (Azure VM Standard_D4s_v5)
+  - Database: Azure SQL Business Critical
+  - Cache: Redis Cache Standard
+
+[Scenarios] - これらに対し各ビューが整合してるか検証
+  - UC01 ログイン (Auth)
+  - UC02 申請投稿 (BPT起動)
+  - UC03 月次集計 (Timer)</pre>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>よくある失敗</strong>: Logical View だけ書いて他を省略 → 性能問題(Process欠如)・運用事故(Physical欠如)が顕在化。RAでは<u>必ず4ビューを最低1枚ずつ</u>。
+    </div>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="ld-4plus1">Before を見る</button>
+        <span class="toggle-label" id="ld-4plus1-label">現在: After（4+1完備）</span>
+      </div>
+      <div class="livedemo-stage" id="ld-4plus1">
+        <div class="ld-panel good ld-after">✓ After: 4ビュー完備
+レビュー会:
+  「機能はLogicalで明確、性能はProcessで秒レベル合意、
+   配置はPhysicalで2台冗長確認、ビルド単位はDevelopmentで分離」
+  → 30分で承認、リリース後トラブルなし</div>
+        <div class="ld-panel bad ld-before">✗ Before: Logicalだけ
+レビュー会:
+  「機能図はあるが、サーバ何台?」「タイマーの並行数は?」
+  「モジュール境界が運用と整合してる?」
+  → 質問祭りで2時間延長、後日資料追加で再レビュー</div>
+      </div>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>RA文書の章立て（4+1で章を切る）</li>
+        <li>レビュー会で「視点漏れ」を指摘するチェック軸</li>
+        <li>新人に「アーキ図の読み方」を教える</li>
+        <li>顧客説明資料での視点切替（経営層=Scenarios、運用=Physical）</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>📍 こう見えたら出番:</strong>
+        <ul>
+          <li>「アーキ図が1枚しか無く、議論で言葉が噛み合わない」</li>
+          <li>「ステークホルダー毎に欲しい情報が違うのに同じ図を見せている」</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+  Lab 04: レイヤード参照アーキ
+============================================================ -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>レイヤード参照アーキテクチャ</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      最も古典的・普及度の高いRA。<strong>Presentation / Application / Domain / Infrastructure</strong> の4層が標準。<code>上位は下位のみに依存</code> という<strong>依存方向の制約</strong>がコアルール。違反すると保守時に副作用が広範に伝播する。OutSystems の Architecture Canvas (Lab09) もこのレイヤード思想の派生。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 4層の責務と依存方向</div>
+<pre class="ascii-art">
+       ┌──────────────────────────────┐
+       │  Presentation Layer          │  画面・APIエンドポイント
+       │  (Web UI / REST Controller)  │
+       └──────────────┬───────────────┘
+                      ↓ depends on
+       ┌──────────────▼───────────────┐
+       │  Application Layer           │  ユースケース・トランザクション制御
+       │  (Use Case / Service)        │
+       └──────────────┬───────────────┘
+                      ↓ depends on
+       ┌──────────────▼───────────────┐
+       │  Domain Layer                │  業務ルール・エンティティ
+       │  (Entity / Value Object)     │
+       └──────────────┬───────────────┘
+                      ↓ depends on
+       ┌──────────────▼───────────────┐
+       │  Infrastructure Layer        │  DB・外部API・メッセージング
+       │  (Repository / Gateway)      │
+       └──────────────────────────────┘
+
+  ★ 矢印は「上→下」の一方向。逆向き依存は禁止。
+</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>層</th><th>典型的なクラス例</th><th>VB.NET / OutSystems対応</th></tr></thead>
+      <tbody>
+        <tr><td>Presentation</td><td>HomeController, OrderViewModel</td><td>Screen / Block / Exposed REST</td></tr>
+        <tr><td>Application</td><td>OrderService, RegisterUseCase</td><td>Server Action (CS層)</td></tr>
+        <tr><td>Domain</td><td>Order Entity, Money VO</td><td>Entity + 業務Action (Core)</td></tr>
+        <tr><td>Infrastructure</td><td>OrderRepository, SapGateway</td><td>Integration Studio / Consumed REST</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before（依存逆流）</div>
+        <div class="code-block">
+          <pre><span class="cm">' Domain層がInfraに直接依存</span>
+<span class="kw">Public Class</span> Order
+  <span class="kw">Public Sub</span> Save()
+    <span class="kw">Dim</span> con <span class="kw">As New</span> SqlConnection(...)
+    con.Open()
+    <span class="cm">' ↑ Domainが具象DBを知っている</span>
+    <span class="cm">'   テスト不能・差替不能</span>
+  <span class="kw">End Sub</span>
+<span class="kw">End Class</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After（DIで反転）</div>
+        <div class="code-block">
+          <pre><span class="cm">' DomainはInterfaceに依存</span>
+<span class="kw">Public Class</span> Order
+  <span class="kw">Private</span> _repo <span class="kw">As</span> IOrderRepo
+  <span class="kw">Public Sub New</span>(repo <span class="kw">As</span> IOrderRepo)
+    _repo = repo
+  <span class="kw">End Sub</span>
+  <span class="kw">Public Sub</span> Save()
+    _repo.Persist(<span class="kw">Me</span>)
+  <span class="kw">End Sub</span>
+<span class="kw">End Class</span>
+<span class="cm">' Infra層でIOrderRepoの具象実装を提供</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>レイヤードの落とし穴</strong>: 厳密にすると「DTOコピーだらけ」「全部4層通す」で生産性が落ちる。<u>CRUD系の単純機能はBypass(Pres→Repoの直結)を許容</u>するなど、テーラリング指針をRAに明記すべき。
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>OutSystems文脈の対応</strong>: Architecture Canvas の <code>End-User Layer</code> = Presentation+一部Application、<code>Core Services</code> = Application+Domain、<code>Foundation</code> = Cross-cutting、<code>Library</code> = Infrastructure に概ね対応する。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>業務Webアプリの初期設計テンプレ</li>
+        <li>新人教育で「責務分離」を教える教材</li>
+        <li>レビューで「依存逆流」を検出する基準</li>
+        <li>VB.NETバッチ共通基盤の層設計</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>📍 こう見えたら出番:</strong>
+        <ul>
+          <li>「Domainクラスに <code>SqlConnection</code> や <code>HttpClient</code> がある」</li>
+          <li>「ControllerからRepoを直接呼んでビジネスロジックが散在」</li>
+          <li>「テスト時にDBに繋がないと動かない」</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+  Lab 05: ヘキサゴナル / クリーンアーキ
+============================================================ -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>ヘキサゴナル / クリーンアーキテクチャ</h3>
+    <span class="lab-tag tag-advanced">上級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <strong>Hexagonal (Ports &amp; Adapters)</strong> = Alistair Cockburn 1995、<strong>Clean Architecture</strong> = Uncle Bob 2012 が代表。両者の核心は「<u>業務ルール（Domain/UseCase）が外側（DB/UI/外部API）に依存しない</u>」という<strong>依存性逆転</strong>。RAとしては「ビジネスロジックを長く生かしたい」「複数フロント/DBを差し替えたい」案件で採用される。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 同心円で見る依存方向</div>
+<pre class="ascii-art">
+       ┌──────────────────────────────────┐
+       │      Frameworks &amp; Drivers       │  ← UI / DB / Web / 外部
+       │   ┌──────────────────────────┐   │
+       │   │   Interface Adapters     │   │  ← Controller / Presenter / Gateway
+       │   │   ┌──────────────────┐   │   │
+       │   │   │  Application     │   │   │  ← Use Case
+       │   │   │  ┌──────────┐    │   │   │
+       │   │   │  │  Domain  │    │   │   │  ← Entity / 業務ルール
+       │   │   │  └──────────┘    │   │   │
+       │   │   └──────────────────┘   │   │
+       │   └──────────────────────────┘   │
+       └──────────────────────────────────┘
+
+  依存方向: 外 → 内 のみ。内側は外を一切知らない。
+  ★ Domainが最も安定し、変更頻度が低い設計。
+</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>観点</th><th>レイヤード</th><th>ヘキサゴナル/クリーン</th></tr></thead>
+      <tbody>
+        <tr><td>依存方向</td><td>上→下（一方向）</td><td>外→内（同心円）</td></tr>
+        <tr><td>Domainの位置</td><td>下から2番目</td><td>中心（最も安定）</td></tr>
+        <tr><td>テスト容易性</td><td>中（モック必要）</td><td>高（Domain単体で動く）</td></tr>
+        <tr><td>差替容易性</td><td>低〜中</td><td>高（Adapterだけ作れば良い）</td></tr>
+        <tr><td>学習コスト</td><td>低</td><td>中〜高</td></tr>
+        <tr><td>適合案件</td><td>短期業務Web</td><td>長期コア・複数フロント</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+      <pre><span class="cm">// Port (interface) と Adapter の対応 — TypeScript</span>
+<span class="cm">// === Domain（依存無し） ===</span>
+<span class="kw">class</span> <span class="fn">Order</span> {
+  <span class="kw">constructor</span>(<span class="kw">public</span> id: <span class="kw">string</span>, <span class="kw">public</span> total: <span class="kw">number</span>) {}
+  <span class="fn">isHighValue</span>() { <span class="kw">return</span> <span class="kw">this</span>.total &gt; <span class="num">10000</span>; }
+}
+
+<span class="cm">// === Port（Application層が定義） ===</span>
+<span class="kw">interface</span> <span class="fn">OrderRepo</span> {
+  <span class="fn">findById</span>(id: <span class="kw">string</span>): <span class="fn">Promise</span>&lt;<span class="fn">Order</span>&gt;;
+  <span class="fn">save</span>(o: <span class="fn">Order</span>): <span class="fn">Promise</span>&lt;<span class="kw">void</span>&gt;;
+}
+
+<span class="cm">// === Use Case（Portにのみ依存） ===</span>
+<span class="kw">class</span> <span class="fn">PlaceOrderUseCase</span> {
+  <span class="kw">constructor</span>(<span class="kw">private</span> repo: <span class="fn">OrderRepo</span>) {}
+  <span class="kw">async</span> <span class="fn">exec</span>(o: <span class="fn">Order</span>) {
+    <span class="kw">if</span> (o.isHighValue()) { <span class="cm">/* 承認フロー */</span> }
+    <span class="kw">await</span> <span class="kw">this</span>.repo.save(o);
+  }
+}
+
+<span class="cm">// === Adapter（外側で具象実装） ===</span>
+<span class="kw">class</span> <span class="fn">SqlOrderRepo</span> <span class="kw">implements</span> <span class="fn">OrderRepo</span> { <span class="cm">/* SQL実装 */</span> }
+<span class="kw">class</span> <span class="fn">InMemoryOrderRepo</span> <span class="kw">implements</span> <span class="fn">OrderRepo</span> { <span class="cm">/* テスト用 */</span> }</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>Ports &amp; Adaptersの命名</strong>: Inbound Port = UIから入る I/F (Use Case)、Outbound Port = DBや外部APIへ出る I/F (Repo/Gateway)。「P&amp;A」「Hexagonal」は同義語として使われる。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>適用判断</strong>: 全案件に適用すると過剰設計。「コア業務ロジックが3年以上生きる」「複数チャネル（Web/Mobile/Batch）から共有」「DB/フロント技術を将来交換予定」のいずれかに該当しなければレイヤードで十分。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>長期保守の基幹コア機能（会計・在庫・人事の中核ロジック）</li>
+        <li>同一業務ロジックをWeb/Mobile/Batchで共有</li>
+        <li>DBをOracle→PostgreSQLに将来交換する前提の設計</li>
+        <li>ユニットテスト網羅率を高く保ちたいプロジェクト</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>📍 こう見えたら出番:</strong>
+        <ul>
+          <li>「業務ロジック修正のたびにフロントとDBが同時に壊れる」</li>
+          <li>「テストでモックが10個以上必要」</li>
+          <li>「同じ計算式がフロント・バッチ・APIに3コピー存在」</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+  Lab 06: マイクロサービス参照アーキ
+============================================================ -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>マイクロサービス参照アーキテクチャ</h3>
+    <span class="lab-tag tag-advanced">上級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <strong>マイクロサービスRA</strong> は1つの大きなビジネスを多数の小さな自律サービスに分割。各サービスが <code>独立DB</code> <code>独立デプロイ</code> <code>独立スケール</code> を持つ。Microsoft / AWS / IBM / Sam Newman などが各々RAを公開。共通要素は <strong>API Gateway / Service Discovery / 認証 / 配信パイプライン / 観測性</strong>。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 マイクロサービスRAの代表構成</div>
+<pre class="ascii-art">
+[Client (Web/Mobile)]
+       │
+       ▼
+┌──────────────────────────────────────────┐
+│  API Gateway (認証/ルーティング/RateLimit) │
+└─────┬────────────┬────────────┬──────────┘
+      ▼            ▼            ▼
+  ┌────────┐  ┌────────┐  ┌────────┐
+  │ Order  │  │ User   │  │ Stock  │  ← 各サービス
+  │  svc   │  │  svc   │  │  svc   │
+  │ + DB   │  │ + DB   │  │ + DB   │
+  └───┬────┘  └────────┘  └────────┘
+      │ async event
+      ▼
+  ┌──────────────────┐
+  │ Message Broker   │  ← Kafka / RabbitMQ / Service Bus
+  └──────────────────┘
+      ▲ subscribe
+      │
+  ┌────────┐  ┌─────────────┐
+  │ Notify │  │ Observability│  ← Tracing / Metrics / Log
+  │  svc   │  │ (OpenTel等) │
+  └────────┘  └─────────────┘
+</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>構成要素</th><th>役割</th><th>代表的実装</th></tr></thead>
+      <tbody>
+        <tr><td>API Gateway</td><td>外部入口・認証・流量制御</td><td>Kong / Azure APIM / AWS API GW</td></tr>
+        <tr><td>Service Mesh</td><td>サービス間通信・mTLS・リトライ</td><td>Istio / Linkerd</td></tr>
+        <tr><td>Message Broker</td><td>非同期連携・疎結合</td><td>Kafka / RabbitMQ / Service Bus</td></tr>
+        <tr><td>Service Discovery</td><td>動的エンドポイント解決</td><td>Consul / Kubernetes Service</td></tr>
+        <tr><td>Config Server</td><td>環境別設定の集中管理</td><td>Spring Cloud Config / AWS AppConfig</td></tr>
+        <tr><td>Observability</td><td>分散トレース・メトリクス</td><td>OpenTelemetry / Datadog / Grafana</td></tr>
+        <tr><td>CI/CD</td><td>独立デプロイの自動化</td><td>GitHub Actions / Argo CD</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box warn">
+      ⚠️ <strong>分散トランザクションの罠</strong>: 各サービスが独立DBを持つため2PCは原則禁忌。代わりに <code>Saga</code> パターン（補償トランザクション）または <code>Outbox</code> パターン（DB+メッセージの整合確保）を採用する。
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before（分散2PC）</div>
+        <div class="code-block">
+          <pre><span class="cm">// 注文確定時に複数DBを2PCで揃える</span>
+<span class="kw">begin</span> distributed-tx
+  orderDB.insert(order)
+  stockDB.decrement(item)
+  paymentDB.charge(card)
+<span class="kw">commit</span> <span class="cm">// 1つでも失敗すると全rollback</span>
+<span class="cm">// → ロック競合・性能劣化・</span>
+<span class="cm">//   コーディネータ障害で詰む</span></pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After（Saga）</div>
+        <div class="code-block">
+          <pre><span class="cm">// 各サービスがイベントで連鎖</span>
+OrderSvc:    save(order) → emit OrderCreated
+StockSvc:    on OrderCreated → reserve(item)
+              → emit StockReserved
+PaymentSvc:  on StockReserved → charge(card)
+              → emit PaymentDone
+OrderSvc:    on PaymentDone → confirm(order)
+
+<span class="cm">// 失敗時は補償(Compensating)イベントで戻す</span>
+PaymentFailed → StockSvc.release(item)
+             → OrderSvc.cancel(order)</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box err">
+      🚨 <strong>導入失敗の典型</strong>: モノリスを「人気だから」で50サービスに分割 → 結合テスト不能・運用コスト爆増・分散トレース未整備で障害が見えない。<u>RAは「分割の境界(DDDのBounded Context)」と「観測性の標準」を必ず先に決める</u>。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>1万人規模の組織の事業ドメイン分割</li>
+        <li>Black Friday級のスケール変動がある事業</li>
+        <li>機能別にデプロイ頻度が大きく異なる(日次〜年次)</li>
+        <li>多言語・多リージョン対応が必須のグローバルSaaS</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>📍 こう見えたら出番:</strong>
+        <ul>
+          <li>「1つのモジュール改修で関係ない機能までデグレ」</li>
+          <li>「リリースに毎回4チームの調整が必要で月1回しか出せない」</li>
+          <li>「特定機能だけCPU/DBが逼迫しても全体スケールしか取れない」</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+  Lab 07: イベント駆動参照アーキ
+============================================================ -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>イベント駆動参照アーキテクチャ (EDA)</h3>
+    <span class="lab-tag tag-advanced">上級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <strong>Event-Driven Architecture (EDA)</strong>。コンポーネント間のやり取りを<u>同期API呼び出しではなくイベントの発行/購読</u>で行う。<code>Producer</code> → <code>Broker</code> → <code>Consumer</code> という基本3点セット。<strong>疎結合</strong>と<strong>非同期スケール</strong>を最大化できる一方、<u>順序保証・冪等性・スキーマ進化</u>の難しさを伴う。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 EDAの最小構造</div>
+<pre class="ascii-art">
+  ┌──────────┐    publish    ┌────────────┐    subscribe   ┌──────────┐
+  │ Producer │  ───────────→ │  Broker    │  ───────────→  │ Consumer │
+  │ (Order)  │  OrderCreated │ (Kafka)    │  OrderCreated  │ (Notify) │
+  └──────────┘               └─────┬──────┘                └──────────┘
+                                   │ 永続化(retain)
+                                   ▼              subscribe ┌──────────┐
+                              [Topic Log]  ───────────────→ │ Consumer │
+                                                            │ (Audit)  │
+                                                            └──────────┘
+  ★ Producer は誰が受信するか知らない (疎結合)
+  ★ 後から Consumer 追加可能 (拡張性)
+</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>パターン</th><th>用途</th><th>代表実装</th></tr></thead>
+      <tbody>
+        <tr><td>Publish/Subscribe</td><td>1対多 / イベント通知</td><td>Kafka / Pub-Sub / SNS</td></tr>
+        <tr><td>Event Sourcing</td><td>状態を全イベントの集積として保持</td><td>EventStoreDB / Kafka+CQRS</td></tr>
+        <tr><td>CQRS</td><td>書き込み/読み取りモデル分離</td><td>Axon / 自作</td></tr>
+        <tr><td>Outbox Pattern</td><td>DB更新とイベント発行の整合確保</td><td>Debezium / 自作</td></tr>
+        <tr><td>Saga (Choreography)</td><td>イベント連鎖で長時間トランザクション</td><td>Kafka + 各svc</td></tr>
+        <tr><td>Stream Processing</td><td>リアルタイム集計・検知</td><td>Kafka Streams / Flink</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+      <pre><span class="cm">// イベントスキーマの例 (CloudEvents仕様)</span>
+{
+  <span class="prop">"specversion"</span>: <span class="str">"1.0"</span>,
+  <span class="prop">"type"</span>:        <span class="str">"com.acme.order.created.v1"</span>,
+  <span class="prop">"source"</span>:      <span class="str">"/order-service"</span>,
+  <span class="prop">"id"</span>:          <span class="str">"01HZ8X9JMK..."</span>,    <span class="cm">// 冪等性キー</span>
+  <span class="prop">"time"</span>:        <span class="str">"2026-05-05T08:30:00Z"</span>,
+  <span class="prop">"datacontenttype"</span>: <span class="str">"application/json"</span>,
+  <span class="prop">"data"</span>: {
+    <span class="prop">"orderId"</span>: <span class="str">"O-12345"</span>,
+    <span class="prop">"customerId"</span>: <span class="str">"C-789"</span>,
+    <span class="prop">"total"</span>: <span class="num">12800</span>,
+    <span class="prop">"items"</span>: [{<span class="prop">"sku"</span>:<span class="str">"A-1"</span>, <span class="prop">"qty"</span>:<span class="num">2</span>}]
+  }
+}</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>OutSystems文脈での対応</strong>: BPT（Business Process Technology）はイベントとプロセスの中間。Light BPTは即時起動、通常BPTは永続化トリガで非同期。Service Bus等を組み合わせて社外連携にEDAを適用するパターンが多い。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>3大注意点</strong>:<br>
+      <strong>① 順序保証</strong>: Kafkaは同一パーティション内のみ順序保証。順序必須なら集約IDをキーにする。<br>
+      <strong>② 冪等性</strong>: At-least-once配信が標準なので Consumer は同じイベントを2回処理しても大丈夫な実装に。<br>
+      <strong>③ スキーマ進化</strong>: イベントは長期保存される。Schema Registry + 後方互換ルールが必須。
+    </div>
+
+    <div class="livedemo">
+      <div class="livedemo-bar">
+        <button class="toggle-btn" data-target="ld-eda">Before を見る</button>
+        <span class="toggle-label" id="ld-eda-label">現在: After（EDA）</span>
+      </div>
+      <div class="livedemo-stage" id="ld-eda">
+        <div class="ld-panel good ld-after">✓ After: EDAで疎結合
+[OrderSvc] → 「OrderCreatedイベント発行」
+   ↓ (Brokerに届けば成功)
+   ↓ Notifyが落ちててもOrderSvcは正常完了
+   ↓ 後でConsumerが復帰して処理
+新機能「在庫予約」を追加: Consumer1個追加するだけ
+   → OrderSvcは無改修</div>
+        <div class="ld-panel bad ld-before">✗ Before: 同期API依存
+[OrderSvc] → call NotifySvc API
+   ↓ NotifySvcが応答遅延 → OrderSvcもタイムアウト
+   ↓ NotifySvc障害 → OrderSvcも巻き込まれて落ちる
+新機能追加: OrderSvcが3つの新APIを呼ぶよう改修
+   → 結合・テスト・デプロイで2週間</div>
+      </div>
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>IoTセンサー大量データのリアルタイム集計</li>
+        <li>金融取引の監査証跡（Event Sourcing）</li>
+        <li>ECの在庫・決済・通知の疎結合連携</li>
+        <li>レガシー基幹と新規SaaSのCDC連携</li>
+        <li>Consumer側の拡張頻度が高いSaaS</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>📍 こう見えたら出番:</strong>
+        <ul>
+          <li>「サービスA障害でサービスB-G全体が連鎖停止」</li>
+          <li>「新機能追加のたびに既存サービスを改修」</li>
+          <li>「監査要件で『過去全状態』が再構成可能でなければならない」</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+  Lab 08: クラウド参照アーキ（Well-Architected）
+============================================================ -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>クラウド参照アーキ — Well-Architected Framework</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      AWS/Azure/Google が公開する <strong>Well-Architected Framework (WAF)</strong> はクラウドにおけるRAの事実上の標準。AWSは <code>5本柱</code> + 持続可能性で 6本、Azureも同等の <strong>5本柱</strong>。WAFは<u>原則とチェックリスト</u>を提供し、それに沿った具体構成は <code>Reference Implementation</code> として別途公開される。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 クラウドWAFの「柱」全体図</div>
+<pre class="ascii-art">
+┌──────────────────────────────────────────────────────┐
+│           Well-Architected Framework                 │
+│                                                      │
+│  ① Operational Excellence  運用性                   │
+│     └ IaC / 監視 / 自動化                            │
+│                                                      │
+│  ② Security                セキュリティ              │
+│     └ IAM / 暗号化 / 監査                            │
+│                                                      │
+│  ③ Reliability             信頼性                    │
+│     └ 冗長化 / DR / リトライ                         │
+│                                                      │
+│  ④ Performance Efficiency  性能効率                  │
+│     └ 適切なリソース選定 / オートスケール            │
+│                                                      │
+│  ⑤ Cost Optimization       コスト最適                │
+│     └ 適正サイズ / Reservation / モニタリング        │
+│                                                      │
+│  ⑥ Sustainability  持続可能性 (AWS 2021〜)          │
+│     └ 効率的なリソース使用                           │
+└──────────────────────────────────────────────────────┘
+</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>Pillar</th><th>主な観点</th><th>サブ案件レベルでの実装例</th></tr></thead>
+      <tbody>
+        <tr><td>Op Excellence</td><td>IaC/監視/Runbook</td><td>Terraform化・Datadog導入・障害手順書</td></tr>
+        <tr><td>Security</td><td>IAM/Encryption/監査</td><td>Azure AD認証・Key Vault・Activity Log</td></tr>
+        <tr><td>Reliability</td><td>冗長/DR/SLO</td><td>Multi-AZ・Geo-redundant DB・SLO 99.9%</td></tr>
+        <tr><td>Performance</td><td>適正サイズ/キャッシュ</td><td>Front-end Server自動増減・Redis・CDN</td></tr>
+        <tr><td>Cost</td><td>未使用検出/予約</td><td>夜間VM停止・Reserved Instance・タグ予算</td></tr>
+        <tr><td>Sustainability</td><td>低消費リソース</td><td>サーバレス採用・低消費リージョン</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+      <pre><span class="cm">// Azure WAFスコアシートの形式例（中身は要素抜粋）</span>
+| Pillar       | Question                              | Score | Action                |
+|--------------|---------------------------------------|-------|-----------------------|
+| Reliability  | Multi-Region DR が定義されているか    | 2/5   | DR訓練計画策定        |
+| Security     | 全通信が TLS 1.2+ か                  | 5/5   | -                     |
+| Cost         | 未使用リソース検出が自動化されているか | 1/5   | Cost Mgmtアラート設定 |
+| Performance  | ボトルネック特定の APM があるか       | 4/5   | Tracingカバレッジ拡大 |
+| Op Excellence| IaC化率                              | 3/5   | NWもTerraform化       |</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>Reference Implementation</strong>: AWS なら「3-Tier Web App Reference」「Serverless Web App」、Azure なら「Azure Architecture Center の Reference Architectures」が具体構成例。WAFが<u>原則</u>、Ref Implがそれに従った<u>具体構成</u>。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>5本柱はトレードオフ</strong>: 信頼性↑にすれば Cost↑、Performance↑にすれば Sustainability↓ など、全Pillar満点は通常無理。RAでは「この案件は信頼性4・コスト2を優先」のように<u>重み付けを明記</u>する。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>クラウドリフト&amp;シフト案件のレビュー観点</li>
+        <li>顧客提案書のNFR説明テンプレ</li>
+        <li>運用引継ぎ時の品質ゲート</li>
+        <li>Tom案件: Azure SQL/OutSystems環境のWAFレビュー</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>📍 こう見えたら出番:</strong>
+        <ul>
+          <li>「クラウド使ってるが運用が手作業中心」</li>
+          <li>「コスト超過の警告がいつも事後通知」</li>
+          <li>「監視はあるが障害時の手順書が無い」</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+  Lab 09: OutSystems Architecture Canvas
+============================================================ -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>OutSystems Architecture Canvas — 実RAの代表例</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      OutSystems が提供する <strong>Architecture Canvas</strong> は実在するRAの好例。<code>End-User Layer</code> / <code>Core Layer</code> / <code>Foundation Layer</code> の3層 + Public/Private分離 + 依存方向ルール（上→下のみ）を強制する。Lab04のレイヤード思想を OutSystems 環境に最適化した形。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 3層構造と依存方向</div>
+<pre class="ascii-art">
+       ┌────────────────────────────────────┐
+       │  END-USER LAYER                    │
+       │  (画面・プロセス・直接ユーザ向け)    │
+       │  例: HRPortal, ApprovalApp         │
+       └──────────────┬─────────────────────┘
+                      ↓ Consume
+       ┌──────────────▼─────────────────────┐
+       │  CORE LAYER                        │
+       │  (業務エンティティ + 業務サービス)  │
+       │  例: Employee, Department,         │
+       │       AbsenceRules                 │
+       └──────────────┬─────────────────────┘
+                      ↓ Consume
+       ┌──────────────▼─────────────────────┐
+       │  FOUNDATION LAYER                  │
+       │  (横断・非業務・再利用)              │
+       │  例: Theme, Logging,               │
+       │       SAP_IS, Email_IS             │
+       └────────────────────────────────────┘
+
+  ★ 上から下への依存のみ。横断依存・逆流は赤信号
+</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>Layer</th><th>典型モジュール例</th><th>許可される依存先</th></tr></thead>
+      <tbody>
+        <tr><td>End-User</td><td>HR_Portal (画面アプリ)</td><td>Core / Foundation</td></tr>
+        <tr><td>End-User</td><td>HR_BPT (プロセスのみ)</td><td>Core / Foundation</td></tr>
+        <tr><td>Core</td><td>Employee_CS (Entity+Action)</td><td>Foundation のみ</td></tr>
+        <tr><td>Core</td><td>BusinessRules_CS</td><td>Foundation のみ</td></tr>
+        <tr><td>Foundation</td><td>Theme_FW (UI共通)</td><td>他Foundation のみ</td></tr>
+        <tr><td>Foundation</td><td>SAP_IS (外部統合)</td><td>他Foundation のみ</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info">
+      📘 <strong>命名規則の慣例</strong>: <code>_CS</code>=Core Service、<code>_BL</code>=Business Logic、<code>_IS</code>=Integration Service、<code>_FW</code>=Foundation。命名でレイヤを明示できると依存違反が見つけやすい。
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before（依存違反）</div>
+        <div class="code-block">
+          <pre><span class="cm">// End-User層から別End-Userを参照</span>
+HR_Portal (End-User)
+  └ depends on → Approval_App (End-User)
+                          ↑
+              依存方向違反: 横断依存
+              片方の改修で他方が壊れる
+              再利用も継承もできない</pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After（共通をCoreへ）</div>
+        <div class="code-block">
+          <pre><span class="cm">// 共通ロジックを Core に抽出</span>
+HR_Portal     ─┐
+               ├→ ApprovalRules_CS (Core)
+Approval_App  ─┘     ↓
+                  Foundation_FW
+
+★ End-User同士は依存しない
+★ ApprovalRules_CS は両方から再利用</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>OutSystems Architecture Dashboard</strong> でこれら違反は自動検出される（Technical Debt スコア）。RA文書だけでなくツール検証も組み込むことが運用継続のコツ。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>OutSystems新規プロジェクト立ち上げ時のモジュール設計</li>
+        <li>レガシーOSPアプリの分解・整理</li>
+        <li>新人オンボーディングで「どのモジュールに何を書くか」教育</li>
+        <li>Architecture Dashboard 違反対応の優先順位付け</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>📍 こう見えたら出番:</strong>
+        <ul>
+          <li>「1つのアプリにEntity・画面・外部APIが全部入っている」</li>
+          <li>「同じ業務ロジックが複数アプリに散在」</li>
+          <li>「Architecture Dashboard 警告が真っ赤」</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+  Lab 10: ADRと意思決定の記録
+============================================================ -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>ADR — Architectural Decision Record</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <strong>ADR (Architectural Decision Record)</strong> はアーキ意思決定を「いつ・誰が・なぜ・どう決めたか」短い文書(1-2頁)で残す手法。Michael Nygard 2011提案。RAの構成要素⑤（Lab02）として必須。<u>過去決定の理由が消える</u>問題を防ぎ、新規参画者の理解を加速する。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 ADRの標準フォーマット</div>
+<pre class="ascii-art">
+┌────────────────────────────────────────────┐
+│ ADR-001: タイトル (動詞で開始)             │
+│   例: 「メッセージブローカに Kafka を採用」 │
+│                                            │
+│ Status:  Proposed | Accepted | Deprecated  │
+│         | Superseded by ADR-007            │
+│                                            │
+│ Context:                                   │
+│   何の課題があり、何を決める必要があるか    │
+│                                            │
+│ Decision:                                  │
+│   何を決めたか (1-2文で明確に)              │
+│                                            │
+│ Consequences:                              │
+│   良い影響・悪い影響・新たな制約             │
+│                                            │
+│ Alternatives Considered:                   │
+│   検討した他案と却下理由                    │
+└────────────────────────────────────────────┘
+</pre>
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm"># ADR-003: 認証プロトコルに OIDC + 社内 Azure AD を採用</span>
+
+<span class="cm">## Status</span>
+Accepted (2026-04-15)
+
+<span class="cm">## Context</span>
+- 全社で Azure AD 利用が標準化
+- 既存システムは独自セッションだったが、SSO要件あり
+- 監査ログを SAML 中心から OIDC に移行する全社方針
+
+<span class="cm">## Decision</span>
+本RA配下のWeb業務システムは、全て **OIDC Authorization Code Flow + PKCE**
+を Azure AD テナントで利用する。
+
+<span class="cm">## Consequences</span>
++ 全社SSO実現、ID管理コスト削減
++ MFA・条件付きアクセスを標準活用
+- レガシー連携 (FAX系) は別途ブリッジ必要
+- ローカル開発時は dev用テナントで認証フロー検証必須
+
+<span class="cm">## Alternatives Considered</span>
+- **SAML 2.0**: 既存資産あるが、新規はOIDC方針で却下
+- **独自JWT発行**: 監査・回転設計が独自実装になり保守困難で却下
+- **Auth0 等外部IDaaS**: コスト・データ越境で却下</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>ADR運用ルール</th><th>推奨</th><th>NG</th></tr></thead>
+      <tbody>
+        <tr><td>保管場所</td><td>Gitリポジトリの <code>/docs/adr/</code></td><td>SharePointの個人配下</td></tr>
+        <tr><td>ファイル名</td><td><code>0003-use-oidc-azure-ad.md</code></td><td><code>認証決定.docx</code></td></tr>
+        <tr><td>修正方法</td><td>新ADRでSupersedes、旧は残す</td><td>過去ADRを書き換え</td></tr>
+        <tr><td>レビュー</td><td>PRでレビュー、承認でAccepted</td><td>口頭合意のみ</td></tr>
+        <tr><td>サイズ</td><td>1-2頁・10分で読める</td><td>20頁の設計書</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box ok">
+      ✅ <strong>運用のコツ</strong>: 「決めた瞬間」に書く。後でまとめて書こうとすると<u>判断の温度感が消える</u>。Slack上の議論の最後に「ADR化してPR出します」を口癖に。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>ADRが死ぬ典型パターン</strong>: 最初の数本しか書かれない / 大量で検索できない / Statusが更新されない。<u>Index ADR (000-index.md) を最初に作る</u> + <u>四半期1回の棚卸し</u> をルール化。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>新規RA構築時の各種採用判断記録</li>
+        <li>レガシーRA改訂時の「なぜ変えたか」記録</li>
+        <li>新人参画時の「過去判断ツアー」教材</li>
+        <li>監査・コンプライアンス対応の根拠資料</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>📍 こう見えたら出番:</strong>
+        <ul>
+          <li>「半年前に決めたはずの方針を皆覚えてない」</li>
+          <li>「前任者退職で『なぜこの構成?』が不明」</li>
+          <li>「同じ議論が四半期ごとに蒸し返される」</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+  Lab 11: 評価フレームワーク（ATAM）
+============================================================ -->
+<div class="lab" id="lab11">
+  <div class="lab-header">
+    <div class="lab-num">11</div>
+    <h3>評価フレームワーク — ATAM とトレードオフ分析</h3>
+    <span class="lab-tag tag-advanced">上級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <strong>ATAM (Architecture Tradeoff Analysis Method)</strong> は SEI (Software Engineering Institute) が開発したアーキ評価手法。RAやSAの<u>非機能要件達成度</u>と<u>トレードオフ</u>を構造的にレビューする。「シナリオ駆動」で具体的に評価するのが特徴。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 ATAM 9ステップの流れ</div>
+<pre class="ascii-art">
+[Phase 1: 評価準備]
+  ① ATAM紹介・契約
+  ② ビジネス目標の提示
+  ③ アーキ概要の提示
+
+[Phase 2: 構造化分析]
+  ④ アーキ手法の特定 (採用パターン)
+  ⑤ Quality Attribute (QA) ツリー作成
+  ⑥ 重要シナリオの分析
+
+[Phase 3: テスト・検証]
+  ⑦ シナリオの優先順位付け (投票)
+  ⑧ アーキ再分析・トレードオフ抽出
+  ⑨ 結果プレゼン
+
+★ 成果物: 「Risks / Non-Risks / Sensitivity Points / Tradeoff Points」
+</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>用語</th><th>意味</th><th>例</th></tr></thead>
+      <tbody>
+        <tr><td>Risk</td><td>達成困難・要対策のシナリオ</td><td>「DR-RTO 1時間が現構成では実現不能」</td></tr>
+        <tr><td>Non-Risk</td><td>明らかに達成可能</td><td>「平均応答 500msは達成」</td></tr>
+        <tr><td>Sensitivity Point</td><td>1要素変更が大きく品質に影響</td><td>「DBインスタンスサイズで応答時間が10倍変動」</td></tr>
+        <tr><td>Tradeoff Point</td><td>複数品質に正負の影響</td><td>「キャッシュ強化で性能↑だが整合性↓」</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+      <pre><span class="cm">// QA Tree (Quality Attribute Tree) の例</span>
+業務RA v3 評価
+├── 性能
+│   ├── 応答時間 (Top画面 p95 &lt; 1.0s) [優先度: H]
+│   │   └─ シナリオS1: ピーク 500並行で1.5秒 → Risk
+│   └── スループット (200 req/s) [優先度: M]
+│       └─ シナリオS2: 安定 250req/s 達成 → Non-Risk
+├── 可用性
+│   ├── SLO 99.9% (月43分以内) [優先度: H]
+│   │   └─ シナリオS3: AZ単一障害は復旧4分 → Non-Risk
+│   └── DR (RTO 4hr) [優先度: H]
+│       └─ シナリオS4: DR訓練未実施 → Risk
+└── セキュリティ
+    └── 監査7年保管 [優先度: H]
+        └─ シナリオS5: ストレージライフサイクル設定済 → Non-Risk
+
+  Tradeoff: キャッシュTTL→性能↑ / データ整合性↓ (Sensitivity)</pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>軽量版の代替</strong>: 本格ATAMは2-3日のワークショップ。日常運用には軽量版「<strong>Mini-ATAM</strong>」(半日)、または「<strong>Architecture Decision Workshop</strong>」(2時間+ADR化)で十分なケースが多い。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>評価のタイミング</strong>: コード書く前の早期(設計時) と稼働後1年(実績検証) の両方で行うのが理想。設計時のみだと「絵に描いた餅」、稼働後のみだと「手遅れ」。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>大型案件キックオフ前のRA妥当性レビュー</li>
+        <li>本番運用1年後のRA棚卸し</li>
+        <li>2RA案で迷っている時の比較評価</li>
+        <li>顧客との非機能要件合意形成</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>📍 こう見えたら出番:</strong>
+        <ul>
+          <li>「非機能要件が合意されないまま設計が進んでいる」</li>
+          <li>「複数RA案でどれにすべきか決まらない」</li>
+          <li>「稼働後の問題が設計時に見抜けた可能性が高い」</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+  Lab 12: 導入ロードマップと組織展開
+============================================================ -->
+<div class="lab" id="lab12">
+  <div class="lab-header">
+    <div class="lab-num">12</div>
+    <h3>RA導入ロードマップ — 組織で使われるRAにする</h3>
+    <span class="lab-tag tag-advanced">上級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      RAを<u>作っただけ</u>では誰も使わない。SIerでよく失敗するのは「最初の数案件で適用→更新止まる→陳腐化→誰も見なくなる」サイクル。本ラボでは <strong>4フェーズの導入ロードマップ</strong> と <strong>組織的な維持メカニズム</strong> を整理する。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 4フェーズのロードマップ</div>
+<pre class="ascii-art">
+[Phase 0: Seed (1-2ヶ月)]
+  ・1-2案件で「先行実装」してフィードバック
+  ・最小ドキュメント (構成図 + ADR数本)
+  ・推進者(チャンピオン)1-2名で十分
+
+[Phase 1: Standardize (3-6ヶ月)]
+  ・章立て統一(Lab02の5+1)
+  ・社内Wiki/Gitに公開
+  ・3-5案件への適用、適用記録(誰がいつ何を変更)
+
+[Phase 2: Govern (6-12ヶ月)]
+  ・適用必須化 + テーラリング指針
+  ・新規案件レビュー必須プロセス化
+  ・Architecture Review Board (ARB)設立
+  ・四半期棚卸し開始
+
+[Phase 3: Evolve (12ヶ月+)]
+  ・複数バージョン併存(v1/v2)、バージョン移行ガイド
+  ・案件適用率/技術負債KPIを管理
+  ・社外公開・コミュニティ展開も視野
+</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>役割</th><th>責務</th><th>RAでの貢献</th></tr></thead>
+      <tbody>
+        <tr><td>Architect (CoE)</td><td>RAの作成・改訂</td><td>本体メンテ、ADR承認</td></tr>
+        <tr><td>Project Architect</td><td>案件への適用判断</td><td>テーラリング・違反申請</td></tr>
+        <tr><td>Champion</td><td>各事業部での推進</td><td>勉強会・適用支援</td></tr>
+        <tr><td>ARB</td><td>適用レビュー・例外承認</td><td>逸脱案件の判断</td></tr>
+        <tr><td>開発リーダー</td><td>適用結果の報告</td><td>FB・改善提案</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box ok">
+      ✅ <strong>成功する組織の共通点</strong>:<br>
+      ① RA本体に <u>「適用FB集積ページ」</u> を設けPRで誰でも追記可能<br>
+      ② 四半期1回の棚卸しを「期日固定」で形骸化を防ぐ<br>
+      ③ 適用実績/違反件数/負債解消をダッシュボード化（OutSystems Architecture Dashboardのような自動計測）
+    </div>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before（陳腐化パターン）</div>
+        <div class="code-block">
+          <pre><span class="cm"># RAの末路</span>
+2024-01: RA v1.0 公開 (鳴り物入り)
+2024-03: 案件Aで適用 → 課題3件
+2024-06: 案件Bで適用 → 課題7件
+2024-09: 「v2は来年作ります」
+2025-04: 「v2作る人いない…」
+2025-10: 誰も参照しない置物化
+2026-01: 新人「RAって何ですか?」</pre>
+        </div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After（生き続けるRA）</div>
+        <div class="code-block">
+          <pre><span class="cm"># RAの健康的な進化</span>
+2024-01: RA v1.0 公開 + 専任CoE 0.5人月
+2024-Q1: 案件A FB → ADR-005でv1.1
+2024-Q2: 案件B FB → ADR-007〜010追加
+2024-Q3: 棚卸し → SectionXX削除/簡素化
+2024-Q4: ARB設立、適用率KPI開始
+2025-Q1: v2.0(MSA対応)、v1からの移行ガイド付き
+2026: 社内標準として10案件で稼働中</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>陥りやすい罠</strong>: <br>
+      <strong>① 完璧主義</strong>: v1.0で全領域カバーを目指して公開が遅れる → 80点で先に出す。<br>
+      <strong>② 強制適用</strong>: 例外NGにすると現場が「形だけ準拠」で実体が伴わない → 例外申請プロセスを設ける。<br>
+      <strong>③ 専任不在</strong>: 「兼務で誰かが」だと優先度が下がり死蔵 → 0.5人月でも明示的に確保。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">
+        <li>SIer社内RA策定プロジェクトの計画立案</li>
+        <li>既存RA再生プロジェクトのリブート計画</li>
+        <li>OutSystems CoE 立ち上げ時の組織設計</li>
+        <li>顧客側CIO/CoEへのコンサル提案</li>
+      </ul>
+      <div class="usecase-trigger">
+        <strong>📍 こう見えたら出番:</strong>
+        <ul>
+          <li>「RAはあるが2年更新されてない」</li>
+          <li>「新規案件が独自設計を始めている」</li>
+          <li>「アーキ判断が属人化していて誰も統制できない」</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /.container -->
+
+<script>
+  function copyCode(btn) {
+    const block = btn.closest('.code-block') || btn.parentElement;
+    const pre = block.querySelector('pre');
+    if (!pre) return;
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    });
+  }
+
+  const LAB_META = {
+    lab0: {
+      info: { type:'info', html:'📘 <strong>Before / After / Δ</strong>: <strong>Before</strong>「参照アーキ」と「ソリューションアーキ」を混同。<strong>After</strong> 抽象度3階層(EA→RA→SA)の中間としてRAを位置づけ。<strong>Δ(値)</strong> 案件初期構成議論を1ヶ月→1週間に短縮できる根拠を持てる。' },
+      check: [
+        '① 自社/顧客のRAドキュメントを1つ思い浮かべて、5+1要素(Lab02参照)があるか紙にメモする → 揃っていれば◎、欠けていればどれか確認',
+        '② 過去6ヶ月の新規案件で「最初の構成議論」に何日かけたか思い出す → 1週間以下なら適切なRAあり、3週間以上なら未整備の兆候',
+        '③ 周囲のメンバーに「RAって何?」と聞いてみる → 答えが揃わなければ社内共通言語が未確立',
+        '④ Lab02のチェックリスト(5+1要素)をブラウザでスクロールし、自社RAと突合する',
+        '⑤ ADR(Lab10)の有無を確認 → 無ければ「過去判断の理由」を再現できないリスク'
+      ],
+      try: 'コードブロックは「擬似テキスト」なのでファイル化せず、紙やNotionに自社RA(あれば)の構造を書き起こすのが効果的。1案件分だけでも書くとRAの「型」が体感できる。'
+    },
+    lab1: {
+      info: { type:'info', html:'📘 <strong>Before / After / Δ</strong>: <strong>Before</strong> TOGAFやZachmanとRAを混同/同一視。<strong>After</strong> メタフレーム(配置の枠組み) vs RA(具体パターン)を区別。<strong>Δ(値)</strong> 提案書で「TOGAF準拠」を曖昧に書かず、論理連鎖を明示できる。' },
+      check: [
+        '① 自社の提案書/設計書テンプレで「TOGAF」「ArchiMate」が登場する箇所を検索し、用法が正確か確認',
+        '② RAカタログ(あれば)が Foundation/Common/Industry/Org-Specific のどこに位置するか整理',
+        '③ ArchiMate記法の図を1つ見つけて、レイヤ(Business/Application/Technology)が分離されているか確認',
+        '④ NIST CSF や ISO 27001 を参照アーキ観点で読むと、各章がどのRAパーツに対応するか見える',
+        '⑤ 顧客に「TOGAF準拠とは具体的に何を意味しますか?」と聞かれた時の回答を準備しておく'
+      ],
+      try: 'TOGAF ADM の図(Web上で公開されている)を一度見ながら、自社の案件プロセスがどの Phase に対応するかマッピングしてみる。'
+    },
+    lab2: {
+      info: { type:'info', html:'📘 <strong>Before / After / Δ</strong>: <strong>Before</strong> RA = 構成図1枚。<strong>After</strong> 5+1要素(Context/Structure/Components/NFR/ADR + Adoption Guide)で網羅。<strong>Δ(値)</strong> 適用範囲外の案件への誤適用を防ぎ、再利用性を担保。' },
+      check: [
+        '① 自社RA(あれば)を開いて、5+1要素のうち何個カバーされているか数える → 5個以下なら品質要改善',
+        '② 「Context」が無いRAは、必ず誤適用される。実例があれば思い出してみる',
+        '③ NFRに「数値目標」が書かれているか確認 → 「高可用」「高速」のような曖昧な表現はNG',
+        '④ ADRがGitで管理されているか確認 → Word/PDF だと検索性・履歴性で劣る',
+        '⑤ Adoption Guideを未経験者に読ませて適用イメージが湧くか試す'
+      ],
+      try: 'Lab02のNFR表をテンプレート化して、社内RAに当てはめてみる。空白セルが「未確定の非機能」を可視化する。'
+    },
+    lab3: {
+      info: { type:'info', html:'📘 <strong>Before / After / Δ</strong>: <strong>Before</strong> 1枚絵で全関係者にアーキ説明 → 視点違いで議論が噛み合わない。<strong>After</strong> 4+1ビュー(Logical/Process/Development/Physical/Scenarios)で多視点記述。<strong>Δ(値)</strong> ステークホルダー毎に必要な絵が揃い、レビュー時間が大幅短縮。' },
+      check: [
+        '① 自社プロジェクトのアーキ図を集めて、4+1のうちどれに該当するか分類する',
+        '② ビュー漏れがあれば、補う担当者と期限を決める',
+        '③ Scenarios(ユースケース)から逆算して、各ビューがそれを支えているか確認',
+        '④ OutSystems案件なら、モジュール構成図(Development) + 環境構成(Physical) + BPTフロー(Process)を揃える',
+        '⑤ レビュー会の資料に「視点ラベル」(例: [Logical] [Physical])を付けてみる → 議論の対象が明確になる'
+      ],
+      try: 'コードブロックの「OutSystems文脈マッピング」を自分の最近の案件に置き換えて書き直すと、不足ビューが浮かぶ。'
+    },
+    lab4: {
+      info: { type:'info', html:'📘 <strong>Before / After / Δ</strong>: <strong>Before</strong> 上位/下位の依存方向ルールが無く、Domainに <code>SqlConnection</code>。<strong>After</strong> 4層分離 + 上→下の一方向依存。<strong>Δ(値)</strong> テスト容易性↑、保守時の影響範囲↓、新人教育コスト↓。' },
+      check: [
+        '① 自分が今書いている VB.NET / OutSystems コードで「Domain層が直接DB/HTTPに依存していないか」を確認',
+        '② Architecture Dashboard(OutSystems)で「Cyclic dependency」警告が出ていないかチェック',
+        '③ レビュー時に「このクラスはどの層?」と質問する習慣を付ける',
+        '④ Bypass(Pres→Repo直結)を許容するか、RA文書に明記されているか確認',
+        '⑤ 既存システムの依存図を描いて、上→下以外の矢印が無いか目視確認'
+      ],
+      try: 'コードペアの VB.NET 例を <code>BatchFramework</code> 配下に <code>OrderTest.vb</code> として作成し、IOrderRepo の差し替えでテストが書けることを実感する。'
+    },
+    lab5: {
+      info: { type:'info', html:'📘 <strong>Before / After / Δ</strong>: <strong>Before</strong> Domainがフレームワーク・DBに直接依存し、3年で陳腐化。<strong>After</strong> 同心円(外→内のみ)で依存反転。<strong>Δ(値)</strong> Domainがテスト独立、フロント/DB差替コスト大幅減。但し設計学習コスト高。' },
+      check: [
+        '① 自分の関わるシステムで「業務ロジックの寿命」を見積もる → 3年以上ならクリーンアーキ検討価値あり',
+        '② テスト時にDB接続が必要か確認 → 必要ならDomain層が外部依存している兆候',
+        '③ TypeScriptサンプルを動かし、Adapter差替で同じUseCaseが2種のRepoで動作することを確認',
+        '④ Inbound/Outbound Port の用語を社内で使い始めると、議論の解像度が上がる',
+        '⑤ Lab04(レイヤード)との適用基準を明文化 → 「コア寿命3年以上 or 複数チャネル」をしきい値に'
+      ],
+      try: 'TypeScriptコードを <code>order_clean.ts</code> として保存し、<code>tsc</code>でコンパイル後 <code>node</code> で実行。InMemoryRepo→SqlRepoの切替を体感する。'
+    },
+    lab6: {
+      info: { type:'info', html:'📘 <strong>Before / After / Δ</strong>: <strong>Before</strong> モノリスを「人気だから」で50サービス分割 → 結合テスト不能・観測性破綻。<strong>After</strong> 境界(DDD Bounded Context) + Saga + 観測性をRAに先に組み込み。<strong>Δ(値)</strong> 分割の正当性が説明可能になり、運用が崩壊しない。' },
+      check: [
+        '① 自社/顧客のシステムでマイクロサービス化議論があれば、「分割の根拠」が事業ドメイン由来か確認',
+        '② 分散トランザクションの計画があれば、2PCではなくSaga/Outboxを検討',
+        '③ 観測性(分散トレース、メトリクス、ログ集約)が「設計の最初」に組み込まれているか確認',
+        '④ サービス間通信のリトライ/タイムアウト/サーキットブレーカ設計があるか確認',
+        '⑤ チーム数 < サービス数 になっていないか確認(逆コンウェイの法則)'
+      ],
+      try: '分散トランザクションのSaga例(コードペア右)をシーケンス図として手書きすると、補償処理の難しさを体感できる。'
+    },
+    lab7: {
+      info: { type:'info', html:'📘 <strong>Before / After / Δ</strong>: <strong>Before</strong> 同期API依存で連鎖障害。<strong>After</strong> EDA(Producer/Broker/Consumer)で疎結合・非同期スケール。<strong>Δ(値)</strong> 障害伝播半径↓、機能追加速度↑、但し順序/冪等/スキーマの設計負荷を伴う。' },
+      check: [
+        '① 自社システムで同期API呼び出しが障害連鎖の原因になった事例を思い出す',
+        '② CloudEventsスキーマで自社主要イベントを書き直してみる → 必須フィールドが揃うか確認',
+        '③ Outbox/Saga パターンが必要な業務(注文・在庫・決済)があれば候補にメモ',
+        '④ Schema Registry の有無を確認 → 無ければイベントスキーマ進化で破綻リスク',
+        '⑤ Consumer障害時の「リプレイ可能性」(イベント永続化期間)を確認'
+      ],
+      try: 'CloudEventsスキーマのJSON例を実際に <code>order_event.json</code> として保存し、PostmanからローカルAPIに送信できる形にしてみると感覚が掴める。'
+    },
+    lab8: {
+      info: { type:'info', html:'📘 <strong>Before / After / Δ</strong>: <strong>Before</strong> クラウド使用でも運用は手作業中心、コスト超過は事後通知。<strong>After</strong> WAF 5本柱でレビュー観点を体系化、各Pillarで重み付け。<strong>Δ(値)</strong> 顧客提案・運用引継ぎの品質ゲートが明確化、属人性↓。' },
+      check: [
+        '① Azure案件なら Azure WAF Review (公式無料ツール)を1度実行 → スコアが可視化される',
+        '② 自社の運用手順書がIaC(Terraform/Bicep)化されているか確認 → 手順書のみだと再現性なし',
+        '③ コストアラートが事前(予算の80%)で設定されているか確認',
+        '④ DRの目標値(RTO/RPO)が数値で合意されているか確認',
+        '⑤ サーバレスや低消費リージョン採用で持続可能性Pillarに貢献できないか検討'
+      ],
+      try: 'Azure WAF Review(https://learn.microsoft.com/en-us/assessments/) を実際に開いてサンプル案件で評価してみる。'
+    },
+    lab9: {
+      info: { type:'info', html:'📘 <strong>Before / After / Δ</strong>: <strong>Before</strong> 1アプリにEntity・画面・外部APIが混在 → 改修時の波及範囲不明。<strong>After</strong> End-User/Core/Foundation の3層分離 + 命名規則(_CS/_FW/_IS)。<strong>Δ(値)</strong> Architecture Dashboard 違反↓、再利用率↑、新人が「どこに書くか」迷わない。' },
+      check: [
+        '① OutSystems Service Studio で適当なアプリを開き、依存(Manage Dependencies)で End-User → Core → Foundation の方向のみか確認',
+        '② Architecture Dashboard(OutSystems)で Technical Debt スコアと違反一覧を確認',
+        '③ モジュール命名で <code>_CS</code> / <code>_FW</code> / <code>_IS</code> が使われているか調査',
+        '④ End-User層のモジュールがEntity定義を持っていれば、Core層への抽出候補',
+        '⑤ Foundation層がEnd-User層を Consume していたら逆流。即修正対象'
+      ],
+      try: '自社の小規模OutSystemsアプリで Module Tree を描き、3層に色分けしてみると違反が一目でわかる。'
+    },
+    lab10: {
+      info: { type:'info', html:'📘 <strong>Before / After / Δ</strong>: <strong>Before</strong> 過去判断の理由が口頭/SharePointの個人配下で消える。<strong>After</strong> ADRをGitリポジトリに集約、PRでレビュー、Statusで状態管理。<strong>Δ(値)</strong> 新人参画時の「過去判断ツアー」が可能、監査対応の根拠資料化、再議論の削減。' },
+      check: [
+        '① 自社/案件で直近の「アーキ判断」を1件選び、ADR形式で書き起こしてみる(15分で書ける)',
+        '② <code>/docs/adr/</code> ディレクトリの有無を確認 → 無ければ作成提案',
+        '③ Index ADR (000-index.md)で全ADR一覧化 → 検索性が劇的に向上',
+        '④ 過去ADRが「上書き編集」されていないか確認 → 上書きはNG、新ADRでSupersedes',
+        '⑤ Slack議論の最後に「ADR化してPR出します」を口癖にする'
+      ],
+      try: 'コードブロックのADRサンプルを <code>0001-template.md</code> として自社Gitリポジトリに置く。最初の数本のテンプレに使える。'
+    },
+    lab11: {
+      info: { type:'info', html:'📘 <strong>Before / After / Δ</strong>: <strong>Before</strong> 非機能要件を曖昧合意のまま設計が進み、稼働後に問題発覚。<strong>After</strong> ATAM(またはMini-ATAM)でシナリオ駆動の評価を設計時+稼働後に実施。<strong>Δ(値)</strong> Risk/Sensitivity/Tradeoff が早期可視化、本番障害↓。' },
+      check: [
+        '① 自社案件のNFRリストを取り出し、「数値目標」「優先度(H/M/L)」が付いているか確認',
+        '② 各NFR項目に対して「達成シナリオ」を1つ書く → 抽象度が一気に下がる',
+        '③ Mini-ATAM(半日版)を社内で1度試してみる',
+        '④ Sensitivity Point(1要素変更で品質激変)が見つかれば、設計書に必ず明記',
+        '⑤ 稼働後1年でNFR実績を再評価 → Risk と判定したものが実際にどう着地したか検証'
+      ],
+      try: 'QA Treeのコード例を <code>qa-tree.txt</code> として保存し、自社案件のNFRに置き換えて埋めてみる。空白が多い品質属性が「未検討」の領域。'
+    },
+    lab12: {
+      info: { type:'info', html:'📘 <strong>Before / After / Δ</strong>: <strong>Before</strong> RA作って終わり、2年で陳腐化。<strong>After</strong> Seed→Standardize→Govern→Evolve の4フェーズ + 専任CoE 0.5人月 + 四半期棚卸し。<strong>Δ(値)</strong> RAが10案件で稼働継続、適用率/負債KPI管理可能、組織知識として定着。' },
+      check: [
+        '① 自社RA(あれば)が現在どのフェーズか自己評価',
+        '② RA推進担当者が「専任 or 兼務」か確認 → 兼務なら死蔵リスク',
+        '③ 直近6ヶ月で更新されたか、Gitログで確認',
+        '④ 適用案件数 / 違反件数 / 棚卸し回数 をダッシュボード化できないか検討',
+        '⑤ 四半期棚卸しの「期日固定」をカレンダーに登録 → 形骸化を防ぐ最強の仕組み'
+      ],
+      try: '自社RAの直近1年の更新履歴をGitログから抽出し、Phase 0-3 のどこにいるか可視化する。停滞していればフェーズ移行の阻害要因を特定。'
+    }
+  };
+
+  function infoHTML(m){ return m?.info ? `<div class="info-box ${m.info.type||'info'}">${m.info.html}</div>` : ''; }
+  function verifyHTML(m){ if (!m?.verify) return '';
+    const {before, after} = m.verify;
+    return `<div class="verify">
+      <div class="verify-col verify-before"><div class="verify-label">Before ▶︎ 実行前</div>${before||''}</div>
+      <div class="verify-col verify-after"><div class="verify-label">After ▶︎ 実行後</div>${after||''}</div>
+    </div>`; }
+  function checkHTML(m){ if (!m?.check?.length) return '';
+    return `<div class="check-steps">
+      <div class="check-steps-title">🔍 ブラウザ実機チェック</div>
+      <ol>${m.check.map(s=>`<li>${s}</li>`).join('')}</ol>
+    </div>`; }
+  function tryHTML(m){
+    const tip = m?.try ? `<div class="try-tip"><strong>💡 このラボのコツ:</strong> ${m.try}</div>` : '';
+    return `<div class="try-box">
+      <div class="try-title">💻 コード例を試す手順（コピペで動かす）</div>
+      <ol>
+        <li>上のコードブロックの <strong>Copy</strong> ボタンを押してクリップボードにコピー</li>
+        <li>テキストエディタで <code>試行.html</code> または対応する拡張子のファイル(<code>.ts</code>, <code>.vb</code>, <code>.md</code>等)を新規作成し、ペースト</li>
+        <li>保存して、対応するツール(ブラウザ/tsc/Visual Studio/エディタ)で開く</li>
+        <li>下の「🔍 ブラウザ実機チェック」の項目を順に試して、想定通りの挙動になるか確認する</li>
+      </ol>
+      <pre class="try-skeleton">&lt;!DOCTYPE html&gt;
+&lt;html lang="ja"&gt;
+&lt;head&gt;
+  &lt;meta charset="UTF-8"&gt;
+  &lt;title&gt;試行&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;!-- ここに貼る --&gt;
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+      ${tip}
+    </div>`;
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.lab').forEach(lab => {
+      const meta = LAB_META[lab.id]; const body = lab.querySelector('.lab-body');
+      if (!body || !meta) return;
+      const frag = document.createElement('div');
+      frag.innerHTML = infoHTML(meta) + verifyHTML(meta) + tryHTML(meta) + checkHTML(meta);
+      while (frag.firstChild) body.appendChild(frag.firstChild);
+    });
+
+    const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+    const map = new Map();
+    links.forEach(a => { const el = document.getElementById(a.getAttribute('href').slice(1)); if (el) map.set(el, a); });
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting) { const l = map.get(e.target);
+        if (l) { links.forEach(n=>n.classList.remove('active')); l.classList.add('active'); } }
+    }), { rootMargin:'-30% 0px -60% 0px' });
+    document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+    document.querySelectorAll('.code-block').forEach((cb, i) => {
+      if (cb.querySelector('.code-block-header')) return;
+      const existing = cb.querySelector('.code-label');
+      const labelText = existing ? existing.textContent.trim() : `Code #${i+1}`;
+      if (existing) existing.remove();
+      const header = document.createElement('div');
+      header.className = 'code-block-header';
+      header.innerHTML = `<span>${labelText}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+      cb.insertBefore(header, cb.firstChild);
+    });
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.matches('.toggle-btn')) return;
+    const btn = e.target;
+    const stage = document.getElementById(btn.dataset.target);
+    if (!stage) return;
+    const isBefore = stage.classList.toggle('is-before');
+    btn.classList.toggle('is-before', isBefore);
+    const label = document.getElementById(btn.dataset.target + '-label');
+    if (label) label.textContent = isBefore ? '現在: Before（機能OFF／問題あり）' : '現在: After（機能ON／修正済み）';
+  });
+</script>
+
+</body>
+</html>

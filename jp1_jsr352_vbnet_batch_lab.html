@@ -1,0 +1,1381 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JP1 × JSR-352 × VB.NET バッチ共通基盤 三層対応Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.2rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:.98rem; margin-top:8px; }
+.hero .meta-line { font-family:var(--mono); font-size:.78rem; color:var(--text-dim); margin-top:14px; letter-spacing:.04em; }
+
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+.verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+  line-height:1.7; border:1px solid; }
+.verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+.verify-before .verify-label { color:var(--error); }
+.verify-after  .verify-label { color:var(--success); }
+
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+.compare-table .yes { color:var(--success); font-weight:600; }
+.compare-table .no { color:var(--error); }
+
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.74rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; white-space:pre; }
+
+/* 三層レイヤ図用 */
+.layer-map { font-family:var(--mono); font-size:.78rem; line-height:1.6;
+  background:var(--code-bg); border:1px solid var(--border); border-radius:8px;
+  padding:14px 16px; margin:14px 0; overflow-x:auto; white-space:pre; color:var(--text); }
+
+/* 責務マトリクス */
+.resp-matrix th:first-child, .resp-matrix td:first-child { width:30%; }
+.resp-matrix .jp1   { background:rgba(0,92,197,.08); }
+.resp-matrix .app   { background:rgba(34,134,58,.08); }
+.resp-matrix .both  { background:rgba(176,136,0,.08); }
+.resp-matrix .none  { background:rgba(203,36,49,.05); color:var(--text-dim); }
+
+/* レイヤバッジ */
+.badge { display:inline-block; font-family:var(--mono); font-size:.7rem;
+  padding:2px 8px; border-radius:10px; margin-right:4px; font-weight:600; }
+.badge-jp1 { background:rgba(0,92,197,.15); color:var(--accent); border:1px solid rgba(0,92,197,.3); }
+.badge-jsr { background:rgba(111,66,193,.15); color:var(--accent3); border:1px solid rgba(111,66,193,.3); }
+.badge-app { background:rgba(34,134,58,.15); color:var(--accent2); border:1px solid rgba(34,134,58,.3); }
+
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .verify { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.5rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// JP1 × JSR-352 × VB.NET <span>三層対応</span></div>
+  <div class="nav-section">概念マップ</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>三層責務分離マップ</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>ジョブ粒度の対応</a>
+  <div class="nav-section">処理モデル</div>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>Chunk vs Batchlet</a>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>Checkpoint/Restart</a>
+  <div class="nav-section">境界設計</div>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>戻り値・ExitStatus</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>ログ相関キー</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>リトライ二段構え</a>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>多重起動制御</a>
+  <div class="nav-section">スケール</div>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>並列処理 Partitioning</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>ジョブネット境界</a>
+  <div class="nav-section">参考資料</div>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>用語クロスリファレンス</a>
+</nav>
+
+<div class="hero">
+  <h1>JP1 × JSR-352 × VB.NET バッチ共通基盤</h1>
+  <p class="subtitle">三層責務分離による方式設計 — 「誰が何をやるか」の地図</p>
+  <p class="meta-line">[ JP1/AJS3 :: ジョブ運用 ] × [ JSR-352 :: 概念モデル ] × [ VB.NET :: 共通基盤実装 ]</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>三層責務分離マップ</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>ジョブ粒度の対応関係</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>Chunk vs Batchlet 使い分け</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>Checkpoint / Restart</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>戻り値・ExitStatus 設計</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>ログ相関キー設計</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>リトライ戦略の二段構え</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>多重起動制御</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>並列処理 (Partitioning)</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>ジョブネット境界線</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">10</span>用語クロスリファレンス</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ===== Lab 00: 三層責務分離マップ ===== -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>三層責務分離マップ — 全体地図</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      JP1（ジョブ運用管理）・JSR-352（概念モデル／業界標準語彙）・VB.NET共通基盤（実装）を <strong>三層に分離</strong> し、
+      それぞれが何を担うかを一望する。設計議論で「これはどの層の話？」と迷ったとき最初に開く図。
+    </p>
+
+    <div class="layer-map">┌─────────────────────────────────────────────────────────┐
+│           [L1] JP1/AJS3   ★ ジョブの "外側"             │
+│                                                         │
+│   • スケジュール起動  • ジョブネット (依存・並列・順序)│
+│   • リモートホスト実行 (jpqjobsub等)                    │
+│   • 戻り値判定 (しきい値)  • リカバリ・先行後続制御    │
+│   • 運用カレンダー    • 履歴集約    • JP1/IM 通報       │
+└─────────────────────────────────────────────────────────┘
+                       │ EXE 起動 + 引数 + 戻り値
+                       ▼
+┌─────────────────────────────────────────────────────────┐
+│           [L2] JSR-352   ★ 概念モデル / 共通言語        │
+│                                                         │
+│   Job ─ Step ─ Chunk(Reader/Processor/Writer)           │
+│                  │                                       │
+│                  └ Batchlet  / Listener / Partition     │
+│                                                         │
+│   Checkpoint  Restart  Skip  Retry  ExitStatus  JSL     │
+│   ※「業界標準語彙」として設計議論・ドキュメントで使う │
+└─────────────────────────────────────────────────────────┘
+                       │ 概念を実装に落とし込む
+                       ▼
+┌─────────────────────────────────────────────────────────┐
+│           [L3] VB.NET 共通基盤   ★ ジョブの "中身"      │
+│                                                         │
+│   • 引数解析 / 設定読込    • DB接続・Tx制御             │
+│   • Chunk/Batchlet テンプレート                          │
+│   • Checkpoint テーブル    • 冪等性キー                  │
+│   • 共通ログ (相関キー埋込)  • DLQ                       │
+│   • 戻り値マッピング (例外→ExitCode)                     │
+└─────────────────────────────────────────────────────────┘</div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 三層分離の意義</div>
+      JP1とアプリ基盤を<strong>独立した層</strong>として設計すると、(1) JP1製品自体の入替え影響を局所化でき、(2) アプリ基盤を他案件で再利用しやすく、(3) 中央のJSR-352概念層を<strong>共通言語</strong>として持つことで国際的な議論にも耐える。
+      <pre class="ascii-art">  方針:  JP1は "WHEN/WHERE"   → いつ・どこで動かすか
+         JSRは "WHAT"          → 概念モデルで何を意味するか
+         VB は "HOW"           → 具体的にどう実装するか</pre>
+    </div>
+
+    <table class="compare-table resp-matrix">
+      <thead><tr><th>関心事</th><th>JP1</th><th>JSR-352</th><th>VB.NET基盤</th></tr></thead>
+      <tbody>
+        <tr><td>起動契機</td><td class="jp1 yes">◎</td><td class="none">—</td><td class="none">—</td></tr>
+        <tr><td>ジョブ間依存</td><td class="jp1 yes">◎</td><td class="none">—</td><td class="none">—</td></tr>
+        <tr><td>1ジョブ内のフロー</td><td class="none">—</td><td class="both yes">◎(JSL)</td><td class="app yes">◎</td></tr>
+        <tr><td>大量レコード処理</td><td class="none">—</td><td class="both yes">◎(Chunk)</td><td class="app yes">◎</td></tr>
+        <tr><td>レコード単位再開</td><td class="none">—</td><td class="both yes">◎(Checkpoint)</td><td class="app yes">◎</td></tr>
+        <tr><td>ジョブ全体再実行</td><td class="jp1 yes">◎</td><td class="none">—</td><td class="none">—</td></tr>
+        <tr><td>異常通報</td><td class="jp1 yes">◎(JP1/IM)</td><td class="none">—</td><td class="none">—</td></tr>
+        <tr><td>監査ログ集約</td><td class="jp1 yes">◎</td><td class="none">—</td><td class="app yes">○(業務ログ)</td></tr>
+        <tr><td>戻り値判定</td><td class="jp1 yes">◎(しきい値)</td><td class="both yes">○(ExitStatus)</td><td class="app yes">◎(発行)</td></tr>
+        <tr><td>冪等性・DLQ</td><td class="none">—</td><td class="none">仕様外</td><td class="app yes">◎</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info">
+      <strong>📘 読み方：</strong> 各セルは「その関心事に対する責務の所在」。 <span class="badge badge-jp1">JP1</span> <span class="badge badge-jsr">JSR-352</span> <span class="badge badge-app">VB.NET</span> の3つに塗り分けて、レビューで「ここはどこの責任？」が即答できる状態を目指す。
+    </div>
+  </div>
+</div>
+
+<!-- ===== Lab 01: ジョブ粒度の対応関係 ===== -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>ジョブ粒度の対応関係 — 「Job」って誰のJob?</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      JP1の「ジョブ」「ジョブネット」と、JSR-352の「Job」「Step」、VB.NET実装の「EXE」「クラス」は <strong>名前は似ているが粒度が違う</strong>。
+      ここを揃えないとレビューで永遠に話が噛み合わない。
+    </p>
+
+    <div class="layer-map">[ JP1/AJS3 ]                [ JSR-352 ]              [ VB.NET 実装 ]
+─────────────────────       ──────────────          ──────────────────
+ルートジョブネット                                    
+  ├ ジョブネット                                      
+  │   ├ ジョブ A      ─────▶  Job A         ─────▶  AppA.exe
+  │   │                          ├ Step 1       ──▶    クラス: LoadStep
+  │   │                          │  └ Chunk     ──▶      Reader/Processor/Writer
+  │   │                          └ Step 2       ──▶    クラス: AggregateStep
+  │   │                             └ Batchlet  ──▶      クラス: AggregateBatchlet
+  │   ├ ジョブ B      ─────▶  Job B         ─────▶  AppB.exe
+  │   └ ジョブ C      ─────▶  Job C         ─────▶  AppC.exe
+  └ ジョブネット (並列)
+      ├ ジョブ D    ┐
+      └ ジョブ E    ┴ ─▶  別Jobとして並列実行</div>
+
+    <div class="info-box warn">
+      <strong>⚠ 落とし穴：</strong> JP1の「ジョブ」とJSR-352の「Job」は<strong>同じ言葉だが指す範囲が異なる</strong>。
+      JP1ジョブ = OS/EXE実行単位、JSR-352 Job = アプリ内のバッチ処理単位。
+      <br>→ 通常は <code>1 JP1ジョブ = 1 EXE = 1 JSR-352 Job</code> の対応にすると混乱が少ない。
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JP1 / 起動コマンド例（ジョブネット内のジョブ定義）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">REM JP1/AJS3 ユニット定義 — UNIX/Windowsジョブ</span>
+<span class="cm">REM ジョブ定義の "実行ファイル名" として共通基盤EXEを指定</span>
+
+<span class="prop">scriptpath</span>=<span class="str">"D:\Batch\AppDailySales.exe"</span>
+<span class="prop">prm</span>=<span class="str">"/jobid=%JP1_JOBID% /executionDate=%JP1_TODAY% /mode=normal"</span>
+<span class="prop">env</span>=<span class="str">"BATCH_ENV=PROD"</span>
+<span class="prop">jd</span>=<span class="str">"and"</span>          <span class="cm">REM 終了判定: 戻り値AND</span>
+<span class="prop">tho</span>=<span class="num">0</span>              <span class="cm">REM 警告しきい値</span>
+<span class="prop">abh</span>=<span class="num">8</span>              <span class="cm">REM 異常しきい値 (8以上で異常)</span></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JSR-352 / Job XML (JSL) — 概念モデル表現</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">&lt;!-- 同じ業務をJSR-352 JSLで表現すると --&gt;</span>
+&lt;<span class="tag">job</span> <span class="attr">id</span>=<span class="val">"dailySalesJob"</span>&gt;
+  &lt;<span class="tag">step</span> <span class="attr">id</span>=<span class="val">"loadStep"</span> <span class="attr">next</span>=<span class="val">"aggregateStep"</span>&gt;
+    &lt;<span class="tag">chunk</span> <span class="attr">item-count</span>=<span class="val">"100"</span>&gt;
+      &lt;<span class="tag">reader</span>    <span class="attr">ref</span>=<span class="val">"salesCsvReader"</span>/&gt;
+      &lt;<span class="tag">processor</span> <span class="attr">ref</span>=<span class="val">"salesValidator"</span>/&gt;
+      &lt;<span class="tag">writer</span>    <span class="attr">ref</span>=<span class="val">"salesDbWriter"</span>/&gt;
+    &lt;/<span class="tag">chunk</span>&gt;
+  &lt;/<span class="tag">step</span>&gt;
+  &lt;<span class="tag">step</span> <span class="attr">id</span>=<span class="val">"aggregateStep"</span>&gt;
+    &lt;<span class="tag">batchlet</span> <span class="attr">ref</span>=<span class="val">"salesAggregateBatchlet"</span>/&gt;
+  &lt;/<span class="tag">step</span>&gt;
+&lt;/<span class="tag">job</span>&gt;</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>VB.NET / 共通基盤Main — 上記2つに対応する実装</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">' AppDailySales.exe のエントリポイント</span>
+<span class="cm">' 1 EXE = 1 JSR-352 Job として扱う</span>
+
+<span class="kw">Module</span> Program
+    <span class="kw">Sub</span> Main(args() <span class="kw">As</span> <span class="kw">String</span>)
+        <span class="kw">Dim</span> ctx = JobContext.Parse(args)   <span class="cm">' /jobid=, /executionDate=</span>
+        <span class="kw">Dim</span> job = <span class="kw">New</span> JobBuilder(<span class="str">"dailySalesJob"</span>, ctx) _
+            .AddStep(<span class="kw">New</span> ChunkStep(<span class="str">"loadStep"</span>,
+                reader:=<span class="kw">New</span> SalesCsvReader(),
+                processor:=<span class="kw">New</span> SalesValidator(),
+                writer:=<span class="kw">New</span> SalesDbWriter(),
+                itemCount:=<span class="num">100</span>)) _
+            .AddStep(<span class="kw">New</span> BatchletStep(<span class="str">"aggregateStep"</span>,
+                <span class="kw">New</span> SalesAggregateBatchlet())) _
+            .Build()
+
+        <span class="kw">Dim</span> exitCode = job.Execute()
+        Environment.Exit(exitCode)   <span class="cm">' ← JP1がここを判定</span>
+    <span class="kw">End</span> <span class="kw">Sub</span>
+<span class="kw">End</span> <span class="kw">Module</span></pre>
+    </div>
+
+    <div class="info-box ok">
+      <strong>✓ 設計の鉄則：</strong> <code>1 JP1ジョブ = 1 EXE = 1 JSR-352 Job</code> の1:1:1対応を基本とする。
+      複数のEXEを1ジョブネット内で並べて表現することで、JP1の依存制御の力を最大限活かせる。
+      <br>逆に<strong>1 EXEの中で5つも6つもStepを持たせる</strong>のは、JP1の制御外になり運用が辛くなる。
+    </div>
+  </div>
+</div>
+
+<!-- ===== Lab 02: Chunk vs Batchlet ===== -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>Chunk vs Batchlet — どちらで実装すべきか</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      JSR-352の2つの実行モデル <code>Chunk</code> と <code>Batchlet</code> は、 <strong>「件数ループがあるか／ないか」</strong> で使い分ける。
+      この判別を間違えると、Checkpoint/Restartが効かない or 過剰実装になる。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>判別軸</th><th>Chunk向き</th><th>Batchlet向き</th></tr></thead>
+      <tbody>
+        <tr><td>処理形態</td><td>レコード単位ループ</td><td>単発処理</td></tr>
+        <tr><td>典型例</td><td>CSV→DB登録、DB→DB集計、ファイル変換</td><td>FTP転送、外部コマンド起動、DDL発行</td></tr>
+        <tr><td>件数概念</td><td><span class="yes">あり</span></td><td><span class="no">なし</span></td></tr>
+        <tr><td>Checkpoint</td><td><span class="yes">自動で効く</span></td><td><span class="no">不要/不可</span></td></tr>
+        <tr><td>Tx境界</td><td>item-count件ごと</td><td>process()全体で1Tx</td></tr>
+        <tr><td>Skip/Retry</td><td><span class="yes">レコード単位で可</span></td><td><span class="no">処理全体のリトライのみ</span></td></tr>
+        <tr><td>VB.NET実装</td><td>3クラス(Reader/Processor/Writer)</td><td>1クラス(IBatchlet実装)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>VB.NET / Chunk実装パターン</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">' 大量レコードを「100件読む→加工→100件書く」でループ</span>
+<span class="kw">Public</span> <span class="kw">Class</span> SalesCsvReader
+    <span class="kw">Implements</span> IItemReader(<span class="kw">Of</span> SalesRecord)
+
+    <span class="kw">Private</span> _stream <span class="kw">As</span> StreamReader
+    <span class="kw">Private</span> _position <span class="kw">As</span> <span class="kw">Long</span>
+
+    <span class="kw">Public</span> <span class="kw">Function</span> ReadItem() <span class="kw">As</span> SalesRecord _
+        <span class="kw">Implements</span> IItemReader(<span class="kw">Of</span> SalesRecord).ReadItem
+        <span class="kw">Dim</span> line = _stream.ReadLine()
+        <span class="kw">If</span> line <span class="kw">Is</span> <span class="kw">Nothing</span> <span class="kw">Then</span> <span class="kw">Return</span> <span class="kw">Nothing</span>   <span class="cm">' 終端</span>
+        _position += <span class="num">1</span>
+        <span class="kw">Return</span> SalesRecord.Parse(line)
+    <span class="kw">End</span> <span class="kw">Function</span>
+
+    <span class="cm">' Checkpoint用: 現在位置を返す</span>
+    <span class="kw">Public</span> <span class="kw">Function</span> Checkpoint() <span class="kw">As</span> <span class="kw">Object</span>
+        <span class="kw">Return</span> _position
+    <span class="kw">End</span> <span class="kw">Function</span>
+<span class="kw">End</span> <span class="kw">Class</span></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>VB.NET / Batchlet実装パターン</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">' FTPで1ファイル転送する単発処理 — 件数ループ概念がない</span>
+<span class="kw">Public</span> <span class="kw">Class</span> FtpUploadBatchlet
+    <span class="kw">Implements</span> IBatchlet
+
+    <span class="kw">Public</span> <span class="kw">Function</span> Process() <span class="kw">As</span> <span class="kw">String</span> _
+        <span class="kw">Implements</span> IBatchlet.Process
+
+        <span class="kw">Try</span>
+            FtpClient.Upload(_localPath, _remotePath)
+            <span class="kw">Return</span> <span class="str">"COMPLETED"</span>          <span class="cm">' ← ExitStatus</span>
+        <span class="kw">Catch</span> ex <span class="kw">As</span> FtpTimeoutException
+            <span class="kw">Return</span> <span class="str">"RETRY"</span>              <span class="cm">' ← JP1がジョブ再実行する目印</span>
+        <span class="kw">Catch</span> ex <span class="kw">As</span> Exception
+            Logger.Error(ex)
+            <span class="kw">Return</span> <span class="str">"FAILED"</span>
+        <span class="kw">End</span> <span class="kw">Try</span>
+    <span class="kw">End</span> <span class="kw">Function</span>
+
+    <span class="kw">Public</span> <span class="kw">Sub</span> Stop_() <span class="kw">Implements</span> IBatchlet.Stop_
+        <span class="cm">' JP1からの停止指示を受けて中断</span>
+        FtpClient.Cancel()
+    <span class="kw">End</span> <span class="kw">Sub</span>
+<span class="kw">End</span> <span class="kw">Class</span></pre>
+    </div>
+
+    <div class="info-box warn">
+      <strong>⚠ よくある誤用：</strong> 「件数ループがあるけど単純だからBatchletで」と書いてしまうと、 <strong>Checkpoint/Restart が効かない</strong> ため、
+      100万件処理中の99万件目で落ちたら最初からやり直し。これはJP1再実行時に致命的な遅延になる。<br>
+      → <strong>件数ループ＝Chunk一択</strong> をルール化する。
+    </div>
+
+    <div class="info-box info">
+      <strong>📘 判別フローチャート：</strong>
+      <br>(1) この処理は「N件のレコードを1件ずつ処理する」？ → <span class="badge badge-jsr">Chunk</span>
+      <br>(2) この処理は「ファイル/コマンドを1回実行して結果を返す」？ → <span class="badge badge-jsr">Batchlet</span>
+      <br>(3) 両方に見える？ → 件数の側を主軸にChunk、外部コマンド呼び出しはChunk内のWriter側に閉じ込める
+    </div>
+  </div>
+</div>
+
+<!-- ===== Lab 03: Checkpoint / Restart ===== -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>Checkpoint / Restart — 二段階の再開戦略</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Checkpoint/Restartは <strong>「ジョブ全体の再実行（JP1）」と「レコード単位の続行（アプリ）」</strong> の二段構造で設計する。
+      JP1のリカバリ機能だけに頼ると、100万件処理を毎回最初からやり直す羽目になる。
+    </p>
+
+    <div class="layer-map">[ 失敗発生時の選択肢 ]
+
+  ▼ JP1 リカバリ実行
+    └ ジョブ全体を最初から再実行
+       │
+       ├─ 副作用なしジョブ → そのまま再実行OK
+       │
+       └─ 副作用ありジョブ → ❌ 二重登録・整合性破壊リスク
+                            └ 冪等性キー or Checkpoint参照が必須
+
+  ▼ アプリ Restart  ★推奨
+    └ Checkpointから続行
+       │
+       ├─ 100万件中90万件処理済 → 90万件目から再開
+       └─ 副作用は冪等性キーで防止</div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>VB.NET / Checkpointテーブル設計</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">-- 共通基盤がジョブ実行ごとに自動でI/Oする管理テーブル</span>
+<span class="kw">CREATE</span> <span class="kw">TABLE</span> BATCH_CHECKPOINT (
+    JOB_NAME       <span class="kw">VARCHAR</span>(<span class="num">64</span>)   <span class="kw">NOT</span> <span class="kw">NULL</span>,
+    EXECUTION_KEY  <span class="kw">VARCHAR</span>(<span class="num">64</span>)   <span class="kw">NOT</span> <span class="kw">NULL</span>,  <span class="cm">-- JP1ジョブID等</span>
+    STEP_NAME      <span class="kw">VARCHAR</span>(<span class="num">64</span>)   <span class="kw">NOT</span> <span class="kw">NULL</span>,
+    READER_POS     <span class="kw">BIGINT</span>        <span class="kw">NULL</span>,      <span class="cm">-- Reader位置</span>
+    READ_COUNT     <span class="kw">BIGINT</span>        <span class="kw">NOT</span> <span class="kw">NULL</span>,  <span class="cm">-- 累計読込件数</span>
+    WRITE_COUNT    <span class="kw">BIGINT</span>        <span class="kw">NOT</span> <span class="kw">NULL</span>,
+    SKIP_COUNT     <span class="kw">BIGINT</span>        <span class="kw">NOT</span> <span class="kw">NULL</span>,
+    BATCH_STATUS   <span class="kw">VARCHAR</span>(<span class="num">16</span>)   <span class="kw">NOT</span> <span class="kw">NULL</span>,  <span class="cm">-- STARTED/COMPLETED/FAILED/STOPPED</span>
+    LAST_UPDATED   DATETIME2     <span class="kw">NOT</span> <span class="kw">NULL</span>,
+    <span class="kw">PRIMARY</span> <span class="kw">KEY</span> (JOB_NAME, EXECUTION_KEY, STEP_NAME)
+);</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>VB.NET / Chunk処理ループ (Checkpoint付き)</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">Public</span> <span class="kw">Class</span> ChunkStep
+    <span class="kw">Public</span> <span class="kw">Function</span> Execute(ctx <span class="kw">As</span> JobContext) <span class="kw">As</span> <span class="kw">String</span>
+        <span class="cm">' 1. Checkpoint復元 (前回中断位置から)</span>
+        <span class="kw">Dim</span> cp = CheckpointRepository.Load(ctx.JobName, ctx.ExecutionKey, _stepName)
+        <span class="kw">If</span> cp IsNot <span class="kw">Nothing</span> <span class="kw">AndAlso</span> cp.BatchStatus &lt;&gt; <span class="str">"COMPLETED"</span> <span class="kw">Then</span>
+            _reader.Restore(cp.ReaderPos)   <span class="cm">' 続きから読む</span>
+        <span class="kw">End</span> <span class="kw">If</span>
+
+        <span class="cm">' 2. Chunk ループ</span>
+        <span class="kw">Do</span>
+            <span class="kw">Using</span> tx = _db.BeginTransaction()
+                <span class="kw">Dim</span> buffer <span class="kw">As</span> <span class="kw">New</span> List(<span class="kw">Of</span> SalesRecord)
+                <span class="kw">For</span> i <span class="kw">As</span> <span class="kw">Integer</span> = <span class="num">1</span> <span class="kw">To</span> _itemCount   <span class="cm">' 100件</span>
+                    <span class="kw">Dim</span> rec = _reader.ReadItem()
+                    <span class="kw">If</span> rec <span class="kw">Is</span> <span class="kw">Nothing</span> <span class="kw">Then</span> <span class="kw">Exit</span> <span class="kw">For</span>
+                    <span class="kw">Dim</span> processed = _processor.ProcessItem(rec)
+                    <span class="kw">If</span> processed IsNot <span class="kw">Nothing</span> <span class="kw">Then</span> buffer.Add(processed)
+                <span class="kw">Next</span>
+                <span class="kw">If</span> buffer.Count = <span class="num">0</span> <span class="kw">Then</span> <span class="kw">Exit</span> <span class="kw">Do</span>
+
+                _writer.WriteItems(buffer)
+
+                <span class="cm">' 3. Checkpoint保存 (Tx内で永続化)</span>
+                CheckpointRepository.Save(ctx, _stepName, _reader.Checkpoint())
+
+                tx.Commit()  <span class="cm">' ← データ + Checkpoint が原子的に確定</span>
+            <span class="kw">End</span> <span class="kw">Using</span>
+        <span class="kw">Loop</span>
+
+        <span class="kw">Return</span> <span class="str">"COMPLETED"</span>
+    <span class="kw">End</span> <span class="kw">Function</span>
+<span class="kw">End</span> <span class="kw">Class</span></pre>
+    </div>
+
+    <div class="verify">
+      <div class="verify-col verify-before">
+        <div class="verify-label">Before — Checkpointなし</div>
+        100万件のCSV取込で99万件目に異常 → JP1リカバリ実行 → <strong>最初の1件目から再開</strong> → 99万件分の重複登録 or 全件削除&再実行で4時間ロス
+      </div>
+      <div class="verify-col verify-after">
+        <div class="verify-label">After — Checkpoint+冪等性キー</div>
+        99万件目で異常 → JP1リカバリ実行 → 共通基盤がCheckpoint読込 → <strong>99万件目から続行</strong> → 1万件処理して数分で完了
+      </div>
+    </div>
+
+    <div class="info-box err">
+      <strong>🚫 アンチパターン：</strong> Checkpoint保存を別Txで行う実装。データ書き込みとCheckpointが別Txだと、片方だけ成功した場合に整合性が崩れる。
+      <strong>必ず同一Tx内で保存</strong>する（VB.NETなら同じ <code>SqlTransaction</code>）。
+    </div>
+  </div>
+</div>
+
+<!-- ===== Lab 04: 戻り値 / ExitStatus ===== -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>戻り値・ExitStatus 設計 — JP1との契約</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      JP1はEXEの <strong>戻り値（ExitCode）でジョブの正常／警告／異常を判定</strong> する。
+      ここを社内標準化しないと、ジョブネット定義のしきい値がプロジェクト毎にバラバラになり、
+      運用引継ぎで必ず事故る。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>ExitCode</th><th>意味</th><th>JP1判定</th><th>JSR-352 ExitStatus</th><th>典型ケース</th></tr></thead>
+      <tbody>
+        <tr><td>0</td><td>正常終了</td><td><span class="yes">正常</span></td><td>COMPLETED</td><td>全件処理成功</td></tr>
+        <tr><td>1</td><td>警告終了</td><td>警告</td><td>COMPLETED_WITH_WARNING</td><td>Skipありで完走</td></tr>
+        <tr><td>4</td><td>業務エラー</td><td><span class="no">異常</span></td><td>FAILED</td><td>業務データ不整合(再実行不可)</td></tr>
+        <tr><td>8</td><td>システムエラー</td><td><span class="no">異常</span></td><td>FAILED</td><td>DB接続断・タイムアウト(再実行可)</td></tr>
+        <tr><td>16</td><td>致命的エラー</td><td><span class="no">異常</span></td><td>ABANDONED</td><td>Checkpoint破損・即時停止</td></tr>
+        <tr><td>100+</td><td>起動前エラー</td><td><span class="no">異常</span></td><td>—</td><td>引数不正・設定ファイル無し</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>VB.NET / 例外→ExitCode マッピング</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">Public</span> <span class="kw">Module</span> ExitCodeMapper
+    <span class="kw">Public</span> <span class="kw">Function</span> Map(ex <span class="kw">As</span> Exception) <span class="kw">As</span> <span class="kw">Integer</span>
+        <span class="kw">Select</span> <span class="kw">Case</span> ex.GetType()
+            <span class="kw">Case</span> <span class="kw">GetType</span>(ArgumentException),
+                 <span class="kw">GetType</span>(ConfigurationException)
+                <span class="kw">Return</span> <span class="num">100</span>   <span class="cm">' 起動前エラー</span>
+
+            <span class="kw">Case</span> <span class="kw">GetType</span>(BusinessRuleException)
+                <span class="kw">Return</span> <span class="num">4</span>     <span class="cm">' 業務エラー (再実行しても直らない)</span>
+
+            <span class="kw">Case</span> <span class="kw">GetType</span>(SqlException),
+                 <span class="kw">GetType</span>(TimeoutException),
+                 <span class="kw">GetType</span>(IOException)
+                <span class="kw">Return</span> <span class="num">8</span>     <span class="cm">' システムエラー (再実行で復旧可能性あり)</span>
+
+            <span class="kw">Case</span> <span class="kw">GetType</span>(CheckpointCorruptedException)
+                <span class="kw">Return</span> <span class="num">16</span>    <span class="cm">' 致命的 (人手介入必須)</span>
+
+            <span class="kw">Case</span> <span class="kw">Else</span>
+                <span class="kw">Return</span> <span class="num">8</span>     <span class="cm">' デフォルトはシステムエラー扱い</span>
+        <span class="kw">End</span> <span class="kw">Select</span>
+    <span class="kw">End</span> <span class="kw">Function</span>
+<span class="kw">End</span> <span class="kw">Module</span></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JP1 / ジョブ定義のしきい値設定</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">REM JP1/AJS3 ユニット定義 — しきい値は社内標準で固定</span>
+
+<span class="prop">tho</span>=<span class="num">1</span>          <span class="cm">REM 警告しきい値: ExitCode 1以上で警告(色変化&通報なし)</span>
+<span class="prop">abh</span>=<span class="num">4</span>          <span class="cm">REM 異常しきい値: ExitCode 4以上で異常(JP1/IM通報)</span>
+<span class="prop">jd</span>=<span class="str">"and"</span>      <span class="cm">REM 終了判定: しきい値による判定</span>
+
+<span class="cm">REM ★ 全ジョブで tho=1 / abh=4 を必須とすることで運用が統一される</span>
+<span class="cm">REM ★ ExitCode 8 と 16 はリカバリ手順が違うので、JP1/IMで色分け通報</span></pre>
+    </div>
+
+    <div class="info-box ok">
+      <strong>✓ 設計の鉄則：</strong> ExitCode 4 と 8 を分ける意味は <strong>「JP1の自動リカバリ可否を区別するため」</strong>。
+      <br>・ExitCode 8 → 自動リカバリで再実行可能 (DBが復旧していれば次回成功)
+      <br>・ExitCode 4 → 人間がデータを修正しないと再実行しても同じエラー
+      <br>この区別をJP1のリカバリ設定（自動再実行回数）に反映させる。
+    </div>
+
+    <div class="info-box warn">
+      <strong>⚠ 注意：</strong> .NETの <code>Environment.Exit(code)</code> は終了コードに <strong>signed 32bit</strong> を渡せるが、JP1で扱えるのは慣例的に <strong>0〜255</strong>。
+      256以上を返してもJP1側で下位8bitだけ取られて誤判定になる。<strong>2桁台に収める</strong>のが安全。
+    </div>
+  </div>
+</div>
+
+<!-- ===== Lab 05: ログ相関キー設計 ===== -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>ログ相関キー設計 — 横串で追えるログ</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      JP1ログ・アプリログ・DB処理履歴が <strong>同一キーで突合可能</strong> でないと、障害解析時間が桁違いに伸びる。
+      設計初期に「相関キーは何か」を決め、全ログに必須プレフィックスとして埋め込む。
+    </p>
+
+    <div class="layer-map">[ 相関キーで横串 ]
+
+  JP1/AJS3 ログ      アプリログ          DB処理履歴
+  ─────────────      ─────────────       ─────────────
+  JOBID=A2024001     [JOBID=A2024001]    INSERT_HIST
+                      Step:loadStep        EXEC_KEY=A2024001
+  StartTime=...        Chunk:42回目       INSERTED_AT=...
+                      ItemRead:4250
+  EndTime=...
+  ExitCode=8           ERROR: SqlEx       ROLLBACK record
+                      → ExitCode=8
+  ─────────────      ─────────────       ─────────────
+       ▲ ▲ ▲              ▲ ▲ ▲              ▲ ▲ ▲
+       └──┴──┴── 同一キー A2024001 で結合 ──┴──┴──┘</div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JP1 / 起動引数で相関キーを渡す</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">REM JP1がEXE起動時に必ず渡す3つの標準引数</span>
+
+<span class="prop">prm</span>=<span class="str">"/jobid=%JP1_JOBID%"</span>            <span class="cm">REM JP1ジョブID(JP1組込変数)</span>
+   + <span class="str">" /executionDate=%JP1_TODAY%"</span>  <span class="cm">REM 業務日付</span>
+   + <span class="str">" /netname=%JP1_JOBNETNAME%"</span>    <span class="cm">REM ジョブネット名</span>
+
+<span class="cm">REM ★ JP1組込変数: JP1_JOBID, JP1_TODAY, JP1_JOBNETNAME 等</span>
+<span class="cm">REM ★ %JP1_JOBID% は1ジョブ実行ごとにユニーク値が自動生成される</span></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>VB.NET / 全ログに相関キーを自動埋込 (NLog/log4net例)</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">' 起動時に MDC (Mapped Diagnostic Context) にセット</span>
+<span class="kw">Public</span> <span class="kw">Class</span> JobContext
+    <span class="kw">Public</span> <span class="kw">Sub</span> InitLogContext()
+        log4net.ThreadContext.Properties(<span class="str">"JOBID"</span>) = Me.JobId
+        log4net.ThreadContext.Properties(<span class="str">"NETNAME"</span>) = Me.NetName
+        log4net.ThreadContext.Properties(<span class="str">"EXECDATE"</span>) = Me.ExecutionDate
+    <span class="kw">End</span> <span class="kw">Sub</span>
+<span class="kw">End</span> <span class="kw">Class</span>
+
+<span class="cm">' log4net.config — フォーマットに必ず埋め込む</span>
+<span class="cm">' &lt;conversionPattern value="[%date] [%property{JOBID}] [%level] [%property{STEP}] %message" /&gt;</span>
+
+<span class="cm">' 出力例:</span>
+<span class="cm">' [2026-05-05 10:23:14] [A2024001] [INFO] [loadStep] Chunk #42 committed (4250 items)</span>
+<span class="cm">' [2026-05-05 10:23:18] [A2024001] [ERROR] [loadStep] SqlException: timeout</span></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>SQL / DB処理履歴テーブルにも相関キー</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">-- 業務テーブルに監査列として最低限これだけは持つ</span>
+<span class="kw">CREATE</span> <span class="kw">TABLE</span> SALES_HEADER (
+    SALES_ID       <span class="kw">VARCHAR</span>(<span class="num">32</span>)   <span class="kw">PRIMARY</span> <span class="kw">KEY</span>,
+    <span class="cm">-- ... 業務列 ...</span>
+    EXEC_KEY       <span class="kw">VARCHAR</span>(<span class="num">64</span>)   <span class="kw">NOT</span> <span class="kw">NULL</span>,  <span class="cm">-- ★ JP1ジョブID</span>
+    INSERTED_AT    DATETIME2     <span class="kw">NOT</span> <span class="kw">NULL</span>,
+    INDEX IX_EXEC_KEY (EXEC_KEY)              <span class="cm">-- 障害時の絞込用</span>
+);
+
+<span class="cm">-- 障害時はこれ1発で「このジョブが登録した全レコード」が取れる</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> SALES_HEADER <span class="kw">WHERE</span> EXEC_KEY = <span class="str">'A2024001'</span>;</pre>
+    </div>
+
+    <div class="verify">
+      <div class="verify-col verify-before">
+        <div class="verify-label">Before ▶︎ 相関キーなし</div>
+        「昨夜のジョブで重複登録があった」→ JP1ログから時刻特定 → アプリログをタイムスタンプで突合 → DBはタイムスタンプ範囲検索 → <strong>同時刻に複数ジョブが動いていて切り分け不能</strong> → 半日の調査
+      </div>
+      <div class="verify-col verify-after">
+        <div class="verify-label">After ▶︎ 相関キーあり</div>
+        「ジョブA2024001で重複登録」→ JP1ログ・アプリログ・DBを <code>WHERE EXEC_KEY='A2024001'</code> で一発検索 → 5分で原因レコード特定
+      </div>
+    </div>
+
+    <div class="info-box info">
+      <strong>📘 相関キー三種の使い分け：</strong>
+      <br>・<code>JOBID</code> = JP1の1回の実行を識別 (運用視点・障害切分け)
+      <br>・<code>NETNAME</code> = ジョブネット名 (業務視点・どの業務か)
+      <br>・<code>EXECDATE</code> = 業務日付 (データ視点・何日分か)
+      <br>3つすべてをログとDB監査列に埋め込んでおくと、運用/業務/データの3軸で集計できる。
+    </div>
+  </div>
+</div>
+
+<!-- ===== Lab 06: リトライ二段構え ===== -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>リトライ戦略の二段構え — 粒度を分ける</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      リトライは <strong>「JP1のジョブ単位リトライ」と「アプリのレコード単位リトライ」</strong> の二段構造で設計する。
+      混同すると「DB一時障害でも全件最初から」「業務エラー1件でジョブ全体停止」など極端な運用になる。
+    </p>
+
+    <div class="layer-map">[ 二段リトライ階層 ]
+
+           例外発生
+              │
+        ┌─────┴─────┐
+        ▼           ▼
+   一時的か?    永続的か?
+        │           │
+        ▼           ▼
+  ┌──────────┐  ┌──────────────┐
+  │レコード単位 │  │ジョブ単位     │
+  │  Retry    │  │  Skip + Log  │ → DLQへ
+  │ (アプリ層) │  │ (アプリ層)    │
+  └──────────┘  └──────────────┘
+        │ Retry上限超過
+        ▼
+  ┌─────────────────────────────┐
+  │ ExitCode 8 で終了            │
+  │ → JP1が "ジョブ全体" を再実行│
+  │   (Checkpointから続行)       │
+  └─────────────────────────────┘</div>
+
+    <table class="compare-table">
+      <thead><tr><th>リトライ階層</th><th>担当</th><th>粒度</th><th>典型ケース</th><th>制御方法</th></tr></thead>
+      <tbody>
+        <tr><td>レコード単位</td><td><span class="badge badge-app">VB.NET</span></td><td>1レコード</td><td>個別レコードの一時的エラー</td><td>Retry例外指定+回数</td></tr>
+        <tr><td>レコード単位</td><td><span class="badge badge-app">VB.NET</span></td><td>1レコード</td><td>業務エラーで該当行スキップ</td><td>Skip例外指定+DLQ転送</td></tr>
+        <tr><td>Step全体</td><td><span class="badge badge-app">VB.NET</span></td><td>Step単位</td><td>Checkpointから続行</td><td>Restart API</td></tr>
+        <tr><td>ジョブ全体</td><td><span class="badge badge-jp1">JP1</span></td><td>EXE単位</td><td>システム障害復旧後の再実行</td><td>JP1リカバリ実行</td></tr>
+        <tr><td>ジョブ全体</td><td><span class="badge badge-jp1">JP1</span></td><td>EXE単位</td><td>JP1自動リトライ(回数指定)</td><td>JP1ユニット定義</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>VB.NET / レコード単位 Retry/Skip 設定</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">Public</span> <span class="kw">Class</span> ChunkConfig
+    <span class="kw">Public</span> Property ItemCount <span class="kw">As</span> <span class="kw">Integer</span> = <span class="num">100</span>
+
+    <span class="cm">' Retry: 一時的例外 (DB接続断・ネットワーク瞬断など)</span>
+    <span class="kw">Public</span> Property RetryableExceptions <span class="kw">As</span> <span class="kw">Type</span>() = {
+        <span class="kw">GetType</span>(SqlTransientException),
+        <span class="kw">GetType</span>(IOException),
+        <span class="kw">GetType</span>(TimeoutException)
+    }
+    <span class="kw">Public</span> Property RetryLimit <span class="kw">As</span> <span class="kw">Integer</span> = <span class="num">3</span>
+    <span class="kw">Public</span> Property RetryBackoffMs <span class="kw">As</span> <span class="kw">Integer</span>() = {<span class="num">1000</span>, <span class="num">5000</span>, <span class="num">15000</span>}
+
+    <span class="cm">' Skip: 業務エラー (該当レコードのみスキップしてDLQへ)</span>
+    <span class="kw">Public</span> Property SkippableExceptions <span class="kw">As</span> <span class="kw">Type</span>() = {
+        <span class="kw">GetType</span>(InvalidDataFormatException),
+        <span class="kw">GetType</span>(BusinessRuleException)
+    }
+    <span class="kw">Public</span> Property SkipLimit <span class="kw">As</span> <span class="kw">Integer</span> = <span class="num">100</span>   <span class="cm">' これ超えたらジョブ異常終了</span>
+<span class="kw">End</span> <span class="kw">Class</span></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JP1 / ジョブ単位の自動リトライ設定</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">REM JP1/AJS3 ユニット定義 — 自動リトライ</span>
+<span class="cm">REM ExitCode 8 (システムエラー) のみ自動再実行</span>
+
+<span class="prop">rjs</span>=<span class="str">"y"</span>           <span class="cm">REM 自動再実行を有効化</span>
+<span class="prop">rjm</span>=<span class="num">3</span>             <span class="cm">REM 最大再実行回数</span>
+<span class="prop">rji</span>=<span class="num">10</span>            <span class="cm">REM 再実行間隔(分)</span>
+<span class="prop">rjc</span>=<span class="num">8</span>             <span class="cm">REM 再実行対象のExitCode</span>
+
+<span class="cm">REM ★ ExitCode 4 (業務エラー) はrjcに含めない</span>
+<span class="cm">REM   業務データを直さない限り何度実行しても同じ結果なので無駄</span></pre>
+    </div>
+
+    <div class="info-box ok">
+      <strong>✓ 設計の鉄則：</strong> 「再実行で復旧する可能性があるか」で分岐させる。
+      <br>・<strong>復旧可能(瞬断・タイムアウト)</strong> → アプリRetry → 限界超過時はExitCode 8 → JP1自動リトライ
+      <br>・<strong>復旧不可(データ不整合)</strong> → アプリSkip + DLQ → 件数閾値超過でExitCode 4 → 人間対応
+      <br>この判定ロジックを社内標準として例外クラス階層に表現すると、新人でも誤らない。
+    </div>
+  </div>
+</div>
+
+<!-- ===== Lab 07: 多重起動制御 ===== -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>多重起動制御 — 二重実行を絶対防ぐ</h3>
+    <span class="lab-tag tag-advanced">上級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      JP1が二重起動を防いでくれる、と思って油断すると刺される。
+      <strong>JP1管轄外の経路（手動実行・障害復旧時の応急実行）からの二重起動</strong> はアプリ側でしか防げない。
+    </p>
+
+    <div class="layer-map">[ 二重起動が起こり得る経路 ]
+
+  ✓ JP1スケジュール起動 ─┐
+  ✓ JP1リカバリ実行 ────┼─ JP1の多重度制御で防げる
+  ✓ JP1手動実行 ────────┘
+
+  ⚠ 別ホストから直接 EXE 起動  ┐
+  ⚠ 障害復旧時の応急コマンド    ├─ ★ JP1の制御外
+  ⚠ 開発者の検証実行           │   アプリ側ロックが必須
+  ⚠ JP1停止中の手動運用        ┘</div>
+
+    <table class="compare-table">
+      <thead><tr><th>制御層</th><th>方法</th><th>守備範囲</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge badge-jp1">JP1</span></td><td>多重度制御 (キュー単位)</td><td>JP1経由の起動のみ</td></tr>
+        <tr><td><span class="badge badge-jp1">JP1</span></td><td>排他ジョブ定義</td><td>JP1経由の起動のみ</td></tr>
+        <tr><td><span class="badge badge-app">App</span></td><td>DBロックテーブル</td><td>★ 全経路カバー (推奨)</td></tr>
+        <tr><td><span class="badge badge-app">App</span></td><td>OSミューテックス</td><td>同一ホスト内のみ</td></tr>
+        <tr><td><span class="badge badge-app">App</span></td><td>ファイルロック (.lockファイル)</td><td>同一ホスト内のみ</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>SQL / 排他制御テーブル</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">CREATE</span> <span class="kw">TABLE</span> BATCH_LOCK (
+    JOB_NAME       <span class="kw">VARCHAR</span>(<span class="num">64</span>)  <span class="kw">PRIMARY</span> <span class="kw">KEY</span>,
+    LOCKED_BY      <span class="kw">VARCHAR</span>(<span class="num">64</span>)  <span class="kw">NOT</span> <span class="kw">NULL</span>,   <span class="cm">-- JP1ジョブID + ホスト名</span>
+    LOCKED_AT      DATETIME2    <span class="kw">NOT</span> <span class="kw">NULL</span>,
+    HEARTBEAT_AT   DATETIME2    <span class="kw">NOT</span> <span class="kw">NULL</span>,   <span class="cm">-- 死活確認</span>
+    EXPIRES_AT     DATETIME2    <span class="kw">NOT</span> <span class="kw">NULL</span>    <span class="cm">-- 失効時刻 (ゾンビ対策)</span>
+);</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>VB.NET / 起動時のロック取得</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">Public</span> <span class="kw">Class</span> BatchLockService
+    <span class="kw">Public</span> <span class="kw">Function</span> TryAcquire(jobName <span class="kw">As</span> <span class="kw">String</span>, lockedBy <span class="kw">As</span> <span class="kw">String</span>) <span class="kw">As</span> <span class="kw">Boolean</span>
+        <span class="kw">Using</span> tx = _db.BeginTransaction(IsolationLevel.Serializable)
+            <span class="cm">' 1. 期限切れロックを除去 (ゾンビ対策)</span>
+            _db.Execute(<span class="str">"DELETE FROM BATCH_LOCK WHERE EXPIRES_AT &lt; SYSDATETIME()"</span>, tx)
+
+            <span class="cm">' 2. INSERT試行 — 既存ロックがあれば一意制約違反で失敗</span>
+            <span class="kw">Try</span>
+                _db.Execute(
+                    <span class="str">"INSERT INTO BATCH_LOCK (JOB_NAME, LOCKED_BY, LOCKED_AT, HEARTBEAT_AT, EXPIRES_AT) " </span> &amp;
+                    <span class="str">"VALUES (@j, @b, SYSDATETIME(), SYSDATETIME(), DATEADD(MINUTE, 60, SYSDATETIME()))"</span>,
+                    <span class="kw">New</span> <span class="kw">With</span> {.j = jobName, .b = lockedBy}, tx)
+                tx.Commit()
+                <span class="kw">Return</span> <span class="kw">True</span>
+            <span class="kw">Catch</span> <span class="kw">As</span> SqlException
+                <span class="kw">Return</span> <span class="kw">False</span>   <span class="cm">' 既に別実行中</span>
+            <span class="kw">End</span> <span class="kw">Try</span>
+        <span class="kw">End</span> <span class="kw">Using</span>
+    <span class="kw">End</span> <span class="kw">Function</span>
+
+    <span class="kw">Public</span> <span class="kw">Sub</span> Release(jobName <span class="kw">As</span> <span class="kw">String</span>)
+        _db.Execute(<span class="str">"DELETE FROM BATCH_LOCK WHERE JOB_NAME = @j"</span>, <span class="kw">New</span> <span class="kw">With</span> {.j = jobName})
+    <span class="kw">End</span> <span class="kw">Sub</span>
+<span class="kw">End</span> <span class="kw">Class</span>
+
+<span class="cm">' Main内での使用</span>
+<span class="kw">If</span> <span class="kw">Not</span> _lockSvc.TryAcquire(jobName, lockedBy:=$<span class="str">"{ctx.JobId}@{Environment.MachineName}"</span>) <span class="kw">Then</span>
+    Logger.Error($<span class="str">"二重起動検知: {jobName}"</span>)
+    Environment.Exit(<span class="num">101</span>)   <span class="cm">' 起動前エラー扱い</span>
+<span class="kw">End</span> <span class="kw">If</span></pre>
+    </div>
+
+    <div class="info-box warn">
+      <strong>⚠ ゾンビロック問題：</strong> ジョブ強制Kill時にロックが残り、次回正常起動を阻害する。
+      対策は2つ併用:
+      <br>(1) <code>EXPIRES_AT</code> による失効 (上記コード)
+      <br>(2) Heartbeat更新スレッドで <code>HEARTBEAT_AT</code> を1分毎更新、5分以上更新が止まったら別プロセスから強制解放可
+    </div>
+
+    <div class="info-box err">
+      <strong>🚫 やってはいけない：</strong> JP1の多重度制御だけで二重起動防止が完了していると主張する設計書。
+      JP1停止中の応急対応・別ホストからの実行・テスト環境の検証実行など、JP1管轄外経路で必ず破綻する。
+      <strong>「全経路で1つしか動かない」</strong> をDB制約で保証する。
+    </div>
+  </div>
+</div>
+
+<!-- ===== Lab 08: 並列処理 (Partitioning) ===== -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>並列処理 (Partitioning) — JP1で分けるか中で分けるか</h3>
+    <span class="lab-tag tag-advanced">上級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      バッチ並列化には2つのアプローチがある。 <strong>JP1ジョブネットで並列ジョブを並べる方法</strong> と、
+      <strong>1ジョブ内でJSR-352 Partitioningを使う方法</strong> 。それぞれ得手不得手がある。
+    </p>
+
+    <div class="layer-map">[ アプローチA: JP1ジョブネットで並列化 ] ★推奨デフォルト
+
+   ジョブネット
+     ├─ ジョブ A1 (店舗1〜25担当)  ┐
+     ├─ ジョブ A2 (店舗26〜50担当) ├─ JP1が同時起動・依存制御
+     ├─ ジョブ A3 (店舗51〜75担当) │
+     └─ ジョブ A4 (店舗76〜100担当)┘
+            │
+            ▼ 全完了後
+     ジョブ B (集計)
+
+[ アプローチB: アプリ内 Partitioning ]
+
+   ジョブ A (1 EXE)
+     └ Step (Partitioned)
+         ├─ Partition 1 (店舗1〜25)  ┐
+         ├─ Partition 2 (店舗26〜50) ├─ アプリ内スレッド/別プロセス
+         └─ Partition 3 (店舗51〜75) ┘</div>
+
+    <table class="compare-table">
+      <thead><tr><th>観点</th><th>JP1並列</th><th>アプリ Partitioning</th></tr></thead>
+      <tbody>
+        <tr><td>可視性 (運用)</td><td><span class="yes">◎ ジョブネットで一目</span></td><td>△ JP1上は1ジョブ</td></tr>
+        <tr><td>個別リカバリ</td><td><span class="yes">◎ 失敗ジョブのみ再実行</span></td><td>△ 全Partitionの再実行か個別実装</td></tr>
+        <tr><td>分割数の動的変更</td><td>△ ジョブネット定義変更</td><td><span class="yes">◎ 設定ファイルで可変</span></td></tr>
+        <tr><td>ホスト分散</td><td><span class="yes">◎ 別ホストでも自然</span></td><td>△ 単一ホスト基本</td></tr>
+        <tr><td>分割キー受渡し</td><td>引数で渡す (簡単)</td><td>PartitionMapper実装</td></tr>
+        <tr><td>結合タイミング</td><td><span class="yes">◎ 後続ジョブで自然に</span></td><td>Reducer実装</td></tr>
+        <tr><td>共通基盤への要求</td><td>少 (1ジョブを普通に作るだけ)</td><td>多 (Partition制御の実装必要)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JP1並列方式 / 引数で分割キーを渡す</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">REM ジョブA1: 店舗1〜25</span>
+<span class="prop">scriptpath</span>=<span class="str">"D:\Batch\StoreSales.exe"</span>
+<span class="prop">prm</span>=<span class="str">"/jobid=%JP1_JOBID% /shardFrom=1 /shardTo=25"</span>
+
+<span class="cm">REM ジョブA2: 店舗26〜50</span>
+<span class="prop">scriptpath</span>=<span class="str">"D:\Batch\StoreSales.exe"</span>
+<span class="prop">prm</span>=<span class="str">"/jobid=%JP1_JOBID% /shardFrom=26 /shardTo=50"</span>
+
+<span class="cm">REM JP1ジョブネットで A1〜A4 を並列に配置 → 全完了後 ジョブB起動</span></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>VB.NET / アプリ内Partitioning実装</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">Public</span> <span class="kw">Class</span> PartitionedStep
+    <span class="kw">Public</span> <span class="kw">Function</span> Execute(ctx <span class="kw">As</span> JobContext) <span class="kw">As</span> <span class="kw">String</span>
+        <span class="cm">' 1. PartitionMapper: 分割計画を作成</span>
+        <span class="kw">Dim</span> partitions = _mapper.MapPartitions(ctx)   <span class="cm">' [{1-25},{26-50},{51-75},{76-100}]</span>
+
+        <span class="cm">' 2. 各Partitionを並列実行</span>
+        <span class="kw">Dim</span> tasks = partitions.<span class="fn">Select</span>(<span class="kw">Function</span>(p)
+            <span class="kw">Return</span> Task.Run(<span class="kw">Function</span>()
+                <span class="kw">Return</span> ExecutePartition(p, ctx)
+            <span class="kw">End</span> <span class="kw">Function</span>)
+        <span class="kw">End</span> <span class="kw">Function</span>).ToArray()
+
+        Task.WaitAll(tasks)
+
+        <span class="cm">' 3. Reducer: 結果集約</span>
+        <span class="kw">Dim</span> totalProcessed = tasks.<span class="fn">Sum</span>(<span class="kw">Function</span>(t) t.Result.WriteCount)
+
+        <span class="kw">If</span> tasks.<span class="fn">Any</span>(<span class="kw">Function</span>(t) t.Result.Status = <span class="str">"FAILED"</span>) <span class="kw">Then</span>
+            <span class="kw">Return</span> <span class="str">"FAILED"</span>
+        <span class="kw">End</span> <span class="kw">If</span>
+        <span class="kw">Return</span> <span class="str">"COMPLETED"</span>
+    <span class="kw">End</span> <span class="kw">Function</span>
+<span class="kw">End</span> <span class="kw">Class</span></pre>
+    </div>
+
+    <div class="info-box ok">
+      <strong>✓ 設計の指針：</strong> <strong>「JP1がある」前提なら原則アプローチA(JP1並列)を採用</strong>。
+      個別失敗時のリカバリ・運用可視性・別ホスト分散の容易さで圧倒的に有利。
+      アプローチB(アプリPartitioning)は <strong>「分割数を動的に決めたい」「ホスト1台で完結させたい」</strong> 場合の限定採用。
+    </div>
+
+    <div class="info-box info">
+      <strong>📘 ハイブリッド：</strong> 大規模案件では「JP1で4分割並列起動」×「各ジョブ内でさらに2スレッド並列」のような二段並列もあり得る。
+      ただし運用・障害解析が複雑化するため、<strong>性能要件が単段で満たせるなら絶対に単段に留める</strong>。
+    </div>
+  </div>
+</div>
+
+<!-- ===== Lab 09: ジョブネット境界 ===== -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>ジョブネット境界線 — JP1で「やらないこと」</h3>
+    <span class="lab-tag tag-advanced">上級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      JP1は強力なため、ついジョブネット内に業務ロジックを書きたくなる。これは <strong>方式設計の最大の落とし穴</strong> 。
+      責務境界を死守するため「JP1でやらないこと」を成果物に明記する。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>JP1で<span class="no">やらない</span>こと</th><th>理由</th><th>代わりにどこで</th></tr></thead>
+      <tbody>
+        <tr><td>ジョブネット内に複雑な条件分岐 (if-else連鎖)</td><td>テスト不能・保守不能</td><td>アプリ内のフロー制御</td></tr>
+        <tr><td>JP1スクリプトでDB操作</td><td>Tx管理不能・ログ統合不能</td><td>アプリ内のDBアクセス</td></tr>
+        <tr><td>動的なジョブ生成 (件数による分割)</td><td>運用視点で予測不能</td><td>アプリ内Partitioning or 固定分割</td></tr>
+        <tr><td>ループ処理 (件数N回繰り返し)</td><td>JP1の本来用途外</td><td>アプリ内のChunkループ</td></tr>
+        <tr><td>細かいリトライ制御 (指数バックオフ等)</td><td>JP1リトライは粗粒度</td><td>アプリ内のRetryロジック</td></tr>
+        <tr><td>ビジネスステータス管理</td><td>運用ログとビジネスログの混在</td><td>業務テーブルで管理</td></tr>
+        <tr><td>データ整合性の補償処理</td><td>Saga/Outboxは業務知識</td><td>アプリ内の補償Tx</td></tr>
+        <tr><td>個別レコードのSkip判定</td><td>JP1には粒度がない</td><td>アプリ内のSkip例外</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>✗ アンチパターン / JP1ジョブネットに業務知識が漏れている</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">REM ジョブネット内の判定ジョブ — シェル/BAT</span>
+<span class="cm">REM 「日次集計が0件ならスキップ」を JP1で判定</span>
+
+@<span class="kw">echo</span> off
+<span class="kw">sqlcmd</span> -S server -d db -Q <span class="str">"SELECT COUNT(*) FROM SALES_DAILY"</span> &gt; count.txt
+<span class="kw">set</span> /p CNT=&lt;count.txt
+<span class="kw">if</span> %CNT% EQU <span class="num">0</span> (
+    <span class="kw">exit</span> /b <span class="num">3</span>      <span class="cm">REM 後続ジョブでこの値を判定…</span>
+) <span class="kw">else</span> (
+    <span class="kw">exit</span> /b <span class="num">0</span>
+)
+
+<span class="cm">REM ★ 問題: 業務ルール(0件スキップ)がJP1スクリプトに埋め込まれている</span>
+<span class="cm">REM ★ デバッグ困難・テスト不能・ログがアプリと統合されない</span></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>✓ 推奨パターン / 業務ロジックはアプリ内・JP1は単純な戻り値判定のみ</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">' VB.NET側で件数判定→戻り値で表現</span>
+<span class="kw">Public</span> <span class="kw">Class</span> DailyAggregateBatchlet
+    <span class="kw">Implements</span> IBatchlet
+
+    <span class="kw">Public</span> <span class="kw">Function</span> Process() <span class="kw">As</span> <span class="kw">String</span>
+        <span class="kw">Dim</span> count = _db.QuerySingle(<span class="kw">Of</span> <span class="kw">Integer</span>)(<span class="str">"SELECT COUNT(*) FROM SALES_DAILY"</span>)
+        Logger.Info($<span class="str">"対象件数: {count}"</span>)
+
+        <span class="kw">If</span> count = <span class="num">0</span> <span class="kw">Then</span>
+            Logger.Info(<span class="str">"対象0件のため処理スキップ"</span>)
+            <span class="kw">Return</span> <span class="str">"NO_DATA"</span>     <span class="cm">' ExitCode 1 (警告)にマップ</span>
+        <span class="kw">End</span> <span class="kw">If</span>
+
+        ExecuteAggregation(count)
+        <span class="kw">Return</span> <span class="str">"COMPLETED"</span>     <span class="cm">' ExitCode 0</span>
+    <span class="kw">End</span> <span class="kw">Function</span>
+<span class="kw">End</span> <span class="kw">Class</span>
+
+<span class="cm">' JP1側はExitCodeのしきい値判定だけ — 業務知識を持たない</span>
+<span class="cm">'   tho=1, abh=4 (社内標準値)</span></pre>
+    </div>
+
+    <div class="verify">
+      <div class="verify-col verify-before">
+        <div class="verify-label">Before ▶︎ 境界曖昧</div>
+        ジョブネットに30個のシェル/BATスクリプトが点在。業務ルール変更のたびにJP1とアプリの両方を修正。テストはJP1検証環境必須で1サイクル4時間
+      </div>
+      <div class="verify-col verify-after">
+        <div class="verify-label">After ▶︎ 境界明確</div>
+        ジョブネットは「EXE起動」のみ。業務ルール変更はEXEの単体テストで検証完結(数分)。JP1検証環境はリリース前の最終確認のみ
+      </div>
+    </div>
+
+    <div class="info-box ok">
+      <strong>✓ 方式設計書への記載：</strong> 「JP1で<strong>やらないこと</strong>一覧」を1章として独立させる。
+      これがあることで、新規開発者が「便利そうだからJP1スクリプトでやろう」と踏み外すのを防げる。
+      レビューでも「これJP1でやらないリストに該当しませんか？」と機械的に指摘可能になる。
+    </div>
+  </div>
+</div>
+
+<!-- ===== Lab 10: 用語クロスリファレンス ===== -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>用語クロスリファレンス — 三層対応辞書</h3>
+    <span class="lab-tag tag-basic">参照</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      JP1 / JSR-352 / VB.NET基盤の用語を <strong>1枚の対応表</strong> にまとめる。
+      レビュー・新人教育・他ベンダーとの会話で「あの用語この用語」とならないための辞書。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>JP1/AJS3</th><th>JSR-352</th><th>VB.NET基盤</th><th>意味</th></tr></thead>
+      <tbody>
+        <tr><td>ジョブネット</td><td>(なし)</td><td>(なし)</td><td>ジョブの集合・依存関係を持つ単位</td></tr>
+        <tr><td>ルートジョブネット</td><td>(なし)</td><td>(なし)</td><td>スケジュール起点となるジョブネット</td></tr>
+        <tr><td>ジョブ</td><td>Job</td><td>EXE</td><td>★ 1回の実行単位 (1:1:1対応推奨)</td></tr>
+        <tr><td>ユニット定義</td><td>JSL (Job XML)</td><td>JobBuilder</td><td>ジョブ構造の宣言的定義</td></tr>
+        <tr><td>(該当なし)</td><td>Step</td><td>IStep実装クラス</td><td>Job内の1工程</td></tr>
+        <tr><td>(該当なし)</td><td>Chunk</td><td>ChunkStep</td><td>件数ループ型処理</td></tr>
+        <tr><td>(該当なし)</td><td>Batchlet</td><td>BatchletStep</td><td>単発処理</td></tr>
+        <tr><td>(該当なし)</td><td>ItemReader/Processor/Writer</td><td>IItemReader等</td><td>Chunk内の3要素</td></tr>
+        <tr><td>(該当なし)</td><td>Listener</td><td>IJobListener等</td><td>イベントフック</td></tr>
+        <tr><td>JP1リカバリ実行</td><td>(該当なし)</td><td>(該当なし)</td><td>ジョブ全体の再実行</td></tr>
+        <tr><td>(該当なし)</td><td>Restart</td><td>JobOperator.Restart</td><td>Checkpointから続行</td></tr>
+        <tr><td>(該当なし)</td><td>Checkpoint</td><td>BATCH_CHECKPOINTテーブル</td><td>進捗永続化</td></tr>
+        <tr><td>(該当なし)</td><td>Skip</td><td>SkipListener+DLQ</td><td>レコード単位スキップ</td></tr>
+        <tr><td>JP1自動再実行</td><td>(該当なし)</td><td>(該当なし)</td><td>ExitCodeしきい値による再実行</td></tr>
+        <tr><td>(該当なし)</td><td>Retry</td><td>RetryPolicy</td><td>レコード単位再試行</td></tr>
+        <tr><td>戻り値 (リターンコード)</td><td>ExitStatus</td><td>Environment.Exit</td><td>★ 三層連携の契約点</td></tr>
+        <tr><td>(該当なし)</td><td>BatchStatus</td><td>BATCH_CHECKPOINT.STATUS</td><td>実行状態 (STARTED/COMPLETED等)</td></tr>
+        <tr><td>JP1ジョブID (JP1_JOBID)</td><td>(該当なし)</td><td>EXEC_KEY</td><td>★ 相関キー</td></tr>
+        <tr><td>多重度</td><td>(該当なし)</td><td>BATCH_LOCKテーブル</td><td>二重起動防止</td></tr>
+        <tr><td>排他ジョブ</td><td>(該当なし)</td><td>BATCH_LOCKテーブル</td><td>排他制御</td></tr>
+        <tr><td>並列ジョブネット配置</td><td>Partition</td><td>PartitionedStep</td><td>並列実行</td></tr>
+        <tr><td>(該当なし)</td><td>JobOperator</td><td>JobLauncher (CLI)</td><td>起動API</td></tr>
+        <tr><td>JP1イベント</td><td>(該当なし)</td><td>(該当なし)</td><td>JP1/IM通報・他システム通知</td></tr>
+        <tr><td>JP1組込変数 (%JP1_TODAY%等)</td><td>(該当なし)</td><td>JobContext</td><td>実行コンテキスト</td></tr>
+        <tr><td>運用カレンダー</td><td>(該当なし)</td><td>(該当なし)</td><td>営業日・休日定義</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info">
+      <strong>📘 使い方：</strong> このテーブルを <strong>方式設計書の付録</strong> として添付しておくと、
+      レビュアー・運用担当・新規参画者が用語の対応関係を即座に把握できる。
+      特に <strong>「JSR-352には対応物があるがJP1にはない概念」(Step/Chunk/Checkpoint等)</strong> は、
+      アプリ基盤の独自実装になる部分なので、設計書での扱いが重くなる。
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 まとめ — 三層分離の効能</div>
+      この対応表が示すのは、 <strong>「JP1とアプリ基盤は守備範囲が補完関係にある」</strong> ということ。
+      JP1にしかない用語(ジョブネット・運用カレンダー)はジョブの<strong>外側</strong>を、
+      JSR-352/VB.NETにしかない用語(Step・Chunk・Checkpoint)はジョブの<strong>中身</strong>を表現している。
+      <pre class="ascii-art">  JP1のみ ──────  ジョブの外側 (運用)
+                     ── 戻り値・相関キー (契約)
+  JSR-352/VB.NETのみ  ジョブの中身 (処理品質)</pre>
+      この補完性を理解すれば、 <strong>「どの層で何を解決すべきか」</strong> が機械的に判定できる。
+    </div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<script>
+function copyCode(btn) {
+  const block = btn.closest('.code-block') || btn.parentElement;
+  const pre = block.querySelector('pre');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+const LAB_META = {
+  lab0: {
+    info: { type:'info', html:'📘 <strong>三層分離の核心</strong>: JP1=「いつ・どこで」, JSR-352=「何を意味するか(共通言語)」, VB.NET=「どう実装するか」。レビューでは必ずどの層の議論かを最初に宣言する。' },
+    check: [
+      '①責務マトリクスを印刷し、社内レビューで「これはどの層？」を全員に問う',
+      '②既存案件の方式設計書をこの三層に再分類してみる(JP1偏重/アプリ偏重が見えてくる)',
+      '③新規案件のキックオフで、最初に三層図を共有する習慣をつける',
+      '④グレーゾーン項目(冪等性・DLQ等)は仕様外なので明示的にアプリ責任と書く'
+    ]
+  },
+  lab1: {
+    info: { type:'warn', html:'⚠ <strong>用語の罠</strong>: JP1の「ジョブ」とJSR-352の「Job」は同名異義。必ず「JP1ジョブ」「JSR Job」と修飾語を付けて呼び分けること。' },
+    verify: {
+      before: '「ジョブが落ちた」と言われたが、それがJP1ジョブネット内のどのEXEなのか、EXE内のどのStepなのか不明 → 調査30分',
+      after: 'ログに <code>JOBID=A123 / STEP=loadStep / CHUNK=42</code> と出ているので、JP1ジョブA123のloadStep内Chunk42回目で発生と即特定 → 調査3分'
+    },
+    check: [
+      '①既存EXEを1つ選び「これはJSR-352でいうJob? Step?」を判定',
+      '②1EXEに複数Stepを詰め込んでいる場合、JP1側で分割可能か検討',
+      '③JP1ジョブネット定義をエクスポートし、ジョブIDとEXE名の対応を一覧化',
+      '④共通基盤の引数仕様に /jobid と /executionDate を必須として明文化'
+    ]
+  },
+  lab2: {
+    info: { type:'info', html:'📘 <strong>判別1問</strong>: 「この処理は何件ループする?」と問う。「N件」と答えられればChunk、「1回」ならBatchlet。これだけで90%判別できる。' },
+    check: [
+      '①社内の既存バッチを棚卸しし、各処理がChunk/Batchletどちらに該当するか分類',
+      '②Batchlet分類のうち、実は内部で件数ループしているものは Chunk再設計対象',
+      '③Chunk実装時は item-count を設定ファイルで可変にする(性能チューニング容易化)',
+      '④Batchletの戻り文字列(ExitStatus)を社内で標準化(COMPLETED/RETRY/FAILED等)'
+    ]
+  },
+  lab3: {
+    info: { type:'warn', html:'⚠ <strong>JP1のリカバリだけに頼ると死ぬ</strong>: 「ジョブ全体を最初から再実行」は副作用ありジョブで二重登録を引き起こす。アプリ側Checkpoint必須。' },
+    check: [
+      '①BATCH_CHECKPOINTテーブルを実環境に作成し、テストジョブで動作確認',
+      '②大量件数バッチを意図的に途中Killし、再起動でCheckpointから続行されるか検証',
+      '③CheckpointとデータWriteが同一Txで行われていることをコードレビューで確認',
+      '④ジョブ正常完了時のCheckpoint行を残すか削除するかの方針を統一(履歴残す方が安全)'
+    ]
+  },
+  lab4: {
+    info: { type:'err', html:'🚫 <strong>絶対避ける</strong>: ExitCodeにException.HResultをそのまま返す。負数や巨大値が返って JP1で意味不明判定になる。必ずMap関数で2桁台に変換。' },
+    verify: {
+      before: 'ExitCode体系がプロジェクトごとに違い、JP1の警告/異常しきい値もバラバラ → 運用手順書がプロジェクト数だけ存在',
+      after: '全社統一: tho=1, abh=4 固定。ExitCode 4=業務エラー, 8=システムエラーが共通認識 → 運用手順書1本で全案件対応'
+    },
+    check: [
+      '①ExitCode体系表を1ページにまとめ、共通基盤のドキュメントに添付',
+      '②各業務例外クラスがどのExitCodeにマップされるか一覧化(レビュー必須項目)',
+      '③JP1ジョブ定義テンプレートを作成し tho=1/abh=4 を初期値とする',
+      '④ExitCode 8(システムエラー)はJP1自動リカバリ対象、4(業務エラー)は手動対応とJP1側で設定分け'
+    ]
+  },
+  lab5: {
+    info: { type:'info', html:'📘 <strong>相関キーは設計初期に決める</strong>: 後から付けるのは絶望的に困難。EXEC_KEYカラム追加でDBスキーマ全体改修になる。' },
+    check: [
+      '①新規バッチの起動引数仕様に /jobid /executionDate /netname を必須として明文化',
+      '②ログ設定ファイル(log4net等)のフォーマットに相関キーを必須プレフィックスとして組込',
+      '③業務テーブルに監査列(EXEC_KEY/INSERTED_AT)を社内標準として定義',
+      '④障害解析の標準SQLクエリを「WHERE EXEC_KEY = ?」形式でテンプレート化',
+      '⑤JP1組込変数(JP1_JOBID等)の引数渡し例をジョブ定義テンプレートに明記'
+    ]
+  },
+  lab6: {
+    info: { type:'warn', html:'⚠ <strong>リトライ階層を混同しない</strong>: アプリRetry(秒単位)とJP1リトライ(分単位)は粒度が違う。両方を別軸として設計書に書き分ける。' },
+    check: [
+      '①一時的例外/業務例外のクラス階層を社内標準として定義',
+      '②各例外クラスがRetry/Skipどちらに該当するか属性or実装で表明',
+      '③JP1自動リトライ対象ExitCodeをジョブ定義テンプレートで標準化',
+      '④Retry回数・バックオフ間隔のデフォルト値を共通基盤で定義',
+      '⑤Skip上限超過時の挙動(ExitCode・通報方法)を社内で統一'
+    ]
+  },
+  lab7: {
+    info: { type:'err', html:'🚫 <strong>JP1だけに頼らない</strong>: JP1管轄外の経路(手動実行・別ホスト)からの二重起動はDB制約でしか防げない。BATCH_LOCKテーブルは必須。' },
+    check: [
+      '①BATCH_LOCKテーブルを実環境に作成し、二重起動シミュレーションで動作確認',
+      '②強制Kill後のゾンビロック復旧手順を運用手順書に記載(EXPIRES_AT or 手動DELETE)',
+      '③Heartbeat更新の必要性を判断(長時間バッチではある方が安全)',
+      '④JP1手動実行・障害復旧用緊急コマンドでも必ず本EXEを使う規約を明文化',
+      '⑤テスト環境・検証環境ではロック緩和フラグ(/skipLock)等の抜け道を検討'
+    ]
+  },
+  lab8: {
+    info: { type:'info', html:'📘 <strong>原則はJP1並列</strong>: 運用可視性・個別リカバリの容易さで圧倒的に有利。アプリPartitioningは特殊要件のみ。' },
+    check: [
+      '①既存の長時間バッチを棚卸し、分割可能な業務軸(店舗/支店/期間)を特定',
+      '②JP1ジョブネットでの並列ジョブ配置パターンをテンプレート化',
+      '③分割キー受渡し用引数(/shardFrom /shardTo)を共通基盤の標準引数として組込',
+      '④集約ジョブの依存設定(全並列ジョブ完了待ち)をジョブネット定義パターン化',
+      '⑤性能要件・リソース上限から並列度を逆算する手順を方式設計書に記載'
+    ]
+  },
+  lab9: {
+    info: { type:'err', html:'🚫 <strong>境界を越えるな</strong>: JP1スクリプトに業務ルールを書きたくなったら立ち止まる。「これはJP1でやらないリスト」に該当しないか必ず確認。' },
+    verify: {
+      before: 'JP1ジョブネットに条件分岐ジョブ・件数判定ジョブ・データ加工ジョブが点在。修正のたびにJP1検証環境必須・テスト1サイクル4時間',
+      after: 'JP1ジョブネットはEXE起動とその依存制御のみ。業務ロジックはアプリ単体テストで検証完結・数分でサイクル完了'
+    },
+    check: [
+      '①「JP1でやらないこと」一覧を方式設計書に独立章として記載',
+      '②既存ジョブネットを点検し、業務ロジック漏出を検出(シェル/BATスクリプト内のSQL等)',
+      '③検出された漏出をリファクタリング対象として優先順位付け',
+      '④新規開発時のレビュー観点に「やらないリスト該当チェック」を必須項目として追加',
+      '⑤JP1スクリプトを書く必要が出た時のエスカレーションパス(アーキテクト承認)を定義'
+    ]
+  },
+  lab10: {
+    info: { type:'info', html:'📘 <strong>用語辞書は生きた資産</strong>: 新メンバー参画・他案件展開・他ベンダーとの会話で繰り返し参照される。方式設計書の付録に必ず添付。' },
+    check: [
+      '①この用語クロスリファレンスを方式設計書の付録Aとして添付',
+      '②社内Wiki/ドキュメントポータルに公開し、検索可能にする',
+      '③新規参画者のオンボーディング資料にリンクを記載',
+      '④四半期ごとに用語追加・修正の見直しを実施(JP1新機能・JSR-352拡張等)',
+      '⑤要素レベルフラッシュカード(-elem)化して暗記用学習に活用'
+    ]
+  }
+};
+
+function infoHTML(m){ return m?.info ? `<div class="info-box ${m.info.type||'info'}">${m.info.html}</div>` : ''; }
+function verifyHTML(m){ if (!m?.verify) return '';
+  const {before, after} = m.verify;
+  return `<div class="verify">
+    <div class="verify-col verify-before"><div class="verify-label">Before ▶︎ 三層分離なし</div>${before||''}</div>
+    <div class="verify-col verify-after"><div class="verify-label">After ▶︎ 三層分離あり</div>${after||''}</div>
+  </div>`; }
+function checkHTML(m){ if (!m?.check?.length) return '';
+  return `<div class="check-steps">
+    <div class="check-steps-title">🔍 設計レビュー チェックリスト</div>
+    <ol>${m.check.map(s=>`<li>${s}</li>`).join('')}</ol>
+  </div>`; }
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.lab').forEach(lab => {
+    const meta = LAB_META[lab.id]; const body = lab.querySelector('.lab-body');
+    if (!body || !meta) return;
+    const frag = document.createElement('div');
+    frag.innerHTML = infoHTML(meta) + verifyHTML(meta) + checkHTML(meta);
+    while (frag.firstChild) body.appendChild(frag.firstChild);
+  });
+
+  const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+  const map = new Map();
+  links.forEach(a => { const el = document.getElementById(a.getAttribute('href').slice(1)); if (el) map.set(el, a); });
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) { const l = map.get(e.target);
+      if (l) { links.forEach(n=>n.classList.remove('active')); l.classList.add('active'); } }
+  }), { rootMargin:'-30% 0px -60% 0px' });
+  document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+  document.querySelectorAll('.code-block').forEach((cb, i) => {
+    if (cb.querySelector('.code-block-header')) return;
+    const header = document.createElement('div');
+    header.className = 'code-block-header';
+    header.innerHTML = `<span>Code #${i+1}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+    cb.insertBefore(header, cb.firstChild);
+  });
+});
+</script>
+</body>
+</html>
