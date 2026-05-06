@@ -1,0 +1,1991 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OAuth 2.0 / OIDC 完全 Lab — 14 ラボで全パラメータ確認</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+/* Sidebar */
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+/* Hero */
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+/* TOC */
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+/* Container & Lab cards */
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+/* Code block */
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+/* Syntax token colors (GitHub light) */
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+
+/* info-box */
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+/* check-steps */
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+/* compare-table */
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+.compare-table .yes { color:var(--success); } .compare-table .no { color:var(--error); }
+
+/* try-box */
+.try-box { background:rgba(34,134,58,.06); border:1px solid rgba(34,134,58,.30);
+  border-left:3px solid var(--success); border-radius:7px;
+  padding:12px 14px; margin:14px 0; font-size:.86rem; line-height:1.8; color:#154f1e; }
+.try-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--success); font-weight:700; margin-bottom:6px; }
+.try-box ol { margin-left:20px; margin-top:4px; }
+.try-box ol li { margin-bottom:4px; }
+.try-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--success); }
+.try-tip { background:rgba(176,136,0,.06); border-left:3px solid var(--accent4);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#5c4400; margin-top:8px; }
+.try-tip strong { color:var(--accent4); }
+
+/* ASCII diagram */
+.ascii-diagram { font-family:var(--mono); font-size:.78rem; line-height:1.5;
+  background:var(--code-bg); border:1px solid var(--border); border-radius:7px;
+  padding:14px 16px; margin:12px 0; color:var(--text); overflow-x:auto;
+  white-space:pre; }
+
+/* Card hint linking to flashcards */
+.card-hint { background:rgba(111,66,193,.08); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:10px 14px;
+  margin:14px 0; font-size:.82rem; line-height:1.7; color:#3a1d6e; }
+.card-hint-title { font-family:var(--mono); font-size:.68rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:4px; }
+.card-hint code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 5px; border-radius:3px; font-size:.78rem; color:var(--accent3); }
+
+/* 🔝 メニューへ戻るボタン (画面右下固定) */
+.back-to-top { position:fixed; right:20px; bottom:20px;
+  width:48px; height:48px; border-radius:50%;
+  background:var(--accent); color:#fff; border:none;
+  font-size:1.2rem; cursor:pointer; box-shadow:0 4px 12px rgba(0,92,197,.35);
+  display:none; align-items:center; justify-content:center;
+  z-index:100; transition:opacity .2s, transform .15s;
+  font-family:var(--mono); }
+.back-to-top:hover { transform:translateY(-2px); opacity:.9; }
+.back-to-top.visible { display:flex; }
+.back-to-top::before { content:'↑'; font-size:1.4rem; line-height:1; }
+
+/* 各ラボに付ける「トップに戻る」リンク */
+.lab-top-link { display:inline-block; margin-top:14px;
+  padding:6px 14px; font-family:var(--mono); font-size:.78rem;
+  color:var(--accent); border:1px solid var(--accent);
+  border-radius:6px; text-decoration:none;
+  transition:background .15s, color .15s; cursor:pointer;
+  background:transparent; }
+.lab-top-link:hover { background:var(--accent); color:#fff; }
+.lab-top-link::before { content:'↑ '; }
+
+/* Responsive */
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+  .compare-table { font-size:.78rem; }
+  .back-to-top { right:12px; bottom:12px; width:42px; height:42px; }
+}
+  </style>
+</head>
+<body>
+
+<!-- 🔝 メニュー(目次)へ戻るボタン (右下固定、スクロール時のみ表示) -->
+<button class="back-to-top" id="backToTop" type="button" aria-label="メニュー(目次)へ戻る" title="目次へ戻る"></button>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// OAuth/OIDC <span>Complete Lab</span></div>
+  <div class="nav-section">基本</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>OAuth/OIDC 全体像</a>
+  <div class="nav-section">Flow 詳細</div>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>AuthCode + PKCE</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>Client Credentials</a>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>Device Authorization</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>Implicit と廃止理由</a>
+  <div class="nav-section">パラメータ</div>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>client_id / redirect_uri / scope</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>response_type / response_mode</a>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>state パラメータ</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>PKCE 完全攻略</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>nonce / OIDC 制御</a>
+  <div class="nav-section">トークン</div>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>トークン総覧</a>
+  <a class="nav-item" href="#lab11"><span class="nav-num">11</span>id_token クレーム検証</a>
+  <div class="nav-section">統合理解</div>
+  <a class="nav-item" href="#lab12"><span class="nav-num">12</span>4つの仕組みマトリクス</a>
+  <a class="nav-item" href="#lab13"><span class="nav-num">13</span>BFF + 攻撃対策 + 実装</a>
+</nav>
+
+<div class="hero">
+  <h1>OAuth 2.0 / OIDC 完全 Lab</h1>
+  <p class="subtitle">14 ラボで 300 枚のフラッシュカードを完全カバー — 各 Flow × 各デバイス × 各通信 × パラメータ × データ例</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>OAuth/OIDC 全体像と Flow 分類</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>Authorization Code + PKCE</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>Client Credentials Flow</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>Device Authorization Flow</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>Implicit Flow と廃止理由</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>client_id / redirect_uri / scope</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>response_type / response_mode</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>state パラメータ深掘り</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>PKCE 完全攻略</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>nonce / OIDC 制御パラメータ</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">10</span>トークン総覧</a>
+    <a class="toc-item" href="#lab11"><span class="toc-num">11</span>id_token クレーム検証</a>
+    <a class="toc-item" href="#lab12"><span class="toc-num">12</span>4つの仕組みマトリクス整理</a>
+    <a class="toc-item" href="#lab13"><span class="toc-num">13</span>BFF + 攻撃対策 + 実装観点</a>
+  </div>
+</div>
+
+<div class="container">
+<!-- ============================================================ -->
+<!-- LAB 0: OAuth/OIDC 全体像と Flow 分類                           -->
+<!-- ============================================================ -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>OAuth/OIDC 全体像と Flow 分類</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      OAuth 2.0 と OIDC の関係、4 つの登場人物 (User/Client/AS/RS)、現代推奨される 3 つの Flow を整理。
+      Flow 選定の判断軸を <code>ユーザの有無 → ブラウザの有無</code> で覚える。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>項目</th><th>OAuth 2.0</th><th>OIDC</th></tr></thead>
+      <tbody>
+        <tr><td>扱う対象</td><td>認可 (Authorization)</td><td>認証 (Authentication)</td></tr>
+        <tr><td>主な発行物</td><td>access_token</td><td>id_token (JWT) を追加</td></tr>
+        <tr><td>仕様</td><td>RFC 6749</td><td>OIDC Core 1.0</td></tr>
+        <tr><td>scope=openid</td><td>不要</td><td>必須</td></tr>
+        <tr><td>関係</td><td>基盤</td><td>OAuth の上に構築された薄いレイヤー</td></tr>
+      </tbody>
+    </table>
+
+    <table class="compare-table">
+      <thead><tr><th>登場人物</th><th>役割</th><th>具体例</th></tr></thead>
+      <tbody>
+        <tr><td>Resource Owner</td><td>リソースの持ち主</td><td>ユーザ本人</td></tr>
+        <tr><td>Client</td><td>リソースアクセスを要求するアプリ</td><td>Web/SPA/Mobile/Batch</td></tr>
+        <tr><td>Authorization Server (AS)</td><td>認証・認可・トークン発行</td><td>Auth0, Azure AD, Okta</td></tr>
+        <tr><td>Resource Server (RS)</td><td>保護されたリソースを提供</td><td>API サーバ</td></tr>
+      </tbody>
+    </table>
+
+    <pre class="ascii-diagram">┌─────────────────────────────────────────────────┐
+│ Flow 選定の判断軸                                  │
+├─────────────────────────────────────────────────┤
+│                                                  │
+│  ユーザ登場する?                                   │
+│  ├─ No  → Client Credentials Flow                │
+│  │        (M2M / Batch / Server-to-Server)       │
+│  │                                                │
+│  └─ Yes → デバイスにブラウザ + キーボードある?       │
+│           ├─ Yes → Authorization Code + PKCE     │
+│           │        (Web / SPA / Mobile)          │
+│           └─ No  → Device Authorization Flow     │
+│                    (TV / CLI / IoT)              │
+│                                                  │
+│  ❌ Implicit Flow → OAuth 2.1 で削除              │
+│  ❌ ROPC Flow     → OAuth 2.1 で削除              │
+└─────────────────────────────────────────────────┘</pre>
+
+    <table class="compare-table">
+      <thead><tr><th>Client 種別</th><th>定義</th><th>例</th><th>secret</th></tr></thead>
+      <tbody>
+        <tr><td>Confidential</td><td>secret を安全保管できる</td><td>Web サーバ / BFF / Batch</td><td class="yes">使える</td></tr>
+        <tr><td>Public</td><td>secret を保管できない</td><td>SPA / Mobile / Desktop</td><td class="no">使えない</td></tr>
+      </tbody>
+    </table>
+
+    <div class="card-hint">
+      <div class="card-hint-title">📇 関連カード (フラッシュカード OAuth-OIDC-elem)</div>
+      Section 1〜2 (基本概念 + Flow 分類) の 30 枚: 「OAuth 2.0 が扱う対象」「OIDC と OAuth 2.0 の関係」「Confidential Client とは」「Flow 選定: ユーザいるか?」など
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- LAB 1: Authorization Code Flow + PKCE                          -->
+<!-- ============================================================ -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>Authorization Code Flow + PKCE</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      現代の対人認証デファクト標準。<code>/authorize</code> → <code>/token</code> の 2 段階で、authorization_code を介してトークンを安全に取得する。
+    </p>
+
+    <pre class="ascii-diagram">User      Client          AS               RS
+ │         │               │                │
+ │ login   │               │                │
+ │────────▶│               │                │
+ │         │ /authorize?response_type=code  │
+ │         │  &state=...&nonce=...          │
+ │         │  &code_challenge=...           │
+ │         │──────────────▶│                │
+ │         │  ログイン画面   │                │
+ │         │◀──────────────│                │
+ │ 認証+同意 │               │                │
+ │──────────────────────────▶                │
+ │         │  302 callback?code=...&state=...│
+ │         │◀──────────────│                │
+ │         │ ★ state検証   │                │
+ │         │               │                │
+ │         │ POST /token   │                │
+ │         │  code + secret + verifier      │
+ │         │──────────────▶│                │
+ │         │ ★ AS が secret + PKCE 検証     │
+ │         │  access/refresh/id_token        │
+ │         │◀──────────────│                │
+ │         │ ★ id_token nonce 検証         │
+ │         │               │                │
+ │         │ Authorization: Bearer <token>  │
+ │         │───────────────────────────────▶│
+ │         │  リソース       │                │
+ │         │◀───────────────────────────────│</pre>
+
+    <div class="code-block">
+      <pre><span class="cm">// Step 1: /authorize リクエスト (Client → AS)</span>
+GET /authorize?
+    <span class="prop">response_type</span>=<span class="val">code</span>
+    &<span class="prop">client_id</span>=<span class="val">outsystems-web-app</span>
+    &<span class="prop">redirect_uri</span>=<span class="val">https%3A%2F%2Fapp.example.com%2Fcallback</span>
+    &<span class="prop">scope</span>=<span class="val">openid%20profile%20email</span>
+    &<span class="prop">state</span>=<span class="val">Df4kj2AbN9_xyz</span>
+    &<span class="prop">nonce</span>=<span class="val">n-0S6_WzA2Mj</span>
+    &<span class="prop">code_challenge</span>=<span class="val">E9Melhoa2OwvFrEMTJguC...</span>
+    &<span class="prop">code_challenge_method</span>=<span class="val">S256</span></pre>
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm">// Step 2: AS から callback (302 Redirect)</span>
+HTTP/1.1 302 Found
+Location: https://app.example.com/callback?
+    <span class="prop">code</span>=<span class="val">SplxlOBeZQQYbYS6WxSbIA</span>
+    &<span class="prop">state</span>=<span class="val">Df4kj2AbN9_xyz</span>
+
+<span class="cm">// ★ Client が state を一致確認 (CSRF 防止)</span></pre>
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm">// Step 3: /token リクエスト (Client → AS)</span>
+POST /token HTTP/1.1
+Host: auth.example.com
+Content-Type: application/x-www-form-urlencoded
+Authorization: Basic base64(client_id:client_secret)  <span class="cm"># Confidential のみ</span>
+
+<span class="prop">grant_type</span>=<span class="val">authorization_code</span>
+&<span class="prop">code</span>=<span class="val">SplxlOBeZQQYbYS6WxSbIA</span>
+&<span class="prop">redirect_uri</span>=<span class="val">https%3A%2F%2Fapp.example.com%2Fcallback</span>
+&<span class="prop">code_verifier</span>=<span class="val">dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk</span></pre>
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm">// Step 4: /token レスポンス (AS → Client)</span>
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  <span class="str">"access_token"</span>: <span class="str">"eyJhbGciOiJSUzI1NiIs..."</span>,
+  <span class="str">"token_type"</span>: <span class="str">"Bearer"</span>,
+  <span class="str">"expires_in"</span>: <span class="num">3600</span>,
+  <span class="str">"refresh_token"</span>: <span class="str">"8xLOxBtZp8eQK5BYCmJq0FsR"</span>,
+  <span class="str">"id_token"</span>: <span class="str">"eyJhbGciOiJSUzI1NiIs..."</span>,
+  <span class="str">"scope"</span>: <span class="str">"openid profile email"</span>
+}</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>Step</th><th>From → To</th><th>Method</th><th>主要パラメータ</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Client → AS</td><td>GET /authorize</td><td>response_type, client_id, redirect_uri, scope, state, nonce, code_challenge</td></tr>
+        <tr><td>2</td><td>AS → Client</td><td>302 Redirect</td><td>code, state</td></tr>
+        <tr><td>3</td><td>Client → AS</td><td>POST /token</td><td>grant_type=authorization_code, code, redirect_uri, code_verifier, client_secret*</td></tr>
+        <tr><td>4</td><td>AS → Client</td><td>200 OK (JSON)</td><td>access_token, refresh_token, id_token, expires_in, scope</td></tr>
+        <tr><td>5</td><td>Client → RS</td><td>GET /api/...</td><td>Authorization: Bearer &lt;access_token&gt;</td></tr>
+      </tbody>
+    </table>
+
+    <div class="card-hint">
+      <div class="card-hint-title">📇 関連カード</div>
+      Section 3 (AuthCode 詳細 20 枚) + Section 7 (パラメータ識別系)。
+      「AuthCode の grant_type」「authorization_code の性質」「AuthCode Flow の Step1〜7」など
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- LAB 2: Client Credentials Flow                                 -->
+<!-- ============================================================ -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>Client Credentials Flow (M2M)</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ユーザ不在の M2M 認証。バッチ / マイクロサービス間 / CI で使う。<code>refresh_token</code> も <code>id_token</code> も発行されない。
+    </p>
+
+    <pre class="ascii-diagram">Client (Batch/Service)         AS                  RS
+ │                              │                    │
+ │ POST /token                  │                    │
+ │  grant_type=client_credentials                    │
+ │  scope=read:orders write:logs                     │
+ │  Authorization: Basic <base64> │                  │
+ │─────────────────────────────▶│                    │
+ │ ★ AS が client_secret 検証   │                    │
+ │  scope 認可確認              │                    │
+ │  access_token                │                    │
+ │◀─────────────────────────────│                    │
+ │                              │                    │
+ │ メモリにキャッシュ (期限の80%まで)                  │
+ │                              │                    │
+ │ Authorization: Bearer <token>│                    │
+ │──────────────────────────────────────────────────▶│
+ │  リソース                     │                    │
+ │◀──────────────────────────────────────────────────│</pre>
+
+    <div class="code-block">
+      <pre><span class="cm">// Step 1: /token リクエスト</span>
+POST /token HTTP/1.1
+Host: auth.example.com
+Authorization: Basic base64(<span class="val">outsystems-batch-prod</span>:<span class="val">Hk9pL2mNqR8sT3vW...</span>)
+Content-Type: application/x-www-form-urlencoded
+
+<span class="prop">grant_type</span>=<span class="val">client_credentials</span>
+&<span class="prop">scope</span>=<span class="val">read:orders%20write:logs</span></pre>
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm">// Step 2: /token レスポンス (refresh_token なし、id_token なし)</span>
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  <span class="str">"access_token"</span>: <span class="str">"eyJhbGciOiJSUzI1NiIs..."</span>,
+  <span class="str">"token_type"</span>: <span class="str">"Bearer"</span>,
+  <span class="str">"expires_in"</span>: <span class="num">3600</span>,
+  <span class="str">"scope"</span>: <span class="str">"read:orders write:logs"</span>
+}</pre>
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>アンチパターン</strong>: 1 万件処理のバッチで毎回 <code>/token</code> を叩く。AS への過負荷 + パフォーマンス劣化。トークンキャッシュ + 期限の 80〜90% 経過時の先回りリフレッシュが必須。
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm">// C# / .NET の推奨パターン (OutSystems Extension でも同様)</span>
+<span class="kw">public class</span> <span class="fn">TokenProvider</span>
+{
+    <span class="kw">private static readonly</span> HttpClient _httpClient = <span class="kw">new</span> HttpClient();
+    <span class="kw">private string</span> _cachedToken;
+    <span class="kw">private</span> DateTime _expiresAt;
+    <span class="kw">private readonly</span> SemaphoreSlim _lock = <span class="kw">new</span> SemaphoreSlim(<span class="num">1</span>, <span class="num">1</span>);
+
+    <span class="kw">public async</span> Task&lt;<span class="kw">string</span>&gt; <span class="fn">GetTokenAsync</span>()
+    {
+        <span class="kw">if</span> (_cachedToken != <span class="kw">null</span> && DateTime.UtcNow &lt; _expiresAt)
+            <span class="kw">return</span> _cachedToken;
+
+        <span class="kw">await</span> _lock.WaitAsync();
+        <span class="kw">try</span> {
+            <span class="kw">if</span> (_cachedToken != <span class="kw">null</span> && DateTime.UtcNow &lt; _expiresAt)
+                <span class="kw">return</span> _cachedToken;
+
+            <span class="kw">var</span> response = <span class="kw">await</span> RequestNewTokenAsync();
+            _cachedToken = response.AccessToken;
+            _expiresAt = DateTime.UtcNow
+                .AddSeconds(response.ExpiresIn * <span class="num">0.9</span>);  <span class="cm">// 90% でリフレッシュ</span>
+            <span class="kw">return</span> _cachedToken;
+        }
+        <span class="kw">finally</span> { _lock.Release(); }
+    }
+}</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>送信方法</th><th>形式</th><th>推奨度</th></tr></thead>
+      <tbody>
+        <tr><td>方式 A: Basic 認証ヘッダ</td><td>Authorization: Basic base64(client_id:client_secret)</td><td class="yes">RFC 6749 推奨</td></tr>
+        <tr><td>方式 B: Body</td><td>client_id, client_secret を form data で</td><td>許容</td></tr>
+        <tr><td>方式 C: Private Key JWT</td><td>JWT 署名で client 認証 (RFC 7523)</td><td class="yes">FAPI 系で推奨</td></tr>
+      </tbody>
+    </table>
+
+    <div class="card-hint">
+      <div class="card-hint-title">📇 関連カード</div>
+      Section 4 (ClientCred 15 枚)。「Client Credentials Flow の grant_type」「Client Credentials の発行物」「アンチパターン」「キャッシュ戦略」など
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- LAB 3: Device Authorization Flow                               -->
+<!-- ============================================================ -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>Device Authorization Flow (TV/CLI/IoT)</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      入力が困難なデバイス用。<code>gh auth login</code> や Azure CLI、スマート TV ログインで実際に動いている。2 デバイス構成 + ポーリングが特徴。
+    </p>
+
+    <pre class="ascii-diagram">┌─────────────────┐         ┌──────────────────┐
+│  デバイス A      │         │  デバイス B       │
+│  (認証したい側)   │         │  (認証できる側)   │
+│                 │         │                  │
+│  ・スマート TV   │         │  ・スマホ         │
+│  ・CLI          │  ←──→  │  ・PC ブラウザ    │
+│  ・IoT         │         │                  │
+│                 │         │                  │
+│  user_code 表示 │         │  user_code 入力  │
+│  + ポーリング    │         │  + 認証          │
+└─────────────────┘         └──────────────────┘
+       ↓                              ↓
+       └──────── 同じ AS ──────────────┘</pre>
+
+    <div class="code-block">
+      <pre><span class="cm">// Step 1: /device_authorization リクエスト</span>
+POST /device_authorization HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+
+<span class="prop">client_id</span>=<span class="val">cli-tool</span>&<span class="prop">scope</span>=<span class="val">openid%20profile</span></pre>
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm">// Step 2: レスポンス</span>
+{
+  <span class="str">"device_code"</span>: <span class="str">"GmRhmhcxhwAzkoEqiMEg_DnyEysNkuNhszIySk9eS"</span>,
+  <span class="str">"user_code"</span>: <span class="str">"WDJB-MJHT"</span>,
+  <span class="str">"verification_uri"</span>: <span class="str">"https://example.com/device"</span>,
+  <span class="str">"verification_uri_complete"</span>: <span class="str">"https://example.com/device?user_code=WDJB-MJHT"</span>,
+  <span class="str">"expires_in"</span>: <span class="num">1800</span>,
+  <span class="str">"interval"</span>: <span class="num">5</span>
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <pre><span class="cm">// Step 3: ポーリング (interval 秒ごと、ユーザが認証完了するまで)</span>
+POST /token HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+
+<span class="prop">grant_type</span>=<span class="val">urn:ietf:params:oauth:grant-type:device_code</span>
+&<span class="prop">device_code</span>=<span class="val">GmRhmhcxhwAzkoEqiMEg_DnyEysNkuNhszIySk9eS</span>
+&<span class="prop">client_id</span>=<span class="val">cli-tool</span></pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>レスポンス</th><th>意味</th><th>挙動</th></tr></thead>
+      <tbody>
+        <tr><td>authorization_pending</td><td>まだユーザ未認証</td><td>そのまま待機継続</td></tr>
+        <tr><td>slow_down</td><td>ポーリング早すぎ</td><td>interval を +5 秒</td></tr>
+        <tr><td>expired_token</td><td>device_code 期限切れ</td><td>最初からやり直し</td></tr>
+        <tr><td>access_denied</td><td>ユーザが拒否</td><td>エラー終了</td></tr>
+        <tr><td>access_token (200 OK)</td><td>認証完了</td><td>成功終了</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box warn">
+      ⚠️ <strong>user_code フィッシング対策</strong>: 攻撃者が取得した user_code を被害者にメール送信して入力させる攻撃が可能。同意画面で「どのデバイスから要求か」を明示 (例: "Living Room TV") + 短い有効期限 (10〜15 分) + 1 回限り使い捨てが対策。
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>UX 最適化</strong>: <code>verification_uri_complete</code> を QR コード化することで、ユーザはスマホでスキャンするだけ → user_code 入力ステップが消える。
+    </div>
+
+    <div class="card-hint">
+      <div class="card-hint-title">📇 関連カード</div>
+      Section 5 (Device 20 枚)。「Device Authorization Flow の正式名」「device_code とは」「user_code とは」「verification_uri_complete とは」「ポーリングの slow_down」など
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- LAB 4: Implicit Flow と廃止理由                                  -->
+<!-- ============================================================ -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>Implicit Flow と廃止理由</h3>
+    <span class="lab-tag tag-advanced">歴史</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      OAuth 2.1 で削除された Flow。新規実装では絶対使わないが、レガシー監査で発見した時に即座に危険判定できることが目的。
+    </p>
+
+    <pre class="ascii-diagram">Authorization Code Flow:
+  /authorize ──→ code ──→ /token ──→ access_token
+                  ↑                       ↑
+                  ブラウザ経由             サーバ↔AS で交換
+                  (一時的)                (秘密)
+
+Implicit Flow:
+  /authorize ──→ access_token (URL fragment で直接返却)
+                  ↑
+                  ブラウザの URL に
+                  トークンが露出!  ← これが致命的</pre>
+
+    <div class="code-block">
+      <pre><span class="cm">// Implicit Flow の /authorize (response_type=token)</span>
+GET /authorize?
+    <span class="prop">response_type</span>=<span class="val">token</span>
+    &<span class="prop">client_id</span>=<span class="val">legacy-spa</span>
+    &<span class="prop">redirect_uri</span>=<span class="val">https://app.example.com/callback</span>
+    &<span class="prop">scope</span>=<span class="val">read:data</span>
+    &<span class="prop">state</span>=<span class="val">abc123</span>
+
+<span class="cm">// callback でトークンが URL fragment に露出</span>
+HTTP/1.1 302 Found
+Location: https://app.example.com/callback#access_token=eyJ...&token_type=Bearer&expires_in=3600
+
+<span class="cm">// JavaScript で fragment から取得</span>
+<span class="kw">const</span> hash = <span class="kw">new</span> URLSearchParams(window.location.hash.slice(<span class="num">1</span>));
+<span class="kw">const</span> token = hash.get(<span class="str">'access_token'</span>);  <span class="cm">// ← これが XSS で奪取される</span></pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>問題点</th><th>具体的なリスク</th></tr></thead>
+      <tbody>
+        <tr><td>① ブラウザ履歴に残る</td><td>共有 PC・履歴アクセスから漏洩</td></tr>
+        <tr><td>② XSS で即奪取</td><td>1 つの XSS でトークン全奪取、refresh_token もない</td></tr>
+        <tr><td>③ refresh_token なし</td><td>救済策がない、短期被害だが実害は出る</td></tr>
+        <tr><td>④ Token Substitution</td><td>攻撃者の token を被害者に注入される</td></tr>
+        <tr><td>⑤ 検証実装ミス多発</td><td>id_token 検証がクライアント実装に依存</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box err">
+      ❌ <strong>廃止の結論</strong>: RFC 9700 (OAuth 2.0 Security BCP, 2025) で「MUST NOT」扱い。OAuth 2.1 で完全削除。Auth0/Okta/Azure AD 等の主要 IdP もデフォルト無効化済み。
+    </div>
+
+    <pre class="ascii-diagram">SPA 認証の 10 年:
+
+  2012頃 │ Implicit Flow
+  2015   │ PKCE 標準化 (RFC 7636)
+  2018-19│ "OAuth 2.0 for Browser-Based Apps" → SPA も PKCE 推奨へ
+  2020-22│ Implicit 段階的廃止 (主要 IdP がデフォルト無効化)
+  2023+  │ BFF パターン台頭 (SPA にトークンを持たせない)
+  2025+  │ OAuth 2.1 / RFC 9700 で Implicit / ROPC 完全廃止</pre>
+
+    <div class="info-box warn">
+      ⚠️ <strong>レガシー監査の警告サイン</strong>:
+      ① URL に <code>access_token</code> が含まれる
+      ② <code>response_type=token</code> や <code>response_type=id_token</code>
+      ③ <code>localStorage.setItem('access_token', ...)</code>
+      ④ Silent Authentication のための隠し iframe
+    </div>
+
+    <div class="card-hint">
+      <div class="card-hint-title">📇 関連カード</div>
+      Section 6 (Implicit 10 枚)。「Implicit Flow のステータス」「URL fragment を使う理由」「致命的問題 1/2」「廃止の歴史的背景」など
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- LAB 5: client_id / redirect_uri / scope                        -->
+<!-- ============================================================ -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>client_id / redirect_uri / scope の基礎</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      OAuth/OIDC の最も基礎的な 3 つのリクエストパラメータ。各値の形式・検証ルール・典型ミスを実例で把握する。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>パラメータ</th><th>意味</th><th>性質</th></tr></thead>
+      <tbody>
+        <tr><td>client_id</td><td>AS 登録時のアプリ識別子</td><td>公開情報、AS が発行</td></tr>
+        <tr><td>redirect_uri</td><td>認証完了後の戻り先 URL</td><td>登録値と完全一致必須</td></tr>
+        <tr><td>scope</td><td>要求する権限範囲</td><td>空白区切り、複数指定可</td></tr>
+      </tbody>
+    </table>
+
+    <h4 style="margin-top:20px; font-size:.95rem; color:var(--accent);">▶ client_id の例</h4>
+    <div class="code-block">
+      <pre><span class="cm">// Google</span>
+<span class="str">"1234567890.apps.googleusercontent.com"</span>
+
+<span class="cm">// GitHub OAuth App</span>
+<span class="str">"Iv1.a629723000043722"</span>
+
+<span class="cm">// Azure AD (UUID)</span>
+<span class="str">"f0a8b3c2-4d5e-6789-abcd-ef1234567890"</span>
+
+<span class="cm">// 自社命名</span>
+<span class="str">"outsystems-batch-prod"</span></pre>
+    </div>
+
+    <h4 style="margin-top:20px; font-size:.95rem; color:var(--accent);">▶ redirect_uri の例</h4>
+    <div class="code-block">
+      <pre><span class="cm">// Web/SPA</span>
+<span class="str">"https://app.example.com/auth/callback"</span>
+
+<span class="cm">// Mobile (カスタムスキーム)</span>
+<span class="str">"com.example.app://callback"</span>
+
+<span class="cm">// 開発環境のみ http 許容</span>
+<span class="str">"http://localhost:8080/callback"</span>
+
+<span class="cm">// Silent Auth 用</span>
+<span class="str">"https://app.example.com/silent-renew.html"</span></pre>
+    </div>
+
+    <div class="info-box err">
+      ❌ <strong>典型ミス</strong>: 末尾スラッシュの差で <code>invalid_redirect_uri</code> エラー。
+      登録 <code>https://app.example.com/callback</code> vs 実装 <code>https://app.example.com/callback/</code> → 不一致で拒否。
+    </div>
+
+    <h4 style="margin-top:20px; font-size:.95rem; color:var(--accent);">▶ scope の例</h4>
+    <table class="compare-table">
+      <thead><tr><th>scope</th><th>取得できる情報</th><th>備考</th></tr></thead>
+      <tbody>
+        <tr><td>openid</td><td>sub のみ</td><td>OIDC 必須、これがないと OIDC でない</td></tr>
+        <tr><td>profile</td><td>name, picture, locale など</td><td>OIDC 標準</td></tr>
+        <tr><td>email</td><td>email, email_verified</td><td>OIDC 標準</td></tr>
+        <tr><td>address</td><td>postal address</td><td>OIDC 標準</td></tr>
+        <tr><td>phone</td><td>phone_number, phone_number_verified</td><td>OIDC 標準</td></tr>
+        <tr><td>offline_access</td><td>refresh_token を要求</td><td>長期セッション</td></tr>
+        <tr><td>read:orders write:logs</td><td>自社 API の権限</td><td>カスタムスコープ</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+      <pre><span class="cm">// AS ごとのカスタムスコープ例</span>
+<span class="cm">// Google</span>
+<span class="str">"openid email profile https://www.googleapis.com/auth/calendar.readonly"</span>
+
+<span class="cm">// GitHub</span>
+<span class="str">"repo user:email"</span>
+
+<span class="cm">// Azure AD</span>
+<span class="str">"User.Read Mail.Send openid offline_access"</span></pre>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>scope と id_token / userinfo の関係</strong>:
+      scope=openid → sub のみ。<br>
+      scope=openid email → sub + email + email_verified。<br>
+      scope=openid email profile → さらに name, picture など。<br>
+      <strong>「openid 必須 + 取得したいクレームの scope を追加」</strong>
+    </div>
+
+    <div class="card-hint">
+      <div class="card-hint-title">📇 関連カード</div>
+      Section 7 (client_id/redirect_uri/scope 15 枚)。「client_id の性質」「redirect_uri の Web 例」「OIDC 必須の scope」「offline_access の意味」など
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- LAB 6: response_type / response_mode                           -->
+<!-- ============================================================ -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>response_type と response_mode</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>response_type</code> はどの Flow を使うかを AS に指示。<code>response_mode</code> はトークン/コードの返し方。現代では response_type=code 一択。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>response_type</th><th>Flow</th><th>ステータス</th></tr></thead>
+      <tbody>
+        <tr><td>code</td><td>Authorization Code Flow (OAuth/OIDC 共通)</td><td class="yes">推奨</td></tr>
+        <tr><td>token</td><td>Implicit Flow (OAuth)</td><td class="no">廃止</td></tr>
+        <tr><td>id_token</td><td>Implicit Flow (OIDC) — id_token のみ</td><td class="no">廃止</td></tr>
+        <tr><td>id_token token</td><td>Implicit Flow (OIDC) — 両方</td><td class="no">廃止</td></tr>
+        <tr><td>code id_token</td><td>Hybrid Flow</td><td>非推奨化中</td></tr>
+        <tr><td>code token</td><td>Hybrid Flow</td><td>非推奨化中</td></tr>
+        <tr><td>code id_token token</td><td>Hybrid Flow (フル)</td><td>非推奨化中</td></tr>
+      </tbody>
+    </table>
+
+    <table class="compare-table">
+      <thead><tr><th>response_mode</th><th>挙動</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr><td>query</td><td>URL クエリで返す<br><code>?code=...&state=...</code></td><td>Code Flow デフォルト</td></tr>
+        <tr><td>fragment</td><td>URL フラグメントで返す<br><code>#access_token=...</code></td><td>Implicit Flow デフォルト</td></tr>
+        <tr><td>form_post</td><td>POST で HTML フォーム自動送信</td><td>URL 汚染なし、より安全</td></tr>
+        <tr><td>jwt</td><td>JARM (JWT-secured Authorization Response Mode)</td><td>FAPI 系で使用</td></tr>
+      </tbody>
+    </table>
+
+    <h4 style="margin-top:20px; font-size:.95rem; color:var(--accent);">▶ form_post の動作</h4>
+    <div class="code-block">
+      <pre><span class="cm">// AS が response_mode=form_post 時に返すレスポンス</span>
+<span class="kw">&lt;</span><span class="tag">html</span><span class="kw">&gt;</span>
+<span class="kw">&lt;</span><span class="tag">body</span><span class="kw">&gt;</span>
+<span class="kw">&lt;</span><span class="tag">form</span> <span class="attr">action</span>=<span class="val">"https://app.example.com/callback"</span> <span class="attr">method</span>=<span class="val">"POST"</span><span class="kw">&gt;</span>
+  <span class="kw">&lt;</span><span class="tag">input</span> <span class="attr">name</span>=<span class="val">"code"</span> <span class="attr">value</span>=<span class="val">"abc123"</span> <span class="kw">/&gt;</span>
+  <span class="kw">&lt;</span><span class="tag">input</span> <span class="attr">name</span>=<span class="val">"state"</span> <span class="attr">value</span>=<span class="val">"xyz789"</span> <span class="kw">/&gt;</span>
+<span class="kw">&lt;/</span><span class="tag">form</span><span class="kw">&gt;</span>
+<span class="kw">&lt;</span><span class="tag">script</span><span class="kw">&gt;</span><span class="fn">document</span>.forms[<span class="num">0</span>].submit();<span class="kw">&lt;/</span><span class="tag">script</span><span class="kw">&gt;</span>
+<span class="kw">&lt;/</span><span class="tag">body</span><span class="kw">&gt;</span>
+<span class="kw">&lt;/</span><span class="tag">html</span><span class="kw">&gt;</span>
+
+<span class="cm">// → URL に code が乗らない = ログ/履歴汚染なし</span></pre>
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>判断軸</strong>: 新規実装は迷わず <code>response_type=code</code> + <code>response_mode=query</code> (デフォルト)。さらに高セキュリティが必要なら <code>response_mode=form_post</code> または FAPI で <code>jwt</code> (JARM)。
+    </div>
+
+    <div class="card-hint">
+      <div class="card-hint-title">📇 関連カード</div>
+      Section 11 (response_type / response_mode 10 枚)。「response_type=code が示す Flow」「response_mode=fragment の意味」「form_post の意味」「Code Flow のデフォルト response_mode」など
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- LAB 7: state パラメータ深掘り                                    -->
+<!-- ============================================================ -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>state パラメータ深掘り (CSRF 防止)</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Client が動的生成し、/authorize に送って /callback で同じ値が戻ってくるか自分で確認するパラメータ。CSRF と Code Injection を防ぐ。
+    </p>
+
+    <pre class="ascii-diagram">state の往復:
+
+  [Client]                        [AS]
+   │ state = "Df4kj2AbN9_xyz"       │
+   │ sessionStorage に保存            │
+   │                                │
+   │ /authorize?state=Df4kj2AbN9_xyz │
+   │───────────────────────────────▶│
+   │                                │  ユーザ認証 + 同意
+   │ /callback?code=...&state=Df4kj │
+   │◀───────────────────────────────│
+   │                                │
+   │ ★ Client が一致確認            │
+   │   sessionStorage の値と比較    │
+   │   不一致なら拒否 (CSRF 検知)   │</pre>
+
+    <div class="code-block">
+      <pre><span class="cm">// JavaScript での state 生成と検証</span>
+
+<span class="cm">// ① 生成: /authorize 呼び出し前</span>
+<span class="kw">const</span> state = <span class="fn">crypto</span>.randomUUID();
+<span class="fn">sessionStorage</span>.setItem(<span class="str">'oauth_state'</span>, state);
+<span class="fn">window</span>.location.href = <span class="str">`/authorize?state=${state}&...`</span>;
+
+<span class="cm">// ② 検証: /callback で受信時</span>
+<span class="kw">const</span> params = <span class="kw">new</span> URLSearchParams(<span class="fn">window</span>.location.search);
+<span class="kw">if</span> (params.get(<span class="str">'state'</span>) !== <span class="fn">sessionStorage</span>.getItem(<span class="str">'oauth_state'</span>)) {
+    <span class="kw">throw new</span> Error(<span class="str">'CSRF detected: state mismatch'</span>);
+}</pre>
+    </div>
+
+    <h4 style="margin-top:20px; font-size:.95rem; color:var(--accent);">▶ state の値の例</h4>
+    <div class="code-block">
+      <pre><span class="cm">// 単純なランダム</span>
+<span class="str">"Df4kj2AbN9_xyz"</span>
+
+<span class="cm">// UUID</span>
+<span class="str">"550e8400-e29b-41d4-a716-446655440000"</span>
+
+<span class="cm">// Base64({"returnTo":"/dashboard"})</span>
+<span class="str">"eyJyZXR1cm5UbyI6Ii9kYXNoYm9hcmQifQ=="</span>
+
+<span class="cm">// カスタム形式 (CSRF + アプリ状態)</span>
+<span class="str">"csrf_a1b2c3d4_returnTo_/orders/123"</span></pre>
+    </div>
+
+    <div class="info-box err">
+      ❌ <strong>state なしで起こる攻撃</strong>: <strong>Code Injection</strong> — 攻撃者が事前に取得した authorization_code を被害者に踏ませる → /callback?code=攻撃者のコード → 被害者ブラウザが /token 交換 → 攻撃者のアカウントが被害者の Client に紐付く (Account Confusion)。
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>state を必須とする Flow</th><th>state を必要としない Flow</th></tr></thead>
+      <tbody>
+        <tr><td>Authorization Code (Web/SPA/Mobile)</td><td>Client Credentials</td></tr>
+        <tr><td>Implicit Flow (廃止)</td><td>Device Authorization</td></tr>
+        <tr><td>Hybrid Flow</td><td>Refresh Token Flow</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info">
+      📘 <strong>state vs nonce の最重要区別</strong>:
+      ・state: <strong>OAuth 2.0 標準</strong>、URL パラメータで往復、<strong>Client が callback 時</strong>に検証 → CSRF 防止
+      ・nonce: <strong>OIDC 固有</strong>、id_token JWT 内で帰還、<strong>Client が id_token 受信後</strong>に検証 → Replay 防止
+      → 別物。両方を必ずセットで使うのが OIDC のベストプラクティス。
+    </div>
+
+    <div class="card-hint">
+      <div class="card-hint-title">📇 関連カード</div>
+      Section 8 (state 10 枚)。「state の目的」「state の生成主体」「state なしで起こる攻撃」「state と nonce の仕様の違い」など
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- LAB 8: PKCE 完全攻略                                            -->
+<!-- ============================================================ -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>PKCE 完全攻略 (Proof Key for Code Exchange)</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      RFC 7636。Public Client (SPA/Mobile) でも安全に code → token 交換するための仕組み。
+      OAuth 2.1 では全 Client で必須化。
+    </p>
+
+    <pre class="ascii-diagram">PKCE の動作原理:
+
+  [Client]                                  [AS]
+   │ ① code_verifier 生成 (43-128文字、ランダム)│
+   │   例: "dBjftJeZ4CVP-mB92K27..."         │
+   │                                         │
+   │ ② code_challenge = SHA256(code_verifier) │
+   │   Base64URL エンコード                    │
+   │   例: "E9Melhoa2OwvFrEMTJguC..."         │
+   │                                         │
+   │ ③ /authorize?code_challenge=... (公開)   │
+   │────────────────────────────────────────▶│
+   │                                         │
+   │ ④ /token?code=...&code_verifier=... (秘密)│
+   │────────────────────────────────────────▶│
+   │                                         │
+   │ ★ AS が SHA256(verifier) == challenge ? │
+   │   一致 → token 発行                      │
+   │   不一致 → 拒否                          │
+   │ ◀────────────────────────────────────────│</pre>
+
+    <div class="code-block">
+      <pre><span class="cm">// JavaScript で code_verifier / code_challenge を生成</span>
+
+<span class="cm">// ① code_verifier (43-128文字、Base64URL 文字種)</span>
+<span class="kw">function</span> <span class="fn">generateCodeVerifier</span>() {
+    <span class="kw">const</span> array = <span class="kw">new</span> Uint8Array(<span class="num">32</span>);
+    <span class="fn">crypto</span>.getRandomValues(array);
+    <span class="kw">return</span> <span class="fn">base64UrlEncode</span>(array);  <span class="cm">// 43文字</span>
+}
+
+<span class="cm">// ② code_challenge = BASE64URL(SHA256(code_verifier))</span>
+<span class="kw">async function</span> <span class="fn">generateCodeChallenge</span>(verifier) {
+    <span class="kw">const</span> data = <span class="kw">new</span> TextEncoder().encode(verifier);
+    <span class="kw">const</span> digest = <span class="kw">await</span> <span class="fn">crypto</span>.subtle.digest(<span class="str">'SHA-256'</span>, data);
+    <span class="kw">return</span> <span class="fn">base64UrlEncode</span>(<span class="kw">new</span> Uint8Array(digest));
+}
+
+<span class="cm">// ③ Base64URL エンコード補助 (Base64 から +/= を除去)</span>
+<span class="kw">function</span> <span class="fn">base64UrlEncode</span>(bytes) {
+    <span class="kw">return</span> btoa(String.fromCharCode(...bytes))
+        .replace(/\+/g, <span class="str">'-'</span>)
+        .replace(/\//g, <span class="str">'_'</span>)
+        .replace(/=/g, <span class="str">''</span>);
+}</pre>
+    </div>
+
+    <h4 style="margin-top:20px; font-size:.95rem; color:var(--accent);">▶ 値の例</h4>
+    <div class="code-block">
+      <pre><span class="cm">// code_verifier (43文字、文字種: [A-Z][a-z][0-9]-._~)</span>
+<span class="str">"dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"</span>
+
+<span class="cm">// code_challenge (43文字、Base64URL)</span>
+<span class="str">"E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"</span>
+
+<span class="cm">// code_challenge_method</span>
+<span class="str">"S256"</span>  <span class="cm">// SHA-256 (推奨、ほぼ必須)</span>
+<span class="str">"plain"</span>  <span class="cm">// ハッシュなし、廃止すべき</span></pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>仕組み</th><th>送信タイミング</th><th>送信先</th><th>性質</th></tr></thead>
+      <tbody>
+        <tr><td>code_challenge</td><td>/authorize リクエスト時</td><td>Client → AS</td><td>公開 (URL に乗せても OK)</td></tr>
+        <tr><td>code_verifier</td><td>/token リクエスト時</td><td>Client → AS</td><td>秘密 (ここで初めて見せる)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box ok">
+      ✅ <strong>PKCE が解決する攻撃</strong>: Mobile アプリのカスタムスキーム経由の code 横取り、ブラウザ拡張機能の code 読み取り、Proxy/中継ログから code 流出 — いずれも code 単体では token 交換できないため無力化される。
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>不要な Flow</strong>: Client Credentials (code 交換ステップ自体がない)、Device Authorization (device_code が代替)、Refresh Token (/authorize 経由しない)。
+    </div>
+
+    <div class="card-hint">
+      <div class="card-hint-title">📇 関連カード</div>
+      Section 9 (PKCE 15 枚)。「code_verifier の文字数」「code_challenge の計算方法」「code_challenge_method の推奨値」「PKCE が必須の Client」など
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- LAB 9: nonce / OIDC 制御パラメータ                              -->
+<!-- ============================================================ -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>nonce と OIDC 制御パラメータ</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>nonce</code> は OIDC 固有の id_token Replay 防止。<code>prompt</code> / <code>max_age</code> / <code>login_hint</code> は AS の挙動を細かく制御するパラメータ。
+    </p>
+
+    <pre class="ascii-diagram">nonce の往復:
+
+  [Client]                          [AS]
+   │ nonce = "n-0S6_WzA2Mj"           │
+   │ sessionStorage に保存             │
+   │                                  │
+   │ /authorize?nonce=n-0S6_WzA2Mj    │
+   │─────────────────────────────────▶│
+   │                                  │
+   │  id_token JWT 内に焼き込み        │
+   │  {                                │
+   │    "iss": "...",                 │
+   │    "sub": "...",                 │
+   │    "nonce": "n-0S6_WzA2Mj",  ◀── │ 同じ値を返す
+   │    "aud": "...",                 │
+   │    ...                           │
+   │  }                                │
+   │                                  │
+   │ /token (callback)                │
+   │◀─────────────────────────────────│
+   │                                  │
+   │ ★ Client が id_token 復号 →    │
+   │   nonce が sessionStorage と一致?│</pre>
+
+    <div class="code-block">
+      <pre><span class="cm">// nonce 生成と検証 (JavaScript)</span>
+
+<span class="cm">// ① 生成</span>
+<span class="kw">const</span> nonce = <span class="fn">crypto</span>.randomUUID();
+<span class="fn">sessionStorage</span>.setItem(<span class="str">'oidc_nonce'</span>, nonce);
+
+<span class="cm">// ② /authorize 送信時に含める</span>
+<span class="kw">const</span> authUrl = <span class="str">`/authorize?response_type=code&nonce=${nonce}&...`</span>;
+
+<span class="cm">// ③ id_token 復号後に検証</span>
+<span class="kw">const</span> idTokenPayload = <span class="fn">decodeJWT</span>(idToken).payload;
+<span class="kw">if</span> (idTokenPayload.nonce !== <span class="fn">sessionStorage</span>.getItem(<span class="str">'oidc_nonce'</span>)) {
+    <span class="kw">throw new</span> Error(<span class="str">'id_token Replay detected: nonce mismatch'</span>);
+}</pre>
+    </div>
+
+    <h4 style="margin-top:20px; font-size:.95rem; color:var(--accent);">▶ OIDC 制御パラメータ一覧</h4>
+    <table class="compare-table">
+      <thead><tr><th>パラメータ</th><th>値の例</th><th>挙動</th></tr></thead>
+      <tbody>
+        <tr><td>prompt=none</td><td>"none"</td><td>UI 表示なし。セッションあれば即発行、なければエラー (サイレント認証)</td></tr>
+        <tr><td>prompt=login</td><td>"login"</td><td>既存セッション無視、必ず再認証</td></tr>
+        <tr><td>prompt=consent</td><td>"consent"</td><td>同意画面を必ず表示 (スコープ追加時など)</td></tr>
+        <tr><td>prompt=select_account</td><td>"select_account"</td><td>アカウント選択画面表示</td></tr>
+        <tr><td>max_age</td><td>"300"</td><td>認証経過時間の上限 (秒)。超過なら再認証</td></tr>
+        <tr><td>login_hint</td><td>"yamada@example.com"</td><td>ログイン画面の事前入力値</td></tr>
+        <tr><td>ui_locales</td><td>"ja-JP en-US"</td><td>UI の言語指定</td></tr>
+        <tr><td>display</td><td>"page" / "popup" / "touch"</td><td>UI 表示形式</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+      <pre><span class="cm">// 金融系: 振込時に必ず再認証</span>
+GET /authorize?
+    response_type=code
+    &client_id=banking-app
+    &redirect_uri=...
+    &<span class="prop">prompt</span>=<span class="val">login</span>      <span class="cm"># 既存セッション無視</span>
+    &<span class="prop">max_age</span>=<span class="val">0</span>          <span class="cm"># 必ず再認証</span>
+    &<span class="prop">acr_values</span>=<span class="val">urn:mace:incommon:iap:silver</span>  <span class="cm"># 認証強度要求</span>
+    &state=...
+    &nonce=...
+    &code_challenge=...</pre>
+    </div>
+
+    <div class="info-box err">
+      ❌ <strong>nonce なしで起こる攻撃</strong>: 攻撃者が他のサービスで取得した id_token を入手 → 被害者の Client に注入 → Client は「正規の id_token」と信じてログイン成立 → 別人として認証 (id_token Replay)。
+    </div>
+
+    <div class="card-hint">
+      <div class="card-hint-title">📇 関連カード</div>
+      Section 10 (nonce / OIDC 制御 15 枚)。「nonce の目的」「nonce が必須となる条件」「prompt=none の挙動」「max_age パラメータの意味」など
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- LAB 10: トークン総覧                                             -->
+<!-- ============================================================ -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>トークン総覧 (access / refresh / id_token)</h3>
+    <span class="lab-tag tag-intermediate">中級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      OAuth/OIDC で発行される 3 種類のトークン。それぞれ寿命・形式・用途が異なる。
+      JWT vs Opaque、Bearer の意味、refresh の使い方を整理。
+    </p>
+
+    <table class="compare-table">
+      <thead><tr><th>トークン</th><th>用途</th><th>典型寿命</th><th>形式</th></tr></thead>
+      <tbody>
+        <tr><td>access_token</td><td>API 呼び出し時の権限証明</td><td>1 時間</td><td>JWT or Opaque</td></tr>
+        <tr><td>refresh_token</td><td>access_token 切れ時の再取得</td><td>30〜90 日</td><td>Opaque (通常)</td></tr>
+        <tr><td>id_token</td><td>ユーザの本人確認情報 (OIDC 固有)</td><td>5〜15 分</td><td>必ず JWT</td></tr>
+      </tbody>
+    </table>
+
+    <h4 style="margin-top:20px; font-size:.95rem; color:var(--accent);">▶ Opaque Token vs JWT</h4>
+    <table class="compare-table">
+      <thead><tr><th>比較</th><th>Opaque Token</th><th>JWT Token</th></tr></thead>
+      <tbody>
+        <tr><td>形式</td><td>ランダム文字列</td><td>Header.Payload.Signature</td></tr>
+        <tr><td>例</td><td>RsT5OjbzRn430zqMLgV3Ia</td><td>eyJhbGciOi... (3部 Base64URL)</td></tr>
+        <tr><td>検証方法</td><td>AS の introspection に問い合わせ</td><td>公開鍵で署名検証 (問い合わせ不要)</td></tr>
+        <tr><td>パフォーマンス</td><td>毎回 AS 通信</td><td>ローカル検証のみ</td></tr>
+        <tr><td>失効反映</td><td>即時</td><td>遅い (有効期限まで)</td></tr>
+        <tr><td>適用</td><td>社内 API、即時失効必須</td><td>マイクロサービス、分散検証</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+      <pre><span class="cm">// JWT のデコード例 (jwt.io で試せる)</span>
+
+<span class="cm">// 元の JWT (3 つの Base64URL を . で連結)</span>
+eyJhbGciOiJSUzI1NiIsImtpZCI6ImtleS0xIn0.
+eyJzdWIiOiJ1c2VyMTIzIiwiYXVkIjoiYXBpLmV4YW1wbGUuY29tIiwiZXhwIjoxNzQxMDAwMDAwLCJzY29wZSI6InJlYWQ6b3JkZXJzIn0.
+SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+
+<span class="cm">// Header (1部目を Base64URL Decode)</span>
+{
+  <span class="str">"alg"</span>: <span class="str">"RS256"</span>,
+  <span class="str">"typ"</span>: <span class="str">"JWT"</span>,
+  <span class="str">"kid"</span>: <span class="str">"key-1"</span>
+}
+
+<span class="cm">// Payload (2部目を Base64URL Decode)</span>
+{
+  <span class="str">"iss"</span>: <span class="str">"https://auth.example.com"</span>,
+  <span class="str">"sub"</span>: <span class="str">"user_12345"</span>,
+  <span class="str">"aud"</span>: <span class="str">"api.example.com"</span>,
+  <span class="str">"exp"</span>: <span class="num">1741000000</span>,
+  <span class="str">"iat"</span>: <span class="num">1740996400</span>,
+  <span class="str">"scope"</span>: <span class="str">"read:orders write:orders"</span>,
+  <span class="str">"client_id"</span>: <span class="str">"outsystems-batch-prod"</span>
+}</pre>
+    </div>
+
+    <h4 style="margin-top:20px; font-size:.95rem; color:var(--accent);">▶ Bearer Token の使用</h4>
+    <div class="code-block">
+      <pre><span class="cm">// API 呼び出し時のヘッダ形式</span>
+GET /api/orders HTTP/1.1
+Host: api.example.com
+Authorization: Bearer eyJhbGciOiJSUzI1NiIs...
+
+<span class="cm">// "Bearer" の意味: 持参人払い (持つ者が誰でも使える)</span>
+<span class="cm">// → 盗まれたら終わり = 短い有効期限が重要</span></pre>
+    </div>
+
+    <h4 style="margin-top:20px; font-size:.95rem; color:var(--accent);">▶ Refresh Token Flow</h4>
+    <div class="code-block">
+      <pre><span class="cm">// access_token が切れたら refresh_token で再取得</span>
+POST /token HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+
+<span class="prop">grant_type</span>=<span class="val">refresh_token</span>
+&<span class="prop">refresh_token</span>=<span class="val">8xLOxBtZp8eQK5BYCmJq0FsR</span>
+&<span class="prop">client_id</span>=<span class="val">outsystems-web-app</span>
+&<span class="prop">client_secret</span>=<span class="val">...</span>  <span class="cm"># Confidential のみ</span>
+
+<span class="cm">// レスポンス: 新しい access_token (+ Rotation 時は新しい refresh_token)</span></pre>
+    </div>
+
+    <div class="info-box ok">
+      ✅ <strong>Refresh Token Rotation</strong>: 更新時に refresh_token も新しくなる仕組み。古いものは即時失効。同じ refresh_token を 2 回使ったら盗難検知 → 全セッション失効が現代のベストプラクティス。
+    </div>
+
+    <div class="info-box info">
+      📘 <strong>DPoP (Demonstrating Proof of Possession)</strong>: Bearer の脆弱性 (盗まれた瞬間使われる) を解消する次世代手法。トークン保有証明をリクエストごとに付与。FAPI 系で採用。
+    </div>
+
+    <div class="card-hint">
+      <div class="card-hint-title">📇 関連カード</div>
+      Section 12 (tokens 20 枚)。「access_token の用途」「Opaque Token とは」「JWT Token の構造」「Bearer Token の意味」「Refresh Token Rotation とは」など
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- LAB 11: id_token クレーム検証                                    -->
+<!-- ============================================================ -->
+<div class="lab" id="lab11">
+  <div class="lab-header">
+    <div class="lab-num">11</div>
+    <h3>id_token クレーム検証 (OIDC の核心)</h3>
+    <span class="lab-tag tag-advanced">上級</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      id_token は JWT で、ユーザの本人確認情報が入っている。これを正しく検証できるかが OIDC 実装の肝。
+      署名 + 6 つのクレーム検証が必須。
+    </p>
+
+    <div class="code-block">
+      <pre><span class="cm">// id_token の典型例 (Payload セクション)</span>
+{
+  <span class="str">"iss"</span>: <span class="str">"https://auth.example.com"</span>,
+  <span class="str">"sub"</span>: <span class="str">"248289761001"</span>,
+  <span class="str">"aud"</span>: <span class="str">"outsystems-web-app"</span>,
+  <span class="str">"exp"</span>: <span class="num">1741003600</span>,
+  <span class="str">"iat"</span>: <span class="num">1741000000</span>,
+  <span class="str">"nonce"</span>: <span class="str">"n-0S6_WzA2Mj"</span>,
+  <span class="str">"auth_time"</span>: <span class="num">1740999000</span>,
+  <span class="str">"acr"</span>: <span class="str">"urn:mace:incommon:iap:silver"</span>,
+  <span class="str">"amr"</span>: [<span class="str">"pwd"</span>, <span class="str">"mfa"</span>],
+  <span class="str">"name"</span>: <span class="str">"山田 太郎"</span>,
+  <span class="str">"email"</span>: <span class="str">"yamada@example.com"</span>,
+  <span class="str">"email_verified"</span>: <span class="kw">true</span>,
+  <span class="str">"picture"</span>: <span class="str">"https://example.com/photo.jpg"</span>,
+  <span class="str">"locale"</span>: <span class="str">"ja-JP"</span>
+}</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>クレーム</th><th>意味</th><th>例</th></tr></thead>
+      <tbody>
+        <tr><td>iss</td><td>Issuer (発行者)</td><td>AS の URL</td></tr>
+        <tr><td>sub</td><td>Subject (ユーザ一意 ID、不変)</td><td>"248289761001"</td></tr>
+        <tr><td>aud</td><td>Audience (このトークンの宛先)</td><td>client_id</td></tr>
+        <tr><td>exp</td><td>Expiration (有効期限、UNIX time)</td><td>1741003600</td></tr>
+        <tr><td>iat</td><td>Issued At (発行時刻)</td><td>1741000000</td></tr>
+        <tr><td>nonce</td><td>/authorize で送った nonce</td><td>"n-0S6_WzA2Mj"</td></tr>
+        <tr><td>auth_time</td><td>ユーザが実際に認証した時刻</td><td>1740999000</td></tr>
+        <tr><td>acr</td><td>Authentication Context Class Ref</td><td>認証強度レベル</td></tr>
+        <tr><td>amr</td><td>Authentication Methods Refs</td><td>["pwd", "mfa"]</td></tr>
+      </tbody>
+    </table>
+
+    <h4 style="margin-top:20px; font-size:.95rem; color:var(--accent);">▶ amr の値と SIM swap リスク</h4>
+    <table class="compare-table">
+      <thead><tr><th>amr 値</th><th>方法</th><th>セキュリティ</th></tr></thead>
+      <tbody>
+        <tr><td>pwd</td><td>パスワード認証</td><td>低 (単独では弱い)</td></tr>
+        <tr><td>mfa</td><td>多要素認証 (一般)</td><td>中</td></tr>
+        <tr><td>otp</td><td>ワンタイムパスワード</td><td>中</td></tr>
+        <tr><td>sms</td><td>SMS 認証</td><td class="no">低 (SIM swap リスク)</td></tr>
+        <tr><td>face</td><td>顔認証 (Face ID 等)</td><td>高</td></tr>
+        <tr><td>fpt</td><td>指紋認証</td><td>高</td></tr>
+        <tr><td>hwk</td><td>ハードウェアキー (FIDO2)</td><td class="yes">最高</td></tr>
+      </tbody>
+    </table>
+
+    <h4 style="margin-top:20px; font-size:.95rem; color:var(--accent);">▶ 必須検証手順 (実装例)</h4>
+    <div class="code-block">
+      <pre><span class="cm">// id_token 検証の 6 ステップ (これら全部 OK で初めてログイン成立)</span>
+
+<span class="cm">// ① 署名検証: AS の公開鍵 (JWKS) で検証</span>
+<span class="kw">const</span> jwksUri = <span class="str">"https://auth.example.com/.well-known/jwks.json"</span>;
+<span class="kw">const</span> publicKey = <span class="kw">await</span> <span class="fn">getKeyByKid</span>(jwksUri, header.kid);
+<span class="kw">if</span> (!<span class="fn">verifySignature</span>(idToken, publicKey)) <span class="kw">throw</span>;
+
+<span class="cm">// ② iss 検証</span>
+<span class="kw">if</span> (payload.iss !== <span class="str">"https://auth.example.com"</span>) <span class="kw">throw</span>;
+
+<span class="cm">// ③ aud 検証 ← セキュリティ最重要!!</span>
+<span class="kw">if</span> (payload.aud !== <span class="str">"outsystems-web-app"</span>) <span class="kw">throw</span>;
+
+<span class="cm">// ④ exp 検証 (有効期限内か)</span>
+<span class="kw">if</span> (payload.exp < Date.now() / <span class="num">1000</span>) <span class="kw">throw</span>;
+
+<span class="cm">// ⑤ iat 検証 (時計ずれ許容範囲、過去すぎないか)</span>
+<span class="kw">if</span> (Math.abs(Date.now() / <span class="num">1000</span> - payload.iat) > <span class="num">300</span>) <span class="kw">throw</span>;
+
+<span class="cm">// ⑥ nonce 検証</span>
+<span class="kw">if</span> (payload.nonce !== <span class="fn">sessionStorage</span>.getItem(<span class="str">'oidc_nonce'</span>)) <span class="kw">throw</span>;</pre>
+    </div>
+
+    <div class="info-box err">
+      ❌ <strong>aud 検証を怠ると</strong>: 攻撃者が他社サービス用の id_token を入手 → あなたのサーバに送りつける → aud 検証なしだと「正規の id_token」と判定 → 完全な認証バイパス成立。
+    </div>
+
+    <div class="info-box warn">
+      ⚠️ <strong>sub をユーザ識別に使う理由</strong>: email を主キーにすると、ユーザがメアド変更後に別人と紐付く事故が起きる。sub は不変の一意 ID なので必ず sub を主キーに。
+    </div>
+
+    <div class="card-hint">
+      <div class="card-hint-title">📇 関連カード</div>
+      Section 13 (id_token 20 枚)。「iss / sub / aud / exp / iat / nonce / auth_time / acr / amr」「sub をユーザ識別に使う理由」「aud 検証を怠ると起こる攻撃」「JWKS とは」など
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- LAB 12: 4つの仕組みマトリクス整理 ⭐ 核心                        -->
+<!-- ============================================================ -->
+<div class="lab" id="lab12">
+  <div class="lab-header">
+    <div class="lab-num">12</div>
+    <h3>⭐ 4つの仕組みマトリクス整理 (核心)</h3>
+    <span class="lab-tag tag-advanced">統合</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>client_secret</code> / <code>state</code> / <code>PKCE</code> / <code>nonce</code> の 4 つを「何を守るか」「いつ検証するか」「誰が検証するか」のマトリクスで完全整理。Tom さんの会話で深掘りした核心トピック。
+    </p>
+
+    <pre class="ascii-diagram">┌──────────────────────────────────────────────────────┐
+│  4つの仕組みの本質                                     │
+├──────────────────────────────────────────────────────┤
+│                                                       │
+│  client_secret                                        │
+│    "Who you are"  Client自身の身分証                   │
+│    Confidential Client しか持てない                   │
+│    AS が /token 時に検証                              │
+│                                                       │
+│  state                                                │
+│    "Which request"  自分が始めた認可リクの返事か       │
+│    /authorize を使う全 Flow で必須                    │
+│    Client が callback 時に検証 (URL パラメータ)        │
+│                                                       │
+│  PKCE (verifier/challenge)                            │
+│    "Real requester"  この code を要求した本人か        │
+│    Public Client にも使える (むしろ必須)              │
+│    AS が /token 時に検証                              │
+│                                                       │
+│  nonce                                                │
+│    "Which session"  今回の認証セッションの目印         │
+│    OIDC 固有 (id_token 検証用)                        │
+│    Client が id_token 受信後に検証 (JWT の中身)        │
+│                                                       │
+└──────────────────────────────────────────────────────┘</pre>
+
+    <h4 style="margin-top:20px; font-size:.95rem; color:var(--accent);">▶ 完全マトリクス: Flow × 4つの仕組み</h4>
+    <table class="compare-table">
+      <thead><tr>
+        <th>Flow</th>
+        <th>secret</th>
+        <th>state</th>
+        <th>PKCE</th>
+        <th>nonce</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td>AuthCode (Web SSR / Confidential)</td>
+          <td class="yes">必須</td><td class="yes">必須</td><td>推奨</td><td>推奨</td>
+        </tr>
+        <tr>
+          <td>AuthCode (BFF)</td>
+          <td class="yes">必須</td><td class="yes">必須</td><td>推奨</td><td class="yes">必須</td>
+        </tr>
+        <tr>
+          <td>AuthCode (SPA 単独 / Public)</td>
+          <td class="no">不可</td><td class="yes">必須</td><td class="yes">必須</td><td class="yes">必須</td>
+        </tr>
+        <tr>
+          <td>AuthCode (Mobile / Public)</td>
+          <td class="no">不可</td><td class="yes">必須</td><td class="yes">必須</td><td class="yes">必須</td>
+        </tr>
+        <tr>
+          <td>Client Credentials (M2M)</td>
+          <td class="yes">必須</td><td class="no">不要</td><td class="no">不要</td><td class="no">不要</td>
+        </tr>
+        <tr>
+          <td>Device Authorization (TV/CLI)</td>
+          <td>任意</td><td class="no">不要</td><td class="no">不要</td><td>AS依存</td>
+        </tr>
+        <tr>
+          <td>Refresh Token Flow</td>
+          <td>Conf必須<br>Pub不可</td><td class="no">不要</td><td class="no">不要</td><td class="no">不要</td>
+        </tr>
+        <tr>
+          <td>Implicit (廃止)</td>
+          <td class="no">不可</td><td class="yes">必須</td><td class="no">使えず</td><td class="yes">必須</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h4 style="margin-top:20px; font-size:.95rem; color:var(--accent);">▶ デバイス別の覚え方</h4>
+    <table class="compare-table">
+      <thead><tr><th>デバイス</th><th>使う仕組み</th><th>セット</th></tr></thead>
+      <tbody>
+        <tr><td>Web (SSR)</td><td>secret + state + PKCE + nonce</td><td>4 点セット</td></tr>
+        <tr><td>SPA (BFF経由)</td><td>BFF 内で 4 点セット</td><td>4 点セット</td></tr>
+        <tr><td>SPA (BFFなし)</td><td>state + PKCE + nonce</td><td>3 点セット</td></tr>
+        <tr><td>Mobile App</td><td>state + PKCE + nonce</td><td>3 点セット</td></tr>
+        <tr><td>Desktop App</td><td>state + PKCE + nonce</td><td>3 点セット</td></tr>
+        <tr><td>TV / IoT</td><td>secret 任意のみ (Device Flow)</td><td>1 点</td></tr>
+        <tr><td>Batch / Server (M2M)</td><td>secret のみ</td><td>1 点</td></tr>
+      </tbody>
+    </table>
+
+    <h4 style="margin-top:20px; font-size:.95rem; color:var(--accent);">▶ 検証タイミング表 (主体ごと)</h4>
+    <table class="compare-table">
+      <thead><tr><th>仕組み</th><th>検証主体</th><th>検証タイミング</th></tr></thead>
+      <tbody>
+        <tr><td>client_secret</td><td>AS</td><td>/token 受信時 (Client の身分確認)</td></tr>
+        <tr><td>state</td><td>Client</td><td>callback 受信時 (URL パラメータ一致確認)</td></tr>
+        <tr><td>PKCE</td><td>AS</td><td>/token 受信時 (SHA256(verifier)==challenge)</td></tr>
+        <tr><td>nonce</td><td>Client</td><td>id_token 受信後 (JWT 復号 → クレーム検証)</td></tr>
+      </tbody>
+    </table>
+
+    <h4 style="margin-top:20px; font-size:.95rem; color:var(--accent);">▶ 攻撃ベクター別「どれが効くか」</h4>
+    <table class="compare-table">
+      <thead><tr><th>攻撃シナリオ</th><th>防げる仕組み</th></tr></thead>
+      <tbody>
+        <tr><td>偽 Client が token 取得 (client_id だけは公開)</td><td>client_secret</td></tr>
+        <tr><td>CSRF (悪意サイトから誘導)</td><td>state</td></tr>
+        <tr><td>Code Injection (攻撃者の code を被害者に踏ませる)</td><td>state</td></tr>
+        <tr><td>authorization_code 横取り (Mobile / 拡張機能)</td><td>PKCE</td></tr>
+        <tr><td>古い/他人の id_token 注入 (Token Replay)</td><td>nonce</td></tr>
+        <tr><td>XSS でのトークン奪取</td><td>BFF + HttpOnly Cookie (4つでは防げない)</td></tr>
+        <tr><td>Bearer token 漏洩 (中間者、ログ漏洩)</td><td>DPoP / mTLS (4つでは防げない)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box ok">
+      ✅ <strong>合言葉</strong>: 「身分証 (secret) と リクエスト印 (state) と 行為証明 (PKCE) と セッション印 (nonce)」 — Confidential は 4 点セット、Public は 3 点セット (secret 抜き)。
+    </div>
+
+    <div class="card-hint">
+      <div class="card-hint-title">📇 関連カード</div>
+      Section 14 (4 仕組み 20 枚) — このラボの本題。「client_secret の守備範囲」「state の守備範囲」「PKCE の守備範囲」「nonce の守備範囲」「Web SSR で使う仕組み」「SPA (BFFなし) で使う仕組み」など全 20 枚
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- LAB 13: BFF + 攻撃対策 + 実装観点                                -->
+<!-- ============================================================ -->
+<div class="lab" id="lab13">
+  <div class="lab-header">
+    <div class="lab-num">13</div>
+    <h3>BFF パターン + 攻撃対策 + 実装観点</h3>
+    <span class="lab-tag tag-advanced">統合</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      現代の SPA 認証アーキテクチャ。SPA にトークンを持たせず、Cookie ベースで BFF と通信。XSS 耐性が桁違いに向上する。SIM swap / ATO 防御の実装観点まで含めて整理。
+    </p>
+
+    <pre class="ascii-diagram">BFF (Token Handler) Pattern:
+
+  ┌───────────────┐                ┌──────────────────┐
+  │  Browser/SPA  │                │       BFF         │
+  │               │                │  (自社の薄サーバ) │
+  │   - React     │ ←Cookie認証→  │                  │
+  │   - HTML/JS   │                │  ┌────────────┐  │
+  │               │                │  │ Token保管庫 │  │
+  │   トークン    │                │  │ (Redis/DB) │  │
+  │   一切なし    │                │  │            │  │
+  └───────────────┘                │  │access_token│  │
+                                   │  │refresh_tk  │  │
+                                   │  │id_token    │  │
+                                   │  └────────────┘  │
+                                   └────────┬─────────┘
+                                            │
+                                ┌───────────┴──────────┐
+                                ▼                      ▼
+                          ┌─────────┐            ┌──────────┐
+                          │   AS    │            │   API    │
+                          │ (IdP)   │            │ (RS)     │
+                          └─────────┘            └──────────┘</pre>
+
+    <h4 style="margin-top:20px; font-size:.95rem; color:var(--accent);">▶ Cookie 設定の肝</h4>
+    <div class="code-block">
+      <pre><span class="cm">// BFF が SPA に発行する Cookie の推奨設定</span>
+Set-Cookie: SESSION=abc123;
+            <span class="prop">HttpOnly</span>;        <span class="cm">// JavaScript から読めない (XSS 耐性)</span>
+            <span class="prop">Secure</span>;          <span class="cm">// HTTPS のみ送信</span>
+            <span class="prop">SameSite</span>=Lax;    <span class="cm">// CSRF 緩和</span>
+            <span class="prop">Path</span>=/;
+            <span class="prop">Domain</span>=app.example.com;</pre>
+    </div>
+
+    <table class="compare-table">
+      <thead><tr><th>Cookie 属性</th><th>意味</th><th>セキュリティ効果</th></tr></thead>
+      <tbody>
+        <tr><td>HttpOnly</td><td>document.cookie で読めない</td><td class="yes">XSS でトークン奪取不可</td></tr>
+        <tr><td>Secure</td><td>HTTPS でしか送信されない</td><td class="yes">中間者対策</td></tr>
+        <tr><td>SameSite=Strict</td><td>同一オリジンのみ送信</td><td>最強だが SSO で切れる</td></tr>
+        <tr><td>SameSite=Lax</td><td>Top-level Navigation 許可</td><td class="yes">現実解</td></tr>
+        <tr><td>SameSite=None</td><td>クロスサイト許可 (Secure 必須)</td><td>CSRF 対策別途必要</td></tr>
+      </tbody>
+    </table>
+
+    <h4 style="margin-top:20px; font-size:.95rem; color:var(--accent);">▶ SPA 側の API 呼び出し</h4>
+    <div class="code-block">
+      <pre><span class="cm">// ❌ 旧: localStorage + Bearer (XSS 1発で全奪取)</span>
+<span class="kw">const</span> token = <span class="fn">localStorage</span>.getItem(<span class="str">'access_token'</span>);
+fetch(<span class="str">'/api/orders'</span>, {
+  headers: { <span class="str">'Authorization'</span>: <span class="str">`Bearer ${token}`</span> }
+});
+
+<span class="cm">// ✅ BFF: Cookie 自動送信</span>
+fetch(<span class="str">'/bff/api/orders'</span>, {
+  credentials: <span class="str">'include'</span>,  <span class="cm">// Cookie を送る</span>
+  <span class="cm">// Authorization ヘッダ不要</span>
+});</pre>
+    </div>
+
+    <h4 style="margin-top:20px; font-size:.95rem; color:var(--accent);">▶ XSS 発生時の被害比較</h4>
+    <table class="compare-table">
+      <thead><tr><th>方式</th><th>XSS 発生時</th><th>被害規模</th></tr></thead>
+      <tbody>
+        <tr><td>localStorage + Bearer</td><td>access_token + refresh_token 全奪取</td><td class="no">30〜90 日間自由 + 他デバイス攻撃可</td></tr>
+        <tr><td>BFF + HttpOnly Cookie</td><td>Cookie 自体は読めない、XSS 経由 API 呼出のみ</td><td class="yes">ブラウザ閉じれば被害止まる</td></tr>
+      </tbody>
+    </table>
+
+    <h4 style="margin-top:20px; font-size:.95rem; color:var(--accent);">▶ ATO 防御の 3 階層 (Tom さんの SIM swap 関心と直結)</h4>
+    <pre class="ascii-diagram">Layer 1: 認証強度 (誰か)
+  ・MFA (TOTP, WebAuthn / FIDO2)
+  ・SIM swap detection (CAMARA, Twilio Lookup)
+  ・行動分析
+
+Layer 2: 認可フロー (どう渡すか)  ← BFF はここ
+  ・Authorization Code + PKCE
+  ・BFF で SPA からトークン排除
+  ・FAPI プロファイル
+
+Layer 3: トークン保護 (奪われた後)
+  ・短い access_token 寿命 (5〜15 分)
+  ・refresh_token Rotation (二重使用検知)
+  ・DPoP (Demonstrating Proof of Possession)
+
+→ どれか 1 つでも欠けると ATO 成功する</pre>
+
+    <h4 style="margin-top:20px; font-size:.95rem; color:var(--accent);">▶ FAPI プロファイル (金融系)</h4>
+    <table class="compare-table">
+      <thead><tr><th>FAPI 要素</th><th>役割</th></tr></thead>
+      <tbody>
+        <tr><td>PKCE 必須</td><td>全 Client で適用</td></tr>
+        <tr><td>PAR (Pushed Authorization Requests)</td><td>パラメータを URL から消す (事前 POST)</td></tr>
+        <tr><td>JAR (JWT-Secured Authorization Request)</td><td>認可リクパラメータを JWT 化</td></tr>
+        <tr><td>JARM (JWT-Secured Authorization Response Mode)</td><td>レスポンスも JWT 化</td></tr>
+        <tr><td>mTLS</td><td>Client と AS の相互認証</td></tr>
+        <tr><td>DPoP</td><td>トークン保有証明、Bearer 廃止</td></tr>
+        <tr><td>Private Key JWT</td><td>client_secret の代わりに JWT 署名</td></tr>
+      </tbody>
+    </table>
+
+    <h4 style="margin-top:20px; font-size:.95rem; color:var(--accent);">▶ OutSystems 文脈での実装 Tips</h4>
+    <table class="compare-table">
+      <thead><tr><th>項目</th><th>推奨</th></tr></thead>
+      <tbody>
+        <tr><td>client_secret 保管</td><td>Encrypted Site Property (平文 NG)</td></tr>
+        <tr><td>OAuth 通信の場所</td><td>Server Action (REST API 連携)</td></tr>
+        <tr><td>HttpClient の使い方</td><td>static readonly で使い回し (.NET Extension)</td></tr>
+        <tr><td>Token キャッシュ</td><td>SemaphoreSlim でロック + ダブルチェック</td></tr>
+        <tr><td>401 受信時</td><td>1 回だけリトライ + キャッシュ無効化</td></tr>
+        <tr><td>ログ出力</td><td>access_token / refresh_token / secret は出さない</td></tr>
+        <tr><td>セッション管理</td><td>絶対期限 + 滑り期限の組合せ</td></tr>
+        <tr><td>OutSystems Cookie</td><td>osVisitor (visitor 識別) / .ASPXAUTH (認証 cookie)</td></tr>
+      </tbody>
+    </table>
+
+    <h4 style="margin-top:20px; font-size:.95rem; color:var(--accent);">▶ 実装チェックリスト</h4>
+    <div class="info-box info">
+      <strong>Cookie 設定</strong>: HttpOnly / Secure / SameSite=Lax / 適切な有効期限<br>
+      <strong>CSRF 対策</strong>: SameSite + 状態変更 API は CSRF Token<br>
+      <strong>トークン管理</strong>: サーバ側保管 / 暗号化 / 自動リフレッシュ / Rotation<br>
+      <strong>ログアウト</strong>: サーバセッション削除 + AS の /revoke + Cookie 削除<br>
+      <strong>監査</strong>: ログイン記録 / 異常検知 / トークン値はログに出さない<br>
+      <strong>セキュリティヘッダ</strong>: CSP / X-Frame-Options / HSTS
+    </div>
+
+    <div class="info-box err">
+      ❌ <strong>レガシー監査の警告サイン</strong>:
+      ① URL に access_token (Implicit Flow の名残)
+      ② localStorage に access_token / refresh_token
+      ③ response_type=token / id_token (Implicit)
+      ④ 隠し iframe で Silent Authentication
+      → いずれも BFF パターンへの移行を検討
+    </div>
+
+    <div class="card-hint">
+      <div class="card-hint-title">📇 関連カード</div>
+      Section 15〜19 の全 75 枚: BFF (20 枚) + 攻撃対策 (15 枚) + データ例 (20 枚) + SIM swap/ATO (10 枚) + 実装 (15 枚)。
+      「BFF (Token Handler) の目的」「Cookie 必須属性」「localStorage に access_token を置く問題」「ATO 防御の3階層」「FAPI の主要要素」「OutSystems で client_secret を保管する場所」など
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+function copyCode(btn) {
+  const block = btn.closest('.code-block') || btn.parentElement;
+  const pre = block ? block.querySelector('pre') : null;
+  if (!pre) return;
+  const text = pre.innerText;
+
+  const onSuccess = () => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  };
+  const onFail = () => {
+    btn.textContent = 'Failed';
+    setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+  };
+
+  // navigator.clipboard が使える場合 (HTTPS or localhost)
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(onSuccess).catch(() => {
+      // 失敗時は textarea fallback
+      legacyCopy(text) ? onSuccess() : onFail();
+    });
+  } else {
+    // file:// など Secure Context でない場合は textarea fallback
+    legacyCopy(text) ? onSuccess() : onFail();
+  }
+}
+
+function legacyCopy(text) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  } catch (e) {
+    return false;
+  }
+}
+
+// LAB_META — 各ラボの info / check / try
+const LAB_META = {
+  lab0: {
+    info: { type:'info', html:'📘 <strong>OAuth/OIDC の関係</strong>: OAuth 2.0 = 認可、OIDC = 認証。OIDC は OAuth の上に <code>id_token</code> を追加した薄いレイヤー。Flow の枠組みは共通。' },
+    check: [
+      'ブラウザで <code>https://oauth.net/2/</code> を開き、Grant Types のページを見て現代推奨される 3 つの Flow (AuthCode, Client Credentials, Device) を確認',
+      '<code>https://openid.net/connect/</code> を開き、OIDC が OAuth 2.0 の "identity layer" として説明されていることを確認',
+      'このラボの Flow 選定フローチャート (ASCII) を 1 枚紙にメモして手元に置く'
+    ],
+    try: 'まず Flow 選定の判断軸 (ユーザの有無 → ブラウザの有無) を口頭で説明できるか試してみる。'
+  },
+  lab1: {
+    info: { type:'ok', html:'✅ <strong>現代の標準 Flow</strong>: Authorization Code + PKCE は Web/SPA/Mobile すべての対人認証で推奨。OAuth 2.1 では PKCE が全 Client で必須化される。' },
+    check: [
+      '<code>https://oauthdebugger.com/</code> を開き、response_type=code を選んで /authorize リクエストの URL がどう組み立てられるか確認',
+      'OAuth Playground (<code>https://developers.google.com/oauthplayground/</code>) で実際に code → token 交換のステップを実行',
+      'ブラウザの URL バーに残った code パラメータを目視で確認し、短命であることを実感 (画面遷移後にもう一度 /token 叩こうとしても失敗する)',
+      'Postman で /token エンドポイントを叩く際、Authorization タブで Basic 認証を組み立てて base64(client_id:client_secret) の形式を確認'
+    ],
+    try: '/authorize → /token の 2 段階を 1 つの figure に手書きで描いてみる。各ステップで何が往復するかを意識。'
+  },
+  lab2: {
+    info: { type:'info', html:'📘 <strong>M2M 認証の本命</strong>: ユーザ不在のサーバ間通信 (バッチ/サービス間/CI) で使う。<code>refresh_token</code> も <code>id_token</code> も発行されない (User がいないため不要)。' },
+    check: [
+      'Postman で /token エンドポイントに POST し、grant_type=client_credentials のレスポンスに refresh_token も id_token も含まれないことを目視確認',
+      '<code>https://jwt.io/</code> に access_token を貼り、Payload に sub (user) ではなく client_id ベースの識別子が入っていることを確認',
+      '同じ /token を 5 回連続で叩き、毎回新しいトークンが発行されることを確認 (キャッシュ未実装の弊害を実感)',
+      'スマホで Twilio や Stripe の API ドキュメントを開き、サーバサイドの API 認証が "Authorization: Bearer" 形式であることを確認'
+    ],
+    try: '自社バッチで OAuth 認証している箇所を思い出し、トークンキャッシュが実装されているかコードで確認。'
+  },
+  lab3: {
+    info: { type:'info', html:'📘 <strong>2 デバイス認証</strong>: 認証したいデバイス (TV/CLI/IoT) と認証できるデバイス (スマホ/PC) を分離。device_code でポーリング、user_code をユーザが手入力。' },
+    check: [
+      '<code>gh auth login --web</code> を実行して、ターミナルに表示される 8 文字の user_code をブラウザに入力する流れを実体験',
+      '<code>az login --use-device-code</code> でも同じパターンが動くことを確認',
+      'NetflixのテレビアプリやYouTube TVのログイン画面で QR コード + 短いコードが表示される画面を見て、verification_uri_complete の活用例を確認',
+      'ポーリングの interval (通常 5秒) を意識しながら、CLI でログイン中のターミナルが何秒間隔で叩いているかカウント'
+    ],
+    try: 'gh CLI または Azure CLI でログインしてみる。実際に動かすと device_code Flow の体感が掴める。'
+  },
+  lab4: {
+    info: { type:'err', html:'❌ <strong>Implicit Flow は廃止</strong>: OAuth 2.1 で削除。URL フラグメントにトークンが直接露出し、XSS 1 発で奪取される致命的脆弱性のため、新規実装では絶対に使わない。' },
+    check: [
+      'GitHub などで古い SPA のソースコードを検索し、<code>response_type=token</code> または <code>response_type=id_token token</code> を含む実装が残っていないか確認',
+      'localStorage に access_token を保存している実装パターンを探し、それが Implicit 時代の名残であることを認識',
+      'Auth0 や Okta の管理画面で Application を作成し、Implicit Flow がデフォルトで無効化されていることを確認 (有効化すると警告が出る)',
+      '<code>https://oidcdebugger.com/</code> で response_type=id_token を試し、URL フラグメントに JWT が直接乗ることを目視確認 (これが廃止の理由)'
+    ],
+    try: '自社の既存 SPA 実装を探し、PKCE への移行が必要な箇所がないか棚卸し。'
+  },
+  lab5: {
+    info: { type:'info', html:'📘 <strong>3 つの基礎パラメータ</strong>: <code>client_id</code> = 公開ID, <code>redirect_uri</code> = 戻り先 (完全一致必須), <code>scope</code> = 要求権限 (空白区切り)。' },
+    check: [
+      'Google Cloud Console の OAuth クライアント設定画面で client_id の形式 (xxx.apps.googleusercontent.com) を確認',
+      'Azure Portal でアプリ登録を開き、redirect_uri の登録欄が複数追加できる UI になっていることを確認',
+      '<code>https://oauthdebugger.com/</code> で redirect_uri に末尾スラッシュを付けたり外したりして、登録値と完全一致しないとエラーになることを実機確認',
+      'Microsoft Graph のスコープ参照 (<code>https://learn.microsoft.com/graph/permissions-reference</code>) を開き、scope が "User.Read" や "Mail.Send" のように細分化されていることを確認'
+    ],
+    try: 'redirect_uri に意図的にミスを入れて invalid_redirect_uri エラーを出してみる。'
+  },
+  lab6: {
+    info: { type:'info', html:'📘 <strong>Flow を決めるパラメータ</strong>: <code>response_type</code> がどの Flow を使うかを AS に指示。現代では <code>code</code> 一択。<code>response_mode</code> は返却方法 (query/fragment/form_post)。' },
+    check: [
+      '<code>https://oauthdebugger.com/</code> で response_type を code/token/id_token と切り替え、生成される URL がどう変わるか比較',
+      '同サイトで response_mode を form_post に変えると、callback で URL に code が乗らず HTML フォーム経由で POST される挙動を確認',
+      'OIDC 仕様書 (<code>https://openid.net/specs/openid-connect-core-1_0.html#Authentication</code>) で response_type の組み合わせ表を確認',
+      'Hybrid Flow (response_type=code+id_token) が記載されているが、現代では非推奨化中であることをチェック'
+    ],
+    try: '実装中の OAuth クライアントで response_type を必ず code にしているか確認。token や id_token を含んでいたら要見直し。'
+  },
+  lab7: {
+    info: { type:'info', html:'📘 <strong>state は CSRF 防止</strong>: Client が動的生成するランダム値。/authorize に送り、/callback で同じ値が返ってくるか Client 自身が検証。OAuth 2.0 標準で OIDC でなくても使う。' },
+    check: [
+      '<code>https://oauthdebugger.com/</code> で state を空にしてリクエスト送信を試み、警告が出ることを確認',
+      'sessionStorage に state を保存する実装パターンをコードで確認 (callback で取り出して比較するロジック)',
+      '<code>https://crypto.subtle.randomUUID()</code> を DevTools コンソールで実行し、state として使える形式の値が生成できることを確認',
+      '実装した Web アプリで OAuth ログインを試行し、ブラウザの URL バーに state がそのまま戻ってきていることを目視確認'
+    ],
+    try: 'state を意図的に書き換えて、Client 側で「不一致エラー」を出すコードを書いてみる。'
+  },
+  lab8: {
+    info: { type:'ok', html:'✅ <strong>PKCE は Public Client の必須装備</strong>: code_verifier (秘密) と code_challenge (公開ハッシュ) で code 横取りを防ぐ。OAuth 2.1 では全 Client で必須化。' },
+    check: [
+      'DevTools コンソールで <code>crypto.getRandomValues(new Uint8Array(32))</code> を実行し、code_verifier の元になる乱数を生成',
+      '<code>crypto.subtle.digest("SHA-256", data)</code> で code_challenge を計算し、長さが 43 文字 (Base64URL) になることを確認',
+      '<code>https://oauthdebugger.com/</code> で code_challenge_method を S256 に設定し、code_challenge と code_verifier の関係を実機検証',
+      'PKCE 仕様書 (<code>https://datatracker.ietf.org/doc/html/rfc7636</code>) を開き、code_verifier の文字種制限 ([A-Z][a-z][0-9]-._~) を確認'
+    ],
+    try: 'JavaScript で code_verifier → code_challenge を生成する関数を書いてみる。10 行程度で実装可能。'
+  },
+  lab9: {
+    info: { type:'info', html:'📘 <strong>nonce は OIDC 固有</strong>: id_token の Replay 攻撃を防ぐ。Client が生成 → /authorize 送信 → AS が id_token に焼き込んで返す → Client が一致確認。state とは別物。' },
+    check: [
+      '<code>https://oidcdebugger.com/</code> で nonce 付きの認可リクエストを実行し、返ってきた id_token を <code>https://jwt.io/</code> でデコード',
+      'Payload セクションで nonce クレームが認可リク時の値と完全一致することを目視確認',
+      'prompt=none でサイレント認証を試行 (既ログイン状態が必要) し、UI なしでトークン取得できる挙動を確認',
+      'login_hint=自分のメアド を付けてリクエストし、ログイン画面の入力欄が事前入力されることを確認'
+    ],
+    try: 'state と nonce の役割の違いを 30 秒で説明できるか自分でテスト。'
+  },
+  lab10: {
+    info: { type:'info', html:'📘 <strong>3 種類のトークン</strong>: <code>access_token</code> (API 認可) / <code>refresh_token</code> (再取得) / <code>id_token</code> (本人確認、OIDC 固有)。それぞれ寿命と用途が異なる。' },
+    check: [
+      '<code>https://jwt.io/</code> でサンプル JWT を貼り、Header/Payload/Signature の 3 部構造を確認',
+      'access_token と id_token を両方 jwt.io に貼って、Payload のクレーム構造の違い (scope vs name/email) を比較',
+      'Postman で /token を叩き、レスポンスの token_type が "Bearer" であることを確認',
+      'Bearer Token を Authorization ヘッダで送る正しい形式 (<code>Authorization: Bearer xxx</code>) を確認'
+    ],
+    try: '手元の access_token を jwt.io でデコードし、exp と iat の時刻差から有効期限を計算。'
+  },
+  lab11: {
+    info: { type:'warn', html:'⚠️ <strong>id_token 検証は厳密に</strong>: 署名 + iss + aud + exp + iat + nonce の 6 つを必ず検証。aud 検証を怠ると他社 id_token での成りすましが可能になる。' },
+    check: [
+      'jwt.io でサンプル id_token をデコードし、iss/sub/aud/exp/iat/nonce の 6 クレームを確認',
+      'Azure AD/Google の公開鍵 (JWKS) URL を直接ブラウザで開く。例: <code>https://www.googleapis.com/oauth2/v3/certs</code>',
+      'JWKS の JSON 内に kid (Key ID) が複数あり、JWT Header の kid と照合して使う鍵を選ぶ仕組みを確認',
+      'sub と email の違いを実機で確認: 同じユーザでもメアド変更後に sub が変わらないことが Identity の安定性の鍵'
+    ],
+    try: '不正な aud を持つ JWT を作って自分のアプリに送り、検証エラーになることを確認。'
+  },
+  lab12: {
+    info: { type:'ok', html:'✅ <strong>全体地図</strong>: client_secret (身分証) / state (リクエスト印) / PKCE (行為証明) / nonce (セッション印)。Confidential は 4 点セット、Public は 3 点セット (secret 抜き)。' },
+    check: [
+      'このラボの完全マトリクス表を見ながら、自社プロジェクトで使っている Flow が「どの 4 つの仕組みを使っているか」を棚卸し',
+      '各仕組みの「検証主体 (AS or Client)」を口頭で説明できるか自己テスト',
+      'state と nonce の違いを「片方しかないと何が起きるか」のシナリオで説明できるか自己テスト',
+      '自社の OAuth 実装で 4 つの仕組みのうち欠けているものがないかコードレビュー'
+    ],
+    try: '4 仕組みの守備範囲を 1 枚の絵に描いてみる。Tom さんの会話で出てきた構造図を再現できるか試す。'
+  },
+  lab13: {
+    info: { type:'ok', html:'✅ <strong>BFF パターンは現代の解</strong>: SPA にトークンを持たせず、Cookie ベースで BFF と通信。XSS 耐性が桁違いに向上。金融系では FAPI プロファイル + DPoP まで含めて検討。' },
+    check: [
+      '自社/個人プロジェクトの SPA を開き、DevTools の Application タブ → Cookies で HttpOnly が True になっているセッション Cookie があるか確認',
+      '同 SPA で localStorage に access_token を保存しているコードがないか検索 (あれば BFF への移行検討)',
+      'OWASP の "OAuth 2.0 Security BCP" (<code>https://datatracker.ietf.org/doc/html/rfc9700</code>) を開き、Implicit Flow が MUST NOT 扱いになっていることを確認',
+      'FAPI 1.0 仕様 (<code>https://openid.net/specs/openid-financial-api-part-2-1_0.html</code>) で PAR / mTLS / DPoP の要件を確認'
+    ],
+    try: '自社認証フロー図を BFF パターンに書き直してみる。トークンの保管場所を SPA から BFF に移すだけで何が変わるかを可視化。'
+  }
+};
+
+function infoHTML(m){ return m?.info ? `<div class="info-box ${m.info.type||'info'}">${m.info.html}</div>` : ''; }
+function checkHTML(m){ if (!m?.check?.length) return '';
+  return `<div class="check-steps">
+    <div class="check-steps-title">🔍 ブラウザ実機チェック</div>
+    <ol>${m.check.map(s=>`<li>${s}</li>`).join('')}</ol>
+  </div>`; }
+function tryHTML(m){
+  const tip = m?.try ? `<div class="try-tip"><strong>💡 このラボのコツ:</strong> ${m.try}</div>` : '';
+  return `<div class="try-box">
+    <div class="try-title">💻 学習を進める手順</div>
+    <ol>
+      <li>このラボの「コード例」「比較表」「ASCII 図」を一通り読む</li>
+      <li>「🔍 ブラウザ実機チェック」の項目を実機で順に試す</li>
+      <li>該当するフラッシュカード (右側の「📇 関連カード」参照) を OAuth-OIDC-elem デッキで復習</li>
+      <li>カード裏面の答えに迷ったら、このラボの該当箇所に戻って再確認</li>
+    </ol>
+    ${tip}
+  </div>`;
+}
+
+// 安全にスクロール (file:// での history.pushState エラー回避)
+function scrollToTarget(targetId) {
+  const target = document.getElementById(targetId);
+  if (!target) return false;
+  try {
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) {
+    // 古いブラウザは options 引数を受け付けない
+    target.scrollIntoView();
+  }
+  // history.pushState は file:// で SecurityError になることがある
+  try {
+    if (window.history && history.pushState && location.protocol !== 'file:') {
+      history.pushState(null, '', '#' + targetId);
+    }
+  } catch (e) { /* 無視 */ }
+  return true;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    // (1) 各ラボに info + try + check + 「目次へ戻る」リンクを自動挿入
+    document.querySelectorAll('.lab').forEach(lab => {
+      const meta = LAB_META[lab.id];
+      const body = lab.querySelector('.lab-body');
+      if (!body || !meta) return;
+      const frag = document.createElement('div');
+      // 各ラボの最後に「↑ 目次へ戻る」ボタンも自動付与
+      const topLink = '<a class="lab-top-link" href="#top-anchor" data-target="top-anchor">目次へ戻る</a>';
+      frag.innerHTML = infoHTML(meta) + tryHTML(meta) + checkHTML(meta) + topLink;
+      while (frag.firstChild) body.appendChild(frag.firstChild);
+    });
+
+    // (1.5) サイドバー / TOC / lab-top-link クリック時に明示的にスクロール
+    function attachAnchorScroll(selector) {
+      document.querySelectorAll(selector).forEach(a => {
+        a.addEventListener('click', (e) => {
+          const href = a.getAttribute('href');
+          if (!href || !href.startsWith('#')) return;
+          const targetId = href.slice(1);
+          // 「目次へ戻る」用の特殊 ID は body トップを意味する
+          if (targetId === 'top-anchor') {
+            e.preventDefault();
+            e.stopPropagation();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+          }
+          if (!document.getElementById(targetId)) return;
+          e.preventDefault();
+          e.stopPropagation();
+          scrollToTarget(targetId);
+        });
+      });
+    }
+    attachAnchorScroll('#sidebar .nav-item');
+    attachAnchorScroll('.toc-item');
+    attachAnchorScroll('.lab-top-link');
+
+    // (1.6) 右下「↑」ボタンのトグル + クリック動作
+    const backBtn = document.getElementById('backToTop');
+    if (backBtn) {
+      const toggleBackBtn = () => {
+        if (window.scrollY > 400) {
+          backBtn.classList.add('visible');
+        } else {
+          backBtn.classList.remove('visible');
+        }
+      };
+      window.addEventListener('scroll', toggleBackBtn, { passive: true });
+      toggleBackBtn();
+      backBtn.addEventListener('click', () => {
+        try {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch (e) {
+          window.scrollTo(0, 0);
+        }
+      });
+    }
+
+    // (2) サイドバー active ハイライト (IntersectionObserver 対応環境のみ)
+    if (typeof IntersectionObserver !== 'undefined') {
+      const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+      const map = new Map();
+      links.forEach(a => {
+        const id = a.getAttribute('href');
+        if (!id || !id.startsWith('#')) return;
+        const el = document.getElementById(id.slice(1));
+        if (el) map.set(el, a);
+      });
+      const io = new IntersectionObserver(es => es.forEach(e => {
+        if (e.isIntersecting) {
+          const l = map.get(e.target);
+          if (l) {
+            links.forEach(n => n.classList.remove('active'));
+            l.classList.add('active');
+          }
+        }
+      }), { rootMargin: '-30% 0px -60% 0px' });
+      document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+    }
+
+    // (3) 既存 .code-block に header + Copy を自動付与
+    document.querySelectorAll('.code-block').forEach((cb, i) => {
+      if (cb.querySelector('.code-block-header')) return;
+      const existing = cb.querySelector('.code-label');
+      const labelText = existing ? existing.textContent.trim() : `Code #${i+1}`;
+      if (existing) existing.remove();
+      const header = document.createElement('div');
+      header.className = 'code-block-header';
+      header.innerHTML = `<span>${labelText}</span><button class="copy-btn" type="button" onclick="copyCode(this)">Copy</button>`;
+      cb.insertBefore(header, cb.firstChild);
+    });
+  } catch (err) {
+    // 何かあってもページは表示できるように
+    console.warn('Lab init warning:', err);
+  }
+});
+</script>
+
+</body>
+</html>
