@@ -269,6 +269,19 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
   .setting-row{grid-template-columns:1fr;gap:6px}
 }
 
+/* Study filters (mobile-friendly inline bar) */
+.study-filters{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.study-filter-level{display:flex;gap:2px;background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;padding:3px;flex-shrink:0}
+.sf-level-btn{padding:6px 12px;border:none;border-radius:6px;background:transparent;
+  font-family:var(--mono);font-size:.78rem;font-weight:600;color:var(--text-dim);
+  cursor:pointer;transition:all .15s;white-space:nowrap}
+.sf-level-btn:hover{color:var(--text)}
+.sf-level-btn.active{background:var(--accent);color:#fff}
+.sf-deck-select{flex:1;min-width:120px;padding:8px 12px;border:1px solid var(--border);
+  border-radius:8px;font-family:var(--sans);font-size:.85rem;background:var(--surface);color:var(--text)}
+.sf-deck-select:focus{outline:none;border-color:var(--accent)}
+
 /* Load more button */
 .load-more-row{text-align:center;padding:16px 0}
 .load-more-btn{padding:10px 28px;border:1px solid var(--border);border-radius:8px;
@@ -278,14 +291,26 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
 .card-list-summary{font-family:var(--mono);font-size:.78rem;color:var(--text-dim);
   padding:8px 0;text-align:right}
 
+/* Desktop: hide study-filters (sidebar handles it) */
+@media(min-width:901px){
+  .study-filters{display:none}
+}
+
 /* Responsive */
 @media(max-width:900px){
   body{padding-left:0}
   #sidebar{position:static;width:100%;height:auto;border-right:none;
-    border-bottom:1px solid var(--border);padding:8px 0}
-  #sidebar .nav-section:nth-of-type(n+3){display:none}
+    border-bottom:1px solid var(--border);padding:8px 0;
+    display:flex;flex-wrap:wrap;align-items:center;gap:0}
+  #sidebar .nav-title{border-bottom:none;padding:6px 16px 6px;margin-bottom:0;flex-shrink:0}
+  #sidebar .nav-section{display:none}
+  #sidebar .level-tabs{display:none}
   #deck-list-nav{display:none}
   #sidebar .drive-status{display:none}
+  #sidebar .nav-item{display:none}
+  #sidebar .view-tab{display:inline-block;padding:6px 10px;font-size:.8rem;
+    border-left:none;white-space:nowrap}
+  .study-filters{display:flex}
   .container{padding:16px 14px 60px}
   .hero{padding:24px 16px 18px}
   .hero h1{font-size:1.5rem}
@@ -339,6 +364,16 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
 
   <!-- ========== STUDY VIEW ========== -->
   <div class="view active" id="view-study">
+    <div class="study-filters" id="study-filters">
+      <div class="study-filter-level">
+        <button class="sf-level-btn active" data-level="all">全て</button>
+        <button class="sf-level-btn" data-level="structure">構造</button>
+        <button class="sf-level-btn" data-level="element">要素</button>
+      </div>
+      <select class="sf-deck-select" id="study-deck-select">
+        <option value="">全デッキ</option>
+      </select>
+    </div>
     <div class="study-header">
       <div id="study-deck-name">全カード</div>
       <div class="study-progress">
@@ -865,6 +900,18 @@ function renderDeckNav(){
   // sync manage level dropdown with sidebar
   const fl = document.getElementById('filter-level');
   if(fl) fl.value = state.currentLevel === 'all' ? '' : state.currentLevel;
+
+  // sync study-filters (mobile bar)
+  const sds = document.getElementById('study-deck-select');
+  if(sds){
+    const sCur = sds.value;
+    sds.innerHTML = '<option value="">全デッキ</option>' +
+      decks.map(d => `<option value="${escapeAttr(d)}">${escapeHtml(d)}</option>`).join('');
+    sds.value = state.currentDeck || '';
+  }
+  document.querySelectorAll('.sf-level-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.level === state.currentLevel);
+  });
 }
 
 function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
@@ -877,7 +924,10 @@ function startStudy(){
   state.studyQueue = getCardsForStudy();
   state.studyIndex = 0;
   state.studyShowing = 'front';
-  document.getElementById('study-deck-name').textContent = state.currentDeck || '全カード';
+  const levelLabel = state.currentLevel === 'element' ? '【要素】' :
+                     state.currentLevel === 'structure' ? '【構造】' : '';
+  const deckLabel = state.currentDeck || '全カード';
+  document.getElementById('study-deck-name').textContent = levelLabel + deckLabel;
   renderStudy();
 }
 
@@ -1655,19 +1705,29 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('filter-deck').addEventListener('change', () => { state.manageShown = state.managePageSize; renderManage(); });
   document.getElementById('filter-level').addEventListener('change', () => { state.manageShown = state.managePageSize; renderManage(); });
 
-  // Level tab clicks (sidebar)
+  // Level tab clicks (sidebar + study-filters bar)
+  function handleLevelChange(level){
+    state.currentLevel = level;
+    state.currentDeck = null;
+    state.manageShown = state.managePageSize;
+    const fl = document.getElementById('filter-level');
+    if(fl) fl.value = state.currentLevel === 'all' ? '' : state.currentLevel;
+    renderDeckNav();
+    if(document.getElementById('view-study').classList.contains('active')) startStudy();
+    else if(document.getElementById('view-manage').classList.contains('active')) renderManage();
+  }
   document.querySelectorAll('.level-tab').forEach(t => {
-    t.addEventListener('click', () => {
-      state.currentLevel = t.dataset.level;
-      state.currentDeck = null; // reset deck filter when level changes
-      state.manageShown = state.managePageSize;
-      // sync manage dropdown
-      const fl = document.getElementById('filter-level');
-      if(fl) fl.value = state.currentLevel === 'all' ? '' : state.currentLevel;
-      renderDeckNav();
-      if(document.getElementById('view-study').classList.contains('active')) startStudy();
-      else if(document.getElementById('view-manage').classList.contains('active')) renderManage();
-    });
+    t.addEventListener('click', () => handleLevelChange(t.dataset.level));
+  });
+  document.querySelectorAll('.sf-level-btn').forEach(t => {
+    t.addEventListener('click', () => handleLevelChange(t.dataset.level));
+  });
+
+  // Study deck dropdown (mobile)
+  document.getElementById('study-deck-select').addEventListener('change', e => {
+    state.currentDeck = e.target.value || null;
+    renderDeckNav();
+    startStudy();
   });
 
   document.getElementById('nav-sync').addEventListener('click', () => {
