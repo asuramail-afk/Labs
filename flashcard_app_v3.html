@@ -48,6 +48,15 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
 .deck-count{font-family:var(--mono);font-size:.7rem;color:var(--text-dim);
   background:var(--surface2);padding:1px 6px;border-radius:10px;min-width:24px;text-align:center}
 
+/* Level filter tabs */
+.level-tabs{display:flex;gap:2px;padding:4px 16px;margin-bottom:6px}
+.level-tab{flex:1;padding:6px 4px;border:1px solid var(--border);border-radius:6px;
+  background:transparent;font-family:var(--mono);font-size:.68rem;
+  color:var(--text-dim);cursor:pointer;text-align:center;transition:all .15s;white-space:nowrap}
+.level-tab:hover{background:var(--surface2);color:var(--text)}
+.level-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.level-tab .level-count{display:block;font-size:.6rem;opacity:.7;margin-top:1px}
+
 /* Hero */
 .hero{padding:40px 40px 28px;text-align:center;
   background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
@@ -260,11 +269,23 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
   .setting-row{grid-template-columns:1fr;gap:6px}
 }
 
+/* Load more button */
+.load-more-row{text-align:center;padding:16px 0}
+.load-more-btn{padding:10px 28px;border:1px solid var(--border);border-radius:8px;
+  background:var(--surface);color:var(--accent);font-family:var(--sans);font-size:.9rem;
+  font-weight:600;cursor:pointer;transition:all .15s}
+.load-more-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.card-list-summary{font-family:var(--mono);font-size:.78rem;color:var(--text-dim);
+  padding:8px 0;text-align:right}
+
 /* Responsive */
 @media(max-width:900px){
   body{padding-left:0}
   #sidebar{position:static;width:100%;height:auto;border-right:none;
     border-bottom:1px solid var(--border);padding:8px 0}
+  #sidebar .nav-section:nth-of-type(n+3){display:none}
+  #deck-list-nav{display:none}
+  #sidebar .drive-status{display:none}
   .container{padding:16px 14px 60px}
   .hero{padding:24px 16px 18px}
   .hero h1{font-size:1.5rem}
@@ -272,6 +293,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
   .back-content{font-size:.78rem}
   .list-item{grid-template-columns:1fr;gap:6px}
   .list-item .li-stats,.list-item .li-due,.list-item .li-deck{justify-self:start}
+  .manage-toolbar{flex-direction:column}
+  .manage-toolbar .search-box{flex:1 1 auto !important;min-width:0 !important}
 }
 </style>
 </head>
@@ -285,6 +308,12 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
   <button class="nav-item view-tab" data-view="howto"><span class="nav-num">03</span>使い方</button>
   <button class="nav-item view-tab" data-view="stats"><span class="nav-num">04</span>統計</button>
   <button class="nav-item view-tab" data-view="settings"><span class="nav-num">05</span>設定</button>
+  <div class="nav-section">レベル</div>
+  <div class="level-tabs" id="level-tabs">
+    <button class="level-tab active" data-level="all">全て<span class="level-count" id="lc-all"></span></button>
+    <button class="level-tab" data-level="structure">構造<span class="level-count" id="lc-structure"></span></button>
+    <button class="level-tab" data-level="element">要素<span class="level-count" id="lc-element"></span></button>
+  </div>
   <div class="nav-section">デッキ</div>
   <div id="deck-list-nav"></div>
   <div class="nav-section">同期</div>
@@ -339,6 +368,11 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
   <div class="view" id="view-manage">
     <div class="manage-toolbar">
       <input type="text" class="search-box" id="search-box" placeholder="🔍 キーワード検索...">
+      <select class="search-box" id="filter-level" style="flex:0 0 110px;min-width:auto">
+        <option value="">全レベル</option>
+        <option value="structure">構造レベル</option>
+        <option value="element">要素レベル</option>
+      </select>
       <select class="search-box" id="filter-deck" style="flex:0 0 180px;min-width:auto">
         <option value="">全てのデッキ</option>
       </select>
@@ -558,6 +592,9 @@ const state = {
   reviewMap: {},      // { cardId: { ease, interval, due, lastReviewed, reviewCount } }
   reviews: [],        // [{date:'YYYY-MM-DD', count}]  日別レビュー集計
   currentDeck: null,  // null = 全カード
+  currentLevel: 'all', // 'all' | 'structure' | 'element'
+  managePageSize: 50,  // モバイル向けページネーション
+  manageShown: 50,     // 現在表示中の件数
   studyQueue: [],
   studyIndex: 0,
   studyShowing: 'front',
@@ -712,15 +749,34 @@ function recordReviewToday(){
 }
 
 // ============================================================
+// Level helpers
+// ============================================================
+function isElementLevel(card){
+  // deck名が -elem で終わる、または type フィールドが 'element'
+  return (card.deck && card.deck.endsWith('-elem')) || card.type === 'element';
+}
+function filterByLevel(cards){
+  if(state.currentLevel === 'element') return cards.filter(c => isElementLevel(c));
+  if(state.currentLevel === 'structure') return cards.filter(c => !isElementLevel(c));
+  return cards;
+}
+function getLevelCounts(){
+  const all = state.cards.length;
+  const elem = state.cards.filter(c => isElementLevel(c)).length;
+  return { all, element: elem, structure: all - elem };
+}
+
+// ============================================================
 // Deck helpers
 // ============================================================
 function getDecks(){
   const set = new Set();
-  state.cards.forEach(c => { if(c.deck) set.add(c.deck); });
+  const filtered = filterByLevel(state.cards);
+  filtered.forEach(c => { if(c.deck) set.add(c.deck); });
   return Array.from(set).sort();
 }
 function getCardsForStudy(){
-  let pool = state.cards;
+  let pool = filterByLevel(state.cards);
   if(state.currentDeck){ pool = pool.filter(c => c.deck === state.currentDeck); }
   // 期限到来済みを優先 → 残りはランダム
   const due = pool.filter(c => c.due <= nowMs());
@@ -754,13 +810,28 @@ function switchView(name){
 // Sidebar deck nav
 // ============================================================
 function renderDeckNav(){
+  // Level counts
+  const lc = getLevelCounts();
+  const lcAll = document.getElementById('lc-all');
+  const lcStr = document.getElementById('lc-structure');
+  const lcElem = document.getElementById('lc-element');
+  if(lcAll) lcAll.textContent = lc.all;
+  if(lcStr) lcStr.textContent = lc.structure;
+  if(lcElem) lcElem.textContent = lc.element;
+
+  // Level tab active state
+  document.querySelectorAll('.level-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.level === state.currentLevel);
+  });
+
   const decks = getDecks();
   const nav = document.getElementById('deck-list-nav');
+  const filtered = filterByLevel(state.cards);
   const counts = {};
-  state.cards.forEach(c => { counts[c.deck] = (counts[c.deck]||0) + 1; });
+  filtered.forEach(c => { counts[c.deck] = (counts[c.deck]||0) + 1; });
   let html = `<div class="deck-row ${state.currentDeck===null?'active':''}">
     <button class="nav-item" data-deck="" style="padding-left:0">全カード</button>
-    <span class="deck-count">${state.cards.length}</span>
+    <span class="deck-count">${filtered.length}</span>
   </div>`;
   decks.forEach(d => {
     html += `<div class="deck-row ${state.currentDeck===d?'active':''}">
@@ -784,12 +855,16 @@ function renderDeckNav(){
     });
   });
 
-  // filter dropdown
+  // filter dropdowns
   const fd = document.getElementById('filter-deck');
   const cur = fd.value;
   fd.innerHTML = '<option value="">全てのデッキ</option>' +
     decks.map(d => `<option value="${escapeAttr(d)}">${escapeHtml(d)}</option>`).join('');
   fd.value = cur;
+
+  // sync manage level dropdown with sidebar
+  const fl = document.getElementById('filter-level');
+  if(fl) fl.value = state.currentLevel === 'all' ? '' : state.currentLevel;
 }
 
 function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
@@ -906,7 +981,7 @@ function evalCard(quality){
 }
 
 function forceStudyAll(){
-  let pool = state.cards;
+  let pool = filterByLevel(state.cards);
   if(state.currentDeck){ pool = pool.filter(c => c.deck === state.currentDeck); }
   state.studyQueue = pool.slice().sort(() => Math.random() - 0.5).slice(0, 20);
   state.studyIndex = 0;
@@ -922,8 +997,13 @@ function renderManage(){
   const empty = document.getElementById('manage-empty');
   const search = document.getElementById('search-box').value.toLowerCase().trim();
   const deckFilter = document.getElementById('filter-deck').value;
+  const levelFilter = document.getElementById('filter-level').value;
 
   let cards = state.cards.slice();
+  // Level filter (manage view has its own dropdown, synced with sidebar)
+  if(levelFilter === 'element'){ cards = cards.filter(c => isElementLevel(c)); }
+  else if(levelFilter === 'structure'){ cards = cards.filter(c => !isElementLevel(c)); }
+  else { cards = filterByLevel(cards); } // respect sidebar level if manage dropdown is "全レベル"
   if(deckFilter){ cards = cards.filter(c => c.deck === deckFilter); }
   if(search){
     cards = cards.filter(c =>
@@ -942,10 +1022,16 @@ function renderManage(){
   }
   empty.style.display = 'none';
 
-  list.innerHTML = cards.map(c => {
+  // Pagination: show up to manageShown cards
+  const total = cards.length;
+  const visible = cards.slice(0, state.manageShown);
+
+  let html = `<div class="card-list-summary">${total}件中 ${visible.length}件表示</div>`;
+  html += visible.map(c => {
     const dueStatus = c.due <= nowMs() ? 'due-now' : (c.due <= daysFromNow(2) ? 'due-soon' : 'due-later');
     const dueText = c.due <= nowMs() ? '今すぐ' :
       `${Math.ceil((c.due - nowMs()) / 86400000)}日後`;
+    const levelBadge = isElementLevel(c) ? '<span class="li-deck" style="background:rgba(176,136,0,.08);color:var(--accent4)">要素</span>' : '';
     return `<div class="list-item" onclick="previewCard('${c.id}')">
       <span class="li-deck">${escapeHtml(c.deck||'未分類')}</span>
       <span class="li-front">${escapeHtml(c.front)}</span>
@@ -953,6 +1039,18 @@ function renderManage(){
       <span class="li-due ${dueStatus}">${dueText}</span>
     </div>`;
   }).join('');
+
+  if(total > state.manageShown){
+    html += `<div class="load-more-row">
+      <button class="load-more-btn" onclick="loadMoreCards()">さらに${Math.min(state.managePageSize, total - state.manageShown)}件表示</button>
+    </div>`;
+  }
+  list.innerHTML = html;
+}
+
+function loadMoreCards(){
+  state.manageShown += state.managePageSize;
+  renderManage();
 }
 
 function previewCard(id){
@@ -1553,8 +1651,24 @@ document.addEventListener('DOMContentLoaded', () => {
     t.addEventListener('click', () => switchView(t.dataset.view));
   });
 
-  document.getElementById('search-box').addEventListener('input', renderManage);
-  document.getElementById('filter-deck').addEventListener('change', renderManage);
+  document.getElementById('search-box').addEventListener('input', () => { state.manageShown = state.managePageSize; renderManage(); });
+  document.getElementById('filter-deck').addEventListener('change', () => { state.manageShown = state.managePageSize; renderManage(); });
+  document.getElementById('filter-level').addEventListener('change', () => { state.manageShown = state.managePageSize; renderManage(); });
+
+  // Level tab clicks (sidebar)
+  document.querySelectorAll('.level-tab').forEach(t => {
+    t.addEventListener('click', () => {
+      state.currentLevel = t.dataset.level;
+      state.currentDeck = null; // reset deck filter when level changes
+      state.manageShown = state.managePageSize;
+      // sync manage dropdown
+      const fl = document.getElementById('filter-level');
+      if(fl) fl.value = state.currentLevel === 'all' ? '' : state.currentLevel;
+      renderDeckNav();
+      if(document.getElementById('view-study').classList.contains('active')) startStudy();
+      else if(document.getElementById('view-manage').classList.contains('active')) renderManage();
+    });
+  });
 
   document.getElementById('nav-sync').addEventListener('click', () => {
     if(!state.drive.clientId){
