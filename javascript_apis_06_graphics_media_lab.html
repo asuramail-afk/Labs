@@ -1,0 +1,2383 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JavaScript標準API Lab #6 — Graphics・Media編</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  border-top:none; border-right:none; border-bottom:none;
+  background:transparent; width:100%; text-align:left; cursor:pointer;
+  font-family:inherit;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+#sidebar .file-nav { padding:8px 16px; margin:6px 0; background:var(--surface2);
+  border-top:1px solid var(--border); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.7rem; color:var(--text-dim); }
+#sidebar .file-nav a { display:block; padding:3px 0; color:var(--accent);
+  text-decoration:none; font-size:.72rem; }
+#sidebar .file-nav a.current { color:var(--text); font-weight:700; }
+
+.hero { padding:50px 30px 30px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:1.9rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:.95rem; margin-top:8px; }
+.hero .file-tag { display:inline-block; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; background:var(--accent); color:#fff;
+  margin-top:10px; }
+
+.toc { max-width:1100px; margin:24px auto; padding:0 20px; }
+.toc h2 { font-size:1rem; color:var(--accent); margin-bottom:10px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:8px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:9px 12px;
+  background:var(--surface); border:1px solid var(--border); border-radius:7px;
+  text-decoration:none; color:var(--text); font-size:.84rem;
+  font-family:inherit; cursor:pointer; text-align:left; width:100%;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.78rem; min-width:24px; }
+
+.container { max-width:1100px; margin:0 auto; padding:0 20px 60px; }
+.lab { margin-top:32px; border:1px solid var(--border); border-radius:10px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:10px; padding:14px 18px;
+  background:var(--surface2); border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:28px; height:28px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.78rem; }
+.lab-header h3 { font-size:1.05rem; font-weight:600; flex:1; min-width:140px; }
+.compat-badges { display:flex; gap:5px; flex-wrap:wrap; }
+.compat-badge { font-family:var(--mono); font-size:.65rem; padding:2px 7px;
+  border-radius:10px; border:1px solid; }
+.compat-yes { color:var(--success); border-color:var(--success);
+  background:rgba(34,134,58,.08); }
+.compat-no { color:var(--error); border-color:var(--error);
+  background:rgba(203,36,49,.08); }
+.compat-partial { color:var(--accent4); border-color:var(--accent4);
+  background:rgba(176,136,0,.08); }
+.lab-body { padding:18px; }
+.lab-desc { font-size:.9rem; color:var(--text-dim); margin-bottom:14px; line-height:1.75; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.82rem; color:var(--accent); }
+
+.scenes { background:rgba(0,92,197,.04); border:1px solid rgba(0,92,197,.2);
+  border-left:3px solid var(--accent); border-radius:6px;
+  padding:10px 14px; margin:12px 0; font-size:.85rem; line-height:1.75; }
+.scenes-title { font-family:var(--mono); font-size:.7rem; color:var(--accent);
+  font-weight:700; margin-bottom:5px; letter-spacing:.05em; }
+.scenes ol { margin-left:20px; margin-top:3px; }
+.scenes ol li { margin-bottom:3px; color:var(--text); }
+
+.ascii-art { font-family:var(--mono); font-size:.74rem;
+  line-height:1.45; background:var(--code-bg); padding:10px 12px;
+  border:1px solid var(--border); border-radius:6px;
+  margin:10px 0; color:var(--text); overflow-x:auto; white-space:pre; }
+
+.demo { border:1px solid var(--border); border-radius:8px; margin:14px 0;
+  overflow:hidden; background:var(--bg); }
+.demo-bar { padding:8px 12px; background:var(--surface2);
+  border-bottom:1px solid var(--border); font-family:var(--mono); font-size:.7rem;
+  color:var(--text-dim); letter-spacing:.05em; }
+.demo-body { padding:14px; }
+.demo-input { display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+.demo-input input, .demo-input textarea, .demo-input select {
+  font-family:var(--mono); font-size:.85rem; padding:7px 10px;
+  border:1px solid var(--border); border-radius:5px; background:#fff;
+  color:var(--text); flex:1; min-width:120px; }
+.demo-input textarea { min-height:55px; resize:vertical; flex-basis:100%; }
+.demo-btn { font-family:var(--mono); font-size:.82rem; padding:8px 16px;
+  border-radius:6px; border:1px solid var(--accent); background:var(--accent);
+  color:#fff; cursor:pointer; transition:all .15s; }
+.demo-btn:hover { opacity:.85; }
+.demo-btn.secondary { background:var(--surface); color:var(--accent); }
+.demo-btn:disabled { opacity:.5; cursor:not-allowed; }
+
+.ba-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0; }
+.ba-col { border-radius:6px; padding:10px 12px; font-size:.82rem;
+  line-height:1.6; border:1px solid; min-height:60px; }
+.ba-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.ba-after { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.ba-label { font-family:var(--mono); font-size:.62rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:4px; font-weight:700; opacity:.85; }
+.ba-before .ba-label { color:var(--error); }
+.ba-after .ba-label { color:var(--success); }
+.ba-content { font-family:var(--mono); font-size:.78rem; word-break:break-all;
+  white-space:pre-wrap; min-height:30px; }
+
+.log-area { background:#0d1117; color:#c9d1d9; font-family:var(--mono);
+  font-size:.78rem; padding:10px 12px; border-radius:6px;
+  max-height:200px; overflow-y:auto; margin:8px 0;
+  border:1px solid var(--border); white-space:pre-wrap; word-break:break-all;
+  line-height:1.5; }
+.log-area:empty::before { content:'(実行待ち...ボタンを押してください)';
+  color:#6e7681; font-style:italic; }
+.log-line { padding:1px 0; }
+.log-line.info { color:#79c0ff; }
+.log-line.ok { color:#7ee787; }
+.log-line.err { color:#ff7b72; }
+.log-line.dim { color:#6e7681; }
+
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:7px; margin:10px 0; overflow:hidden; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:7px 12px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.7rem; color:var(--text-dim); letter-spacing:.04em; }
+.code-block pre { padding:10px 14px 12px; overflow-x:auto;
+  font-family:var(--mono); font-size:.78rem; line-height:1.55;
+  color:var(--text); white-space:pre; tab-size:2; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.68rem;
+  padding:3px 9px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+
+.info-box { border-radius:7px; padding:10px 13px; font-size:.85rem;
+  line-height:1.7; margin:12px 0; border-left:3px solid; }
+.info-box.ok { border-color:var(--success); background:rgba(34,134,58,.08); color:#154f1e; }
+.info-box.info { border-color:var(--accent); background:rgba(0,92,197,.08); color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08); color:#7a5c00; }
+.info-box.err { border-color:var(--error); background:rgba(203,36,49,.08); color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 5px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .ba-grid { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.5rem; }
+  .toc-grid { grid-template-columns:1fr; }
+  .lab-body { padding:14px; }
+  .demo-input input, .demo-input textarea { min-width:100%; }
+}
+
+/* 📑 フローティング「目次に戻る」ボタン */
+#back-to-toc { position:fixed; bottom:20px; right:20px; z-index:100;
+  width:54px; height:54px; border-radius:50%; border:none;
+  background:var(--accent); color:#fff; cursor:pointer;
+  font-family:var(--mono); font-size:.7rem; font-weight:700;
+  box-shadow:0 4px 12px rgba(0,92,197,.35);
+  display:none; align-items:center; justify-content:center;
+  flex-direction:column; line-height:1.1;
+  transition:transform .15s,opacity .2s,background .15s; opacity:0; }
+#back-to-toc.visible { display:flex; opacity:1; }
+#back-to-toc:hover { background:#003d8f; transform:translateY(-2px); }
+#back-to-toc:active { transform:translateY(0); }
+#back-to-toc .arrow { font-size:1.1rem; line-height:1; margin-bottom:2px; }
+#back-to-toc .label { font-size:.6rem; letter-spacing:.05em; }
+
+/* === File 03 専用追加スタイル === */
+.dom-stage { border:1px dashed var(--border); border-radius:6px;
+  padding:10px; min-height:50px; background:#fff; margin:6px 0; }
+.dom-stage .dyn-item { padding:6px 10px; margin:3px 0; background:var(--surface2);
+  border-left:3px solid var(--accent); border-radius:4px; font-family:var(--mono);
+  font-size:.8rem; }
+.tag-chip { display:inline-block; padding:1px 7px; background:var(--accent);
+  color:#fff; border-radius:10px; font-family:var(--mono); font-size:.7rem;
+  margin-right:4px; }
+.scroll-track { height:200px; overflow-y:auto; border:1px solid var(--border);
+  border-radius:6px; background:var(--code-bg); padding:8px; margin:8px 0; }
+.scroll-track .io-item { padding:50px 12px; margin:12px 0;
+  background:#fff; border:2px solid var(--border); border-radius:6px;
+  text-align:center; font-family:var(--mono); font-size:.85rem;
+  transition:all .3s; }
+.scroll-track .io-item.entered { border-color:var(--success);
+  background:rgba(34,134,58,.08); transform:scale(1.02); }
+.resize-target { resize:both; overflow:auto;
+  width:200px; height:100px; padding:10px; background:#fff;
+  border:2px solid var(--accent); border-radius:6px; font-family:var(--mono);
+  font-size:.78rem; }
+.event-tree { padding:8px; border-radius:6px; }
+.event-tree .ev-outer { padding:18px; background:rgba(203,36,49,.06);
+  border:2px solid var(--error); border-radius:8px; cursor:pointer; }
+.event-tree .ev-middle { padding:14px; background:rgba(176,136,0,.08);
+  border:2px solid var(--accent4); border-radius:8px;
+  margin-top:8px; cursor:pointer; }
+.event-tree .ev-inner { padding:12px; background:rgba(34,134,58,.08);
+  border:2px solid var(--success); border-radius:8px;
+  margin-top:8px; cursor:pointer; text-align:center; font-weight:600; }
+.shadow-host { padding:8px 12px; background:var(--surface2);
+  border:1px solid var(--border); border-radius:6px; margin:6px 0; }
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// JS API Lab #6<br><span style="color:var(--text-dim);font-size:.7rem;">Graphics・Media編</span></div>
+  <div class="file-nav">
+    <div style="font-size:.7rem;color:var(--text-dim);padding:2px 0;">📘 全8ファイル中の #6</div>
+    <div style="font-size:.68rem;color:var(--text-dim);padding:2px 0;line-height:1.4;">Canvas / Video・Audio / WebGL / MediaStream / Web Audio</div>
+  </div>
+
+  <div class="nav-section">A. Canvas 2D 描画基礎</div>
+  <button class="nav-item" data-target="lab1"><span class="nav-num">01</span>Canvas 2D Context</button>
+  <button class="nav-item" data-target="lab2"><span class="nav-num">02</span>Path2D</button>
+  <button class="nav-item" data-target="lab3"><span class="nav-num">03</span>ImageData</button>
+  <button class="nav-item" data-target="lab4"><span class="nav-num">04</span>Canvas → Blob/DataURL</button>
+  <button class="nav-item" data-target="lab5"><span class="nav-num">05</span>OffscreenCanvas</button>
+
+  <div class="nav-section">B. Video/Audio + WebGL</div>
+  <button class="nav-item" data-target="lab6"><span class="nav-num">06</span>&lt;video&gt; 制御</button>
+  <button class="nav-item" data-target="lab7"><span class="nav-num">07</span>&lt;audio&gt; 制御</button>
+  <button class="nav-item" data-target="lab8"><span class="nav-num">08</span>Media events</button>
+  <button class="nav-item" data-target="lab9"><span class="nav-num">09</span>Picture-in-Picture</button>
+  <button class="nav-item" data-target="lab10"><span class="nav-num">10</span>WebGL2 三角形</button>
+
+  <div class="nav-section">C. Capture/Stream + Web Audio</div>
+  <button class="nav-item" data-target="lab11"><span class="nav-num">11</span>getUserMedia</button>
+  <button class="nav-item" data-target="lab12"><span class="nav-num">12</span>MediaRecorder</button>
+  <button class="nav-item" data-target="lab13"><span class="nav-num">13</span>captureStream</button>
+  <button class="nav-item" data-target="lab14"><span class="nav-num">14</span>Web Audio (Oscillator)</button>
+  <button class="nav-item" data-target="lab15"><span class="nav-num">15</span>AnalyserNode</button>
+</nav>
+
+<div class="hero">
+  <h1>JavaScript標準API Lab</h1>
+  <p class="subtitle">Graphics・Media編 — 描く・撮る・聴く・流す</p>
+  <span class="file-tag">📘 File #6 / 8</span>
+</div>
+
+<div class="toc" id="toc">
+  <h2>// 目次(15ラボ)</h2>
+  <div class="toc-grid">
+    <button class="toc-item" data-target="lab1"><span class="toc-num">01</span>Canvas 2D Context — 線・塗り・グラデの基本</button>
+    <button class="toc-item" data-target="lab2"><span class="toc-num">02</span>Path2D — パスをオブジェクトとして使い回す</button>
+    <button class="toc-item" data-target="lab3"><span class="toc-num">03</span>ImageData — ピクセル配列を直接読み書き</button>
+    <button class="toc-item" data-target="lab4"><span class="toc-num">04</span>Canvas → Blob / DataURL — 画像化の2方式</button>
+    <button class="toc-item" data-target="lab5"><span class="toc-num">05</span>OffscreenCanvas — DOM外で描く</button>
+    <button class="toc-item" data-target="lab6"><span class="toc-num">06</span>&lt;video&gt; 制御 — play/pause/currentTime</button>
+    <button class="toc-item" data-target="lab7"><span class="toc-num">07</span>&lt;audio&gt; 制御 — volume/loop/muted</button>
+    <button class="toc-item" data-target="lab8"><span class="toc-num">08</span>Media events — メタデータと再生位置の発火順</button>
+    <button class="toc-item" data-target="lab9"><span class="toc-num">09</span>Picture-in-Picture — 画面隅で見続ける</button>
+    <button class="toc-item" data-target="lab10"><span class="toc-num">10</span>WebGL2 三角形 — シェーダ + バッファ最小例</button>
+    <button class="toc-item" data-target="lab11"><span class="toc-num">11</span>getUserMedia — カメラ/マイク取得 (HTTPS必須)</button>
+    <button class="toc-item" data-target="lab12"><span class="toc-num">12</span>MediaRecorder — ストリームを Blob に</button>
+    <button class="toc-item" data-target="lab13"><span class="toc-num">13</span>canvas.captureStream() — 描画をストリーム化</button>
+    <button class="toc-item" data-target="lab14"><span class="toc-num">14</span>Web Audio (Oscillator + Gain) — 音を生成する</button>
+    <button class="toc-item" data-target="lab15"><span class="toc-num">15</span>AnalyserNode — FFTで周波数を可視化</button>
+  </div>
+</div>
+
+<div class="container">
+<!-- ========== Lab 01: Canvas 2D Context ========== -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>Canvas 2D Context — 線・塗り・グラデーションの基本</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why exists</b>: SVG はベクタで「図形の意味」を保持するが、写真加工やゲーム画面など <b>ピクセル単位で大量のドット</b> を高速に書き換える用途では DOM 操作のオーバーヘッドが致命的になる。Canvas は HTML 内に <b>1枚のラスタ(ビットマップ)領域</b> を確保し、命令で塗り潰す方式に切り替えることでこれを解決する。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>業務アプリでの簡易な手書きサイン入力欄</li>
+        <li>OutSystems の Wijmo FlexGrid セルにミニチャート (スパークライン) を埋め込む</li>
+        <li>レポート画面で動的に生成したダイアグラム/QRコードを画像エクスポート</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+    SVG (ベクタ)              Canvas (ラスタ)
+   ┌──────────┐           ┌──────────┐
+   │ &lt;circle/&gt;│ ← 図形DOM │ ●●●●●●●●│ ← ピクセル配列
+   │ &lt;line/&gt;  │   が残る  │ ●●●●●●●●│   命令後は
+   └──────────┘           └──────────┘   ただの絵
+        ↓                       ↓
+   後から「あの円」を       後から「あの円」は
+   個別に動かせる          無い (再描画が必要)
+
+   ─ 命令の流れ ──────────────────────
+   getContext('2d') → beginPath → moveTo →
+     lineTo → stroke / fill → (毎フレーム繰り返し)
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: Wijmo FlexGrid の formatItem で各行に Canvas を仕込めば、サーバ往復なしでセル内チャートが描ける。SVGより軽い。</div>
+    <div class="info-box warn">⚠ <b>Why this fails</b>: Canvas は描いた瞬間に「図形」ではなく「色の海」になる。後から「あの線だけ消したい」はできない — 全消しして描き直す。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 線・塗り・グラデを描画</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab1Run()">描画</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab1Clear()">クリア</button>
+        </div>
+        <canvas id="lab1-canvas" width="320" height="160" style="background:#fff;border:1px solid #ddd;border-radius:6px;display:block;margin:8px 0;max-width:100%;"></canvas>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab1-before">(未描画)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab1-after">(未描画)</div></div>
+        </div>
+        <div class="log-area" id="lab1-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「描画」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab1Run() {
+  clearLog('lab1-log');
+  const cvs = document.getElementById('lab1-canvas');
+  const ctx = cvs.getContext('2d');           // ← 2D描画コンテキスト取得
+  ctx.clearRect(0, 0, cvs.width, cvs.height);
+
+  // 1. 線 (stroke)
+  ctx.strokeStyle = '#0969da';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(20, 30); ctx.lineTo(120, 30);
+  ctx.stroke();
+
+  // 2. 塗り (fill)
+  ctx.fillStyle = '#1a7f37';
+  ctx.fillRect(20, 50, 100, 40);
+
+  // 3. グラデーション
+  const grad = ctx.createLinearGradient(140, 0, 300, 0);
+  grad.addColorStop(0, '#bf3989');
+  grad.addColorStop(1, '#fb8500');
+  ctx.fillStyle = grad;
+  ctx.fillRect(140, 50, 160, 80);
+
+  console.log('描画完了: 3要素');
+  setBA('lab1', '(空のcanvas)', '線+矩形+グラデ');
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 02: Path2D ========== -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>Path2D — パスをオブジェクトとして使い回す</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why this design</b>: 通常の Canvas API は「命令の連続実行」スタイル。しかし同じ図形を毎フレーム何百個も描くゲームや可視化では、毎回 <code>beginPath → moveTo → lineTo...</code> を呼ぶのは冗長。Path2D は <b>パスを1つのオブジェクトに保存</b> し、<code>ctx.fill(path)</code> / <code>ctx.stroke(path)</code> で何度でも再利用できる。SVGパス文字列(<code>"M10 10 L50 50"</code>)も受け取れる。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>地図上に同じアイコン(★)を100箇所描く</li>
+        <li>SVG パスを Canvas に流し込む(svg→canvas変換ライブラリ不要)</li>
+        <li>ヒットテスト: <code>ctx.isPointInPath(path, x, y)</code> でクリック判定</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+   毎回命令         vs        Path2D化
+   ─────────────────────────────────────
+   for (i of 100) {            const star = new Path2D();
+     ctx.beginPath();          star.moveTo(...);
+     ctx.moveTo(...);          star.lineTo(...);
+     ctx.lineTo(...);          // ─ 1回作る ─
+     ctx.fill();               for (i of 100) {
+   }                             ctx.translate(...);
+   ↑ 命令の文字列を              ctx.fill(star);  ← 使い回し
+     パーサが毎回処理            }
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: Wijmo FlexGrid の数千セルにアイコンを描く場合、Path2D を ScreenAction で1度組み立て、formatItem で都度 fill するだけ。CPU負荷が目に見えて減る。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 同じ星を5箇所に描画</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab2Run()">描画</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab2Clear()">クリア</button>
+        </div>
+        <canvas id="lab2-canvas" width="320" height="120" style="background:#fff;border:1px solid #ddd;border-radius:6px;display:block;margin:8px 0;max-width:100%;"></canvas>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab2-before">(未描画)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab2-after">(未描画)</div></div>
+        </div>
+        <div class="log-area" id="lab2-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「描画」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab2Run() {
+  clearLog('lab2-log');
+  const cvs = document.getElementById('lab2-canvas');
+  const ctx = cvs.getContext('2d');
+  ctx.clearRect(0, 0, cvs.width, cvs.height);
+
+  // SVGパス文字列で星を1つ作る (パスは1度だけ作る)
+  const star = new Path2D(
+    'M 0 -20 L 6 -6 L 20 -6 L 9 3 L 13 17 L 0 9 L -13 17 L -9 3 L -20 -6 L -6 -6 Z'
+  );
+  ctx.fillStyle = '#fb8500';
+
+  // 5箇所に同じ star を使い回し
+  for (let i = 0; i < 5; i++) {
+    ctx.save();
+    ctx.translate(40 + i * 60, 60);
+    ctx.fill(star);    // ← 同じパスを再利用
+    ctx.restore();
+  }
+
+  console.log('Path2D を 5回 fill (生成は1度のみ)');
+  setBA('lab2', '(命令を100行書く)', 'パス1つを使い回し');
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 03: ImageData ========== -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>ImageData — ピクセル配列を直接読み書き</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why care</b>: 画像処理(明度反転・グレースケール・エッジ検出)は <b>サーバ往復なしで JS だけ</b> で完結できる。<code>getImageData</code> で取得できる <code>ImageData.data</code> は <code>Uint8ClampedArray</code> で <b>[R, G, B, A, R, G, B, A, ...]</b> の並び。1ピクセル = 4バイト、長さ = width × height × 4。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>業務アプリで、撮影した画像を「白黒モード」で印刷プレビュー</li>
+        <li>QRコード読取の前処理(コントラスト強調)</li>
+        <li>サムネイルからの平均色抽出 (UIテーマ自動生成)</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+   ImageData.data の中身
+   ┌──┬──┬──┬──┬──┬──┬──┬──┬─...
+   │R │G │B │A │R │G │B │A │
+   └──┴──┴──┴──┴──┴──┴──┴──┴─...
+    pixel(0,0)    pixel(1,0)
+
+   グレースケール変換:
+     gray = 0.299*R + 0.587*G + 0.114*B
+     R = G = B = gray
+
+   反転 (ネガ):
+     R = 255 - R
+     G = 255 - G
+     B = 255 - B
+     (Aはいじらない)
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: 印刷向けにカラー画像をモノクロ化する処理を Extension (C#) で書かなくても、ブラウザ側で前処理できる。サーバCPU・帯域を節約。</div>
+    <div class="info-box warn">⚠ <b>Why this fails</b>: <code>data[i] = 300</code> としても自動で 255 にクランプされる(<code>Uint8ClampedArray</code>)。普通の <code>Uint8Array</code> ならオーバーフローして 44 になる — この型の選択も「なぜ」がある。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: グラデを描いて → 反転</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab3Run()">グラデ描画 → 反転</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab3Clear()">クリア</button>
+        </div>
+        <canvas id="lab3-canvas" width="320" height="120" style="background:#fff;border:1px solid #ddd;border-radius:6px;display:block;margin:8px 0;max-width:100%;"></canvas>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab3-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab3-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab3-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「描画→反転」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab3Run() {
+  clearLog('lab3-log');
+  const cvs = document.getElementById('lab3-canvas');
+  const ctx = cvs.getContext('2d');
+
+  // 1. グラデを描く
+  const g = ctx.createLinearGradient(0, 0, cvs.width, 0);
+  g.addColorStop(0, '#0969da');
+  g.addColorStop(1, '#fb8500');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, cvs.width, cvs.height);
+
+  // 2. ピクセル配列を取得
+  const img = ctx.getImageData(0, 0, cvs.width, cvs.height);
+  const d = img.data;
+  console.log('総バイト数:', d.length, '(=' + cvs.width + '×' + cvs.height + '×4)');
+
+  // 3. 反転 (R, G, B のみ; A はそのまま)
+  for (let i = 0; i &lt; d.length; i += 4) {
+    d[i]     = 255 - d[i];      // R
+    d[i + 1] = 255 - d[i + 1];  // G
+    d[i + 2] = 255 - d[i + 2];  // B
+  }
+
+  // 4. 戻す
+  ctx.putImageData(img, 0, 0);
+  console.log('色反転完了');
+  setBA('lab3', '青→橙のグラデ', '橙→青(色反転)');
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 04: Canvas → Blob / DataURL ========== -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>Canvas → Blob / DataURL — 画像化の2方式</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why this design</b>: Canvas の絵を「サーバへ送る/ダウンロードさせる」には画像形式に変換する必要がある。<code>toDataURL()</code> は <b>同期</b> で巨大な base64 文字列を返す(メモリ食う・UIブロック)。<code>toBlob()</code> は <b>非同期</b> で Blob (バイナリ) を返す(効率的・推奨)。<b>どちらも結果は同じ画像</b>だが、サイズと API の形が違う。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>サインパッドで描いた絵を OutSystems 側へ Blob 送信(File 04 の FormData/fetch と組み合わせ)</li>
+        <li>レポート画面のチャートを「画像保存」ボタンでダウンロード</li>
+        <li>SNS シェア用に &lt;img src="data:..."&gt; を即座に作る</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+   toDataURL()                  toBlob()
+   ┌─────────────────┐          ┌─────────────────┐
+   │ Canvas          │          │ Canvas          │
+   └────────┬────────┘          └────────┬────────┘
+            ↓ (同期・UIブロック)          ↓ (非同期・コールバック)
+   "data:image/png;base64,         Blob {size: 4321, type:
+    iVBORw0KG...(数百KB文字列)..." │       "image/png"}
+            ↓                              ↓
+   img.src= で即表示              URL.createObjectURL() or
+   サイズ ≒ 元画像 × 1.33         FormData append で送信
+   (base64オーバーヘッド)         サイズ = 元画像のまま
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: 大きな画像を toDataURL で送ると ~33%膨張 + サーバ側で base64 デコードが要る。toBlob + FormData なら無駄なし、Extension (C#) でも byte[] でそのまま受けられる。</div>
+    <div class="info-box warn">⚠ <b>Why this fails</b>: toDataURL は同期なので、4K 画像で 200ms 以上 UI が固まる。toBlob はコールバックで結果を受けるか await できる。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: Canvas → 両方式でサイズ比較</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab4Run()">変換</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab4Clear()">クリア</button>
+        </div>
+        <canvas id="lab4-canvas" width="200" height="100" style="background:#fff;border:1px solid #ddd;border-radius:6px;display:block;margin:8px 0;max-width:100%;"></canvas>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab4-before">(未変換)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab4-after">(未変換)</div></div>
+        </div>
+        <div class="log-area" id="lab4-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「変換」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab4Run() {
+  clearLog('lab4-log');
+  const cvs = document.getElementById('lab4-canvas');
+  const ctx = cvs.getContext('2d');
+  // 何か描く
+  ctx.fillStyle = '#0969da';
+  ctx.fillRect(0, 0, cvs.width, cvs.height);
+  ctx.fillStyle = '#fff';
+  ctx.font = '20px sans-serif';
+  ctx.fillText('Hello', 60, 60);
+
+  // 1) 同期 toDataURL
+  const dataUrl = cvs.toDataURL('image/png');
+  console.log('DataURL長:', dataUrl.length, '文字');
+  console.log('先頭:', dataUrl.slice(0, 30) + '...');
+
+  // 2) 非同期 toBlob
+  cvs.toBlob(blob => {
+    console.log('Blob size:', blob.size, 'bytes');
+    console.log('Blob type:', blob.type);
+    // 比率比較 (base64は約4/3倍)
+    const ratio = (dataUrl.length / blob.size).toFixed(2);
+    console.log('DataURL / Blob 比:', ratio, '(理論値≒1.33)');
+    setBA('lab4',
+      'DataURL: ' + dataUrl.length + '字',
+      'Blob: ' + blob.size + 'B (' + ratio + '倍)');
+  }, 'image/png');
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 05: OffscreenCanvas ========== -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>OffscreenCanvas — DOM外で描く</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS 16.4+</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why exists</b>: 通常の <code>&lt;canvas&gt;</code> はメインスレッドでしか描けない。重い描画(数千個のパーティクル等)を回すと UI が固まる。OffscreenCanvas は <b>DOMから切り離されたCanvas</b>で、Worker に <code>transferControlToOffscreen()</code> で渡せば <b>別スレッドで描画</b>できる。メインスレッドは UI に専念できる。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>レポート画面の重いチャートを Worker で生成し、結果だけメインに転送</li>
+        <li>サムネイル一括生成(数百枚)を Worker で並列処理</li>
+        <li>ゲーム/可視化で 60fps を維持したいとき</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+   通常の Canvas                OffscreenCanvas
+   ─────────────────────────────────────────────
+   メインスレッド               メインスレッド          Worker
+   ├ UIイベント                 ├ UIイベント            ├ 重い描画
+   ├ 重い描画 ← 競合            └ &lt;canvas&gt; 表示のみ    └ ImageBitmap生成
+   └ &lt;canvas&gt; 表示              ↑ ↓ postMessage         ↓
+                                └─── ImageBitmap ←────┘
+   UI が固まる                  UI なめらか
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: Wijmo の数千行に対する「全行サムネイル生成」のような処理を Worker に逃がせば、画面のスクロールが詰まらない。</div>
+    <div class="info-box warn">⚠ <b>Why this fails</b>: <code>transferControlToOffscreen()</code> は <b>1度しか呼べない</b>。同じ canvas を2度 Worker に渡そうとするとエラー。所有権が移譲される設計。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: メインスレッドでOffscreen描画</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab5Run()">実行</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab5Clear()">クリア</button>
+        </div>
+        <canvas id="lab5-canvas" width="320" height="100" style="background:#fff;border:1px solid #ddd;border-radius:6px;display:block;margin:8px 0;max-width:100%;"></canvas>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab5-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab5-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab5-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「実行」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab5Run() {
+  clearLog('lab5-log');
+  if (typeof OffscreenCanvas === 'undefined') {
+    console.log('このブラウザは OffscreenCanvas 非対応');
+    setBA('lab5', '非対応', '非対応');
+    return;
+  }
+  // メインスレッド内でも OffscreenCanvas は使える (描画 → 結果転送のテスト)
+  const off = new OffscreenCanvas(320, 100);
+  const ctx = off.getContext('2d');
+  ctx.fillStyle = '#1a7f37';
+  ctx.fillRect(10, 10, 300, 80);
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 24px sans-serif';
+  ctx.fillText('Drawn off-DOM', 60, 60);
+
+  // ImageBitmap として取り出し → 表示用Canvasへ
+  off.convertToBlob().then(blob => {
+    console.log('Offscreen → Blob:', blob.size, 'bytes');
+    const img = new Image();
+    img.onload = () => {
+      const main = document.getElementById('lab5-canvas');
+      main.getContext('2d').drawImage(img, 0, 0);
+      setBA('lab5', '(空)', 'Offscreen描画→転送完了');
+    };
+    img.src = URL.createObjectURL(blob);
+  });
+  console.log('OffscreenCanvas 320x100 を生成、描画中...');
+}</pre>
+    </div>
+  </div>
+</div>
+<!-- ========== Lab 06: <video> 制御 ========== -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>&lt;video&gt; 制御 — play/pause/currentTime/playbackRate</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why exists</b>: HTML5 以前は動画再生に Flash プラグインが必要だった。<code>&lt;video&gt;</code> 要素は <b>OS標準のデコーダを使ってブラウザネイティブで再生</b> する仕組みで、JS から再生位置・速度・音量をプロパティ操作で制御できる。ファイルを「読み込んで描画する」のではなく、<b>ブラウザに任せる + フックで操る</b> 設計。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>OutSystems 製の社内研修ポータルで、章ごとにジャンプボタン (currentTime)</li>
+        <li>速度可変の再生 (playbackRate = 1.5) でレビュー時短</li>
+        <li>「次の動画へ」自動遷移 (ended イベントで次のIDをセット)</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+   主要プロパティ              主要メソッド・イベント
+   ────────────────────        ──────────────────────────
+   currentTime  : 秒(double)   .play() / .pause()
+   duration     : 秒(double)   loadedmetadata: durationが入る
+   playbackRate : 1.0が等速    timeupdate    : 250ms毎に発火
+   volume       : 0.0〜1.0     ended         : 再生終了
+   muted        : true/false   play / pause  : 状態変化
+
+   状態遷移:
+   [stopped] --play()--> [playing] --pause()--> [paused]
+                              ↓
+                           [ended]
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: 動画教材アプリで「再生済み区間」を localStorage に保存して、次回起動時に currentTime を復元するだけで進捗管理が完成。</div>
+    <div class="info-box warn">⚠ <b>Why this fails</b>: iOS Safari は <b>ユーザ操作起因でないと play() を拒否</b>する(autoplay policy)。setTimeout 経由の play は失敗する。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 動画の制御 (再生/速度/位置)</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab6Run()">情報表示</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab6Toggle()">▶/⏸</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab6Speed()">速度切替</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab6Clear()">クリア</button>
+        </div>
+        <video id="lab6-video" controls playsinline muted style="width:100%;max-width:320px;border-radius:6px;display:block;margin:8px 0;background:#000;">
+          <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4">
+        </video>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab6-before">(未操作)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab6-after">(未操作)</div></div>
+        </div>
+        <div class="log-area" id="lab6-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 各ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab6Run() {
+  clearLog('lab6-log');
+  const v = document.getElementById('lab6-video');
+  console.log('duration:', v.duration?.toFixed(2), '秒');
+  console.log('currentTime:', v.currentTime.toFixed(2));
+  console.log('playbackRate:', v.playbackRate);
+  console.log('paused:', v.paused, ', muted:', v.muted);
+  setBA('lab6', '操作前', 'duration=' + (v.duration?.toFixed(1) ?? '?'));
+}
+function lab6Toggle() {
+  const v = document.getElementById('lab6-video');
+  if (v.paused) {
+    v.play().then(() => console.log('再生開始'))
+            .catch(e => console.log('再生失敗:', e.message));
+  } else {
+    v.pause();
+    console.log('一時停止');
+  }
+}
+function lab6Speed() {
+  const v = document.getElementById('lab6-video');
+  v.playbackRate = v.playbackRate === 1.0 ? 1.5 : 1.0;
+  console.log('playbackRate →', v.playbackRate);
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 07: <audio> 制御 ========== -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>&lt;audio&gt; 制御 — volume/loop/muted</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why this design</b>: <code>&lt;audio&gt;</code> は <code>&lt;video&gt;</code> と同じ <b>HTMLMediaElement</b> を継承(プロパティ・イベントが共通)。だから <code>currentTime</code>, <code>play()</code>, <code>ended</code> イベントの使い方は video と全く同じ — <b>覚えるべきAPIは1つ</b> で良い設計になっている。違いは表示UI (controls時) のみ。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>業務アプリの「保存しました」効果音(volume小さめ)</li>
+        <li>BGM ループ (loop=true)</li>
+        <li>消音切替トグル (muted切替)</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+   HTMLMediaElement (基底)
+        ↑                 ↑
+   HTMLVideoElement   HTMLAudioElement
+        │                 │
+        └─ 共通プロパティ ─┘
+           play() / pause() / currentTime
+           volume / muted / loop
+           ended / timeupdate / canplay
+
+   ボリューム関連:
+   ───────────────────────────────────
+   volume  = 0.0〜1.0  小さく/大きく
+   muted   = true/false 一時消音(volumeは保持)
+   ─────────────────
+   実効音量 = muted ? 0 : volume * (デバイス音量)
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: 「保存OK音」をBlock化しておけば、どの画面からも同じトーンで鳴らせる。File 04のIndexedDBに音源を保存すればオフラインでも鳴る。</div>
+    <div class="info-box warn">⚠ <b>Why this fails</b>: iOS は <b>初回ユーザ操作がない</b>と play() が拒否される。ページ読込時に勝手に鳴らすのは不可。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: ビープ音を制御</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab7Play()">再生</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab7Loop()">loop切替</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab7Vol()">音量↓</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab7Clear()">停止</button>
+        </div>
+        <audio id="lab7-audio" controls preload="auto" style="width:100%;max-width:320px;display:block;margin:8px 0;">
+          <source src="https://www2.cs.uic.edu/~i101/SoundFiles/CantinaBand3.wav" type="audio/wav">
+        </audio>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab7-before">(未操作)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab7-after">(未操作)</div></div>
+        </div>
+        <div class="log-area" id="lab7-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 各ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab7Play() {
+  clearLog('lab7-log');
+  const a = document.getElementById('lab7-audio');
+  a.currentTime = 0;
+  a.play().then(() => {
+    console.log('再生開始 / volume=' + a.volume + ', loop=' + a.loop);
+    setBA('lab7', '停止中', '再生中 vol=' + a.volume);
+  }).catch(e => console.log('再生不可:', e.message));
+}
+function lab7Loop() {
+  const a = document.getElementById('lab7-audio');
+  a.loop = !a.loop;
+  console.log('loop →', a.loop);
+}
+function lab7Vol() {
+  const a = document.getElementById('lab7-audio');
+  a.volume = Math.max(0, a.volume - 0.2);
+  console.log('volume →', a.volume.toFixed(2));
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 08: Media events ========== -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>Media events — メタデータと再生位置の発火順</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why this design</b>: 動画/音声の状態変化は <b>1イベントにまとめず段階別に分けた</b>。<code>loadedmetadata</code> = duration が入る、<code>canplay</code> = ある程度再生可能、<code>timeupdate</code> = 250ms毎、<code>ended</code> = 再生終了。「いつ何ができるようになったか」を細かく拾える設計で、UI を段階的に有効化できる。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>loadedmetadata で「シークバー長」を確定して表示</li>
+        <li>timeupdate で進捗バーを更新(ただし高頻度なので注意)</li>
+        <li>ended で次の動画へ自動遷移、または「視聴完了」を記録</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+   時系列でのイベント発火順
+   ─────────────────────────────────────────
+   [src設定]
+       ↓
+   loadedmetadata  ← duration が確定 (秒数表示OK)
+       ↓
+   loadeddata      ← 1フレーム描画可能
+       ↓
+   canplay         ← 一時的にでも再生可能
+       ↓ (play())
+   playing         ← 実際に再生開始
+       ↓
+   timeupdate × N  ← 250ms 毎 (currentTime更新)
+       ↓
+   ended           ← 最後まで再生完了
+
+   ⚠ timeupdate は 250ms毎 — 重い処理を入れるとカクつく
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: timeupdate を全て拾わず、5秒に1回だけ進捗を localStorage に書く実装にすればパフォーマンスを保てる(throttle)。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 各イベントの発火を観測</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab8Run()">監視開始(再生してね)</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab8Clear()">クリア</button>
+        </div>
+        <video id="lab8-video" controls playsinline muted style="width:100%;max-width:320px;border-radius:6px;display:block;margin:8px 0;background:#000;">
+          <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4" type="video/mp4">
+        </video>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab8-before">(未監視)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab8-after">(未監視)</div></div>
+        </div>
+        <div class="log-area" id="lab8-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「監視開始」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab8Run() {
+  clearLog('lab8-log');
+  const v = document.getElementById('lab8-video');
+  let tuCount = 0;
+
+  const events = ['loadedmetadata', 'loadeddata', 'canplay',
+                  'play', 'playing', 'pause', 'ended'];
+  events.forEach(name => {
+    v.addEventListener(name, () => {
+      console.log('▶ ' + name + ' / time=' + v.currentTime.toFixed(2));
+    }, { once: false });
+  });
+  v.addEventListener('timeupdate', () => {
+    tuCount++;
+    if (tuCount % 4 === 0) // 4回に1回だけログ
+      console.log('  timeupdate #' + tuCount + ' / ' + v.currentTime.toFixed(2));
+  });
+
+  console.log('監視開始(下のvideoを再生してください)');
+  setBA('lab8', '未監視', 'リスナ8種 登録済');
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 09: Picture-in-Picture ========== -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>Picture-in-Picture — 画面隅で見続ける</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-warn">⚠ iOS別系統</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why care</b>: 「動画を見ながら別タブで作業したい」というユーザは多い。PiP は <b>動画ウィンドウだけを切り離して常時最前面</b>に表示できる。標準 API は <code>video.requestPictureInPicture()</code> だが、<b>iOS Safari は別系統</b>(<code>webkitSetPresentationMode('picture-in-picture')</code>)。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>研修動画を見ながらマニュアル別画面を操作</li>
+        <li>会議録画を再生しながら議事録を書く</li>
+        <li>長時間動画でもタブ切替で消えない</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+   通常モード                    PiPモード
+   ┌──────────────────┐         ┌──────────────────┐
+   │ &lt;video&gt;          │         │ 別ページ操作中    │
+   │  ┌────────┐      │         │                  │
+   │  │ 動画   │      │  ───→   │       ┌──────┐  │
+   │  └────────┘      │         │       │動画↗│  │← OS窓
+   │ 別ページに移動で │         │       └──────┘  │
+   │ 動画は消える     │         │       常に最前面 │
+   └──────────────────┘         └──────────────────┘
+
+   API (標準):
+     video.requestPictureInPicture()  // 入る
+     document.exitPictureInPicture()  // 抜ける
+   API (iOS):
+     video.webkitSetPresentationMode('picture-in-picture')
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: 研修コンテンツアプリで「画面右下に動画を出しながら、本編アプリで作業」という業務シナリオに直結。</div>
+    <div class="info-box warn">⚠ <b>Why this fails</b>: ユーザ操作起因のクリックハンドラ内で呼ばないと拒否される。<code>document.pictureInPictureEnabled</code> で事前にサポート確認を。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: PiP 入る/抜ける</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab9Enter()">PiP に入る</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab9Exit()">PiP 抜ける</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab9Clear()">クリア</button>
+        </div>
+        <video id="lab9-video" controls playsinline muted style="width:100%;max-width:320px;border-radius:6px;display:block;margin:8px 0;background:#000;">
+          <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4" type="video/mp4">
+        </video>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab9-before">(通常表示)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab9-after">(通常表示)</div></div>
+        </div>
+        <div class="log-area" id="lab9-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「PiP に入る」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>async function lab9Enter() {
+  clearLog('lab9-log');
+  const v = document.getElementById('lab9-video');
+  // まず再生を開始しないと PiP 不可
+  if (v.paused) await v.play().catch(()=>{});
+
+  // 標準 API
+  if (document.pictureInPictureEnabled &amp;&amp; !v.disablePictureInPicture) {
+    try {
+      await v.requestPictureInPicture();
+      console.log('PiP 開始 (標準API)');
+      setBA('lab9', '通常表示', 'PiP表示中');
+      return;
+    } catch (e) { console.log('標準API失敗:', e.message); }
+  }
+  // iOS WebKit 系
+  if (typeof v.webkitSetPresentationMode === 'function') {
+    v.webkitSetPresentationMode('picture-in-picture');
+    console.log('PiP 開始 (WebKit API)');
+    setBA('lab9', '通常表示', 'PiP表示中 (iOS)');
+    return;
+  }
+  console.log('このブラウザは PiP 非対応');
+}
+async function lab9Exit() {
+  if (document.pictureInPictureElement) {
+    await document.exitPictureInPicture();
+    console.log('PiP 終了');
+  }
+  setBA('lab9', 'PiP表示中', '通常表示');
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 10: WebGL2 三角形 ========== -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>WebGL2 三角形 — シェーダ + バッファ最小例</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS 15+</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why exists</b>: Canvas 2D は CPU描画。数千〜数万の頂点を毎フレーム描くと CPU が持たない。WebGL は <b>GPU に頂点データとシェーダ(プログラム)を流し込んで GPU側で並列計算</b>させる。学習コストは高いが、達成可能な描画量は別世界。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>大規模散布図 (数十万点) のリアルタイム描画</li>
+        <li>3D 製品ビューワ (Three.js が内部でWebGL利用)</li>
+        <li>地図系の重ね合わせ可視化 (mapboxGL等)</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+   WebGL の登場人物
+   ─────────────────────────────────────────
+   [JS側]                       [GPU側]
+   ① 頂点データ ──────────────→ Vertex Buffer
+   ② シェーダソース ──compile─→ Vertex Shader
+                            └→ Fragment Shader
+   ③ drawArrays() ────────────→ 並列実行!
+
+   Vertex Shader   : 頂点ごとに1回 (位置を決める)
+   Fragment Shader : ピクセルごとに1回 (色を決める)
+
+   今回の最小例:
+     3頂点(三角形) → 各頂点にRGB色 → ピクセル補間
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: 重い可視化を OutSystems の Block 内で作る場合、Three.js (内部 WebGL) を使えばサーバ側 Extension を書かずに済む。</div>
+    <div class="info-box warn">⚠ <b>Why this fails</b>: シェーダはGPU向けの「別言語(GLSL)」。型・改行・セミコロンが厳格で、コンパイルエラーが出ると <code>getShaderInfoLog</code> で確認しないと原因不明になる。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: GPU で三角形を描画</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab10Run()">描画</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab10Clear()">クリア</button>
+        </div>
+        <canvas id="lab10-canvas" width="320" height="160" style="background:#000;border:1px solid #ddd;border-radius:6px;display:block;margin:8px 0;max-width:100%;"></canvas>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab10-before">(未描画)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab10-after">(未描画)</div></div>
+        </div>
+        <div class="log-area" id="lab10-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「描画」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab10Run() {
+  clearLog('lab10-log');
+  const cvs = document.getElementById('lab10-canvas');
+  const gl = cvs.getContext('webgl2');
+  if (!gl) { console.log('WebGL2 非対応'); setBA('lab10','非対応','非対応'); return; }
+
+  // Vertex Shader (位置と色を Fragment へ渡す)
+  const vsrc = `#version 300 es
+    in vec2 a_pos;
+    in vec3 a_col;
+    out vec3 v_col;
+    void main() { gl_Position = vec4(a_pos, 0, 1); v_col = a_col; }`;
+  // Fragment Shader (色を出力)
+  const fsrc = `#version 300 es
+    precision mediump float;
+    in vec3 v_col;
+    out vec4 outColor;
+    void main() { outColor = vec4(v_col, 1); }`;
+
+  const compile = (type, src) => {
+    const sh = gl.createShader(type);
+    gl.shaderSource(sh, src); gl.compileShader(sh);
+    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS))
+      console.log('shader err:', gl.getShaderInfoLog(sh));
+    return sh;
+  };
+  const prog = gl.createProgram();
+  gl.attachShader(prog, compile(gl.VERTEX_SHADER, vsrc));
+  gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, fsrc));
+  gl.linkProgram(prog); gl.useProgram(prog);
+
+  // 頂点データ (x, y, R, G, B) × 3頂点
+  const data = new Float32Array([
+     0.0,  0.8,  1, 0, 0,   // 上 赤
+    -0.8, -0.8,  0, 1, 0,   // 左下 緑
+     0.8, -0.8,  0, 0, 1    // 右下 青
+  ]);
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+
+  const aPos = gl.getAttribLocation(prog, 'a_pos');
+  const aCol = gl.getAttribLocation(prog, 'a_col');
+  gl.enableVertexAttribArray(aPos);
+  gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 5*4, 0);
+  gl.enableVertexAttribArray(aCol);
+  gl.vertexAttribPointer(aCol, 3, gl.FLOAT, false, 5*4, 2*4);
+
+  gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  console.log('GPU描画完了: 3頂点 / 各頂点RGB / 補間でグラデ');
+  setBA('lab10', '黒画面', 'RGB三角形');
+}</pre>
+    </div>
+  </div>
+</div>
+<!-- ========== Lab 11: getUserMedia ========== -->
+<div class="lab" id="lab11">
+  <div class="lab-header">
+    <div class="lab-num">11</div>
+    <h3>getUserMedia — カメラ/マイク取得 (HTTPS必須)</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-warn">⚠ HTTPS必須</span>
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why this design</b>: カメラ/マイクは <b>個人情報そのもの</b>。同期APIで「いきなり取得」できる設計だと悪用が容易。だから <code>navigator.mediaDevices.getUserMedia()</code> は <b>Promise + ユーザ許可ダイアログ + HTTPS必須</b> の三重ガードになっている。返ってくるのは <code>MediaStream</code> = 音声/映像トラックの集合。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>業務アプリの本人確認(顔写真撮影 → サーバ送信)</li>
+        <li>QRコードリーダー(カメラストリームから ImageData 抽出)</li>
+        <li>音声入力で議事録自動化(マイク → MediaRecorder → サーバ)</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+   getUserMedia の三重ガード
+   ─────────────────────────────────────────
+   ① HTTPS or localhost      ← file://, http:// は拒否
+   ② ユーザ許可ダイアログ    ← ブラウザが表示
+   ③ Permissions API で記憶  ← 二度目以降は省略可能
+
+   返り値の構造:
+   MediaStream {
+     active: true,
+     getTracks() → [
+       MediaStreamTrack { kind: 'video', ... },
+       MediaStreamTrack { kind: 'audio', ... }
+     ]
+   }
+
+   ストップ忘れ注意:
+     stream.getTracks().forEach(t =&gt; t.stop());
+     ↑これを呼ばないとカメラLEDが点きっぱなし
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: GitHub Pages なら HTTPS なので動く。OutSystems Cloud のアプリも HTTPS なので、JS で getUserMedia → 画像を Extension の C# に POST すれば OCR 等につなげられる。</div>
+    <div class="info-box warn">⚠ <b>Why this fails</b>: HTTPS でないと <code>navigator.mediaDevices</code> 自体が <code>undefined</code> になる(エラーすら出ない)。secure context 確認を最初に。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: カメラ取得 → video に流す</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab11Start()">カメラ開始</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab11Stop()">停止</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab11Clear()">クリア</button>
+        </div>
+        <video id="lab11-video" autoplay playsinline muted style="width:100%;max-width:320px;border-radius:6px;display:block;margin:8px 0;background:#000;"></video>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab11-before">(未取得)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab11-after">(未取得)</div></div>
+        </div>
+        <div class="log-area" id="lab11-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「カメラ開始」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>async function lab11Start() {
+  clearLog('lab11-log');
+  // secure context 確認
+  if (!navigator.mediaDevices) {
+    console.log('mediaDevices 不在 (HTTPS でない可能性)');
+    setBA('lab11', '取得不可', 'HTTPS必須');
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' },  // 背面カメラ希望
+      audio: false
+    });
+    const v = document.getElementById('lab11-video');
+    v.srcObject = stream;
+    window.__lab11Stream = stream;  // 停止用に保持
+
+    const track = stream.getVideoTracks()[0];
+    const settings = track.getSettings();
+    console.log('width:', settings.width, ', height:', settings.height);
+    console.log('facingMode:', settings.facingMode);
+    console.log('frameRate:', settings.frameRate);
+    setBA('lab11', '(未取得)',
+      settings.width + '×' + settings.height + ' @ ' + settings.frameRate + 'fps');
+  } catch (e) {
+    console.log('取得失敗:', e.name, '-', e.message);
+    setBA('lab11', '(未取得)', 'エラー: ' + e.name);
+  }
+}
+function lab11Stop() {
+  const s = window.__lab11Stream;
+  if (s) {
+    s.getTracks().forEach(t =&gt; t.stop());
+    console.log('全トラック停止 (LEDが消えるはず)');
+    setBA('lab11', '取得中', '停止済');
+  }
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 12: MediaRecorder ========== -->
+<div class="lab" id="lab12">
+  <div class="lab-header">
+    <div class="lab-num">12</div>
+    <h3>MediaRecorder — ストリームを Blob に</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-warn">⚠ HTTPS必須</span>
+      <span class="compat-badge compat-yes">✓ iOS 14.3+</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why care</b>: MediaStream は「リアルタイムの音/映像」だが、<b>ファイルとして保存・送信</b>するにはエンコードが必要。MediaRecorder は <code>MediaStream</code> を受け取り、<b>chunkずつ Blob を吐き出す</b>。録画停止後に全 chunk を1つの Blob に結合 → そのままアップロードや再生に使える。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>業務アプリで「現場の声」を録音 → サーバ送信</li>
+        <li>顧客対応の動画記録 → エビデンスとして DB 保存</li>
+        <li>ライブストリーム遅延録画(timeslice 指定)</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+   MediaStream → MediaRecorder → Blob
+   ──────────────────────────────────────────
+   stream  ┌─────────────────┐  Blob chunks
+       ───→│ MediaRecorder   │────────────────→
+           │  start()        │  ondataavailable
+           │  stop()         │   毎に発火
+           └─────────────────┘
+                  ↓
+              MIME type 自動選択
+              (webm/opus, mp4/aac, ...)
+
+   完成までの流れ:
+     start() → ondataavailable で chunk 蓄積
+     → stop() → onstop で全chunk → new Blob(chunks)
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: 録音した Blob を File 04 で学んだ FormData/fetch でサーバ送信。Extension (C#) なら byte[] で受けて Azure Blob Storage に保存可能。</div>
+    <div class="info-box warn">⚠ <b>Why this fails</b>: コーデック対応はブラウザ毎に違う。<code>MediaRecorder.isTypeSupported('video/webm')</code> で事前チェックが必須。iOS は MP4 系。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: マイクで5秒録音 → ダウンロード</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab12Start()">録音開始 (5秒)</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab12Clear()">クリア</button>
+        </div>
+        <audio id="lab12-audio" controls style="width:100%;max-width:320px;display:block;margin:8px 0;"></audio>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab12-before">(未録音)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab12-after">(未録音)</div></div>
+        </div>
+        <div class="log-area" id="lab12-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「録音開始」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>async function lab12Start() {
+  clearLog('lab12-log');
+  if (!navigator.mediaDevices || !window.MediaRecorder) {
+    console.log('非対応'); setBA('lab12','非対応','非対応'); return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    // 対応コーデック確認
+    const candidates = ['audio/webm', 'audio/mp4', 'audio/ogg'];
+    const mime = candidates.find(t =&gt; MediaRecorder.isTypeSupported(t)) || '';
+    console.log('使用 MIME:', mime || '(自動)');
+
+    const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : {});
+    const chunks = [];
+    rec.ondataavailable = e =&gt; { if (e.data.size) chunks.push(e.data); };
+    rec.onstop = () =&gt; {
+      stream.getTracks().forEach(t =&gt; t.stop());
+      const blob = new Blob(chunks, { type: rec.mimeType });
+      console.log('録音完了: ' + blob.size + ' bytes / ' + blob.type);
+      const audio = document.getElementById('lab12-audio');
+      audio.src = URL.createObjectURL(blob);
+      setBA('lab12', '(未録音)', blob.size + 'B / ' + blob.type);
+    };
+    rec.start();
+    console.log('録音開始 (5秒)');
+    setBA('lab12', '(未録音)', '録音中…');
+    setTimeout(() =&gt; rec.stop(), 5000);
+  } catch (e) { console.log('失敗:', e.name); }
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 13: canvas.captureStream() ========== -->
+<div class="lab" id="lab13">
+  <div class="lab-header">
+    <div class="lab-num">13</div>
+    <h3>canvas.captureStream() — 描画をストリーム化</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why this design</b>: Canvas で動的に描いている絵を「録画」したい場合、毎フレームの toBlob は非現実的。<code>canvas.captureStream(fps)</code> は <b>Canvas の絵をリアルタイム MediaStream として吐き出す</b>。あとは getUserMedia で取った stream と同じ扱い → MediaRecorder で録画もできる。<b>描画とストリームの疎結合</b>がポイント。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>動的に生成した可視化を動画として保存</li>
+        <li>WebRTC で Canvas の絵を別端末へ配信</li>
+        <li>ホワイトボード共有(描画 → captureStream → サーバ送信)</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+   描画 vs ストリーム の疎結合
+   ─────────────────────────────────────
+   [Canvas]                  [MediaStream]
+   毎フレーム ctx.fillRect    fps指定で取り出し
+        ↓                        ↑
+        └──── captureStream ─────┘
+
+   応用1: MediaRecorder へ
+     stream → recorder → Blob → 保存
+
+   応用2: WebRTC peerConnection.addTrack()
+     stream → 別端末 (リアルタイム配信)
+
+   応用3: video.srcObject = stream
+     stream → 同じページの &lt;video&gt; 要素で再生
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: 業務アプリの「進捗ダッシュボードを動画で共有」「会議で画面共有」などのリッチ機能を JS だけで実装可能。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: アニメCanvas → video へ流す</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab13Run()">開始</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab13Clear()">停止</button>
+        </div>
+        <canvas id="lab13-canvas" width="200" height="100" style="background:#fff;border:1px solid #ddd;border-radius:6px;display:block;margin:8px 0;"></canvas>
+        <video id="lab13-video" autoplay playsinline muted style="width:100%;max-width:320px;border-radius:6px;display:block;margin:8px 0;background:#000;"></video>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab13-before">(未開始)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab13-after">(未開始)</div></div>
+        </div>
+        <div class="log-area" id="lab13-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「開始」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab13Run() {
+  clearLog('lab13-log');
+  const cvs = document.getElementById('lab13-canvas');
+  const ctx = cvs.getContext('2d');
+  if (typeof cvs.captureStream !== 'function') {
+    console.log('captureStream 非対応'); return;
+  }
+  // Canvas をストリーム化 (30fps)
+  const stream = cvs.captureStream(30);
+  console.log('stream:', stream, '/ tracks:', stream.getTracks().length);
+
+  // video 要素に流す (= 同じ絵が下のvideoに映る)
+  const v = document.getElementById('lab13-video');
+  v.srcObject = stream;
+
+  // アニメーション開始
+  let x = 0;
+  window.__lab13Timer = setInterval(() =&gt; {
+    ctx.fillStyle = '#0969da';
+    ctx.fillRect(0, 0, cvs.width, cvs.height);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.fillText('time: ' + x, 20, 50);
+    ctx.fillStyle = '#fb8500';
+    ctx.fillRect(x % cvs.width, 70, 20, 20);
+    x += 5;
+  }, 33);
+
+  setBA('lab13', '描画なし', 'Canvas → video へ流れる');
+}
+function lab13Clear() {
+  clearInterval(window.__lab13Timer);
+  console.log('停止');
+  setBA('lab13', '実行中', '停止');
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 14: Web Audio (Oscillator + Gain) ========== -->
+<div class="lab" id="lab14">
+  <div class="lab-header">
+    <div class="lab-num">14</div>
+    <h3>Web Audio — Oscillator + Gain で音を作る</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why exists</b>: <code>&lt;audio&gt;</code> は「ファイル再生」専用。ゲームの効果音、ピアノ音、シンセサイザのように <b>音を JS で生成・加工</b> したい用途には不足。Web Audio API は <b>ノードを繋ぐグラフ</b>(オーディオの Stream API みたいなもの)で、Oscillator(発振器) → Gain(音量) → Destination(スピーカ) と連結する。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>業務アプリの「OK / NG」効果音を JS で生成 (ファイル不要)</li>
+        <li>タイマー終了通知音(周波数・長さ調整)</li>
+        <li>音声フィードバックを動的にカスタマイズ</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+   Web Audio はノードグラフ
+   ────────────────────────────────────────────
+    ┌──────────┐    ┌──────────┐    ┌──────────┐
+    │Oscillator│───→│  Gain    │───→│Destination│
+    │ (440Hz)  │    │ (vol=0.3)│    │ スピーカ │
+    └──────────┘    └──────────┘    └──────────┘
+       sin/square         音量
+       /sawtooth/         調整
+       triangle
+
+   AudioContext がコンテナ:
+     audioCtx.createOscillator() / createGain() / etc.
+
+   音階の参考:
+     A4 (ラ) = 440Hz, A5 = 880Hz (1オクターブ高い)
+     C4 (ド) = 261.63Hz
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: 「保存OK」「エラー」音をファイルではなくコードで生成すれば、ファイル管理不要・サイズ0・カスタマイズ自由。</div>
+    <div class="info-box warn">⚠ <b>Why this fails</b>: AudioContext は iOS でユーザ操作前は <code>suspended</code> 状態。最初のクリックで <code>audioCtx.resume()</code> が必要。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 440Hz の音を 0.5秒鳴らす</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab14Run(440)">A4 (440Hz)</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab14Run(880)">A5 (880Hz)</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab14Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab14-before">(無音)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab14-after">(無音)</div></div>
+        </div>
+        <div class="log-area" id="lab14-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「A4 (440Hz)」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab14Run(freq) {
+  clearLog('lab14-log');
+  // AudioContext は使い回し (再生成し過ぎ注意)
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!window.__lab14Ctx) window.__lab14Ctx = new Ctx();
+  const ctx = window.__lab14Ctx;
+  if (ctx.state === 'suspended') ctx.resume();  // iOS用
+
+  // ノード作成
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = 'sine';                  // sin / square / sawtooth / triangle
+  osc.frequency.value = freq;
+  gain.gain.value = 0.0;              // 開始は 0
+  // フェードイン → フェードアウトでクリック音を防ぐ
+  gain.gain.setValueAtTime(0, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.05);
+  gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5);
+
+  // ノード接続: Oscillator → Gain → Destination
+  osc.connect(gain).connect(ctx.destination);
+
+  osc.start(ctx.currentTime);
+  osc.stop(ctx.currentTime + 0.5);    // 0.5秒後に停止
+
+  console.log('▶ ' + freq + 'Hz の sin波を 0.5秒');
+  setBA('lab14', '無音', freq + 'Hz / 0.5s 再生');
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 15: AnalyserNode ========== -->
+<div class="lab" id="lab15">
+  <div class="lab-header">
+    <div class="lab-num">15</div>
+    <h3>AnalyserNode — FFT で周波数を可視化</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why care</b>: 「鳴っている音」を解析して <b>波形・周波数スペクトル</b>として取り出せる。AnalyserNode はノードグラフの途中に挟むだけで、<code>getByteFrequencyData(arr)</code> で周波数別の強さ(0〜255)を取れる。これを Canvas に描けばオーディオビジュアライザ完成。<b>ストリームを「データの流れ」として捉える Web Audio の哲学</b>がよく分かるノード。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>音声入力レベルメーターでマイクが拾えてるか視覚化</li>
+        <li>会議録音中の「無音区間」自動検出</li>
+        <li>音楽再生画面のビジュアライザ演出</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+   AnalyserNode をグラフに挟む
+   ─────────────────────────────────────────
+   Oscillator → Analyser → Gain → Destination
+                   │
+                   ↓ getByteFrequencyData(Uint8Array)
+                  [周波数別の強さ]
+                  arr[0]   = 低音
+                  arr[N-1] = 高音
+                   │
+                   ↓ Canvas に bar として描画
+
+   主要パラメータ:
+     fftSize           : 32〜32768 (大きいほど分解能↑)
+     frequencyBinCount : fftSize / 2 (実質のbar数)
+     smoothingTimeConstant : 0〜1 (反応の鈍さ)
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: 録音の前に AnalyserNode で「音が拾えてるか」を視覚化することで、ユーザに安心感を与える業務UIが組める。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: Oscillator の音を可視化</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab15Run()">開始 (3秒)</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab15Clear()">クリア</button>
+        </div>
+        <canvas id="lab15-canvas" width="320" height="100" style="background:#0d1117;border:1px solid #ddd;border-radius:6px;display:block;margin:8px 0;max-width:100%;"></canvas>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab15-before">(未開始)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab15-after">(未開始)</div></div>
+        </div>
+        <div class="log-area" id="lab15-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「開始」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab15Run() {
+  clearLog('lab15-log');
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!window.__lab15Ctx) window.__lab15Ctx = new Ctx();
+  const ctx = window.__lab15Ctx;
+  if (ctx.state === 'suspended') ctx.resume();
+
+  // Oscillator は周波数を変動させる(時間経過で音程上昇)
+  const osc = ctx.createOscillator();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(220, ctx.currentTime);
+  osc.frequency.linearRampToValueAtTime(880, ctx.currentTime + 3);
+
+  // Analyser
+  const analyser = ctx.createAnalyser();
+  analyser.fftSize = 256;
+  const bins = analyser.frequencyBinCount;  // = 128
+  const data = new Uint8Array(bins);
+
+  // 音量を抑えめに
+  const gain = ctx.createGain();
+  gain.gain.value = 0.05;
+
+  // 接続: Osc → Analyser → Gain → Dest
+  osc.connect(analyser).connect(gain).connect(ctx.destination);
+
+  osc.start();
+  osc.stop(ctx.currentTime + 3);
+
+  // Canvas に毎フレーム描画
+  const cvs = document.getElementById('lab15-canvas');
+  const cctx = cvs.getContext('2d');
+  let frame = 0;
+  function draw() {
+    if (ctx.currentTime &gt; osc.__stopAt) return;
+    analyser.getByteFrequencyData(data);
+    cctx.fillStyle = '#0d1117';
+    cctx.fillRect(0, 0, cvs.width, cvs.height);
+    const barW = cvs.width / bins;
+    for (let i = 0; i &lt; bins; i++) {
+      const h = (data[i] / 255) * cvs.height;
+      cctx.fillStyle = 'hsl(' + (i * 2) + ', 80%, 55%)';
+      cctx.fillRect(i * barW, cvs.height - h, barW - 1, h);
+    }
+    frame++;
+    requestAnimationFrame(draw);
+  }
+  osc.__stopAt = ctx.currentTime + 3;
+  draw();
+
+  console.log('Sawtooth 220→880Hz / 3秒 + 周波数可視化');
+  setBA('lab15', '黒画面', '可視化中…');
+}</pre>
+    </div>
+  </div>
+</div>
+
+</div><!-- /.container -->
+
+<!-- 📑 フローティング「目次に戻る」ボタン -->
+<button id="back-to-toc" aria-label="目次に戻る">
+  <span class="arrow">▲</span>
+  <span class="label">目次</span>
+</button>
+<script>
+// ============= 共通ユーティリティ =============
+function copyCode(btn) {
+  const block = btn.closest('.code-block');
+  const pre = block.querySelector('pre');
+  if (!pre) return;
+  const text = pre.innerText;
+
+  const showSuccess = () => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  };
+  const showError = (msg) => {
+    btn.textContent = 'NG: ' + msg;
+    btn.style.borderColor = '#cb2431';
+    btn.style.color = '#cb2431';
+    setTimeout(() => {
+      btn.textContent = 'Copy';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+    }, 2500);
+  };
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text)
+      .then(showSuccess)
+      .catch(() => fallbackCopy(text, showSuccess, showError));
+  } else {
+    fallbackCopy(text, showSuccess, showError);
+  }
+}
+
+function fallbackCopy(text, onOk, onErr) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.top = '0';
+  ta.style.left = '0';
+  ta.style.opacity = '0';
+  ta.setAttribute('readonly', '');
+  document.body.appendChild(ta);
+  ta.select();
+  ta.setSelectionRange(0, text.length);
+  try {
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    if (ok) onOk();
+    else onErr('コピー不可');
+  } catch (e) {
+    document.body.removeChild(ta);
+    onErr(e.message.slice(0, 12));
+  }
+}
+function logTo(id, text, cls='') {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const line = document.createElement('div');
+  line.className = 'log-line ' + cls;
+  line.textContent = '> ' + text;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+function clearLog(id) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = '';
+}
+function setBA(labId, before, after) {
+  document.getElementById(labId+'-before').textContent = before;
+  document.getElementById(labId+'-after').textContent = after;
+}
+
+// ============= console.log を log-area へ転送 =============
+// 各ラボのconsole.logを画面に表示するため、ラボ内で console.log を呼ぶたびに
+// そのラボの log-area へ書き込む薄いプロキシをかける
+(function() {
+  const origLog = console.log.bind(console);
+  console.log = function(...args) {
+    origLog(...args);
+    // 直近にクリックされたボタンが属するラボのlog-areaに書き込む
+    const lab = window.__currentLab;
+    if (lab) {
+      const el = document.getElementById(lab + '-log');
+      if (el) {
+        const line = document.createElement('div');
+        line.className = 'log-line';
+        line.textContent = '> ' + args.map(a =>
+          typeof a === 'object' ? JSON.stringify(a) : String(a)
+        ).join(' ');
+        el.appendChild(line);
+        el.scrollTop = el.scrollHeight;
+      }
+    }
+  };
+
+  // ボタンクリック時に「現在のラボ」を識別 (data-target も除外)
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    if (btn.classList.contains('nav-item') || btn.classList.contains('toc-item')) return;
+    const lab = btn.closest('.lab');
+    if (lab) window.__currentLab = lab.id;
+  }, true);
+})();
+// ============= Lab 01: Canvas 2D Context =============
+function lab1Run() {
+  clearLog('lab1-log');
+  const cvs = document.getElementById('lab1-canvas');
+  const ctx = cvs.getContext('2d');
+  ctx.clearRect(0, 0, cvs.width, cvs.height);
+
+  ctx.strokeStyle = '#0969da';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(20, 30); ctx.lineTo(120, 30);
+  ctx.stroke();
+
+  ctx.fillStyle = '#1a7f37';
+  ctx.fillRect(20, 50, 100, 40);
+
+  const grad = ctx.createLinearGradient(140, 0, 300, 0);
+  grad.addColorStop(0, '#bf3989');
+  grad.addColorStop(1, '#fb8500');
+  ctx.fillStyle = grad;
+  ctx.fillRect(140, 50, 160, 80);
+
+  console.log('描画完了: 3要素');
+  setBA('lab1', '(空のcanvas)', '線+矩形+グラデ');
+}
+function lab1Clear() {
+  clearLog('lab1-log');
+  const cvs = document.getElementById('lab1-canvas');
+  cvs.getContext('2d').clearRect(0, 0, cvs.width, cvs.height);
+  setBA('lab1', '(未描画)', '(未描画)');
+}
+
+// ============= Lab 02: Path2D =============
+function lab2Run() {
+  clearLog('lab2-log');
+  const cvs = document.getElementById('lab2-canvas');
+  const ctx = cvs.getContext('2d');
+  ctx.clearRect(0, 0, cvs.width, cvs.height);
+
+  const star = new Path2D(
+    'M 0 -20 L 6 -6 L 20 -6 L 9 3 L 13 17 L 0 9 L -13 17 L -9 3 L -20 -6 L -6 -6 Z'
+  );
+  ctx.fillStyle = '#fb8500';
+
+  for (let i = 0; i < 5; i++) {
+    ctx.save();
+    ctx.translate(40 + i * 60, 60);
+    ctx.fill(star);
+    ctx.restore();
+  }
+
+  console.log('Path2D を 5回 fill (生成は1度のみ)');
+  setBA('lab2', '(命令を100行書く)', 'パス1つを使い回し');
+}
+function lab2Clear() {
+  clearLog('lab2-log');
+  const cvs = document.getElementById('lab2-canvas');
+  cvs.getContext('2d').clearRect(0, 0, cvs.width, cvs.height);
+  setBA('lab2', '(未描画)', '(未描画)');
+}
+
+// ============= Lab 03: ImageData =============
+function lab3Run() {
+  clearLog('lab3-log');
+  const cvs = document.getElementById('lab3-canvas');
+  const ctx = cvs.getContext('2d');
+
+  const g = ctx.createLinearGradient(0, 0, cvs.width, 0);
+  g.addColorStop(0, '#0969da');
+  g.addColorStop(1, '#fb8500');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, cvs.width, cvs.height);
+
+  const img = ctx.getImageData(0, 0, cvs.width, cvs.height);
+  const d = img.data;
+  console.log('総バイト数:', d.length, '(=' + cvs.width + '×' + cvs.height + '×4)');
+
+  for (let i = 0; i < d.length; i += 4) {
+    d[i]     = 255 - d[i];
+    d[i + 1] = 255 - d[i + 1];
+    d[i + 2] = 255 - d[i + 2];
+  }
+
+  ctx.putImageData(img, 0, 0);
+  console.log('色反転完了');
+  setBA('lab3', '青→橙のグラデ', '橙→青(色反転)');
+}
+function lab3Clear() {
+  clearLog('lab3-log');
+  const cvs = document.getElementById('lab3-canvas');
+  cvs.getContext('2d').clearRect(0, 0, cvs.width, cvs.height);
+  setBA('lab3', '(未実行)', '(未実行)');
+}
+
+// ============= Lab 04: Canvas → Blob/DataURL =============
+function lab4Run() {
+  clearLog('lab4-log');
+  const cvs = document.getElementById('lab4-canvas');
+  const ctx = cvs.getContext('2d');
+  ctx.fillStyle = '#0969da';
+  ctx.fillRect(0, 0, cvs.width, cvs.height);
+  ctx.fillStyle = '#fff';
+  ctx.font = '20px sans-serif';
+  ctx.fillText('Hello', 60, 60);
+
+  const dataUrl = cvs.toDataURL('image/png');
+  console.log('DataURL長:', dataUrl.length, '文字');
+  console.log('先頭:', dataUrl.slice(0, 30) + '...');
+
+  cvs.toBlob(blob => {
+    console.log('Blob size:', blob.size, 'bytes');
+    console.log('Blob type:', blob.type);
+    const ratio = (dataUrl.length / blob.size).toFixed(2);
+    console.log('DataURL / Blob 比:', ratio, '(理論値≒1.33)');
+    setBA('lab4',
+      'DataURL: ' + dataUrl.length + '字',
+      'Blob: ' + blob.size + 'B (' + ratio + '倍)');
+  }, 'image/png');
+}
+function lab4Clear() {
+  clearLog('lab4-log');
+  const cvs = document.getElementById('lab4-canvas');
+  cvs.getContext('2d').clearRect(0, 0, cvs.width, cvs.height);
+  setBA('lab4', '(未変換)', '(未変換)');
+}
+
+// ============= Lab 05: OffscreenCanvas =============
+function lab5Run() {
+  clearLog('lab5-log');
+  if (typeof OffscreenCanvas === 'undefined') {
+    console.log('このブラウザは OffscreenCanvas 非対応');
+    setBA('lab5', '非対応', '非対応');
+    return;
+  }
+  const off = new OffscreenCanvas(320, 100);
+  const ctx = off.getContext('2d');
+  ctx.fillStyle = '#1a7f37';
+  ctx.fillRect(10, 10, 300, 80);
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 24px sans-serif';
+  ctx.fillText('Drawn off-DOM', 60, 60);
+
+  off.convertToBlob().then(blob => {
+    console.log('Offscreen → Blob:', blob.size, 'bytes');
+    const img = new Image();
+    img.onload = () => {
+      const main = document.getElementById('lab5-canvas');
+      main.getContext('2d').drawImage(img, 0, 0);
+      setBA('lab5', '(空)', 'Offscreen描画→転送完了');
+    };
+    img.src = URL.createObjectURL(blob);
+  });
+  console.log('OffscreenCanvas 320x100 を生成、描画中...');
+}
+function lab5Clear() {
+  clearLog('lab5-log');
+  const cvs = document.getElementById('lab5-canvas');
+  cvs.getContext('2d').clearRect(0, 0, cvs.width, cvs.height);
+  setBA('lab5', '(未実行)', '(未実行)');
+}
+
+// ============= Lab 06: <video> 制御 =============
+function lab6Run() {
+  clearLog('lab6-log');
+  const v = document.getElementById('lab6-video');
+  console.log('duration:', v.duration?.toFixed(2), '秒');
+  console.log('currentTime:', v.currentTime.toFixed(2));
+  console.log('playbackRate:', v.playbackRate);
+  console.log('paused:', v.paused, ', muted:', v.muted);
+  setBA('lab6', '操作前', 'duration=' + (v.duration?.toFixed(1) ?? '?'));
+}
+function lab6Toggle() {
+  const v = document.getElementById('lab6-video');
+  if (v.paused) {
+    v.play().then(() => console.log('再生開始'))
+            .catch(e => console.log('再生失敗:', e.message));
+  } else {
+    v.pause();
+    console.log('一時停止');
+  }
+}
+function lab6Speed() {
+  const v = document.getElementById('lab6-video');
+  v.playbackRate = v.playbackRate === 1.0 ? 1.5 : 1.0;
+  console.log('playbackRate →', v.playbackRate);
+}
+function lab6Clear() {
+  clearLog('lab6-log');
+  setBA('lab6', '(未操作)', '(未操作)');
+}
+
+// ============= Lab 07: <audio> 制御 =============
+function lab7Play() {
+  clearLog('lab7-log');
+  const a = document.getElementById('lab7-audio');
+  a.currentTime = 0;
+  a.play().then(() => {
+    console.log('再生開始 / volume=' + a.volume + ', loop=' + a.loop);
+    setBA('lab7', '停止中', '再生中 vol=' + a.volume);
+  }).catch(e => console.log('再生不可:', e.message));
+}
+function lab7Loop() {
+  const a = document.getElementById('lab7-audio');
+  a.loop = !a.loop;
+  console.log('loop →', a.loop);
+}
+function lab7Vol() {
+  const a = document.getElementById('lab7-audio');
+  a.volume = Math.max(0, a.volume - 0.2);
+  console.log('volume →', a.volume.toFixed(2));
+}
+function lab7Clear() {
+  clearLog('lab7-log');
+  const a = document.getElementById('lab7-audio');
+  a.pause();
+  a.currentTime = 0;
+  a.volume = 1.0;
+  a.loop = false;
+  setBA('lab7', '(未操作)', '(未操作)');
+}
+
+// ============= Lab 08: Media events =============
+function lab8Run() {
+  clearLog('lab8-log');
+  const v = document.getElementById('lab8-video');
+  let tuCount = 0;
+
+  // 多重登録防止: マーカーで初回のみ登録
+  if (v.__lab8Bound) {
+    console.log('既に監視中');
+    return;
+  }
+  v.__lab8Bound = true;
+
+  const events = ['loadedmetadata', 'loadeddata', 'canplay',
+                  'play', 'playing', 'pause', 'ended'];
+  events.forEach(name => {
+    v.addEventListener(name, () => {
+      console.log('▶ ' + name + ' / time=' + v.currentTime.toFixed(2));
+    });
+  });
+  v.addEventListener('timeupdate', () => {
+    tuCount++;
+    if (tuCount % 4 === 0)
+      console.log('  timeupdate #' + tuCount + ' / ' + v.currentTime.toFixed(2));
+  });
+
+  console.log('監視開始(下のvideoを再生してください)');
+  setBA('lab8', '未監視', 'リスナ8種 登録済');
+}
+function lab8Clear() {
+  clearLog('lab8-log');
+  setBA('lab8', '(未監視)', '(未監視)');
+}
+// ============= Lab 09: Picture-in-Picture =============
+async function lab9Enter() {
+  clearLog('lab9-log');
+  const v = document.getElementById('lab9-video');
+  if (v.paused) await v.play().catch(()=>{});
+
+  if (document.pictureInPictureEnabled && !v.disablePictureInPicture) {
+    try {
+      await v.requestPictureInPicture();
+      console.log('PiP 開始 (標準API)');
+      setBA('lab9', '通常表示', 'PiP表示中');
+      return;
+    } catch (e) { console.log('標準API失敗:', e.message); }
+  }
+  if (typeof v.webkitSetPresentationMode === 'function') {
+    v.webkitSetPresentationMode('picture-in-picture');
+    console.log('PiP 開始 (WebKit API)');
+    setBA('lab9', '通常表示', 'PiP表示中 (iOS)');
+    return;
+  }
+  console.log('このブラウザは PiP 非対応');
+}
+async function lab9Exit() {
+  if (document.pictureInPictureElement) {
+    await document.exitPictureInPicture();
+    console.log('PiP 終了');
+  }
+  setBA('lab9', 'PiP表示中', '通常表示');
+}
+function lab9Clear() {
+  clearLog('lab9-log');
+  setBA('lab9', '(通常表示)', '(通常表示)');
+}
+
+// ============= Lab 10: WebGL2 三角形 =============
+function lab10Run() {
+  clearLog('lab10-log');
+  const cvs = document.getElementById('lab10-canvas');
+  const gl = cvs.getContext('webgl2');
+  if (!gl) { console.log('WebGL2 非対応'); setBA('lab10','非対応','非対応'); return; }
+
+  const vsrc = `#version 300 es
+    in vec2 a_pos;
+    in vec3 a_col;
+    out vec3 v_col;
+    void main() { gl_Position = vec4(a_pos, 0, 1); v_col = a_col; }`;
+  const fsrc = `#version 300 es
+    precision mediump float;
+    in vec3 v_col;
+    out vec4 outColor;
+    void main() { outColor = vec4(v_col, 1); }`;
+
+  const compile = (type, src) => {
+    const sh = gl.createShader(type);
+    gl.shaderSource(sh, src); gl.compileShader(sh);
+    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS))
+      console.log('shader err:', gl.getShaderInfoLog(sh));
+    return sh;
+  };
+  const prog = gl.createProgram();
+  gl.attachShader(prog, compile(gl.VERTEX_SHADER, vsrc));
+  gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, fsrc));
+  gl.linkProgram(prog); gl.useProgram(prog);
+
+  const data = new Float32Array([
+     0.0,  0.8,  1, 0, 0,
+    -0.8, -0.8,  0, 1, 0,
+     0.8, -0.8,  0, 0, 1
+  ]);
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+
+  const aPos = gl.getAttribLocation(prog, 'a_pos');
+  const aCol = gl.getAttribLocation(prog, 'a_col');
+  gl.enableVertexAttribArray(aPos);
+  gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 5*4, 0);
+  gl.enableVertexAttribArray(aCol);
+  gl.vertexAttribPointer(aCol, 3, gl.FLOAT, false, 5*4, 2*4);
+
+  gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  console.log('GPU描画完了: 3頂点 / 各頂点RGB / 補間でグラデ');
+  setBA('lab10', '黒画面', 'RGB三角形');
+}
+function lab10Clear() {
+  clearLog('lab10-log');
+  const cvs = document.getElementById('lab10-canvas');
+  const gl = cvs.getContext('webgl2');
+  if (gl) { gl.clearColor(0,0,0,1); gl.clear(gl.COLOR_BUFFER_BIT); }
+  setBA('lab10', '(未描画)', '(未描画)');
+}
+
+// ============= Lab 11: getUserMedia =============
+async function lab11Start() {
+  clearLog('lab11-log');
+  if (!navigator.mediaDevices) {
+    console.log('mediaDevices 不在 (HTTPS でない可能性)');
+    setBA('lab11', '取得不可', 'HTTPS必須');
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' },
+      audio: false
+    });
+    const v = document.getElementById('lab11-video');
+    v.srcObject = stream;
+    window.__lab11Stream = stream;
+
+    const track = stream.getVideoTracks()[0];
+    const settings = track.getSettings();
+    console.log('width:', settings.width, ', height:', settings.height);
+    console.log('facingMode:', settings.facingMode);
+    console.log('frameRate:', settings.frameRate);
+    setBA('lab11', '(未取得)',
+      settings.width + '×' + settings.height + ' @ ' + settings.frameRate + 'fps');
+  } catch (e) {
+    console.log('取得失敗:', e.name, '-', e.message);
+    setBA('lab11', '(未取得)', 'エラー: ' + e.name);
+  }
+}
+function lab11Stop() {
+  const s = window.__lab11Stream;
+  if (s) {
+    s.getTracks().forEach(t => t.stop());
+    console.log('全トラック停止 (LEDが消えるはず)');
+    setBA('lab11', '取得中', '停止済');
+  }
+}
+function lab11Clear() {
+  clearLog('lab11-log');
+  const v = document.getElementById('lab11-video');
+  if (v.srcObject) {
+    v.srcObject.getTracks().forEach(t => t.stop());
+    v.srcObject = null;
+  }
+  setBA('lab11', '(未取得)', '(未取得)');
+}
+
+// ============= Lab 12: MediaRecorder =============
+async function lab12Start() {
+  clearLog('lab12-log');
+  if (!navigator.mediaDevices || !window.MediaRecorder) {
+    console.log('非対応'); setBA('lab12','非対応','非対応'); return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const candidates = ['audio/webm', 'audio/mp4', 'audio/ogg'];
+    const mime = candidates.find(t => MediaRecorder.isTypeSupported(t)) || '';
+    console.log('使用 MIME:', mime || '(自動)');
+
+    const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : {});
+    const chunks = [];
+    rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+    rec.onstop = () => {
+      stream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(chunks, { type: rec.mimeType });
+      console.log('録音完了: ' + blob.size + ' bytes / ' + blob.type);
+      const audio = document.getElementById('lab12-audio');
+      audio.src = URL.createObjectURL(blob);
+      setBA('lab12', '(未録音)', blob.size + 'B / ' + blob.type);
+    };
+    rec.start();
+    console.log('録音開始 (5秒)');
+    setBA('lab12', '(未録音)', '録音中…');
+    setTimeout(() => rec.stop(), 5000);
+  } catch (e) { console.log('失敗:', e.name); }
+}
+function lab12Clear() {
+  clearLog('lab12-log');
+  const a = document.getElementById('lab12-audio');
+  a.src = '';
+  setBA('lab12', '(未録音)', '(未録音)');
+}
+
+// ============= Lab 13: canvas.captureStream() =============
+function lab13Run() {
+  clearLog('lab13-log');
+  const cvs = document.getElementById('lab13-canvas');
+  const ctx = cvs.getContext('2d');
+  if (typeof cvs.captureStream !== 'function') {
+    console.log('captureStream 非対応'); return;
+  }
+  const stream = cvs.captureStream(30);
+  console.log('stream:', stream, '/ tracks:', stream.getTracks().length);
+
+  const v = document.getElementById('lab13-video');
+  v.srcObject = stream;
+
+  let x = 0;
+  if (window.__lab13Timer) clearInterval(window.__lab13Timer);
+  window.__lab13Timer = setInterval(() => {
+    ctx.fillStyle = '#0969da';
+    ctx.fillRect(0, 0, cvs.width, cvs.height);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.fillText('time: ' + x, 20, 50);
+    ctx.fillStyle = '#fb8500';
+    ctx.fillRect(x % cvs.width, 70, 20, 20);
+    x += 5;
+  }, 33);
+
+  setBA('lab13', '描画なし', 'Canvas → video へ流れる');
+}
+function lab13Clear() {
+  if (window.__lab13Timer) {
+    clearInterval(window.__lab13Timer);
+    window.__lab13Timer = null;
+  }
+  clearLog('lab13-log');
+  const v = document.getElementById('lab13-video');
+  if (v.srcObject) {
+    v.srcObject.getTracks().forEach(t => t.stop());
+    v.srcObject = null;
+  }
+  const cvs = document.getElementById('lab13-canvas');
+  cvs.getContext('2d').clearRect(0, 0, cvs.width, cvs.height);
+  console.log('停止');
+  setBA('lab13', '実行中', '停止');
+}
+
+// ============= Lab 14: Web Audio (Oscillator + Gain) =============
+function lab14Run(freq) {
+  clearLog('lab14-log');
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!window.__lab14Ctx) window.__lab14Ctx = new Ctx();
+  const ctx = window.__lab14Ctx;
+  if (ctx.state === 'suspended') ctx.resume();
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = 'sine';
+  osc.frequency.value = freq;
+  gain.gain.value = 0.0;
+  gain.gain.setValueAtTime(0, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.05);
+  gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5);
+
+  osc.connect(gain).connect(ctx.destination);
+
+  osc.start(ctx.currentTime);
+  osc.stop(ctx.currentTime + 0.5);
+
+  console.log('▶ ' + freq + 'Hz の sin波を 0.5秒');
+  setBA('lab14', '無音', freq + 'Hz / 0.5s 再生');
+}
+function lab14Clear() {
+  clearLog('lab14-log');
+  setBA('lab14', '(無音)', '(無音)');
+}
+
+// ============= Lab 15: AnalyserNode =============
+function lab15Run() {
+  clearLog('lab15-log');
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!window.__lab15Ctx) window.__lab15Ctx = new Ctx();
+  const ctx = window.__lab15Ctx;
+  if (ctx.state === 'suspended') ctx.resume();
+
+  const osc = ctx.createOscillator();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(220, ctx.currentTime);
+  osc.frequency.linearRampToValueAtTime(880, ctx.currentTime + 3);
+
+  const analyser = ctx.createAnalyser();
+  analyser.fftSize = 256;
+  const bins = analyser.frequencyBinCount;
+  const data = new Uint8Array(bins);
+
+  const gain = ctx.createGain();
+  gain.gain.value = 0.05;
+
+  osc.connect(analyser).connect(gain).connect(ctx.destination);
+
+  osc.start();
+  osc.stop(ctx.currentTime + 3);
+  const stopAt = ctx.currentTime + 3;
+
+  const cvs = document.getElementById('lab15-canvas');
+  const cctx = cvs.getContext('2d');
+  function draw() {
+    if (ctx.currentTime > stopAt) return;
+    analyser.getByteFrequencyData(data);
+    cctx.fillStyle = '#0d1117';
+    cctx.fillRect(0, 0, cvs.width, cvs.height);
+    const barW = cvs.width / bins;
+    for (let i = 0; i < bins; i++) {
+      const h = (data[i] / 255) * cvs.height;
+      cctx.fillStyle = 'hsl(' + (i * 2) + ', 80%, 55%)';
+      cctx.fillRect(i * barW, cvs.height - h, barW - 1, h);
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+
+  console.log('Sawtooth 220→880Hz / 3秒 + 周波数可視化');
+  setBA('lab15', '黒画面', '可視化中…');
+}
+function lab15Clear() {
+  clearLog('lab15-log');
+  const cvs = document.getElementById('lab15-canvas');
+  const cctx = cvs.getContext('2d');
+  cctx.fillStyle = '#0d1117';
+  cctx.fillRect(0, 0, cvs.width, cvs.height);
+  setBA('lab15', '(未開始)', '(未開始)');
+}
+// ============= サイドバー: ボタンクリックでスクロール =============
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('[data-target]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.getAttribute('data-target');
+      const target = document.getElementById(targetId);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+
+  const navItems = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+  const targetMap = new Map();
+  navItems.forEach(btn => {
+    const id = btn.getAttribute('data-target');
+    const el = document.getElementById(id);
+    if (el) targetMap.set(el, btn);
+  });
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) {
+      const btn = targetMap.get(e.target);
+      if (btn) {
+        navItems.forEach(n => n.classList.remove('active'));
+        btn.classList.add('active');
+      }
+    }
+  }), { rootMargin: '-30% 0px -60% 0px' });
+  document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+  const backBtn = document.getElementById('back-to-toc');
+  const toc = document.getElementById('toc');
+  backBtn.addEventListener('click', () => {
+    if (toc) toc.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    else window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+  const toggleBackBtn = () => {
+    const threshold = window.innerHeight * 0.8;
+    if (window.scrollY > threshold) backBtn.classList.add('visible');
+    else backBtn.classList.remove('visible');
+  };
+  window.addEventListener('scroll', toggleBackBtn, { passive: true });
+  toggleBackBtn();
+});
+
+
+</script>
+
+</body>
+</html>

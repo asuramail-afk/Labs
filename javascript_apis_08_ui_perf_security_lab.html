@@ -1,0 +1,2479 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JavaScript標準API Lab #8 — UI・Perf・Security編</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  border-top:none; border-right:none; border-bottom:none;
+  background:transparent; width:100%; text-align:left; cursor:pointer;
+  font-family:inherit;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+#sidebar .file-nav { padding:8px 16px; margin:6px 0; background:var(--surface2);
+  border-top:1px solid var(--border); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.7rem; color:var(--text-dim); }
+#sidebar .file-nav a { display:block; padding:3px 0; color:var(--accent);
+  text-decoration:none; font-size:.72rem; }
+#sidebar .file-nav a.current { color:var(--text); font-weight:700; }
+
+.hero { padding:50px 30px 30px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:1.9rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:.95rem; margin-top:8px; }
+.hero .file-tag { display:inline-block; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; background:var(--accent); color:#fff;
+  margin-top:10px; }
+
+.toc { max-width:1100px; margin:24px auto; padding:0 20px; }
+.toc h2 { font-size:1rem; color:var(--accent); margin-bottom:10px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:8px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:9px 12px;
+  background:var(--surface); border:1px solid var(--border); border-radius:7px;
+  text-decoration:none; color:var(--text); font-size:.84rem;
+  font-family:inherit; cursor:pointer; text-align:left; width:100%;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.78rem; min-width:24px; }
+
+.container { max-width:1100px; margin:0 auto; padding:0 20px 60px; }
+.lab { margin-top:32px; border:1px solid var(--border); border-radius:10px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:10px; padding:14px 18px;
+  background:var(--surface2); border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:28px; height:28px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.78rem; }
+.lab-header h3 { font-size:1.05rem; font-weight:600; flex:1; min-width:140px; }
+.compat-badges { display:flex; gap:5px; flex-wrap:wrap; }
+.compat-badge { font-family:var(--mono); font-size:.65rem; padding:2px 7px;
+  border-radius:10px; border:1px solid; }
+.compat-yes { color:var(--success); border-color:var(--success);
+  background:rgba(34,134,58,.08); }
+.compat-no { color:var(--error); border-color:var(--error);
+  background:rgba(203,36,49,.08); }
+.compat-partial { color:var(--accent4); border-color:var(--accent4);
+  background:rgba(176,136,0,.08); }
+.lab-body { padding:18px; }
+.lab-desc { font-size:.9rem; color:var(--text-dim); margin-bottom:14px; line-height:1.75; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.82rem; color:var(--accent); }
+
+.scenes { background:rgba(0,92,197,.04); border:1px solid rgba(0,92,197,.2);
+  border-left:3px solid var(--accent); border-radius:6px;
+  padding:10px 14px; margin:12px 0; font-size:.85rem; line-height:1.75; }
+.scenes-title { font-family:var(--mono); font-size:.7rem; color:var(--accent);
+  font-weight:700; margin-bottom:5px; letter-spacing:.05em; }
+.scenes ol { margin-left:20px; margin-top:3px; }
+.scenes ol li { margin-bottom:3px; color:var(--text); }
+
+.ascii-art { font-family:var(--mono); font-size:.74rem;
+  line-height:1.45; background:var(--code-bg); padding:10px 12px;
+  border:1px solid var(--border); border-radius:6px;
+  margin:10px 0; color:var(--text); overflow-x:auto; white-space:pre; }
+
+.demo { border:1px solid var(--border); border-radius:8px; margin:14px 0;
+  overflow:hidden; background:var(--bg); }
+.demo-bar { padding:8px 12px; background:var(--surface2);
+  border-bottom:1px solid var(--border); font-family:var(--mono); font-size:.7rem;
+  color:var(--text-dim); letter-spacing:.05em; }
+.demo-body { padding:14px; }
+.demo-input { display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+.demo-input input, .demo-input textarea, .demo-input select {
+  font-family:var(--mono); font-size:.85rem; padding:7px 10px;
+  border:1px solid var(--border); border-radius:5px; background:#fff;
+  color:var(--text); flex:1; min-width:120px; }
+.demo-input textarea { min-height:55px; resize:vertical; flex-basis:100%; }
+.demo-btn { font-family:var(--mono); font-size:.82rem; padding:8px 16px;
+  border-radius:6px; border:1px solid var(--accent); background:var(--accent);
+  color:#fff; cursor:pointer; transition:all .15s; }
+.demo-btn:hover { opacity:.85; }
+.demo-btn.secondary { background:var(--surface); color:var(--accent); }
+.demo-btn:disabled { opacity:.5; cursor:not-allowed; }
+
+.ba-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0; }
+.ba-col { border-radius:6px; padding:10px 12px; font-size:.82rem;
+  line-height:1.6; border:1px solid; min-height:60px; }
+.ba-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.ba-after { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.ba-label { font-family:var(--mono); font-size:.62rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:4px; font-weight:700; opacity:.85; }
+.ba-before .ba-label { color:var(--error); }
+.ba-after .ba-label { color:var(--success); }
+.ba-content { font-family:var(--mono); font-size:.78rem; word-break:break-all;
+  white-space:pre-wrap; min-height:30px; }
+
+.log-area { background:#0d1117; color:#c9d1d9; font-family:var(--mono);
+  font-size:.78rem; padding:10px 12px; border-radius:6px;
+  max-height:200px; overflow-y:auto; margin:8px 0;
+  border:1px solid var(--border); white-space:pre-wrap; word-break:break-all;
+  line-height:1.5; }
+.log-area:empty::before { content:'(実行待ち...ボタンを押してください)';
+  color:#6e7681; font-style:italic; }
+.log-line { padding:1px 0; }
+.log-line.info { color:#79c0ff; }
+.log-line.ok { color:#7ee787; }
+.log-line.err { color:#ff7b72; }
+.log-line.dim { color:#6e7681; }
+
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:7px; margin:10px 0; overflow:hidden; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:7px 12px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.7rem; color:var(--text-dim); letter-spacing:.04em; }
+.code-block pre { padding:10px 14px 12px; overflow-x:auto;
+  font-family:var(--mono); font-size:.78rem; line-height:1.55;
+  color:var(--text); white-space:pre; tab-size:2; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.68rem;
+  padding:3px 9px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+
+.info-box { border-radius:7px; padding:10px 13px; font-size:.85rem;
+  line-height:1.7; margin:12px 0; border-left:3px solid; }
+.info-box.ok { border-color:var(--success); background:rgba(34,134,58,.08); color:#154f1e; }
+.info-box.info { border-color:var(--accent); background:rgba(0,92,197,.08); color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08); color:#7a5c00; }
+.info-box.err { border-color:var(--error); background:rgba(203,36,49,.08); color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 5px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .ba-grid { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.5rem; }
+  .toc-grid { grid-template-columns:1fr; }
+  .lab-body { padding:14px; }
+  .demo-input input, .demo-input textarea { min-width:100%; }
+}
+
+/* 📑 フローティング「目次に戻る」ボタン */
+#back-to-toc { position:fixed; bottom:20px; right:20px; z-index:100;
+  width:54px; height:54px; border-radius:50%; border:none;
+  background:var(--accent); color:#fff; cursor:pointer;
+  font-family:var(--mono); font-size:.7rem; font-weight:700;
+  box-shadow:0 4px 12px rgba(0,92,197,.35);
+  display:none; align-items:center; justify-content:center;
+  flex-direction:column; line-height:1.1;
+  transition:transform .15s,opacity .2s,background .15s; opacity:0; }
+#back-to-toc.visible { display:flex; opacity:1; }
+#back-to-toc:hover { background:#003d8f; transform:translateY(-2px); }
+#back-to-toc:active { transform:translateY(0); }
+#back-to-toc .arrow { font-size:1.1rem; line-height:1; margin-bottom:2px; }
+#back-to-toc .label { font-size:.6rem; letter-spacing:.05em; }
+
+/* === File 03 専用追加スタイル === */
+.dom-stage { border:1px dashed var(--border); border-radius:6px;
+  padding:10px; min-height:50px; background:#fff; margin:6px 0; }
+.dom-stage .dyn-item { padding:6px 10px; margin:3px 0; background:var(--surface2);
+  border-left:3px solid var(--accent); border-radius:4px; font-family:var(--mono);
+  font-size:.8rem; }
+.tag-chip { display:inline-block; padding:1px 7px; background:var(--accent);
+  color:#fff; border-radius:10px; font-family:var(--mono); font-size:.7rem;
+  margin-right:4px; }
+.scroll-track { height:200px; overflow-y:auto; border:1px solid var(--border);
+  border-radius:6px; background:var(--code-bg); padding:8px; margin:8px 0; }
+.scroll-track .io-item { padding:50px 12px; margin:12px 0;
+  background:#fff; border:2px solid var(--border); border-radius:6px;
+  text-align:center; font-family:var(--mono); font-size:.85rem;
+  transition:all .3s; }
+.scroll-track .io-item.entered { border-color:var(--success);
+  background:rgba(34,134,58,.08); transform:scale(1.02); }
+.resize-target { resize:both; overflow:auto;
+  width:200px; height:100px; padding:10px; background:#fff;
+  border:2px solid var(--accent); border-radius:6px; font-family:var(--mono);
+  font-size:.78rem; }
+.event-tree { padding:8px; border-radius:6px; }
+.event-tree .ev-outer { padding:18px; background:rgba(203,36,49,.06);
+  border:2px solid var(--error); border-radius:8px; cursor:pointer; }
+.event-tree .ev-middle { padding:14px; background:rgba(176,136,0,.08);
+  border:2px solid var(--accent4); border-radius:8px;
+  margin-top:8px; cursor:pointer; }
+.event-tree .ev-inner { padding:12px; background:rgba(34,134,58,.08);
+  border:2px solid var(--success); border-radius:8px;
+  margin-top:8px; cursor:pointer; text-align:center; font-weight:600; }
+.shadow-host { padding:8px 12px; background:var(--surface2);
+  border:1px solid var(--border); border-radius:6px; margin:6px 0; }
+
+/* === File 08 専用追加スタイル === */
+/* Web Animations / View Transitions / Popover 用ステージ */
+.anim-stage { border:1px dashed var(--border); border-radius:6px;
+  padding:14px; min-height:90px; background:#fff; margin:8px 0;
+  display:flex; align-items:center; justify-content:flex-start; gap:8px;
+  flex-wrap:wrap; position:relative; }
+.anim-target { width:54px; height:54px; border-radius:8px;
+  background:linear-gradient(135deg,var(--accent),var(--accent3));
+  display:flex; align-items:center; justify-content:center; color:#fff;
+  font-family:var(--mono); font-size:.7rem; font-weight:700; }
+.anim-row { display:flex; gap:6px; flex-wrap:wrap; align-items:center;
+  font-family:var(--mono); font-size:.78rem; color:var(--text-dim); }
+.fps-meter { font-family:var(--mono); font-size:.78rem;
+  background:#0d1117; color:#7ee787; padding:5px 10px; border-radius:5px;
+  display:inline-block; margin:4px 0; }
+
+/* Popover / Dialog */
+.popover-card { padding:12px 16px; border:1px solid var(--border);
+  border-radius:8px; background:#fff; box-shadow:0 8px 24px rgba(0,0,0,.12);
+  font-size:.85rem; max-width:260px; }
+.popover-card h4 { font-size:.9rem; margin-bottom:6px; color:var(--accent); }
+dialog::backdrop { background:rgba(0,0,0,.4); }
+
+/* Performance bar / chart */
+.perf-bar-wrap { background:var(--surface2); border-radius:6px;
+  padding:8px 10px; margin:6px 0; font-family:var(--mono); font-size:.78rem; }
+.perf-bar { height:18px; border-radius:4px; margin:3px 0;
+  background:linear-gradient(90deg,var(--accent),var(--accent3));
+  display:flex; align-items:center; padding:0 8px; color:#fff;
+  font-size:.7rem; font-weight:700; min-width:30px; }
+.perf-bar.slow { background:linear-gradient(90deg,var(--accent4),var(--error)); }
+.perf-bar.fast { background:linear-gradient(90deg,var(--success),var(--accent2)); }
+.timing-table { width:100%; border-collapse:collapse; margin:6px 0;
+  font-family:var(--mono); font-size:.74rem; }
+.timing-table th, .timing-table td { padding:5px 8px; text-align:left;
+  border:1px solid var(--border); }
+.timing-table th { background:var(--surface2); color:var(--accent);
+  letter-spacing:.04em; }
+.timing-table td.num { text-align:right; color:var(--accent4); font-weight:600; }
+
+/* Crypto: hex display */
+.hex-display { font-family:var(--mono); font-size:.74rem;
+  background:#0d1117; color:#79c0ff; padding:8px 10px; border-radius:5px;
+  word-break:break-all; line-height:1.6; margin:5px 0;
+  border:1px solid var(--border); }
+.hex-display .hex-label { color:#6e7681; font-size:.68rem;
+  display:block; margin-bottom:3px; }
+
+/* CSP/SRI: HTTP header sample */
+.http-sample { font-family:var(--mono); font-size:.78rem;
+  background:#0d1117; color:#c9d1d9; padding:10px 12px; border-radius:6px;
+  white-space:pre; overflow-x:auto; margin:8px 0; line-height:1.55; }
+.http-sample .http-key { color:#79c0ff; }
+.http-sample .http-val { color:#a5d6ff; }
+.http-sample .http-cmt { color:#6e7681; font-style:italic; }
+
+/* matchMedia preview */
+.mq-preview { display:flex; gap:8px; flex-wrap:wrap; margin:6px 0; }
+.mq-chip { padding:4px 10px; border-radius:14px;
+  font-family:var(--mono); font-size:.72rem; border:1px solid var(--border);
+  background:var(--surface2); color:var(--text-dim); }
+.mq-chip.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// JS API Lab #8<br><span style="color:var(--text-dim);font-size:.7rem;">UI / Perf / Security</span></div>
+  <div class="file-nav">
+    <div style="font-size:.7rem;color:var(--text-dim);padding:2px 0;">📘 全8ファイル中の #8 (最終回)</div>
+    <div style="font-size:.68rem;color:var(--text-dim);padding:2px 0;line-height:1.4;">UI/Animation・Performance・Crypto/Security の総まとめ</div>
+  </div>
+
+  <div class="nav-section">A. UI / Animation</div>
+  <button class="nav-item" data-target="lab1"><span class="nav-num">01</span>Web Animations</button>
+  <button class="nav-item" data-target="lab2"><span class="nav-num">02</span>View Transitions</button>
+  <button class="nav-item" data-target="lab3"><span class="nav-num">03</span>requestAnimationFrame</button>
+  <button class="nav-item" data-target="lab4"><span class="nav-num">04</span>matchMedia</button>
+  <button class="nav-item" data-target="lab5"><span class="nav-num">05</span>Popover / Dialog</button>
+
+  <div class="nav-section">B. Performance</div>
+  <button class="nav-item" data-target="lab6"><span class="nav-num">06</span>performance.now()</button>
+  <button class="nav-item" data-target="lab7"><span class="nav-num">07</span>mark / measure</button>
+  <button class="nav-item" data-target="lab8"><span class="nav-num">08</span>PerformanceObserver</button>
+  <button class="nav-item" data-target="lab9"><span class="nav-num">09</span>Navigation Timing</button>
+  <button class="nav-item" data-target="lab10"><span class="nav-num">10</span>Resource Timing</button>
+
+  <div class="nav-section">C. Security / Crypto</div>
+  <button class="nav-item" data-target="lab11"><span class="nav-num">11</span>getRandomValues</button>
+  <button class="nav-item" data-target="lab12"><span class="nav-num">12</span>subtle.digest (SHA-256)</button>
+  <button class="nav-item" data-target="lab13"><span class="nav-num">13</span>subtle.encrypt (AES-GCM)</button>
+  <button class="nav-item" data-target="lab14"><span class="nav-num">14</span>CSP</button>
+  <button class="nav-item" data-target="lab15"><span class="nav-num">15</span>SRI</button>
+</nav>
+
+<div class="hero">
+  <h1>JavaScript標準API Lab</h1>
+  <p class="subtitle">UI・Performance・Security — 見た目を整え、計測し、守る</p>
+  <span class="file-tag">📘 File #8 / 8 — シリーズ最終回</span>
+</div>
+
+<div class="toc" id="toc">
+  <h2>// 目次(全15ラボ)</h2>
+  <div class="toc-grid">
+    <button class="toc-item" data-target="lab1"><span class="toc-num">01</span>Web Animations API</button>
+    <button class="toc-item" data-target="lab2"><span class="toc-num">02</span>View Transitions API</button>
+    <button class="toc-item" data-target="lab3"><span class="toc-num">03</span>requestAnimationFrame 応用</button>
+    <button class="toc-item" data-target="lab4"><span class="toc-num">04</span>matchMedia + listener</button>
+    <button class="toc-item" data-target="lab5"><span class="toc-num">05</span>Popover API / Dialog</button>
+    <button class="toc-item" data-target="lab6"><span class="toc-num">06</span>performance.now()</button>
+    <button class="toc-item" data-target="lab7"><span class="toc-num">07</span>performance.mark / measure</button>
+    <button class="toc-item" data-target="lab8"><span class="toc-num">08</span>PerformanceObserver</button>
+    <button class="toc-item" data-target="lab9"><span class="toc-num">09</span>Navigation Timing</button>
+    <button class="toc-item" data-target="lab10"><span class="toc-num">10</span>Resource Timing</button>
+    <button class="toc-item" data-target="lab11"><span class="toc-num">11</span>crypto.getRandomValues</button>
+    <button class="toc-item" data-target="lab12"><span class="toc-num">12</span>subtle.digest (SHA-256)</button>
+    <button class="toc-item" data-target="lab13"><span class="toc-num">13</span>subtle.encrypt (AES-GCM)</button>
+    <button class="toc-item" data-target="lab14"><span class="toc-num">14</span>Content Security Policy</button>
+    <button class="toc-item" data-target="lab15"><span class="toc-num">15</span>Subresource Integrity</button>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ========== Lab 01: Web Animations API ========== -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>Web Animations API — <code>element.animate()</code> で CSS animation を JS から制御</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why exists</b>: CSS の <code>@keyframes</code> + <code>animation</code> は静的に書く前提で作られた。「行を1秒ハイライトしてから消す」のような <b>JSの状態に応じて1度だけ走らせる</b> 用途では、クラス付与 → 完了を待つ → クラス除去という回りくどい構造になりがちだった。Web Animations API は同じキーフレームを <code>element.animate(keyframes, options)</code> という1行で記述でき、戻り値の <code>Animation</code> オブジェクトに <code>finished</code> Promise が生える。CSS の世界と JS の制御を <b>橋渡し</b> するために生まれた。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>Wijmo FlexGrid で「保存成功した行」を一瞬だけ緑にハイライトして自然に戻す</li>
+        <li>通知バナーを上からスライドイン → 3秒後にフェードアウト</li>
+        <li>長押し中だけ要素を波打たせ、離した瞬間に止める (cancel/finish の制御)</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  従来の CSS animation:
+  ─────────────────────
+  ① CSS で @keyframes 定義
+  ② JS で classList.add('flash')
+  ③ animationend を待つ
+  ④ classList.remove('flash')
+       ↑ 4ステップ + イベント漏れリスク
+
+  Web Animations API:
+  ─────────────────────
+  el.animate(
+    [{bg:'#fff'},{bg:'#dfd'},{bg:'#fff'}],
+    {duration:1000}
+  ).finished.then(() => done())
+       ↑ 1ステップ + Promise で完了を待てる
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: Wijmo FlexGrid で <code>itemsSourceChanged</code> 後に「変わった行だけ」を識別しても、CSS animation だと「終わったらクラスを消す」処理を <code>animationend</code> で書く必要がある。Web Animations API なら <code>cellElement.animate(keyframes, {duration:800}).finished.then(() =&gt; cellElement.style.background = '')</code> と1行で「ハイライト→自然に戻す」が書ける。OutSystems の Action から呼ぶ <code>OnCellEditEnded</code> Client Action でも、Promise ベースなので BPT/Server Action との連携と相性がよい。FlexGrid の <code>refresh()</code> 後の DOM 入れ替わりにも、再度 animate を呼び直すだけで対応できる。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 行ハイライト風アニメ</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab1Run()">アニメ実行</button>
+          <button class="demo-btn secondary" onclick="lab1Cancel()">中断 (cancel)</button>
+          <button class="demo-btn secondary" onclick="lab1Clear()">クリア</button>
+        </div>
+        <div class="anim-stage">
+          <div class="anim-target" id="lab1-target">行A</div>
+          <div class="anim-target" id="lab1-target2" style="background:linear-gradient(135deg,var(--accent2),var(--accent4));">行B</div>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before (CSS-only想定)</div><div class="ba-content" id="lab1-before">classList.add('flash') → animationend 待ち → classList.remove</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After (WAAPI)</div><div class="ba-content" id="lab1-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab1-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「アニメ実行」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>const lab1Run = () =&gt; {
+  clearLog('lab1-log');
+  const el = document.getElementById('lab1-target');
+  // ① keyframes (配列で渡す)
+  const keyframes = [
+    { background: 'linear-gradient(135deg,#22863a,#79c0ff)', transform: 'scale(1.15)' },
+    { background: 'linear-gradient(135deg,#005cc5,#6f42c1)', transform: 'scale(1.0)' }
+  ];
+  // ② options (duration, easing, fill 等)
+  const opts = { duration: 1000, easing: 'ease-out', fill: 'forwards' };
+  // ③ animate() の戻り値は Animation オブジェクト
+  const anim = el.animate(keyframes, opts);
+  window.__lab1Anim = anim;  // cancel から触るため保管
+  console.log('animate() 開始 / playState:', anim.playState);
+
+  // ④ Promise で完了を待てる
+  anim.finished.then(() =&gt; {
+    console.log('finished / playState:', anim.playState);
+    setBA('lab1', 'classList.add/remove で2回触る', 'animate() + finished で1回完結');
+  }).catch(() =&gt; console.log('cancelled'));
+};</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 02: View Transitions API ========== -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>View Transitions API — DOM 切替の前後を自動補間</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ Chrome</span>
+      <span class="compat-badge compat-partial">⚠ iOS 18+</span>
+      <span class="compat-badge compat-yes">✓ Android Chrome</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why this design</b>: 従来「画面Aから画面Bへの遷移をアニメーション」は、CSSのトランジションでは <b>共存する両画面</b> を一度DOMに同居させ、片方を非表示にしながら、もう片方を表示する……という二重管理が必要だった。View Transitions は「<code>document.startViewTransition(callback)</code> の中で DOM を書き換えるだけ」で、<b>変更前と変更後のスナップショットをブラウザが自動でクロスフェード</b>してくれる。設計の核は「JSは結果の状態だけ書け、見た目の補間はブラウザに任せろ」。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>SPA の画面切替で Before/After を自動でフェード</li>
+        <li>リスト並び替え時に各カードがスムーズに移動</li>
+        <li>詳細表示 → 一覧戻りで「逆向き」の遷移を自然に見せる</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  従来:
+  ──────
+  [Aを見せる] → [Aを fade-out] → [Bを fade-in]
+  (両方を同時に DOM に存在させる必要)
+
+  View Transitions:
+  ──────────────────
+  document.startViewTransition(() =&gt; {
+    container.innerHTML = newHTML;  // ← 単に書き換え
+  });
+  └─ ブラウザが内部で:
+     1. 変更前の画面をスナップショット
+     2. callback 実行 (= DOM変更)
+     3. 変更後をスナップショット
+     4. ::view-transition-old/new で補間
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: OutSystems の Block 切替や Conditional Container の表示・非表示で、純粋にHTMLを差し替えても自然なフェードが付くため、React 的な「<code>key</code> プロパティで再マウント時にアニメーション付与」を自前で書く必要がなくなる。ただし iOS Safari は 18 から段階対応。<code>if (document.startViewTransition)</code> でフォールバック必須。</div>
+    <div class="info-box warn">⚠ <b>iOS制限</b>: 16/17 では未対応 (即座に callback を実行 → アニメなし)。ブラウザ側が「使えない場合は普通にDOMを書き換える」フォールバックを内蔵しているわけではないので、自前で <code>if-else</code> を書く必要あり。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: カード入れ替えのスムーズ遷移</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab2Run()">画面切替 (Transition付き)</button>
+          <button class="demo-btn secondary" onclick="lab2RunBare()">画面切替 (Transitionなし)</button>
+          <button class="demo-btn secondary" onclick="lab2Clear()">クリア</button>
+        </div>
+        <div class="anim-stage" id="lab2-stage">
+          <div style="font-family:var(--mono);font-size:.85rem;color:var(--text-dim);">画面A: 商品一覧</div>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab2-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab2-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab2-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — Transition 付き / 無し の対比</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>const lab2Run = () =&gt; {
+  clearLog('lab2-log');
+  const stage = document.getElementById('lab2-stage');
+  const newHTML = '&lt;div style="font-family:var(--mono);"&gt;画面B: 商品詳細&lt;/div&gt;';
+
+  if (!document.startViewTransition) {
+    console.log('未対応ブラウザ → 単純な書き換えにフォールバック');
+    stage.innerHTML = newHTML;
+    return;
+  }
+  console.log('startViewTransition() 開始');
+  const t = document.startViewTransition(() =&gt; {
+    stage.innerHTML = newHTML;  // DOM書き換えはこの中で
+  });
+  t.finished.then(() =&gt; console.log('遷移完了'));
+};</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 03: requestAnimationFrame ========== -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>requestAnimationFrame — ブラウザの描画リズムに同期する</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why this design</b>: <code>setInterval(fn, 16)</code> でアニメを書くと、画面が非表示のときも回り続けてバッテリーを食う/タブ切替後に <b>たまったコールバックがバースト</b> する/タイマー精度が16msぴったりではない、など問題が多い。<code>requestAnimationFrame</code> は「ブラウザが次に描画するタイミングで1回だけ呼ぶ」契約。Refresh Rate (60Hz/120Hz) に自動追従、非表示タブでは止まる、誤差の少ない高精度タイムスタンプを引数で受け取る、と <b>「描画にロックステップ」</b> な設計。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>JS制御のスムーズスクロール・パララックス</li>
+        <li>FPSメーター(直近Nフレームの平均)</li>
+        <li>長時間処理を分割して描画ブロックを避ける(`requestIdleCallback` 代替)</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  setInterval(fn, 16):
+  ────────────────────
+  fixed 16ms ─┬─ 16ms ─┬─ 16ms ─ ...
+              ↓        ↓
+            描画と    描画と
+            ズレる   ズレる
+  (タブ非表示でも継続 → 電池ドレイン)
+
+  requestAnimationFrame(fn):
+  ──────────────────────────
+  ┌─ 描画 ─┬─ 描画 ─┬─ 描画 ─ ...
+  fn(t)    fn(t)    fn(t)
+   ↑ 描画直前にロックステップで呼ばれる
+   ↑ tはhigh-resolution時刻 (DOMHighResTimeStamp)
+   ↑ タブ非表示では 1Hz に落ちる(ブラウザ判断)
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈</b>: 大量データの可視化(Wijmo Chart, FlexGrid のスクロール監視)で setInterval を使うと scroll 中にカクつく原因になる。rAF + 直近 16ms 内の差分のみ描画すれば、ブラウザの描画リズムに自然に合う。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: FPSメーター + アニメーション</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab3Run()">アニメ開始 (rAF)</button>
+          <button class="demo-btn secondary" onclick="lab3Stop()">停止</button>
+          <button class="demo-btn secondary" onclick="lab3Clear()">クリア</button>
+        </div>
+        <div class="anim-stage">
+          <div class="anim-target" id="lab3-ball" style="border-radius:50%;background:var(--accent3);">●</div>
+        </div>
+        <div class="fps-meter" id="lab3-fps">FPS: ---</div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before (setInterval)</div><div class="ba-content" id="lab3-before">タブ非表示でも回り続ける / 描画とズレる</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After (rAF)</div><div class="ba-content" id="lab3-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab3-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — rAFループとFPS計測</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>const lab3Run = () =&gt; {
+  clearLog('lab3-log');
+  const ball = document.getElementById('lab3-ball');
+  const fps = document.getElementById('lab3-fps');
+  let frames = 0, lastT = performance.now(), x = 0, dir = 1;
+
+  const tick = (t) =&gt; {  // ← t は high-resolution timestamp
+    x += dir * 2;
+    if (x &gt; 200 || x &lt; 0) dir *= -1;
+    ball.style.transform = `translateX(${x}px)`;
+    frames++;
+    if (t - lastT &gt;= 1000) {
+      fps.textContent = `FPS: ${frames}`;
+      console.log(`1秒間: ${frames} フレーム`);
+      frames = 0; lastT = t;
+    }
+    window.__lab3Id = requestAnimationFrame(tick);
+  };
+  window.__lab3Id = requestAnimationFrame(tick);
+  setBA('lab3', 'setIntervalで描画とズレる', 'rAFで描画と完全同期 / 60FPS');
+};</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 04: matchMedia ========== -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>matchMedia + listener — メディアクエリを JS から監視</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why care</b>: 「画面サイズで条件分岐」は CSS の <code>@media</code> で十分だが、<b>JS のロジック自体を切り替えたい</b>(チャートの描画密度、ロード戦略、データ取得粒度) ケースでは CSSは無力。<code>window.matchMedia(query)</code> は <code>matches</code> 真偽値と <code>change</code> イベントを返し、画面サイズだけでなく <b>ユーザの環境設定</b>(<code>prefers-reduced-motion</code>, <code>prefers-color-scheme</code>) にも反応する。「配慮」の足場として重要。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>ダークモード切替時にChart.js の配色を再描画</li>
+        <li>「アニメ控えめ設定」のユーザに対して animate() を skip</li>
+        <li>狭画面ではテーブルからカードレイアウトに DOM を組み替え</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  matchMedia の構造:
+  ──────────────────
+  const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
+  ↓
+  mql.matches              ← 現在の状態 (boolean)
+  mql.addEventListener('change', e =&gt; { ... e.matches });
+  ↓ 変化を監視 (ユーザがOS設定を変えた瞬間に発火)
+
+  一覧:
+   prefers-color-scheme   ライト/ダーク
+   prefers-reduced-motion  アニメ控えめ
+   prefers-contrast       ハイコントラスト
+   (max-width: 768px)     画面幅
+   (orientation: portrait) 縦/横
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈</b>: テーマ切替やレスポンシブ Block で 「ダークモード時だけ Wijmo に <code>FlexGrid.theme</code> を当てる」 のような JS制御は matchMedia でクリーンに書ける。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 各種メディアクエリの状態</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab4Run()">現在の状態をチェック</button>
+          <button class="demo-btn secondary" onclick="lab4Listen()">変更を監視 (toggle)</button>
+          <button class="demo-btn secondary" onclick="lab4Clear()">クリア</button>
+        </div>
+        <div class="mq-preview" id="lab4-chips">
+          <span class="mq-chip">未チェック</span>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before (CSS only)</div><div class="ba-content" id="lab4-before">JSロジックは画面サイズに無関心</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After (matchMedia)</div><div class="ba-content" id="lab4-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab4-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — matchMediaで現状取得+変化監視</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>const lab4Run = () =&gt; {
+  clearLog('lab4-log');
+  const queries = [
+    '(prefers-color-scheme: dark)',
+    '(prefers-reduced-motion: reduce)',
+    '(prefers-contrast: more)',
+    '(max-width: 768px)',
+    '(orientation: portrait)'
+  ];
+  queries.forEach(q =&gt; {
+    const mql = window.matchMedia(q);
+    console.log(`${q} → ${mql.matches}`);
+  });
+  setBA('lab4', 'CSSの@mediaのみで対応', 'JSロジックも環境に追従');
+};
+
+// 変化を監視
+const lab4OnChange = (e) =&gt; {
+  console.log(`変化: ${e.media} → ${e.matches}`);
+};
+const lab4Listen = () =&gt; {
+  const mql = window.matchMedia('(max-width: 768px)');
+  mql.addEventListener('change', lab4OnChange);
+  console.log('リスナー登録: 画面幅を変えてみてください');
+};</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 05: Popover / Dialog ========== -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>Popover API / <code>&lt;dialog&gt;</code> — モーダルを標準で書く</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS 17+</span>
+      <span class="compat-badge compat-yes">✓ Android Chrome</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why exists</b>: 「押すと開く・他をクリックすると閉じる・Escで閉じる・<code>z-index</code> で上に積む・スクロールロック」を全て自前で書くのは bug magnet。<code>&lt;dialog&gt;</code> はモーダル専用、Popover API は「ホバー/クリックで開くカード型UI」専用と用途が分かれており、<b>ブラウザがフォーカストラップ・トップレイヤー・dismiss を担保</b>する。z-index 戦争から解放されるための機能。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>確認ダイアログ「保存しますか?」</li>
+        <li>セルクリックでツールチップ的な詳細パネル</li>
+        <li>フォーム入力エラーの説明ポップオーバー</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  従来の自前モーダル:
+  ───────────────────
+  &lt;div class="overlay"&gt;       ← position:fixed; z-index:9999
+    &lt;div class="modal"&gt;       ← フォーカストラップ自前
+      ...
+    &lt;/div&gt;
+  &lt;/div&gt;
+  + JSで Esc/外側click のリスナー
+  + body にスクロールロック class
+  + Tab キーでフォーカス循環
+
+  &lt;dialog&gt; / Popover:
+  ────────────────────
+  &lt;dialog id="d"&gt;...&lt;/dialog&gt;
+  d.showModal();   ← これだけ
+  ↓
+  ・トップレイヤーに昇格 (z-index 不要)
+  ・::backdrop で背景暗転
+  ・Esc キーで自動 close
+  ・フォーカストラップ自動
+
+  Popover (新顔):
+  &lt;button popovertarget="p"&gt;...
+  &lt;div id="p" popover&gt;...&lt;/div&gt;
+  ↓ click = toggle / outside click = auto close
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈</b>: Popup_Show は z-index トラブルが時々起きる(モーダル中の DataPicker が裏に隠れる、など)。<code>&lt;dialog&gt;</code> ベースに置き換えると <b>z-index 戦争が完全に終わる</b>(ブラウザのトップレイヤーは z-index の概念外)。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: dialog と popover</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab5OpenDialog()">確認ダイアログを開く</button>
+          <button class="demo-btn secondary" popovertarget="lab5-pop">Popoverを開く</button>
+          <button class="demo-btn secondary" onclick="lab5Clear()">クリア</button>
+        </div>
+        <dialog id="lab5-dialog" style="border:1px solid var(--border);border-radius:8px;padding:20px;">
+          <h4 style="margin-bottom:8px;color:var(--accent);">確認</h4>
+          <p style="font-size:.88rem;margin-bottom:14px;">この変更を保存しますか?</p>
+          <div style="display:flex;gap:8px;">
+            <button class="demo-btn" onclick="lab5CloseDialog('OK')">OK</button>
+            <button class="demo-btn secondary" onclick="lab5CloseDialog('Cancel')">Cancel</button>
+          </div>
+        </dialog>
+        <div id="lab5-pop" popover class="popover-card">
+          <h4>Popover デモ</h4>
+          <p>外側クリック or Esc で自動クローズ。<br>z-index は触っていません。</p>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before (自前モーダル)</div><div class="ba-content" id="lab5-before">overlay div + z-index + フォーカストラップ自前</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After (dialog/popover)</div><div class="ba-content" id="lab5-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab5-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — dialog / popover の使い方</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>// ── &lt;dialog&gt; (モーダル専用) ──
+const lab5OpenDialog = () =&gt; {
+  clearLog('lab5-log');
+  const d = document.getElementById('lab5-dialog');
+  d.showModal();              // ← トップレイヤーに昇格
+  console.log('dialog opened (top layer)');
+};
+const lab5CloseDialog = (result) =&gt; {
+  document.getElementById('lab5-dialog').close(result);
+  console.log(`dialog closed with: ${result}`);
+  setBA('lab5', '自前overlay/z-index', `&lt;dialog&gt; + showModal() / 結果=${result}`);
+};
+
+// ── popover 属性 (HTML側) ──
+// &lt;button popovertarget="p"&gt;Open&lt;/button&gt;
+// &lt;div id="p" popover&gt;...&lt;/div&gt;
+// → 外側click/Esc で自動close。JSは不要。</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 06: performance.now() ========== -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3><code>performance.now()</code> — 高精度・単調増加なタイマー</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why this design</b>: <code>Date.now()</code> は (1) ms 単位までしか精度がない、(2) <b>システム時計に依存</b> するので NTP 同期や手動変更で値が逆戻りする ことがある。「処理が速くなった」ことを計測してマイナス値が出たら本末転倒。<code>performance.now()</code> はページロードを起点とする <b>単調増加</b> な高精度時刻 (μs〜ns 級、ただしSpectre対策で粗くされている)。差分を取って所要時間を測る用途に最適化されている。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>関数の実行時間を計測 (`now() - start`)</li>
+        <li>FPS 計測 / フレーム間隔の正確な測定</li>
+        <li>ベンチマーク・A/B テストの実行時間比較</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  Date.now():
+  ───────────
+  単位:    ms (整数)
+  起点:    1970-01-01 (UTC)
+  単調性:  ✗ NTPで時計が戻ると逆行する
+  例:      1715000000000
+
+  performance.now():
+  ──────────────────
+  単位:    ms (小数, μs精度)
+  起点:    timeOrigin (= ページロード開始)
+  単調性:  ✓ 必ず増加 (Spectre緩和で粒度はやや粗い)
+  例:      12345.678
+
+  ┌─ 計測ルール ─┐
+   const t0 = performance.now();
+   doWork();
+   const t1 = performance.now();
+   console.log(`${(t1-t0).toFixed(3)}ms`);
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈</b>: BPT や Server Action の処理時間は OutSystems サーバー側のログで取れるが、<b>クライアント側の体感(REST レスポンス受信〜画面更新完了)</b> は performance.now() でしか計れない。Wijmo FlexGrid の <code>itemsSourceChanged</code> から描画完了までの実時間を取りたいときに必須。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 重い処理の所要時間計測</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab6Run()">10万件のソートを計測</button>
+          <button class="demo-btn secondary" onclick="lab6Compare()">Date.now() と精度比較</button>
+          <button class="demo-btn secondary" onclick="lab6Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before (Date.now)</div><div class="ba-content" id="lab6-before">ms整数 / システム時計依存</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After (performance.now)</div><div class="ba-content" id="lab6-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab6-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 実行時間計測</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>const lab6Run = () =&gt; {
+  clearLog('lab6-log');
+  const arr = Array.from({length: 100000}, () =&gt; Math.random());
+  const t0 = performance.now();
+  arr.sort();
+  const t1 = performance.now();
+  const elapsed = (t1 - t0).toFixed(3);
+  console.log(`ソート所要: ${elapsed}ms (高精度)`);
+  console.log(`timeOrigin: ${performance.timeOrigin.toFixed(0)}ms`);
+  console.log(`now基点からの経過: ${t1.toFixed(2)}ms`);
+  setBA('lab6', 'Date.nowでms整数のみ', `${elapsed}ms (μs精度)`);
+};
+
+const lab6Compare = () =&gt; {
+  const d0 = Date.now(), p0 = performance.now();
+  for (let i = 0; i &lt; 100; i++) Math.sqrt(i);
+  const d1 = Date.now(), p1 = performance.now();
+  console.log(`Date.now差分:        ${d1 - d0}ms (整数)`);
+  console.log(`performance.now差分: ${(p1 - p0).toFixed(4)}ms (小数)`);
+};</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 07: performance.mark / measure ========== -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3><code>performance.mark</code> / <code>measure</code> — 名前付き計測ポイント</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why exists</b>: <code>console.time('label')</code> は便利だが、<b>結果が DevTools の console にしか残らない</b>。本番環境で計測値を集めたい/区間と区間の差を可視化したい/DevTools の Performance パネルに線を引きたい、という要求に応えるのが Performance Timeline。<code>mark()</code> で「点」を打ち、<code>measure(name, startMark, endMark)</code> で「区間」を作ると、<code>performance.getEntriesByType('measure')</code> で取り出せる + DevTools にも描画される。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>「データ取得 → 描画完了」の各フェーズ時間をトラッキング</li>
+        <li>本番環境で集めた measure を Beacon で送信 (Real User Monitoring)</li>
+        <li>DevTools の Performance パネルで自前のフェーズを線として確認</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  時間軸:
+  ─────────
+   mark('A')               mark('B')              mark('C')
+        │                       │                      │
+        ▼                       ▼                      ▼
+  ──────●──── fetch ──────────●──── render ─────────●───→
+        ↑─────────────────────↑                     ↑
+            measure('fetch',                        │
+                   'A','B')                         │
+                                ↑─────────────────  │
+                                  measure('render',
+                                         'B','C')
+
+  取得:
+   performance.getEntriesByType('measure')
+   → [{ name:'fetch', duration:230 },
+       { name:'render', duration:48 }]
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈</b>: Reactive Web App の OnReady → REST取得 → CollectionView 適用 → FlexGrid 描画完了 までを各フェーズで mark() を打つと、「どこで遅いか」が DevTools で線で見える。OutSystems 標準の LifecycleEvents だけでは粒度不足な部分を補える。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 3フェーズの実行時間を可視化</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab7Run()">3フェーズ計測実行</button>
+          <button class="demo-btn secondary" onclick="lab7Clear()">クリア</button>
+        </div>
+        <div id="lab7-bars"></div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before (console.time)</div><div class="ba-content" id="lab7-before">DevTools console に文字列のみ</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After (mark/measure)</div><div class="ba-content" id="lab7-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab7-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 3フェーズの mark / measure</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>const lab7Sleep = (ms) =&gt; new Promise(r =&gt; setTimeout(r, ms));
+
+const lab7Run = async () =&gt; {
+  clearLog('lab7-log');
+  performance.clearMarks();
+  performance.clearMeasures();
+
+  performance.mark('start');
+  await lab7Sleep(150);              // 模擬: REST取得
+  performance.mark('fetched');
+  await lab7Sleep(80);               // 模擬: 整形
+  performance.mark('transformed');
+  await lab7Sleep(40);                // 模擬: 描画
+  performance.mark('rendered');
+
+  performance.measure('fetch',     'start',       'fetched');
+  performance.measure('transform', 'fetched',     'transformed');
+  performance.measure('render',    'transformed', 'rendered');
+
+  const measures = performance.getEntriesByType('measure');
+  measures.forEach(m =&gt; console.log(`${m.name}: ${m.duration.toFixed(1)}ms`));
+  // DevTools の Performance パネルにこれらが線として現れる
+  setBA('lab7', '雑にconsole.time', `${measures.length}フェーズを構造化計測`);
+};</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 08: PerformanceObserver ========== -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>PerformanceObserver — push 型で計測値を取りこぼさない</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why this design</b>: <code>performance.getEntriesByType('measure')</code> は「<b>その瞬間にバッファに溜まっているもの</b>」を pull 型で取得する。だから「リスナーを登録する前に発火した entry」は取りこぼす。<code>PerformanceObserver</code> は逆に <b>push 型</b> で、observe を登録した時点以降に発生する PerformanceEntry を <b>すべてコールバックで受け取れる</b>。<code>{ buffered: true }</code> を付ければ過去分も初回コールバックで届く。Real User Monitoring (RUM) の標準パターン。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>本番環境で Long Task (>50ms) を全部拾って原因特定</li>
+        <li>LCP / FID / CLS の値を取って分析サーバへ送信 (Web Vitals)</li>
+        <li>resource タイプを observe して「遅いリソース」を自動検知</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  Pull型 (getEntries):
+  ─────────────────────
+   ┌──────┐  poll   ┌────────────┐
+   │ JS   │ ──────→ │ Performance │
+   │      │ ←────── │  Buffer    │
+   └──────┘ result  └────────────┘
+     ↑ 呼び出した瞬間の状態しか見えない
+     ↑ バッファサイズ超で古いentryは捨てられる
+
+  Push型 (PerformanceObserver):
+  ──────────────────────────────
+   const po = new PerformanceObserver(list =&gt; {
+     list.getEntries().forEach(e =&gt; report(e));
+   });
+   po.observe({ type:'measure', buffered: true });
+   ┌──────┐  push   ┌────────────┐
+   │ JS   │ ←────── │ Performance │
+   └──────┘callback └────────────┘
+     ↑ 発生した瞬間に届く / buffered:true で過去分も
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: OutSystems の <b>Top 10 Performance Rules</b> では「Long Task (>50ms) を避ける」「LCP < 2.5s」が指標になっている。PerformanceObserver で <code>longtask</code> と <code>largest-contentful-paint</code> を observe すれば、本番ユーザの実測値を Beacon で OutSystems の Server Action にPOSTし、<code>OS_RUM_Metrics</code> のような Entity に蓄積できる。Lighthouse の合成計測ではなく、実ユーザーの体感を可視化する基礎となる。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: measure を Observer で受信</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab8Run()">Observer登録 + measure発火</button>
+          <button class="demo-btn secondary" onclick="lab8Stop()">disconnect</button>
+          <button class="demo-btn secondary" onclick="lab8Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before (pull)</div><div class="ba-content" id="lab8-before">getEntries() で取りこぼし発生</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After (push)</div><div class="ba-content" id="lab8-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab8-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — PerformanceObserver で measure を push 受信</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>const lab8OnEntries = (list) =&gt; {
+  list.getEntries().forEach(e =&gt; {
+    console.log(`[push] ${e.entryType} "${e.name}": ${e.duration.toFixed(1)}ms`);
+  });
+};
+
+const lab8Run = () =&gt; {
+  clearLog('lab8-log');
+  // ① Observer を作って observe
+  const po = new PerformanceObserver(lab8OnEntries);
+  po.observe({ type: 'measure', buffered: true });
+  window.__lab8Observer = po;
+  console.log('Observer 登録: 以降の measure を全部拾います');
+
+  // ② measure を打つ → push でコールバックされる
+  performance.mark('s1'); performance.mark('e1');
+  performance.measure('demoMeasureA', 's1', 'e1');
+  performance.mark('s2'); setTimeout(() =&gt; {
+    performance.mark('e2');
+    performance.measure('demoMeasureB', 's2', 'e2');
+  }, 100);
+  setBA('lab8', 'getEntries()で取りこぼす', 'Observer で押し出し受信');
+};</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 09: Navigation Timing ========== -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>Navigation Timing — ページロード各フェーズの内訳</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why care</b>: 「ページが遅い」はユーザにとって1つの主観だが、内訳は <b>DNS / 接続 / リクエスト / レスポンス / DOMパース / リソース取得 / load イベント</b> の少なくとも7段階。どこで時間を食っているかを知らないと改善できない。<code>performance.getEntriesByType('navigation')[0]</code> でロードの全フェーズが ms 単位で取れる。「Time To First Byte (TTFB) が遅い → サーバー側」「DOMContentLoaded が遅い → JS実行が重い」と切り分けの足場になる。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>遅延の原因がネットワークか JS かサーバーかを切り分け</li>
+        <li>本番環境のユーザー実測値を集計して P95 改善</li>
+        <li>SLI/SLO ダッシュボードのデータソース</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  Navigation Timing 各フェーズ (時系列):
+  ──────────────────────────────────────
+   navigationStart
+     │
+     │── domainLookupStart/End ─→ DNS 解決時間
+     │── connectStart/End ──────→ TCP/TLS 接続時間
+     │── requestStart/responseStart → サーバ応答待ち (TTFB)
+     │── responseStart/responseEnd  → ダウンロード時間
+     │── domInteractive             → DOMパース完了
+     │── domContentLoadedEventEnd   → DCL
+     │── loadEventEnd               → load 完了
+     ▼
+   pageshow
+
+  取得:
+   const [n] = performance.getEntriesByType('navigation');
+   n.responseStart - n.requestStart  // = TTFB
+   n.domInteractive                  // DOMパース完了点
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈</b>: OutSystems の Server Action 完了から画面表示まで、サーバー側のログだけでは説明できない遅延がよくある(JS 重め・画像が大きい)。Navigation Timing でフェーズに分解して<code>logMessage</code> で記録すると、CDN・REST・DOM・JS のどこにボトルネックがあるか可視化できる。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: このページのロード内訳を取得</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab9Run()">ロード内訳を表示</button>
+          <button class="demo-btn secondary" onclick="lab9Clear()">クリア</button>
+        </div>
+        <div id="lab9-table"></div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab9-before">「ページが遅い」しか言えない</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab9-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab9-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — Navigation Timing 取得</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>const lab9Run = () =&gt; {
+  clearLog('lab9-log');
+  const [nav] = performance.getEntriesByType('navigation');
+  if (!nav) return console.log('navigation entry が取れません');
+
+  const phases = {
+    'DNS解決':    nav.domainLookupEnd - nav.domainLookupStart,
+    'TCP/TLS接続': nav.connectEnd - nav.connectStart,
+    'TTFB':       nav.responseStart - nav.requestStart,
+    'ダウンロード': nav.responseEnd - nav.responseStart,
+    'DOMパース':   nav.domInteractive - nav.responseEnd,
+    'DCLまで':     nav.domContentLoadedEventEnd - nav.domInteractive,
+    'load まで':   nav.loadEventEnd - nav.domContentLoadedEventEnd,
+  };
+  Object.entries(phases).forEach(([k, v]) =&gt; {
+    console.log(`${k}: ${v.toFixed(1)}ms`);
+  });
+  setBA('lab9', '「ページが遅い」抽象的', `7フェーズに分解 / 合計 ${nav.loadEventEnd.toFixed(0)}ms`);
+};</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 10: Resource Timing ========== -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>Resource Timing — 各リソース個別のロード詳細</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why care</b>: ページ単位の Navigation Timing で「全体4秒」が分かっても、<b>どのリソースが遅いか</b> までは特定できない。<code>performance.getEntriesByType('resource')</code> は &lt;img&gt;, &lt;script&gt;, fetch, XHR で読まれた全リソースを返し、それぞれに DNS/接続/TTFB/転送時間が記録されている。これがあれば「サードパーティの広告 SDK が30秒立ち往生」のような事故を一発で見つけられる。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>遅いサードパーティリソースを特定して取り除く</li>
+        <li>画像最適化前後の転送時間 A/B 比較</li>
+        <li>ファイルサイズ (transferSize) と所要時間の相関で CDN 改善判断</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  全リソースのタイミング配列:
+  ─────────────────────────
+  performance.getEntriesByType('resource')
+    │
+    ├─ {name:'foo.png',  duration:120, transferSize:24KB }
+    ├─ {name:'lib.js',   duration:380, transferSize:120KB}
+    ├─ {name:'/api/x',   duration:48,  transferSize:1KB }
+    └─ {name:'ads.js',   duration:5400, transferSize:0 } ← 怪しい
+
+  initiatorType ごとに集計:
+   img / script / link / fetch / xmlhttprequest / iframe ...
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈</b>: OutSystems Forge から入れた拡張Block・サードパーティ Widget の重さを定量化したいとき、Resource Timing で <code>initiatorType: 'script'</code> のうち <code>name</code> が forge ドメインのものを抽出すれば、Forge コンポーネント別の負荷ランキングが作れる。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: このページが読んだリソース一覧</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab10Run()">リソース一覧を表示 (上位8件)</button>
+          <button class="demo-btn secondary" onclick="lab10ByType()">タイプ別集計</button>
+          <button class="demo-btn secondary" onclick="lab10Clear()">クリア</button>
+        </div>
+        <div id="lab10-bars"></div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab10-before">「全体4秒」しか分からない</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab10-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab10-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — Resource Timing 取得+並べ替え</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>const lab10Run = () =&gt; {
+  clearLog('lab10-log');
+  const items = performance.getEntriesByType('resource')
+    .map(r =&gt; ({
+      name: r.name.split('/').pop().slice(0, 40) || r.name,
+      type: r.initiatorType,
+      ms: Math.round(r.duration),
+      size: Math.round((r.transferSize || 0) / 1024)
+    }))
+    .sort((a, b) =&gt; b.ms - a.ms)  // 遅い順
+    .slice(0, 8);
+
+  items.forEach(r =&gt; {
+    console.log(`[${r.type}] ${r.ms}ms / ${r.size}KB — ${r.name}`);
+  });
+  setBA('lab10', '全体4秒のみ', `Top ${items.length}件: 最遅=${items[0]?.ms}ms`);
+};</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 11: crypto.getRandomValues ========== -->
+<div class="lab" id="lab11">
+  <div class="lab-header">
+    <div class="lab-num">11</div>
+    <h3><code>crypto.getRandomValues()</code> — 暗号学的に安全な乱数</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why this fails</b>: <code>Math.random()</code> は擬似乱数生成器 (PRNG) で、シードが分かれば <b>未来の値が完全に予測できる</b>。さらに各ブラウザの内部状態は数百ビット程度で、十分なサンプルから状態復元が可能。セッショントークン・CSRF トークン・パスワードリセットURL の生成に使うと <b>セキュリティ穴</b>。<code>crypto.getRandomValues()</code> はOS/ハードウェアのエントロピープールから「予測不能な」乱数を取る。これが暗号用途の正解。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>CSRF トークン・nonce・session ID の生成</li>
+        <li>暗号鍵の生成 (Lab 13 で使用)</li>
+        <li>UUID v4 の生成 (`crypto.randomUUID()` の足回り)</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  Math.random():
+  ──────────────
+  PRNG (Mersenne Twister など)
+   ┌─────────┐
+   │ シード値  │ → 計算 → 0.0〜1.0 の数値
+   └─────────┘
+        ↑ シード+回数が同じなら結果も同じ
+        ↑ 過去の出力数値からシード復元可能
+
+   暗号用途 → ✗ NG (予測される)
+
+  crypto.getRandomValues(buf):
+  ──────────────────────────
+   ┌──────────────────┐
+   │ OS Entropy Pool   │ ← マウス動作・ディスク
+   │  (ハードウェア乱数 │   I/O・ネットワーク
+   │   + キャプチャ)   │   ジッター等
+   └──────────────────┘
+        ↓
+   buf を予測不能な値で埋める
+
+   暗号用途 → ✓ OK
+</pre>
+    <div class="info-box err">⚠ <b>絶対に Math.random() を使ってはいけない場面</b>: パスワード/トークン生成、暗号鍵、ID 生成 (UUID v4 含む)、A/B テストのユーザー振り分け (これは漏洩の問題ではないが「再現可能性」が必要なら別の決定論的シードが必要)、ゲームの抽選 (チート対策)。</div>
+    <div class="info-box info">📌 <b>OutSystems文脈</b>: OutSystems の <code>GenerateGuid</code> はサーバー側 (.NET の <code>Guid.NewGuid()</code>) なので暗号学的に安全だが、<b>クライアント側で前段でセッションIDなどを発行する</b> ケースでは Math.random() を絶対に使わず、必ず crypto.getRandomValues() か <code>crypto.randomUUID()</code> を使う。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 安全な乱数の生成</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab11Run()">32バイトのトークンを生成</button>
+          <button class="demo-btn secondary" onclick="lab11Uuid()">UUID v4 を生成</button>
+          <button class="demo-btn secondary" onclick="lab11Clear()">クリア</button>
+        </div>
+        <div class="hex-display" id="lab11-hex">
+          <span class="hex-label">// 生成結果 (hex)</span>
+          (未実行)
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before (Math.random)</div><div class="ba-content" id="lab11-before">PRNG / シード復元可能 / セキュリティ穴</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After (getRandomValues)</div><div class="ba-content" id="lab11-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab11-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 安全な乱数生成 + hex 変換</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>const lab11ToHex = (buf) =&gt;
+  Array.from(buf).map(b =&gt; b.toString(16).padStart(2, '0')).join('');
+
+const lab11Run = () =&gt; {
+  clearLog('lab11-log');
+  // ① TypedArray を用意して getRandomValues に渡す
+  const buf = new Uint8Array(32);
+  crypto.getRandomValues(buf);
+
+  // ② 16進文字列に
+  const hex = lab11ToHex(buf);
+  document.getElementById('lab11-hex').innerHTML =
+    '&lt;span class="hex-label"&gt;// CSRFトークン (32B = 256bit)&lt;/span&gt;' + hex;
+  console.log(`生成: ${buf.length}バイト = ${hex.length}桁hex`);
+  console.log(`先頭16桁: ${hex.slice(0,16)}...`);
+  setBA('lab11', 'Math.randomは予測可能', '256bit真乱数 (CSPRNG)');
+};
+
+const lab11Uuid = () =&gt; {
+  clearLog('lab11-log');
+  // crypto.randomUUID() は内部で getRandomValues を使う
+  const id = crypto.randomUUID();
+  document.getElementById('lab11-hex').innerHTML =
+    '&lt;span class="hex-label"&gt;// UUID v4&lt;/span&gt;' + id;
+  console.log(`UUID: ${id}`);
+};</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 12: subtle.digest (SHA-256) ========== -->
+<div class="lab" id="lab12">
+  <div class="lab-header">
+    <div class="lab-num">12</div>
+    <h3><code>crypto.subtle.digest</code> — SHA-256 ハッシュをブラウザネイティブで</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+      <span class="compat-badge compat-partial">⚠ HTTPS必須</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why exists</b>: SHA-256 ハッシュを純 JavaScript で実装すると、(1) 1MB のファイルで数秒かかる、(2) サイドチャネル攻撃に脆弱なコードになりがち、(3) 同じ実装を全員が書く非効率、と問題が多かった。<code>crypto.subtle.digest</code> はブラウザのネイティブ暗号ライブラリ (Mac は CommonCrypto / Win は CNG / Linux は OpenSSL系) を呼び、<b>数十倍速く・安全に</b> ハッシュ計算する。Promise ベースなので大きなファイルでも UI を止めない。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>ファイルアップロード前にクライアント側でハッシュを取り、サーバ送信後と整合性確認</li>
+        <li>パスワード以外の機密値の固定長指紋を作る (=ID 生成)</li>
+        <li>ETag 自前計算 (キャッシュ判定)</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  純JS実装:
+  ──────────
+  for (i = 0; i &lt; bytes.length; i++) {
+    // SHA-256 のラウンド計算 (64 ラウンド)
+    // ... 数百行 ...
+  }
+  → 1MB で 3〜5秒、UIブロック
+
+  crypto.subtle.digest:
+  ────────────────────
+  const hash = await crypto.subtle.digest(
+    'SHA-256', uint8Array);
+  → 1MB で 10〜30ms、非同期で UI を止めない
+  → ハードウェアアクセラレーション (AES-NI 等)
+
+  対応アルゴリズム:
+   SHA-1 (※非推奨)、SHA-256、SHA-384、SHA-512
+   (MD5 は非搭載 — 既知の脆弱性のため)
+</pre>
+    <div class="info-box warn">⚠ <b>HTTPS 必須</b>: <code>crypto.subtle</code> は Secure Context 限定。<code>http://</code> では undefined。localhost と <code>file://</code> のうち localhost は OK だが file:// は NG。</div>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: 大容量ファイル (動画・PDF) のチャンク化アップロードで、各チャンクの SHA-256 をブラウザで計算してサーバ側 (VB.NET 拡張) で照合 → <b>転送中の改ざん・破損を即検知</b>できる。OutSystems 標準 BinaryData 型は SHA を取る Server Action がないので、<code>System.Security.Cryptography.SHA256.Create()</code> を Integration Studio Extension で公開し、クライアント側 (subtle.digest) と組み合わせて E2E ハッシュ整合チェックの仕組みを作るのが鉄板。Wijmo FlexGrid に「アップロード済み行の改ざん検知列」を追加する用途にも使える。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: テキストの SHA-256 を計算</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <input type="text" id="lab12-input" value="OutSystems Lab 2026" placeholder="ハッシュしたい文字列">
+          <button class="demo-btn" onclick="lab12Run()">SHA-256 を計算</button>
+          <button class="demo-btn secondary" onclick="lab12Clear()">クリア</button>
+        </div>
+        <div class="hex-display" id="lab12-hex">
+          <span class="hex-label">// SHA-256 (256bit = 64桁hex)</span>
+          (未実行)
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before (純JS)</div><div class="ba-content" id="lab12-before">数百行・数秒・UIブロック</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After (subtle.digest)</div><div class="ba-content" id="lab12-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab12-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — テキスト → SHA-256 → hex</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>const lab12ToHex = (buf) =&gt;
+  Array.from(new Uint8Array(buf))
+    .map(b =&gt; b.toString(16).padStart(2, '0')).join('');
+
+const lab12Run = async () =&gt; {
+  clearLog('lab12-log');
+  const text = document.getElementById('lab12-input').value;
+
+  // ① TextEncoder で UTF-8 バイト列に
+  const bytes = new TextEncoder().encode(text);
+  console.log(`入力: ${text} → ${bytes.length}バイト`);
+
+  // ② subtle.digest は Promise を返す
+  const t0 = performance.now();
+  const hashBuf = await crypto.subtle.digest('SHA-256', bytes);
+  const elapsed = (performance.now() - t0).toFixed(2);
+
+  // ③ ArrayBuffer → hex
+  const hex = lab12ToHex(hashBuf);
+  document.getElementById('lab12-hex').innerHTML =
+    '&lt;span class="hex-label"&gt;// SHA-256 (' + elapsed + 'ms)&lt;/span&gt;' + hex;
+  console.log(`SHA-256: ${hex.slice(0, 16)}...${hex.slice(-16)}`);
+  console.log(`所要: ${elapsed}ms`);
+  setBA('lab12', '純JSなら数秒', `${elapsed}ms (ネイティブ)`);
+};</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 13: subtle.encrypt (AES-GCM) ========== -->
+<div class="lab" id="lab13">
+  <div class="lab-header">
+    <div class="lab-num">13</div>
+    <h3><code>subtle.encrypt</code> / <code>decrypt</code> — AES-GCM で機微データを暗号化</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+      <span class="compat-badge compat-partial">⚠ HTTPS必須</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why care</b>: クライアント側で「サーバに送る前に暗号化する」「IndexedDB に機微情報を保存する前に暗号化する」需要は地味に多い。AES-GCM は (1) 認証付き暗号 (改ざん検知込み)、(2) 共通鍵で対称、(3) IV (Initialization Vector) を毎回新しくすれば同じデータでも違う暗号文になる、という性質を持つ <b>業界標準</b>。E2E 暗号化を自前で組むなら最初に触る対称暗号がこれ。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>下書き機能で IndexedDB に保存する前に暗号化</li>
+        <li>サーバに送る前にクライアント側で暗号化(エンドツーエンド)</li>
+        <li>外部共有用のリンクに暗号化済みデータを埋め込む</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  AES-GCM 暗号化フロー:
+  ────────────────────
+  ① 鍵を生成 or インポート (256bit)
+       crypto.subtle.generateKey({name:'AES-GCM',length:256},...)
+
+  ② IV (96bit) を毎回ランダム生成
+       crypto.getRandomValues(new Uint8Array(12))
+
+  ③ 暗号化
+       subtle.encrypt({name:'AES-GCM', iv}, key, plaintext)
+                ↓
+       ┌────────────────────────────┐
+       │ ciphertext + 認証タグ(16B)   │
+       └────────────────────────────┘
+       (IV と一緒に保管 / 送信する)
+
+  ④ 復号
+       subtle.decrypt({name:'AES-GCM', iv}, key, ciphertext)
+       → 改ざんがあれば例外
+
+  注意: IV は毎回違う値にする (鍵+IVの組み合わせ重複は致命的)
+</pre>
+    <div class="info-box err">⚠ <b>絶対NGパターン</b>: (1) 同じ鍵+同じ IV を再利用 → 過去の暗号文と XOR して平文が漏れる。(2) 鍵を平文で localStorage に保存 → 暗号化の意味がない。鍵管理は別の話 (PBKDF2 でパスワードから派生、HSM、サーバ管理 等)。</div>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: 「下書き保存」「オフライン対応」で IndexedDB に機微情報を入れたいとき、(1) ユーザのパスワードから PBKDF2 で鍵を派生 → (2) 各レコードを subtle.encrypt → (3) 暗号文と IV のみ保存、という流れが組める。OutSystems 標準では IndexedDB を直接触る LocalStorage Plugin はあるが、暗号化はサポート外。subtle.encrypt を Client Action から呼ぶ Block を1個用意すれば、全アプリで使い回せる「暗号化 LocalStorage」基盤になる。VB.NET サーバ側 (System.Security.Cryptography.AesGcm) と鍵を共有すれば真の E2E 暗号化に。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: AES-GCM 暗号化 → 復号</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <input type="text" id="lab13-input" value="社外秘: Q3売上 1.2億" placeholder="暗号化したい文字列">
+          <button class="demo-btn" onclick="lab13Run()">暗号化 → 復号 を実行</button>
+          <button class="demo-btn secondary" onclick="lab13Tamper()">改ざん検知デモ</button>
+          <button class="demo-btn secondary" onclick="lab13Clear()">クリア</button>
+        </div>
+        <div class="hex-display" id="lab13-cipher">
+          <span class="hex-label">// 暗号文 (hex)</span>
+          (未実行)
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab13-before">平文をlocalStorageに直書き</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab13-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab13-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — AES-GCM 鍵生成 → 暗号化 → 復号</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>const lab13ToHex = (buf) =&gt;
+  Array.from(new Uint8Array(buf))
+    .map(b =&gt; b.toString(16).padStart(2, '0')).join('');
+
+const lab13Run = async () =&gt; {
+  clearLog('lab13-log');
+  const text = document.getElementById('lab13-input').value;
+  const enc = new TextEncoder();
+  const dec = new TextDecoder();
+
+  // ① 256bit AES-GCM 鍵を生成 (本番ではPBKDF2でパスワードから派生)
+  const key = await crypto.subtle.generateKey(
+    { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
+
+  // ② IV (96bit) を毎回ランダムに
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  console.log(`IV: ${lab13ToHex(iv)} (96bit)`);
+
+  // ③ 暗号化
+  const cipher = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv }, key, enc.encode(text));
+  const hex = lab13ToHex(cipher);
+  document.getElementById('lab13-cipher').innerHTML =
+    '&lt;span class="hex-label"&gt;// 暗号文 (' + cipher.byteLength + 'B)&lt;/span&gt;' + hex;
+  console.log(`平文 ${text.length}文字 → 暗号文 ${cipher.byteLength}B`);
+
+  // ④ 復号 (IVと鍵があれば元に戻る)
+  const plain = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv }, key, cipher);
+  const recovered = dec.decode(plain);
+  console.log(`復号: "${recovered}"`);
+  // 改ざん検知用に key と cipher を保管 (Tamperデモで使用)
+  window.__lab13 = { key, iv, cipher };
+  setBA('lab13', '平文をそのまま保存', `暗号化済 (改ざん検知付き)`);
+};</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 14: CSP (Content Security Policy) ========== -->
+<div class="lab" id="lab14">
+  <div class="lab-header">
+    <div class="lab-num">14</div>
+    <h3>Content Security Policy — XSS への深層防御</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+      <span class="compat-badge compat-partial">⚠ HTTP Header 設定</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why this design</b>: XSS の根本原因は「ブラウザがスクリプトをどこから読むかを問わず実行してしまう」こと。CSP は HTTP レスポンスヘッダで <b>「読んでよい場所のホワイトリスト」</b> を宣言し、それ以外のスクリプト・スタイル・画像読み込みを <b>ブラウザに拒否させる</b>。アプリがバグで XSS を仕込んでしまっても、外部ドメインからのスクリプト読み込みが止まれば被害は最小化される — 多層防御の典型。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>SaaS の本番環境で XSS の影響範囲を限定する</li>
+        <li>サードパーティ widget の読み込み元を厳格に管理</li>
+        <li>違反が起きたら report-uri で集約してアラート</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  CSP がない場合 (XSS 発生時):
+  ─────────────────────────────
+   攻撃者投稿: &lt;script src="evil.com/x.js"&gt;
+        ↓ そのままレンダリング
+   ブラウザ: evil.com から取得 → 実行 ✗
+
+  CSP あり:
+  ──────────
+   Response Header:
+     Content-Security-Policy:
+       default-src 'self';
+       script-src 'self' https://cdn.allowed.com;
+       style-src  'self' 'unsafe-inline';
+       img-src    'self' data: https:;
+       report-uri /csp-report
+
+   攻撃者投稿: &lt;script src="evil.com/x.js"&gt;
+        ↓ ブラウザがチェック
+   evil.com は script-src に無い → 読込ブロック
+   違反は /csp-report にPOSTで通知される
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈</b>: OutSystems Cloud では Service Studio から CSP ヘッダを設定可能(Network/Settings)。Forge コンポーネントが CDN を使う場合は、その CDN ドメインを script-src に追加する必要がある。実装後は report-only モードで一定期間運用 → 違反が出なければ enforce 化するのが安全。</div>
+    <div class="info-box warn">⚠ <b>このラボはコード例中心</b>: CSP は HTTP レスポンスヘッダで効くため、単一HTML内でリアル違反を再現するのは難しい。実例 HTML サンプルと違反時のブラウザコンソール表示を見ます。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: CSP ポリシーの解説</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab14Run()">推奨ポリシー例を表示</button>
+          <button class="demo-btn secondary" onclick="lab14Strict()">厳格 vs 緩い 比較</button>
+          <button class="demo-btn secondary" onclick="lab14Clear()">クリア</button>
+        </div>
+        <div class="http-sample" id="lab14-http">
+          <span class="http-cmt">// 「推奨ポリシー例を表示」を押してください</span>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before (CSP無し)</div><div class="ba-content" id="lab14-before">XSSで任意外部スクリプト実行可</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After (CSP有り)</div><div class="ba-content" id="lab14-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab14-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>HTTP — レスポンスヘッダ例</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre># Express(Node) の例
+res.setHeader('Content-Security-Policy', [
+  "default-src 'self'",
+  "script-src 'self' https://cdn.example.com",
+  "style-src  'self' 'unsafe-inline'",
+  "img-src    'self' data: https:",
+  "connect-src 'self' https://api.example.com",
+  "frame-ancestors 'none'",            # clickjacking 防止
+  "report-uri /csp-violation-report",
+].join('; '));
+
+# 段階導入: report-only モードで集計のみ
+res.setHeader('Content-Security-Policy-Report-Only', '...');</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 15: Subresource Integrity (SRI) ========== -->
+<div class="lab" id="lab15">
+  <div class="lab-header">
+    <div class="lab-num">15</div>
+    <h3>Subresource Integrity (SRI) — CDN 改ざん検知</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why care</b>: <code>&lt;script src="https://cdn.example.com/lib.js"&gt;</code> と書いた瞬間、CDN 側に侵入した攻撃者は <b>あなたのサイト全員に任意のJSを実行</b> させられる。SRI は <code>integrity="sha384-XXX..."</code> 属性で「この内容のスクリプトしか実行しない」と <b>事前にハッシュをハードコード</b> する仕組み。CDN が改ざんされてもブラウザが実行を拒否する。<code>crossorigin="anonymous"</code> とセットで使うのが標準。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>jQuery, Vue 等の CDN 配信ライブラリを使うとき</li>
+        <li>サードパーティ JS の固定バージョン参照</li>
+        <li>サプライチェーン攻撃への防御線</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  SRI のチェックフロー:
+  ────────────────────
+  &lt;script src="https://cdn.example.com/lib.js"
+          integrity="sha384-OLBgp1G..."
+          crossorigin="anonymous"&gt;&lt;/script&gt;
+
+   1. ブラウザ: lib.js を取得
+   2. ブラウザ: 取得した内容の SHA-384 を計算
+   3. integrity 属性の値と比較
+        一致      → 実行 OK
+        不一致    → 実行拒否 + console エラー
+                    (CDN 改ざんを検知)
+
+  ハッシュ取得:
+   $ openssl dgst -sha384 -binary lib.js | openssl base64 -A
+   $ # または cdn の配信ページに通常記載されている
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈</b>: Forge コンポーネントが内部で外部CDN参照している場合、SRI 属性が付いていないと <b>サプライチェーン攻撃の入り口</b> になる。導入時の Forge コードレビューで「<code>integrity</code> 属性が付いているか?」を確認するのが望ましい。Service Studio で生成される `&lt;Resources&gt;` ブロック内の外部参照も SRI 対応すると堅い。</div>
+    <div class="info-box warn">⚠ <b>注意点</b>: integrity は <b>固定バージョン</b> 前提。CDN URL に <code>?v=latest</code> のような可変パラメータを使うと、CDN がバージョン更新するたびに integrity を更新しないと壊れる。「version pinning + SRI」のセットで運用する。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: SRI 値の生成と script タグ組立</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <input type="text" id="lab15-input" value="console.log('hello sri');" placeholder="JS の中身">
+          <button class="demo-btn" onclick="lab15Run()">SRI 値 (sha384) を生成</button>
+          <button class="demo-btn secondary" onclick="lab15Clear()">クリア</button>
+        </div>
+        <div class="http-sample" id="lab15-tag">
+          <span class="http-cmt">// 「SRI 値を生成」を押すと完成版 script タグが出ます</span>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before (SRI無し)</div><div class="ba-content" id="lab15-before">CDN改ざん時に任意コード実行</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After (SRI有り)</div><div class="ba-content" id="lab15-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab15-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — SRI ハッシュ (sha384) を計算</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>const lab15ToB64 = (buf) =&gt; {
+  let bin = '';
+  new Uint8Array(buf).forEach(b =&gt; bin += String.fromCharCode(b));
+  return btoa(bin);
+};
+
+const lab15Run = async () =&gt; {
+  clearLog('lab15-log');
+  const code = document.getElementById('lab15-input').value;
+  const bytes = new TextEncoder().encode(code);
+
+  // SRI 仕様: sha256 / sha384 / sha512 が許可
+  const hashBuf = await crypto.subtle.digest('SHA-384', bytes);
+  const b64 = lab15ToB64(hashBuf);
+  const integrity = `sha384-${b64}`;
+  console.log(`integrity = "${integrity}"`);
+
+  const tagHTML =
+    '&lt;script src="https://cdn.example.com/lib.js"\n' +
+    `        integrity="${integrity}"\n` +
+    '        crossorigin="anonymous"&gt;&lt;/script&gt;';
+
+  document.getElementById('lab15-tag').textContent = tagHTML;
+  setBA('lab15', 'CDN改ざんで任意JS実行', `${integrity.slice(0,30)}... で固定`);
+};</pre>
+    </div>
+  </div>
+</div>
+
+</div><!-- /.container -->
+
+<!-- 📑 フローティング「目次に戻る」ボタン -->
+<button id="back-to-toc" aria-label="目次に戻る">
+  <span class="arrow">▲</span>
+  <span class="label">目次</span>
+</button>
+
+<script>
+// ============= 共通ユーティリティ =============
+function copyCode(btn) {
+  const block = btn.closest('.code-block');
+  const pre = block.querySelector('pre');
+  if (!pre) return;
+  const text = pre.innerText;
+
+  const showSuccess = () => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  };
+  const showError = (msg) => {
+    btn.textContent = 'NG: ' + msg;
+    btn.style.borderColor = '#cb2431';
+    btn.style.color = '#cb2431';
+    setTimeout(() => {
+      btn.textContent = 'Copy';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+    }, 2500);
+  };
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text)
+      .then(showSuccess)
+      .catch(() => fallbackCopy(text, showSuccess, showError));
+  } else {
+    fallbackCopy(text, showSuccess, showError);
+  }
+}
+
+function fallbackCopy(text, onOk, onErr) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.top = '0';
+  ta.style.left = '0';
+  ta.style.opacity = '0';
+  ta.setAttribute('readonly', '');
+  document.body.appendChild(ta);
+  ta.select();
+  ta.setSelectionRange(0, text.length);
+  try {
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    if (ok) onOk();
+    else onErr('コピー不可');
+  } catch (e) {
+    document.body.removeChild(ta);
+    onErr(e.message.slice(0, 12));
+  }
+}
+function logTo(id, text, cls='') {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const line = document.createElement('div');
+  line.className = 'log-line ' + cls;
+  line.textContent = '> ' + text;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+function clearLog(id) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = '';
+}
+function setBA(labId, before, after) {
+  document.getElementById(labId+'-before').textContent = before;
+  document.getElementById(labId+'-after').textContent = after;
+}
+
+// ============= console.log を log-area へ転送 =============
+// 各ラボのconsole.logを画面に表示するため、ラボ内で console.log を呼ぶたびに
+// そのラボの log-area へ書き込む薄いプロキシをかける
+(function() {
+  const origLog = console.log.bind(console);
+  console.log = function(...args) {
+    origLog(...args);
+    // 直近にクリックされたボタンが属するラボのlog-areaに書き込む
+    const lab = window.__currentLab;
+    if (lab) {
+      const el = document.getElementById(lab + '-log');
+      if (el) {
+        const line = document.createElement('div');
+        line.className = 'log-line';
+        line.textContent = '> ' + args.map(a =>
+          typeof a === 'object' ? JSON.stringify(a) : String(a)
+        ).join(' ');
+        el.appendChild(line);
+        el.scrollTop = el.scrollHeight;
+      }
+    }
+  };
+
+  // ボタンクリック時に「現在のラボ」を識別 (data-target も除外)
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    if (btn.classList.contains('nav-item') || btn.classList.contains('toc-item')) return;
+    const lab = btn.closest('.lab');
+    if (lab) window.__currentLab = lab.id;
+  }, true);
+})();
+// ============================================================
+// Part 5a: Lab 01-07 のロジック (UI/Animation + Performance前半)
+// すべての onclick から呼ばれる関数を function 形式で定義
+// ヘルパは const + arrow で書く (v5/v6 知見)
+// ============================================================
+
+// ---------- Lab 01: Web Animations ----------
+function lab1Run() {
+  clearLog('lab1-log');
+  const el = document.getElementById('lab1-target');
+  const keyframes = [
+    { background: 'linear-gradient(135deg,#22863a,#79c0ff)', transform: 'scale(1.15)' },
+    { background: 'linear-gradient(135deg,#005cc5,#6f42c1)', transform: 'scale(1.0)' }
+  ];
+  const opts = { duration: 1000, easing: 'ease-out', fill: 'forwards' };
+  const anim = el.animate(keyframes, opts);
+  window.__lab1Anim = anim;
+  console.log('animate() 開始 / playState: ' + anim.playState);
+
+  anim.finished.then(() => {
+    console.log('finished / playState: ' + anim.playState);
+    setBA('lab1', 'classList.add/remove で2回触る', 'animate() + finished で1回完結');
+  }).catch(() => console.log('cancelled'));
+}
+function lab1Cancel() {
+  if (window.__lab1Anim) {
+    window.__lab1Anim.cancel();
+    console.log('cancel() 呼出 / playState: ' + window.__lab1Anim.playState);
+    setBA('lab1', 'animationcancelイベント自前で', 'anim.cancel() で即停止');
+  } else {
+    console.log('まだアニメ未実行');
+  }
+}
+function lab1Clear() {
+  clearLog('lab1-log');
+  const el = document.getElementById('lab1-target');
+  el.style.cssText = '';
+  setBA('lab1', "classList.add('flash') → animationend 待ち → classList.remove", '(未実行)');
+}
+
+// ---------- Lab 02: View Transitions ----------
+const lab2Toggle = () => {
+  const stage = document.getElementById('lab2-stage');
+  const isA = stage.dataset.view !== 'B';
+  if (isA) {
+    stage.innerHTML = '<div style="font-family:var(--mono);font-size:.9rem;color:var(--accent2);padding:8px;">画面B: 商品詳細<br><span style="font-size:.75rem;color:var(--text-dim);">価格: ¥1,200 / 在庫: 4個</span></div>';
+    stage.dataset.view = 'B';
+  } else {
+    stage.innerHTML = '<div style="font-family:var(--mono);font-size:.85rem;color:var(--text-dim);">画面A: 商品一覧</div>';
+    stage.dataset.view = 'A';
+  }
+};
+function lab2Run() {
+  clearLog('lab2-log');
+  if (!document.startViewTransition) {
+    console.log('未対応ブラウザ → 単純な書き換えにフォールバック');
+    lab2Toggle();
+    setBA('lab2', '何もしない瞬間切替', 'API未対応 (iOS17以前など)');
+    return;
+  }
+  console.log('startViewTransition() 開始');
+  const t = document.startViewTransition(lab2Toggle);
+  t.finished.then(() => {
+    console.log('遷移完了');
+    setBA('lab2', '何もしない瞬間切替', 'クロスフェードで自動補間');
+  });
+}
+function lab2RunBare() {
+  clearLog('lab2-log');
+  console.log('Transitionなしで切替 (パッと変わる)');
+  lab2Toggle();
+  setBA('lab2', '何もしない瞬間切替', 'Transition抜きで切替');
+}
+function lab2Clear() {
+  clearLog('lab2-log');
+  const stage = document.getElementById('lab2-stage');
+  stage.innerHTML = '<div style="font-family:var(--mono);font-size:.85rem;color:var(--text-dim);">画面A: 商品一覧</div>';
+  stage.dataset.view = 'A';
+  setBA('lab2', '(未実行)', '(未実行)');
+}
+
+// ---------- Lab 03: requestAnimationFrame ----------
+const lab3Tick = (state) => {
+  const ball = document.getElementById('lab3-ball');
+  const fps = document.getElementById('lab3-fps');
+  return function step(t) {
+    state.x += state.dir * 2;
+    if (state.x > 200 || state.x < 0) state.dir *= -1;
+    ball.style.transform = 'translateX(' + state.x + 'px)';
+    state.frames++;
+    if (t - state.lastT >= 1000) {
+      fps.textContent = 'FPS: ' + state.frames;
+      console.log('1秒間: ' + state.frames + ' フレーム');
+      state.frames = 0;
+      state.lastT = t;
+    }
+    state.id = requestAnimationFrame(step);
+  };
+};
+function lab3Run() {
+  clearLog('lab3-log');
+  if (window.__lab3State && window.__lab3State.id) {
+    cancelAnimationFrame(window.__lab3State.id);
+  }
+  const state = { frames: 0, lastT: performance.now(), x: 0, dir: 1, id: 0 };
+  const step = lab3Tick(state);
+  state.id = requestAnimationFrame(step);
+  window.__lab3State = state;
+  console.log('rAFループ開始 (60FPS狙い)');
+  setBA('lab3', 'setIntervalで描画とズレる', 'rAFで描画と完全同期 / 60FPS');
+}
+function lab3Stop() {
+  if (window.__lab3State && window.__lab3State.id) {
+    cancelAnimationFrame(window.__lab3State.id);
+    window.__lab3State.id = 0;
+    console.log('停止 (cancelAnimationFrame)');
+  } else {
+    console.log('未開始');
+  }
+}
+function lab3Clear() {
+  clearLog('lab3-log');
+  lab3Stop();
+  const ball = document.getElementById('lab3-ball');
+  ball.style.transform = '';
+  document.getElementById('lab3-fps').textContent = 'FPS: ---';
+  setBA('lab3', 'タブ非表示でも回り続ける / 描画とズレる', '(未実行)');
+}
+
+// ---------- Lab 04: matchMedia ----------
+const lab4Queries = [
+  '(prefers-color-scheme: dark)',
+  '(prefers-reduced-motion: reduce)',
+  '(prefers-contrast: more)',
+  '(max-width: 768px)',
+  '(orientation: portrait)'
+];
+const lab4RenderChips = () => {
+  const chips = document.getElementById('lab4-chips');
+  chips.innerHTML = '';
+  lab4Queries.forEach(q => {
+    const mql = window.matchMedia(q);
+    const chip = document.createElement('span');
+    chip.className = 'mq-chip' + (mql.matches ? ' active' : '');
+    chip.textContent = q + ' = ' + mql.matches;
+    chips.appendChild(chip);
+  });
+};
+function lab4Run() {
+  clearLog('lab4-log');
+  lab4Queries.forEach(q => {
+    const mql = window.matchMedia(q);
+    console.log(q + ' → ' + mql.matches);
+  });
+  lab4RenderChips();
+  setBA('lab4', 'CSSの@mediaのみで対応', lab4Queries.length + 'クエリの状態をJSで取得');
+}
+const lab4OnChange = (e) => {
+  console.log('変化: ' + e.media + ' → ' + e.matches);
+  lab4RenderChips();
+};
+function lab4Listen() {
+  const mql = window.matchMedia('(max-width: 768px)');
+  if (window.__lab4Listening) {
+    mql.removeEventListener('change', lab4OnChange);
+    window.__lab4Listening = false;
+    console.log('リスナー解除 (再度押すと登録)');
+  } else {
+    mql.addEventListener('change', lab4OnChange);
+    window.__lab4Listening = true;
+    console.log('リスナー登録: 画面幅をリサイズしてみてください (768pxまたぎ)');
+  }
+}
+function lab4Clear() {
+  clearLog('lab4-log');
+  document.getElementById('lab4-chips').innerHTML = '<span class="mq-chip">未チェック</span>';
+  setBA('lab4', 'JSロジックは画面サイズに無関心', '(未実行)');
+}
+
+// ---------- Lab 05: Popover / Dialog ----------
+function lab5OpenDialog() {
+  clearLog('lab5-log');
+  const d = document.getElementById('lab5-dialog');
+  if (typeof d.showModal === 'function') {
+    d.showModal();
+    console.log('dialog opened (top layer)');
+  } else {
+    console.log('dialog 未対応 / 代替UIにフォールバックすべき');
+  }
+}
+function lab5CloseDialog(result) {
+  const d = document.getElementById('lab5-dialog');
+  d.close(result);
+  console.log('dialog closed with: ' + result);
+  setBA('lab5', '自前overlay/z-index/フォーカストラップ', '<dialog>+showModal() / 結果=' + result);
+}
+function lab5Clear() {
+  clearLog('lab5-log');
+  setBA('lab5', 'overlay div + z-index + フォーカストラップ自前', '(未実行)');
+}
+
+// ---------- Lab 06: performance.now() ----------
+function lab6Run() {
+  clearLog('lab6-log');
+  const arr = Array.from({ length: 100000 }, () => Math.random());
+  const t0 = performance.now();
+  arr.sort();
+  const t1 = performance.now();
+  const elapsed = (t1 - t0).toFixed(3);
+  console.log('ソート所要: ' + elapsed + 'ms (高精度)');
+  console.log('timeOrigin: ' + performance.timeOrigin.toFixed(0) + 'ms (= ページロード基準時刻)');
+  console.log('now基点からの経過: ' + t1.toFixed(2) + 'ms');
+  setBA('lab6', 'Date.nowでms整数のみ', elapsed + 'ms (μs精度・単調増加)');
+}
+function lab6Compare() {
+  clearLog('lab6-log');
+  const d0 = Date.now(), p0 = performance.now();
+  let acc = 0;
+  for (let i = 0; i < 10000; i++) acc += Math.sqrt(i);
+  const d1 = Date.now(), p1 = performance.now();
+  console.log('Date.now差分:        ' + (d1 - d0) + 'ms (整数)');
+  console.log('performance.now差分: ' + (p1 - p0).toFixed(4) + 'ms (小数)');
+  console.log('(Date.nowは0msと出ることがあります → ms未満を計れない証拠)');
+  setBA('lab6', 'Date.now: ' + (d1 - d0) + 'ms', 'performance.now: ' + (p1 - p0).toFixed(3) + 'ms');
+}
+function lab6Clear() {
+  clearLog('lab6-log');
+  setBA('lab6', 'ms整数 / システム時計依存', '(未実行)');
+}
+
+// ---------- Lab 07: performance.mark / measure ----------
+const lab7Sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const lab7RenderBars = (measures) => {
+  const total = measures.reduce((s, m) => s + m.duration, 0);
+  const wrap = document.getElementById('lab7-bars');
+  wrap.innerHTML = '<div class="perf-bar-wrap">// 各フェーズの所要時間 (合計' + total.toFixed(0) + 'ms)</div>';
+  const colors = { fetch: '', transform: 'fast', render: 'slow' };
+  measures.forEach(m => {
+    const pct = Math.max(8, (m.duration / total) * 100);
+    const bar = document.createElement('div');
+    bar.className = 'perf-bar ' + (colors[m.name] || '');
+    bar.style.width = pct + '%';
+    bar.textContent = m.name + ': ' + m.duration.toFixed(1) + 'ms';
+    wrap.appendChild(bar);
+  });
+};
+async function lab7Run() {
+  clearLog('lab7-log');
+  performance.clearMarks();
+  performance.clearMeasures();
+
+  performance.mark('start');
+  await lab7Sleep(150);
+  performance.mark('fetched');
+  await lab7Sleep(80);
+  performance.mark('transformed');
+  await lab7Sleep(40);
+  performance.mark('rendered');
+
+  performance.measure('fetch',     'start',       'fetched');
+  performance.measure('transform', 'fetched',     'transformed');
+  performance.measure('render',    'transformed', 'rendered');
+
+  const measures = performance.getEntriesByType('measure');
+  measures.forEach(m => console.log(m.name + ': ' + m.duration.toFixed(1) + 'ms'));
+  lab7RenderBars(measures);
+  setBA('lab7', '雑にconsole.time', measures.length + 'フェーズを構造化計測 / DevToolsでも線として見える');
+}
+function lab7Clear() {
+  clearLog('lab7-log');
+  performance.clearMarks();
+  performance.clearMeasures();
+  document.getElementById('lab7-bars').innerHTML = '';
+  setBA('lab7', 'DevTools console に文字列のみ', '(未実行)');
+}
+// ============================================================
+// Part 5b: Lab 08-15 のロジック (Performance後半 + Security/Crypto)
+// ============================================================
+
+// ---------- Lab 08: PerformanceObserver ----------
+const lab8OnEntries = (list) => {
+  list.getEntries().forEach(e => {
+    console.log('[push] ' + e.entryType + ' "' + e.name + '": ' + e.duration.toFixed(1) + 'ms');
+  });
+};
+function lab8Run() {
+  clearLog('lab8-log');
+  // 既存のものを片付け
+  if (window.__lab8Observer) {
+    try { window.__lab8Observer.disconnect(); } catch (e) { /* noop */ }
+  }
+  performance.clearMarks();
+  performance.clearMeasures();
+
+  const po = new PerformanceObserver(lab8OnEntries);
+  po.observe({ type: 'measure', buffered: true });
+  window.__lab8Observer = po;
+  console.log('Observer 登録: 以降の measure を全部拾います');
+
+  performance.mark('s1');
+  performance.mark('e1');
+  performance.measure('demoMeasureA', 's1', 'e1');
+
+  performance.mark('s2');
+  setTimeout(() => {
+    performance.mark('e2');
+    performance.measure('demoMeasureB', 's2', 'e2');
+    console.log('100ms後にmeasureBを発火 → push通知が来たか確認');
+  }, 100);
+
+  setBA('lab8', 'getEntries()で取りこぼす', 'Observerで押し出し受信 / RUM基盤');
+}
+function lab8Stop() {
+  if (window.__lab8Observer) {
+    window.__lab8Observer.disconnect();
+    window.__lab8Observer = null;
+    console.log('disconnect: 以降の measure はpushされなくなります');
+  } else {
+    console.log('未登録');
+  }
+}
+function lab8Clear() {
+  clearLog('lab8-log');
+  lab8Stop();
+  performance.clearMarks();
+  performance.clearMeasures();
+  setBA('lab8', 'getEntries() で取りこぼし発生', '(未実行)');
+}
+
+// ---------- Lab 09: Navigation Timing ----------
+const lab9RenderTable = (phases, total) => {
+  const wrap = document.getElementById('lab9-table');
+  let html = '<table class="timing-table"><thead><tr><th>フェーズ</th><th style="text-align:right;">時間 (ms)</th><th style="text-align:right;">割合</th></tr></thead><tbody>';
+  Object.entries(phases).forEach(([k, v]) => {
+    const pct = total > 0 ? ((v / total) * 100).toFixed(1) : '0.0';
+    html += '<tr><td>' + k + '</td><td class="num">' + v.toFixed(1) + '</td><td class="num">' + pct + '%</td></tr>';
+  });
+  html += '<tr style="background:var(--surface2);"><td><b>合計</b></td><td class="num"><b>' + total.toFixed(1) + '</b></td><td class="num">—</td></tr>';
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+};
+function lab9Run() {
+  clearLog('lab9-log');
+  const navs = performance.getEntriesByType('navigation');
+  if (!navs || navs.length === 0) {
+    console.log('navigation entry が取れません (古いブラウザの可能性)');
+    return;
+  }
+  const nav = navs[0];
+  const phases = {
+    'DNS解決':      Math.max(0, nav.domainLookupEnd - nav.domainLookupStart),
+    'TCP/TLS接続':  Math.max(0, nav.connectEnd - nav.connectStart),
+    'TTFB':         Math.max(0, nav.responseStart - nav.requestStart),
+    'ダウンロード': Math.max(0, nav.responseEnd - nav.responseStart),
+    'DOMパース':    Math.max(0, nav.domInteractive - nav.responseEnd),
+    'DCLまで':      Math.max(0, nav.domContentLoadedEventEnd - nav.domInteractive),
+    'load まで':    Math.max(0, nav.loadEventEnd - nav.domContentLoadedEventEnd)
+  };
+  Object.entries(phases).forEach(([k, v]) => {
+    console.log(k + ': ' + v.toFixed(1) + 'ms');
+  });
+  lab9RenderTable(phases, nav.loadEventEnd || 0);
+  setBA('lab9', '「ページが遅い」抽象的', '7フェーズ分解 / 合計 ' + (nav.loadEventEnd || 0).toFixed(0) + 'ms');
+}
+function lab9Clear() {
+  clearLog('lab9-log');
+  document.getElementById('lab9-table').innerHTML = '';
+  setBA('lab9', '「ページが遅い」しか言えない', '(未実行)');
+}
+
+// ---------- Lab 10: Resource Timing ----------
+const lab10RenderBars = (items) => {
+  const max = items[0] ? items[0].ms : 1;
+  const wrap = document.getElementById('lab10-bars');
+  wrap.innerHTML = '<div class="perf-bar-wrap">// 遅い順 上位8件</div>';
+  items.forEach(r => {
+    const pct = Math.max(8, (r.ms / max) * 100);
+    const bar = document.createElement('div');
+    const cls = r.ms > 500 ? 'slow' : (r.ms < 50 ? 'fast' : '');
+    bar.className = 'perf-bar ' + cls;
+    bar.style.width = pct + '%';
+    bar.textContent = '[' + r.type + '] ' + r.ms + 'ms — ' + r.name;
+    wrap.appendChild(bar);
+  });
+};
+function lab10Run() {
+  clearLog('lab10-log');
+  const all = performance.getEntriesByType('resource');
+  const items = all.map(r => ({
+    name: (r.name.split('/').pop() || r.name).slice(0, 32),
+    type: r.initiatorType,
+    ms: Math.round(r.duration),
+    size: Math.round((r.transferSize || 0) / 1024)
+  })).sort((a, b) => b.ms - a.ms).slice(0, 8);
+
+  if (items.length === 0) {
+    console.log('Resource entry なし (このページは外部読込が少ない)');
+    return;
+  }
+  items.forEach(r => {
+    console.log('[' + r.type + '] ' + r.ms + 'ms / ' + r.size + 'KB — ' + r.name);
+  });
+  lab10RenderBars(items);
+  setBA('lab10', '全体4秒のみ', 'Top ' + items.length + '件 / 最遅=' + items[0].ms + 'ms');
+}
+function lab10ByType() {
+  clearLog('lab10-log');
+  const all = performance.getEntriesByType('resource');
+  const grp = {};
+  all.forEach(r => {
+    const t = r.initiatorType || 'other';
+    if (!grp[t]) grp[t] = { count: 0, ms: 0, size: 0 };
+    grp[t].count++;
+    grp[t].ms += r.duration;
+    grp[t].size += (r.transferSize || 0);
+  });
+  console.log('--- タイプ別集計 ---');
+  Object.entries(grp).sort((a, b) => b[1].ms - a[1].ms).forEach(([k, v]) => {
+    console.log(k + ': ' + v.count + '件 / 合計' + v.ms.toFixed(0) + 'ms / ' + Math.round(v.size / 1024) + 'KB');
+  });
+}
+function lab10Clear() {
+  clearLog('lab10-log');
+  document.getElementById('lab10-bars').innerHTML = '';
+  setBA('lab10', '「全体4秒」しか分からない', '(未実行)');
+}
+
+// ---------- Lab 11: getRandomValues ----------
+const lab11ToHex = (buf) =>
+  Array.from(buf).map(b => b.toString(16).padStart(2, '0')).join('');
+
+function lab11Run() {
+  clearLog('lab11-log');
+  const buf = new Uint8Array(32);
+  crypto.getRandomValues(buf);
+  const hex = lab11ToHex(buf);
+  document.getElementById('lab11-hex').innerHTML =
+    '<span class="hex-label">// CSRFトークン (32B = 256bit)</span>' + hex;
+  console.log('生成: ' + buf.length + 'バイト = ' + hex.length + '桁hex');
+  console.log('先頭16桁: ' + hex.slice(0, 16) + '...');
+  console.log('(押すたびに毎回違う値になることを確認)');
+  setBA('lab11', 'Math.randomは予測可能', '256bit真乱数 (CSPRNG)');
+}
+function lab11Uuid() {
+  clearLog('lab11-log');
+  if (typeof crypto.randomUUID !== 'function') {
+    console.log('crypto.randomUUID 未対応 (古いブラウザ)');
+    return;
+  }
+  const id = crypto.randomUUID();
+  document.getElementById('lab11-hex').innerHTML =
+    '<span class="hex-label">// UUID v4</span>' + id;
+  console.log('UUID: ' + id);
+  console.log('(内部で getRandomValues を使用 / 122bit分の真乱数)');
+  setBA('lab11', 'Math.randomベースのUUID生成', 'crypto.randomUUID() でV4');
+}
+function lab11Clear() {
+  clearLog('lab11-log');
+  document.getElementById('lab11-hex').innerHTML =
+    '<span class="hex-label">// 生成結果 (hex)</span>(未実行)';
+  setBA('lab11', 'PRNG / シード復元可能 / セキュリティ穴', '(未実行)');
+}
+
+// ---------- Lab 12: subtle.digest (SHA-256) ----------
+const lab12ToHex = (buf) =>
+  Array.from(new Uint8Array(buf))
+    .map(b => b.toString(16).padStart(2, '0')).join('');
+
+async function lab12Run() {
+  clearLog('lab12-log');
+  if (!crypto.subtle) {
+    console.log('crypto.subtle 未対応 (HTTPSじゃない可能性: ' + location.protocol + ')');
+    return;
+  }
+  const text = document.getElementById('lab12-input').value || '';
+  const bytes = new TextEncoder().encode(text);
+  console.log('入力: "' + text + '" → ' + bytes.length + 'バイト');
+
+  const t0 = performance.now();
+  const hashBuf = await crypto.subtle.digest('SHA-256', bytes);
+  const elapsed = (performance.now() - t0).toFixed(2);
+
+  const hex = lab12ToHex(hashBuf);
+  document.getElementById('lab12-hex').innerHTML =
+    '<span class="hex-label">// SHA-256 (' + elapsed + 'ms)</span>' + hex;
+  console.log('SHA-256: ' + hex.slice(0, 16) + '...' + hex.slice(-16));
+  console.log('所要: ' + elapsed + 'ms (純JSなら数秒)');
+  setBA('lab12', '数百行・数秒・UIブロック', elapsed + 'ms / ネイティブ');
+}
+function lab12Clear() {
+  clearLog('lab12-log');
+  document.getElementById('lab12-hex').innerHTML =
+    '<span class="hex-label">// SHA-256 (256bit = 64桁hex)</span>(未実行)';
+  setBA('lab12', '数百行・数秒・UIブロック', '(未実行)');
+}
+
+// ---------- Lab 13: subtle.encrypt (AES-GCM) ----------
+const lab13ToHex = (buf) =>
+  Array.from(new Uint8Array(buf))
+    .map(b => b.toString(16).padStart(2, '0')).join('');
+
+async function lab13Run() {
+  clearLog('lab13-log');
+  if (!crypto.subtle) {
+    console.log('crypto.subtle 未対応 (HTTPSじゃない可能性: ' + location.protocol + ')');
+    return;
+  }
+  const text = document.getElementById('lab13-input').value || '';
+  const enc = new TextEncoder();
+  const dec = new TextDecoder();
+
+  const key = await crypto.subtle.generateKey(
+    { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
+
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  console.log('IV: ' + lab13ToHex(iv) + ' (96bit / 毎回ランダム)');
+
+  const cipher = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv: iv }, key, enc.encode(text));
+  const hex = lab13ToHex(cipher);
+  document.getElementById('lab13-cipher').innerHTML =
+    '<span class="hex-label">// 暗号文 (' + cipher.byteLength + 'B / 末尾16Bが認証タグ)</span>' + hex;
+  console.log('平文 ' + text.length + '文字 → 暗号文 ' + cipher.byteLength + 'B');
+
+  const plain = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: iv }, key, cipher);
+  const recovered = dec.decode(plain);
+  console.log('復号: "' + recovered + '"');
+  console.log('OK: 平文と一致 (鍵+IVがあれば元に戻る)');
+
+  window.__lab13 = { key: key, iv: iv, cipher: cipher };
+  setBA('lab13', '平文をそのままlocalStorage', '暗号化済 / 改ざん検知タグ付き');
+}
+async function lab13Tamper() {
+  clearLog('lab13-log');
+  if (!window.__lab13) {
+    console.log('先に「暗号化 → 復号」を実行してください');
+    return;
+  }
+  const { key, iv, cipher } = window.__lab13;
+  // 暗号文を1バイト改ざん
+  const tampered = new Uint8Array(cipher).slice();
+  tampered[0] = tampered[0] ^ 0xff;
+  console.log('暗号文の1バイト目を改ざん (^0xff)');
+  try {
+    await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, tampered.buffer);
+    console.log('?? 復号成功 (本来あり得ない)');
+  } catch (e) {
+    console.log('OK: 復号に失敗 → 改ざん検知 (OperationError)');
+    console.log('AES-GCMの認証タグ照合により、1バイト変えただけで全体が破棄される');
+    setBA('lab13', '改ざんに気づかない', '改ざん即検知 / decrypt例外');
+  }
+}
+function lab13Clear() {
+  clearLog('lab13-log');
+  document.getElementById('lab13-cipher').innerHTML =
+    '<span class="hex-label">// 暗号文 (hex)</span>(未実行)';
+  setBA('lab13', '平文をlocalStorageに直書き', '(未実行)');
+}
+
+// ---------- Lab 14: CSP ----------
+const lab14PolicyRecommended =
+  "Content-Security-Policy:\n" +
+  "  default-src 'self';\n" +
+  "  script-src  'self' https://cdn.jsdelivr.net;\n" +
+  "  style-src   'self' 'unsafe-inline';\n" +
+  "  img-src     'self' data: https:;\n" +
+  "  connect-src 'self' https://api.example.com;\n" +
+  "  frame-ancestors 'none';\n" +
+  "  report-uri  /csp-violation-report;";
+
+const lab14PolicyStrict =
+  "// 厳格 (本番推奨)\n" +
+  "Content-Security-Policy:\n" +
+  "  default-src 'none';\n" +
+  "  script-src  'self' 'nonce-RANDOM_PER_REQUEST';\n" +
+  "  style-src   'self';\n" +
+  "  img-src     'self';\n" +
+  "  connect-src 'self';\n\n" +
+  "// 緩い (移行期/Report-Only推奨)\n" +
+  "Content-Security-Policy-Report-Only:\n" +
+  "  default-src 'self' 'unsafe-inline' 'unsafe-eval';\n" +
+  "  // 違反は記録するが実行は止めない";
+
+const lab14Render = (text) => {
+  const el = document.getElementById('lab14-http');
+  el.textContent = text;
+};
+function lab14Run() {
+  clearLog('lab14-log');
+  lab14Render(lab14PolicyRecommended);
+  console.log('推奨ポリシーを表示');
+  console.log('注目: script-src で external CDN を1個ずつ許可リスト化');
+  console.log('frame-ancestors none → クリックジャッキング防止');
+  console.log('report-uri → 違反集約用 (Sentry など)');
+  setBA('lab14', 'XSSで任意外部スクリプト実行可', 'ホワイトリストで読込元制限 / 違反は通報');
+}
+function lab14Strict() {
+  clearLog('lab14-log');
+  lab14Render(lab14PolicyStrict);
+  console.log('厳格 vs 緩い の対比');
+  console.log("nonce ベース: リクエストごとにランダム値、それを許可");
+  console.log('Report-Only: 違反通報のみで本番影響なし → 段階導入向き');
+}
+function lab14Clear() {
+  clearLog('lab14-log');
+  document.getElementById('lab14-http').innerHTML = '<span class="http-cmt">// 「推奨ポリシー例を表示」を押してください</span>';
+  setBA('lab14', 'XSSで任意外部スクリプト実行可', '(未実行)');
+}
+
+// ---------- Lab 15: SRI ----------
+const lab15ToB64 = (buf) => {
+  let bin = '';
+  new Uint8Array(buf).forEach(b => { bin += String.fromCharCode(b); });
+  return btoa(bin);
+};
+async function lab15Run() {
+  clearLog('lab15-log');
+  if (!crypto.subtle) {
+    console.log('crypto.subtle 未対応');
+    return;
+  }
+  const code = document.getElementById('lab15-input').value || '';
+  const bytes = new TextEncoder().encode(code);
+  console.log('入力JS: ' + bytes.length + 'バイト');
+
+  const hashBuf = await crypto.subtle.digest('SHA-384', bytes);
+  const b64 = lab15ToB64(hashBuf);
+  const integrity = 'sha384-' + b64;
+  console.log('SHA-384 (base64): ' + b64.slice(0, 20) + '...');
+  console.log('integrity = "' + integrity.slice(0, 30) + '..."');
+
+  const tagText =
+    '<script src="https://cdn.example.com/lib.js"\n' +
+    '        integrity="' + integrity + '"\n' +
+    '        crossorigin="anonymous"></scr' + 'ipt>';
+
+  document.getElementById('lab15-tag').textContent = tagText;
+  console.log('完成: 上記タグをHTMLに貼ればCDN改ざん検知が有効');
+  setBA('lab15', 'CDN改ざんで任意JS実行', integrity.slice(0, 24) + '... で固定');
+}
+function lab15Clear() {
+  clearLog('lab15-log');
+  document.getElementById('lab15-tag').innerHTML = '<span class="http-cmt">// 「SRI 値を生成」を押すと完成版 script タグが出ます</span>';
+  setBA('lab15', 'CDN改ざん時に任意コード実行', '(未実行)');
+}
+// ============= サイドバー: ボタンクリックでスクロール =============
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('[data-target]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.getAttribute('data-target');
+      const target = document.getElementById(targetId);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+
+  const navItems = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+  const targetMap = new Map();
+  navItems.forEach(btn => {
+    const id = btn.getAttribute('data-target');
+    const el = document.getElementById(id);
+    if (el) targetMap.set(el, btn);
+  });
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) {
+      const btn = targetMap.get(e.target);
+      if (btn) {
+        navItems.forEach(n => n.classList.remove('active'));
+        btn.classList.add('active');
+      }
+    }
+  }), { rootMargin: '-30% 0px -60% 0px' });
+  document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+  const backBtn = document.getElementById('back-to-toc');
+  const toc = document.getElementById('toc');
+  backBtn.addEventListener('click', () => {
+    if (toc) toc.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    else window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+  const toggleBackBtn = () => {
+    const threshold = window.innerHeight * 0.8;
+    if (window.scrollY > threshold) backBtn.classList.add('visible');
+    else backBtn.classList.remove('visible');
+  };
+  window.addEventListener('scroll', toggleBackBtn, { passive: true });
+  toggleBackBtn();
+});
+
+
+</script>
+
+</body>
+</html>

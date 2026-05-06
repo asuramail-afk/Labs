@@ -1,0 +1,2517 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JavaScript標準API Lab #2 — ECMAScript 応用</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  border-top:none; border-right:none; border-bottom:none;
+  background:transparent; width:100%; text-align:left; cursor:pointer;
+  font-family:inherit;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+#sidebar .file-nav { padding:8px 16px; margin:6px 0; background:var(--surface2);
+  border-top:1px solid var(--border); border-bottom:1px solid var(--border); }
+
+.hero { padding:50px 30px 30px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:1.9rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:.95rem; margin-top:8px; }
+.hero .file-tag { display:inline-block; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; background:var(--accent); color:#fff;
+  margin-top:10px; }
+
+.toc { max-width:1100px; margin:24px auto; padding:0 20px; }
+.toc h2 { font-size:1rem; color:var(--accent); margin-bottom:10px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:8px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:9px 12px;
+  background:var(--surface); border:1px solid var(--border); border-radius:7px;
+  text-decoration:none; color:var(--text); font-size:.84rem;
+  font-family:inherit; cursor:pointer; text-align:left; width:100%;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.78rem; min-width:24px; }
+
+.container { max-width:1100px; margin:0 auto; padding:0 20px 60px; }
+.lab { margin-top:32px; border:1px solid var(--border); border-radius:10px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:10px; padding:14px 18px;
+  background:var(--surface2); border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:28px; height:28px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.78rem; }
+.lab-header h3 { font-size:1.05rem; font-weight:600; flex:1; min-width:140px; }
+.compat-badges { display:flex; gap:5px; flex-wrap:wrap; }
+.compat-badge { font-family:var(--mono); font-size:.65rem; padding:2px 7px;
+  border-radius:10px; border:1px solid; }
+.compat-yes { color:var(--success); border-color:var(--success);
+  background:rgba(34,134,58,.08); }
+.compat-no { color:var(--error); border-color:var(--error);
+  background:rgba(203,36,49,.08); }
+.compat-partial { color:var(--accent4); border-color:var(--accent4);
+  background:rgba(176,136,0,.08); }
+.lab-body { padding:18px; }
+.lab-desc { font-size:.9rem; color:var(--text-dim); margin-bottom:14px; line-height:1.75; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.82rem; color:var(--accent); }
+
+.scenes { background:rgba(0,92,197,.04); border:1px solid rgba(0,92,197,.2);
+  border-left:3px solid var(--accent); border-radius:6px;
+  padding:10px 14px; margin:12px 0; font-size:.85rem; line-height:1.75; }
+.scenes-title { font-family:var(--mono); font-size:.7rem; color:var(--accent);
+  font-weight:700; margin-bottom:5px; letter-spacing:.05em; }
+.scenes ol { margin-left:20px; margin-top:3px; }
+.scenes ol li { margin-bottom:3px; color:var(--text); }
+
+.ascii-art { font-family:var(--mono); font-size:.74rem;
+  line-height:1.45; background:var(--code-bg); padding:10px 12px;
+  border:1px solid var(--border); border-radius:6px;
+  margin:10px 0; color:var(--text); overflow-x:auto; white-space:pre; }
+
+.demo { border:1px solid var(--border); border-radius:8px; margin:14px 0;
+  overflow:hidden; background:var(--bg); }
+.demo-bar { padding:8px 12px; background:var(--surface2);
+  border-bottom:1px solid var(--border); font-family:var(--mono); font-size:.7rem;
+  color:var(--text-dim); letter-spacing:.05em; }
+.demo-body { padding:14px; }
+.demo-input { display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+.demo-input input, .demo-input textarea, .demo-input select {
+  font-family:var(--mono); font-size:.85rem; padding:7px 10px;
+  border:1px solid var(--border); border-radius:5px; background:#fff;
+  color:var(--text); flex:1; min-width:120px; }
+.demo-input textarea { min-height:55px; resize:vertical; flex-basis:100%; }
+.demo-btn { font-family:var(--mono); font-size:.82rem; padding:8px 16px;
+  border-radius:6px; border:1px solid var(--accent); background:var(--accent);
+  color:#fff; cursor:pointer; transition:all .15s; }
+.demo-btn:hover { opacity:.85; }
+.demo-btn.secondary { background:var(--surface); color:var(--accent); }
+.demo-btn:disabled { opacity:.5; cursor:not-allowed; }
+
+.ba-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0; }
+.ba-col { border-radius:6px; padding:10px 12px; font-size:.82rem;
+  line-height:1.6; border:1px solid; min-height:60px; }
+.ba-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.ba-after { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.ba-label { font-family:var(--mono); font-size:.62rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:4px; font-weight:700; opacity:.85; }
+.ba-before .ba-label { color:var(--error); }
+.ba-after .ba-label { color:var(--success); }
+.ba-content { font-family:var(--mono); font-size:.78rem; word-break:break-all;
+  white-space:pre-wrap; min-height:30px; }
+
+.log-area { background:#0d1117; color:#c9d1d9; font-family:var(--mono);
+  font-size:.78rem; padding:10px 12px; border-radius:6px;
+  max-height:200px; overflow-y:auto; margin:8px 0;
+  border:1px solid var(--border); white-space:pre-wrap; word-break:break-all;
+  line-height:1.5; }
+.log-area:empty::before { content:'(実行待ち...ボタンを押してください)';
+  color:#6e7681; font-style:italic; }
+.log-line { padding:1px 0; }
+.log-line.info { color:#79c0ff; }
+.log-line.ok { color:#7ee787; }
+.log-line.err { color:#ff7b72; }
+.log-line.dim { color:#6e7681; }
+
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:7px; margin:10px 0; overflow:hidden; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:7px 12px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.7rem; color:var(--text-dim); letter-spacing:.04em; }
+.code-block pre { padding:10px 14px 12px; overflow-x:auto;
+  font-family:var(--mono); font-size:.78rem; line-height:1.55;
+  color:var(--text); white-space:pre; tab-size:2; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.68rem;
+  padding:3px 9px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+
+.info-box { border-radius:7px; padding:10px 13px; font-size:.85rem;
+  line-height:1.7; margin:12px 0; border-left:3px solid; }
+.info-box.ok { border-color:var(--success); background:rgba(34,134,58,.08); color:#154f1e; }
+.info-box.info { border-color:var(--accent); background:rgba(0,92,197,.08); color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08); color:#7a5c00; }
+.info-box.err { border-color:var(--error); background:rgba(203,36,49,.08); color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 5px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .ba-grid { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.5rem; }
+  .toc-grid { grid-template-columns:1fr; }
+  .lab-body { padding:14px; }
+  .demo-input input, .demo-input textarea { min-width:100%; }
+}
+
+#back-to-toc { position:fixed; bottom:20px; right:20px; z-index:100;
+  width:54px; height:54px; border-radius:50%; border:none;
+  background:var(--accent); color:#fff; cursor:pointer;
+  font-family:var(--mono); font-size:.7rem; font-weight:700;
+  box-shadow:0 4px 12px rgba(0,92,197,.35);
+  display:none; align-items:center; justify-content:center;
+  flex-direction:column; line-height:1.1;
+  transition:transform .15s,opacity .2s,background .15s; opacity:0; }
+#back-to-toc.visible { display:flex; opacity:1; }
+#back-to-toc:hover { background:#003d8f; transform:translateY(-2px); }
+#back-to-toc:active { transform:translateY(0); }
+#back-to-toc .arrow { font-size:1.1rem; line-height:1; margin-bottom:2px; }
+#back-to-toc .label { font-size:.6rem; letter-spacing:.05em; }
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// JS API Lab #2<br><span style="color:var(--text-dim);font-size:.7rem;">ECMAScript 応用</span></div>
+  <div class="file-nav">
+    <div style="font-size:.7rem;color:var(--text-dim);padding:2px 0;">📘 全8ファイル中の #2</div>
+    <div style="font-size:.68rem;color:var(--text-dim);padding:2px 0;line-height:1.4;">コレクション/構造化/制御/Proxy/Intl</div>
+  </div>
+  <div class="nav-section">コレクション</div>
+  <button class="nav-item" data-target="lab0"><span class="nav-num">00</span>Array</button>
+  <button class="nav-item" data-target="lab1"><span class="nav-num">01</span>Map</button>
+  <button class="nav-item" data-target="lab2"><span class="nav-num">02</span>Set</button>
+  <button class="nav-item" data-target="lab3"><span class="nav-num">03</span>WeakMap</button>
+  <div class="nav-section">構造化データ</div>
+  <button class="nav-item" data-target="lab4"><span class="nav-num">04</span>JSON</button>
+  <button class="nav-item" data-target="lab5"><span class="nav-num">05</span>TypedArray</button>
+  <div class="nav-section">制御抽象化</div>
+  <button class="nav-item" data-target="lab6"><span class="nav-num">06</span>Promise</button>
+  <button class="nav-item" data-target="lab7"><span class="nav-num">07</span>async/await</button>
+  <button class="nav-item" data-target="lab8"><span class="nav-num">08</span>Generator</button>
+  <button class="nav-item" data-target="lab9"><span class="nav-num">09</span>Iterator</button>
+  <div class="nav-section">リフレクション</div>
+  <button class="nav-item" data-target="lab10"><span class="nav-num">10</span>Proxy</button>
+  <button class="nav-item" data-target="lab11"><span class="nav-num">11</span>Reflect</button>
+  <div class="nav-section">国際化</div>
+  <button class="nav-item" data-target="lab12"><span class="nav-num">12</span>Intl</button>
+</nav>
+
+<div class="hero">
+  <h1>JavaScript標準API Lab</h1>
+  <p class="subtitle">ECMAScript 応用 — コレクション/構造化/制御/Proxy/Intl</p>
+  <span class="file-tag">📘 File #2 / 8</span>
+</div>
+
+<div class="toc" id="toc">
+  <h2>// 目次(13ラボ)</h2>
+  <div class="toc-grid">
+    <button class="toc-item" data-target="lab0"><span class="toc-num">00</span>Array</button>
+    <button class="toc-item" data-target="lab1"><span class="toc-num">01</span>Map</button>
+    <button class="toc-item" data-target="lab2"><span class="toc-num">02</span>Set</button>
+    <button class="toc-item" data-target="lab3"><span class="toc-num">03</span>WeakMap/WeakRef</button>
+    <button class="toc-item" data-target="lab4"><span class="toc-num">04</span>JSON</button>
+    <button class="toc-item" data-target="lab5"><span class="toc-num">05</span>TypedArray</button>
+    <button class="toc-item" data-target="lab6"><span class="toc-num">06</span>Promise</button>
+    <button class="toc-item" data-target="lab7"><span class="toc-num">07</span>async/await</button>
+    <button class="toc-item" data-target="lab8"><span class="toc-num">08</span>Generator</button>
+    <button class="toc-item" data-target="lab9"><span class="toc-num">09</span>Iterator</button>
+    <button class="toc-item" data-target="lab10"><span class="toc-num">10</span>Proxy</button>
+    <button class="toc-item" data-target="lab11"><span class="toc-num">11</span>Reflect</button>
+    <button class="toc-item" data-target="lab12"><span class="toc-num">12</span>Intl</button>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ========== Lab 00: Array ========== -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>Array — map/filter/reduce/flat</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      配列の主要メソッド。<code>map</code>(変換)、<code>filter</code>(絞込)、<code>reduce</code>(集約)、<code>flat</code>(平坦化)。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>APIレスポンスをUIモデルに変換するパイプライン処理</li>
+        <li>合計金額・平均値の集計(<code>reduce</code>)</li>
+        <li>ネスト配列の平坦化(<code>flat(Infinity)</code>)</li>
+      </ol>
+    </div>
+    <pre class="ascii-art">[1, 2, 3, 4, 5]
+   │  map(x => x*2)
+   ▼
+[2, 4, 6, 8, 10]
+   │  filter(x => x > 5)
+   ▼
+[6, 8, 10]
+   │  reduce((acc, x) => acc + x, 0)
+   ▼
+24
+
+flat: [[1,2],[3,[4,5]]] → [1,2,3,[4,5]]    (深さ1)
+       [[1,2],[3,[4,5]]] → [1,2,3,4,5]      (flat(2))
+       [[1,2],[3,[4,5]]] → [1,2,3,4,5]      (flat(Infinity))</pre>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: パイプライン処理</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab0Map()">map(2倍)</button>
+          <button class="demo-btn" onclick="lab0Filter()">filter(>5)</button>
+          <button class="demo-btn" onclick="lab0Reduce()">reduce(合計)</button>
+          <button class="demo-btn secondary" onclick="lab0Flat()">flat平坦化</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">Before: 元配列</div>
+            <div class="ba-content" id="lab0-before">(未実行)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">After: 結果</div>
+            <div class="ba-content" id="lab0-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab0-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「map(2倍)」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「map(2倍)」ボタンが実行する処理</span>
+<span class="kw">function</span> <span class="fn">lab0Map</span>() {
+  <span class="kw">const</span> arr = [<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>, <span class="num">4</span>, <span class="num">5</span>];
+  <span class="kw">const</span> doubled = arr.<span class="fn">map</span>(x =&gt; x * <span class="num">2</span>);
+  <span class="cm">// → [2, 4, 6, 8, 10]</span>
+
+  console.<span class="fn">log</span>(<span class="str">`元: [${arr}]`</span>);
+  console.<span class="fn">log</span>(<span class="str">`map → [${doubled}]`</span>);
+  console.<span class="fn">log</span>(<span class="str">`元配列は変わらない: [${arr}]`</span>);  <span class="cm">// 非破壊</span>
+  <span class="kw">return</span> doubled;
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「filter(&gt;5)」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「filter(&gt;5)」ボタンが実行する処理</span>
+<span class="kw">function</span> <span class="fn">lab0Filter</span>() {
+  <span class="kw">const</span> arr = [<span class="num">2</span>, <span class="num">4</span>, <span class="num">6</span>, <span class="num">8</span>, <span class="num">10</span>];
+  <span class="kw">const</span> big = arr.<span class="fn">filter</span>(x =&gt; x &gt; <span class="num">5</span>);
+  <span class="cm">// → [6, 8, 10]</span>
+
+  console.<span class="fn">log</span>(<span class="str">`元: [${arr}]`</span>);
+  console.<span class="fn">log</span>(<span class="str">`filter → [${big}]`</span>);
+  console.<span class="fn">log</span>(<span class="str">`元の長さ: ${arr.length} → 結果: ${big.length}`</span>);
+  <span class="kw">return</span> big;
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「reduce(合計)」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「reduce(合計)」ボタンが実行する処理</span>
+<span class="kw">function</span> <span class="fn">lab0Reduce</span>() {
+  <span class="kw">const</span> arr = [<span class="num">6</span>, <span class="num">8</span>, <span class="num">10</span>];
+
+  <span class="cm">// reduce((累積値, 現在値) =&gt; 次の累積値, 初期値)</span>
+  <span class="kw">const</span> sum = arr.<span class="fn">reduce</span>((acc, x) =&gt; acc + x, <span class="num">0</span>);
+  <span class="cm">// 0 + 6 = 6 → 6 + 8 = 14 → 14 + 10 = 24</span>
+
+  console.<span class="fn">log</span>(<span class="str">`元: [${arr}]`</span>);
+  console.<span class="fn">log</span>(<span class="str">`合計: ${sum}`</span>);  <span class="cm">// 24</span>
+  console.<span class="fn">log</span>(<span class="str">`平均: ${sum / arr.length}`</span>);  <span class="cm">// 8</span>
+  <span class="kw">return</span> sum;
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「flat平坦化」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「flat平坦化」ボタンが実行する処理</span>
+<span class="kw">function</span> <span class="fn">lab0Flat</span>() {
+  <span class="kw">const</span> nested = [[<span class="num">1</span>, <span class="num">2</span>], [<span class="num">3</span>, [<span class="num">4</span>, <span class="num">5</span>]], [<span class="num">6</span>]];
+
+  console.<span class="fn">log</span>(<span class="str">`元: ${JSON.stringify(nested)}`</span>);
+  console.<span class="fn">log</span>(<span class="str">`flat() → ${JSON.stringify(nested.flat())}`</span>);     <span class="cm">// 深さ1</span>
+  console.<span class="fn">log</span>(<span class="str">`flat(2) → ${JSON.stringify(nested.flat(2))}`</span>);    <span class="cm">// 深さ2</span>
+  console.<span class="fn">log</span>(<span class="str">`flat(Infinity) → ${JSON.stringify(nested.flat(Infinity))}`</span>);  <span class="cm">// 全て</span>
+  <span class="kw">return</span> nested.<span class="fn">flat</span>(<span class="kw">Infinity</span>);
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 01: Map ========== -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>Map — キー値ストア(Object超え)</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>Object</code>と違い、<strong>任意の型をキー</strong>にでき、<strong>挿入順保持</strong>、<strong>サイズ取得O(1)</strong>。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>オブジェクトをキーにしたキャッシュ(Objectでは不可)</li>
+        <li>挿入順を保持したい設定値・履歴管理</li>
+        <li>頻繁な追加削除があるデータ(Objectより速い)</li>
+      </ol>
+    </div>
+    <pre class="ascii-art">┌──────────┬─────────────────┬──────────────────┐
+│          │ Object          │ Map              │
+├──────────┼─────────────────┼──────────────────┤
+│ キー型    │ 文字列/Symbolのみ │ 任意の型(obj/関数も)│
+│ 順序      │ 部分的に保証     │ 完全に挿入順保持   │
+│ サイズ取得 │ Object.keys.length│ map.size         │
+│ 反復      │ for...in (遅い)  │ for...of (速い)   │
+│ 既定キー   │ prototype衝突あり │ なし(クリーン)    │
+└──────────┴─────────────────┴──────────────────┘</pre>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: Mapの基本操作</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab1Basic()">基本操作(set/get/has)</button>
+          <button class="demo-btn" onclick="lab1ObjKey()">オブジェクトをキーに</button>
+          <button class="demo-btn secondary" onclick="lab1Iter()">挿入順反復</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">Before: Object的な発想</div>
+            <div class="ba-content" id="lab1-before">(未実行)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">After: Mapで解決</div>
+            <div class="ba-content" id="lab1-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab1-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「基本操作(set/get/has)」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「基本操作」ボタンが実行する処理</span>
+<span class="kw">function</span> <span class="fn">lab1Basic</span>() {
+  <span class="kw">const</span> m = <span class="kw">new</span> <span class="fn">Map</span>();
+
+  m.<span class="fn">set</span>(<span class="str">'name'</span>, <span class="str">'Tom'</span>);
+  m.<span class="fn">set</span>(<span class="str">'age'</span>, <span class="num">42</span>);
+
+  console.<span class="fn">log</span>(<span class="str">`m.get('name'): ${m.get('name')}`</span>);    <span class="cm">// "Tom"</span>
+  console.<span class="fn">log</span>(<span class="str">`m.has('age'): ${m.has('age')}`</span>);      <span class="cm">// true</span>
+  console.<span class="fn">log</span>(<span class="str">`m.size: ${m.size}`</span>);                 <span class="cm">// 2 (即座にO(1))</span>
+
+  m.<span class="fn">delete</span>(<span class="str">'age'</span>);
+  console.<span class="fn">log</span>(<span class="str">`削除後 m.size: ${m.size}`</span>);            <span class="cm">// 1</span>
+  <span class="kw">return</span> m;
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「オブジェクトをキーに」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「オブジェクトをキーに」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab1ObjKey</span>() {
+  <span class="kw">const</span> user1 = { id: <span class="num">1</span> };
+  <span class="kw">const</span> user2 = { id: <span class="num">2</span> };
+
+  <span class="cm">// Objectだと: obj[user1] とすると "[object Object]"が文字列キーになる</span>
+  <span class="cm">// → user1, user2 が同じキーに上書きされてしまう</span>
+  <span class="kw">const</span> badObj = {};
+  badObj[user1] = <span class="str">'A'</span>;
+  badObj[user2] = <span class="str">'B'</span>;
+  console.<span class="fn">log</span>(<span class="str">`Object キー数: ${Object.keys(badObj).length}`</span>);  <span class="cm">// 1 ← 衝突</span>
+
+  <span class="cm">// Mapならオブジェクト参照そのものがキー</span>
+  <span class="kw">const</span> m = <span class="kw">new</span> <span class="fn">Map</span>();
+  m.<span class="fn">set</span>(user1, <span class="str">'A'</span>);
+  m.<span class="fn">set</span>(user2, <span class="str">'B'</span>);
+  console.<span class="fn">log</span>(<span class="str">`Map サイズ: ${m.size}`</span>);                       <span class="cm">// 2 ← 別物として保持</span>
+  console.<span class="fn">log</span>(<span class="str">`m.get(user1): ${m.get(user1)}`</span>);                <span class="cm">// "A"</span>
+  <span class="kw">return</span> m;
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「挿入順反復」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「挿入順反復」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab1Iter</span>() {
+  <span class="kw">const</span> m = <span class="kw">new</span> <span class="fn">Map</span>([
+    [<span class="str">'first'</span>, <span class="num">1</span>],
+    [<span class="str">'second'</span>, <span class="num">2</span>],
+    [<span class="str">'third'</span>, <span class="num">3</span>]
+  ]);
+
+  <span class="cm">// for...of で挿入順に反復(Objectは順序保証が弱い)</span>
+  <span class="kw">for</span> (<span class="kw">const</span> [key, value] <span class="kw">of</span> m) {
+    console.<span class="fn">log</span>(<span class="str">`${key} → ${value}`</span>);
+  }
+
+  <span class="cm">// 配列に変換</span>
+  <span class="kw">const</span> entries = [...m];  <span class="cm">// [['first',1],['second',2],['third',3]]</span>
+  console.<span class="fn">log</span>(<span class="str">`配列化: ${JSON.stringify(entries)}`</span>);
+  <span class="kw">return</span> entries;
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 02: Set ========== -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>Set — 一意値の集合</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      重複を許さない集合。<code>add</code>/<code>has</code>/<code>delete</code>がすべてO(1)。配列の重複排除に最適。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>配列の重複排除(<code>[...new Set(arr)]</code>)</li>
+        <li>既処理アイテムの追跡(再処理を防ぐ)</li>
+        <li>タグ管理(追加/削除/存在確認が頻繁)</li>
+      </ol>
+    </div>
+    <pre class="ascii-art">配列で重複チェック: includes() を毎回呼ぶ → O(n)
+                   1万件で重い処理になる
+
+Setを使えば: has() / add() がO(1)
+            1万件でも瞬時
+
+[1, 2, 2, 3, 3, 3, 4]
+     ↓ new Set()
+{1, 2, 3, 4}     ← 自動で重複排除
+     ↓ [...set]
+[1, 2, 3, 4]     ← 配列に戻す</pre>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: Setで重複排除</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab2Dedup()">配列の重複排除</button>
+          <button class="demo-btn" onclick="lab2Ops()">add/has/delete</button>
+          <button class="demo-btn secondary" onclick="lab2Perf()">速度比較(1万件)</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">Before</div>
+            <div class="ba-content" id="lab2-before">(未実行)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">After</div>
+            <div class="ba-content" id="lab2-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab2-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「配列の重複排除」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「配列の重複排除」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab2Dedup</span>() {
+  <span class="kw">const</span> arr = [<span class="num">1</span>, <span class="num">2</span>, <span class="num">2</span>, <span class="num">3</span>, <span class="num">3</span>, <span class="num">3</span>, <span class="num">4</span>, <span class="num">1</span>];
+
+  <span class="cm">// new Set() で集合化 → スプレッドで配列に戻す</span>
+  <span class="kw">const</span> unique = [...<span class="kw">new</span> <span class="fn">Set</span>(arr)];
+  <span class="cm">// → [1, 2, 3, 4]</span>
+
+  console.<span class="fn">log</span>(<span class="str">`元: [${arr}] (${arr.length}件)`</span>);
+  console.<span class="fn">log</span>(<span class="str">`重複排除: [${unique}] (${unique.length}件)`</span>);
+  <span class="kw">return</span> unique;
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「add/has/delete」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「add/has/delete」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab2Ops</span>() {
+  <span class="kw">const</span> tags = <span class="kw">new</span> <span class="fn">Set</span>();
+
+  tags.<span class="fn">add</span>(<span class="str">'JS'</span>);
+  tags.<span class="fn">add</span>(<span class="str">'CSS'</span>);
+  tags.<span class="fn">add</span>(<span class="str">'JS'</span>);  <span class="cm">// 重複は無視</span>
+
+  console.<span class="fn">log</span>(<span class="str">`size: ${tags.size}`</span>);              <span class="cm">// 2</span>
+  console.<span class="fn">log</span>(<span class="str">`has('JS'): ${tags.has('JS')}`</span>);    <span class="cm">// true</span>
+  console.<span class="fn">log</span>(<span class="str">`has('Java'): ${tags.has('Java')}`</span>);  <span class="cm">// false</span>
+
+  tags.<span class="fn">delete</span>(<span class="str">'CSS'</span>);
+  console.<span class="fn">log</span>(<span class="str">`削除後: [${[...tags]}]`</span>);
+  <span class="kw">return</span> tags;
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「速度比較(1万件)」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「速度比較」ボタン: 1万件のhas判定でArray vs Setを計測</span>
+<span class="kw">function</span> <span class="fn">lab2Perf</span>() {
+  <span class="kw">const</span> N = <span class="num">10000</span>;
+  <span class="kw">const</span> arr = Array.<span class="fn">from</span>({length:N}, (_,i) =&gt; i);
+  <span class="kw">const</span> set = <span class="kw">new</span> <span class="fn">Set</span>(arr);
+
+  <span class="cm">// Array.includes() を1万回</span>
+  <span class="kw">const</span> t1 = performance.<span class="fn">now</span>();
+  <span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i &lt; N; i++) arr.<span class="fn">includes</span>(i);
+  <span class="kw">const</span> arrTime = performance.<span class="fn">now</span>() - t1;
+
+  <span class="cm">// Set.has() を1万回</span>
+  <span class="kw">const</span> t2 = performance.<span class="fn">now</span>();
+  <span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i &lt; N; i++) set.<span class="fn">has</span>(i);
+  <span class="kw">const</span> setTime = performance.<span class="fn">now</span>() - t2;
+
+  console.<span class="fn">log</span>(<span class="str">`Array.includes: ${arrTime.toFixed(2)}ms`</span>);
+  console.<span class="fn">log</span>(<span class="str">`Set.has:        ${setTime.toFixed(2)}ms`</span>);
+  console.<span class="fn">log</span>(<span class="str">`Setが ${(arrTime/setTime).toFixed(0)}倍高速`</span>);
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 03: WeakMap/WeakRef ========== -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>WeakMap/WeakRef — 弱参照</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      キーへの<strong>弱参照</strong>。元オブジェクトが他から参照されなくなれば<strong>自動的にGCで消える</strong>。メモリリーク防止に有効。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>DOM要素に紐づくメタデータの保管(要素削除時に自動破棄)</li>
+        <li>大きなオブジェクトの一時キャッシュ(GCを妨げない)</li>
+        <li>プライベートフィールドの実装(オブジェクトに紐づける)</li>
+      </ol>
+    </div>
+    <div class="info-box info">
+      📐 <strong>「弱参照」とは?</strong><br>
+      普通の参照(<code>Map</code>等)はオブジェクトを「掴んだまま」=GCの対象外にする。<br>
+      弱参照(<code>WeakMap</code>等)は「軽く触れているだけ」=他に参照がなくなればGCで消える。<br>
+      これにより<strong>「メモリ解放を意識しなくていい」</strong>キャッシュが作れる。
+    </div>
+    <pre class="ascii-art">通常のMap:
+  Map: { obj => "data" }
+       └─ 強参照 ──→ obj
+  obj への外部参照を全て消しても、Mapが掴み続ける → メモリに残る
+
+WeakMap:
+  WeakMap: { obj 〜→ "data" }
+            └─ 弱参照 ─→ obj
+  obj への外部参照を消すと → GC対象 → WeakMapから自動消去</pre>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: WeakMapの基本</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab3Basic()">WeakMap基本</button>
+          <button class="demo-btn secondary" onclick="lab3Limit()">制約: 反復不可</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">Before</div>
+            <div class="ba-content" id="lab3-before">(未実行)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">After</div>
+            <div class="ba-content" id="lab3-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab3-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「WeakMap基本」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「WeakMap基本」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab3Basic</span>() {
+  <span class="kw">const</span> wm = <span class="kw">new</span> <span class="fn">WeakMap</span>();
+  <span class="kw">let</span> user = { name: <span class="str">'Tom'</span> };
+
+  <span class="cm">// オブジェクトをキーにメタデータを紐付け</span>
+  wm.<span class="fn">set</span>(user, { lastLogin: Date.<span class="fn">now</span>() });
+
+  console.<span class="fn">log</span>(<span class="str">`has: ${wm.has(user)}`</span>);                 <span class="cm">// true</span>
+  console.<span class="fn">log</span>(<span class="str">`get: ${JSON.stringify(wm.get(user))}`</span>);
+
+  <span class="cm">// userを破棄するとWeakMapからも自動消去される(GC待ち)</span>
+  user = <span class="kw">null</span>;
+  console.<span class="fn">log</span>(<span class="str">`user=null後: GCタイミングで自動消去`</span>);
+  console.<span class="fn">log</span>(<span class="str">`(注: 即座に確認はできないがメモリリークは起きない)`</span>);
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「制約: 反復不可」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「制約: 反復不可」ボタン: WeakMapの制限を確認</span>
+<span class="kw">function</span> <span class="fn">lab3Limit</span>() {
+  <span class="kw">const</span> wm = <span class="kw">new</span> <span class="fn">WeakMap</span>();
+  <span class="kw">const</span> obj = {};
+  wm.<span class="fn">set</span>(obj, <span class="str">'data'</span>);
+
+  console.<span class="fn">log</span>(<span class="str">`size: ${wm.size}`</span>);  <span class="cm">// undefined ← sizeプロパティなし</span>
+  console.<span class="fn">log</span>(<span class="str">`for...ofは使えない`</span>);
+
+  <span class="cm">// プリミティブ値はキー不可</span>
+  <span class="kw">try</span> {
+    wm.<span class="fn">set</span>(<span class="str">'string'</span>, <span class="str">'data'</span>);  <span class="cm">// TypeError</span>
+  } <span class="kw">catch</span>(e) {
+    console.<span class="fn">log</span>(<span class="str">`エラー: ${e.message}`</span>);
+  }
+
+  <span class="cm">// 制約理由: GCタイミングで内容が変動するため</span>
+  <span class="cm">// 反復可能だと「いま何件?」が決まらない</span>
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 04: JSON ========== -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>JSON — パース/シリアライズ</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>parse</code>(文字列→オブジェクト)、<code>stringify</code>(オブジェクト→文字列)。第2/第3引数で整形・フィルタも。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>APIレスポンスのパース(<code>JSON.parse(response)</code>)</li>
+        <li>ログ整形出力(<code>JSON.stringify(obj, null, 2)</code>)</li>
+        <li>reviver関数で日付文字列を<code>Date</code>に復元</li>
+      </ol>
+    </div>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: JSONパースと整形</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab4Parse()">parse</button>
+          <button class="demo-btn" onclick="lab4Stringify()">stringify(整形)</button>
+          <button class="demo-btn secondary" onclick="lab4Reviver()">reviver(日付復元)</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">Before</div>
+            <div class="ba-content" id="lab4-before">(未実行)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">After</div>
+            <div class="ba-content" id="lab4-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab4-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「parse」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「parse」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab4Parse</span>() {
+  <span class="kw">const</span> jsonStr = <span class="str">'{"name":"Tom","age":42,"tags":["dev","jp"]}'</span>;
+  <span class="kw">const</span> obj = JSON.<span class="fn">parse</span>(jsonStr);
+
+  console.<span class="fn">log</span>(<span class="str">`obj.name: ${obj.name}`</span>);
+  console.<span class="fn">log</span>(<span class="str">`obj.age: ${obj.age}`</span>);
+  console.<span class="fn">log</span>(<span class="str">`obj.tags: [${obj.tags}]`</span>);
+  console.<span class="fn">log</span>(<span class="str">`typeof: ${typeof obj}`</span>);  <span class="cm">// object</span>
+
+  <span class="cm">// パース失敗はSyntaxError</span>
+  <span class="kw">try</span> { JSON.<span class="fn">parse</span>(<span class="str">'{bad'</span>); }
+  <span class="kw">catch</span>(e) { console.<span class="fn">log</span>(<span class="str">`不正JSON: ${e.name}`</span>); }
+  <span class="kw">return</span> obj;
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「stringify(整形)」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「stringify(整形)」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab4Stringify</span>() {
+  <span class="kw">const</span> obj = { name: <span class="str">'Tom'</span>, role: <span class="str">'dev'</span>, age: <span class="num">42</span> };
+
+  <span class="cm">// 第1引数: オブジェクト</span>
+  <span class="cm">// 第2引数: replacer (フィルタ関数 or キー配列)</span>
+  <span class="cm">// 第3引数: インデント幅(数値) or 文字列</span>
+  <span class="kw">const</span> compact = JSON.<span class="fn">stringify</span>(obj);
+  <span class="kw">const</span> pretty  = JSON.<span class="fn">stringify</span>(obj, <span class="kw">null</span>, <span class="num">2</span>);
+  <span class="kw">const</span> filtered = JSON.<span class="fn">stringify</span>(obj, [<span class="str">'name'</span>, <span class="str">'age'</span>]);
+
+  console.<span class="fn">log</span>(<span class="str">`compact: ${compact}`</span>);
+  console.<span class="fn">log</span>(<span class="str">`pretty:\n${pretty}`</span>);
+  console.<span class="fn">log</span>(<span class="str">`filtered: ${filtered}`</span>);  <span class="cm">// roleが除外</span>
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「reviver(日付復元)」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「reviver」ボタン: パース時に値を変換</span>
+<span class="kw">function</span> <span class="fn">lab4Reviver</span>() {
+  <span class="kw">const</span> jsonStr = <span class="str">'{"name":"Tom","createdAt":"2026-05-06T12:00:00Z"}'</span>;
+
+  <span class="cm">// reviver: 各キー値ペアに対して変換処理</span>
+  <span class="kw">const</span> obj = JSON.<span class="fn">parse</span>(jsonStr, (key, value) =&gt; {
+    <span class="cm">// ISO日付文字列なら Date オブジェクトに変換</span>
+    <span class="kw">if</span> (<span class="kw">typeof</span> value === <span class="str">'string'</span> &amp;&amp;
+        /^\d{<span class="num">4</span>}-\d{<span class="num">2</span>}-\d{<span class="num">2</span>}T/.<span class="fn">test</span>(value)) {
+      <span class="kw">return</span> <span class="kw">new</span> <span class="fn">Date</span>(value);
+    }
+    <span class="kw">return</span> value;
+  });
+
+  console.<span class="fn">log</span>(<span class="str">`name: ${obj.name}`</span>);  <span class="cm">// 文字列のまま</span>
+  console.<span class="fn">log</span>(<span class="str">`createdAt: ${obj.createdAt}`</span>);
+  console.<span class="fn">log</span>(<span class="str">`is Date: ${obj.createdAt instanceof Date}`</span>);  <span class="cm">// true</span>
+  <span class="kw">return</span> obj;
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 05: TypedArray ========== -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>TypedArray — バイナリ操作</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      固定型の数値配列。<code>Uint8Array</code>(0〜255)、<code>Float32Array</code>等。バイナリデータ・画像処理・WebGL用。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>画像のピクセルデータ操作(<code>Uint8ClampedArray</code>)</li>
+        <li>WebGLの頂点バッファ(<code>Float32Array</code>)</li>
+        <li>ファイルバイナリ・WebSocketのバイナリプロトコル</li>
+      </ol>
+    </div>
+    <div class="info-box info">
+      📐 <strong>「ArrayBuffer」と「TypedArray」の関係</strong><br>
+      <code>ArrayBuffer</code> = 生のバイト列(型情報なし)<br>
+      <code>TypedArray</code> = ArrayBufferを「指定の型で読み書きするビュー」<br>
+      同じバッファを <code>Uint8Array</code> でも <code>Float32Array</code> でも見られる(別解釈)。
+    </div>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 型付き配列</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab5Basic()">Uint8Array基本</button>
+          <button class="demo-btn" onclick="lab5Range()">範囲外の挙動</button>
+          <button class="demo-btn secondary" onclick="lab5View()">同バッファ別ビュー</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">通常Array</div>
+            <div class="ba-content" id="lab5-before">(未実行)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">TypedArray</div>
+            <div class="ba-content" id="lab5-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab5-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「Uint8Array基本」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「Uint8Array基本」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab5Basic</span>() {
+  <span class="cm">// 4バイト分の領域を確保(全て0で初期化)</span>
+  <span class="kw">const</span> u8 = <span class="kw">new</span> <span class="fn">Uint8Array</span>(<span class="num">4</span>);
+  console.<span class="fn">log</span>(<span class="str">`初期: [${u8}]`</span>);  <span class="cm">// [0, 0, 0, 0]</span>
+
+  u8[<span class="num">0</span>] = <span class="num">100</span>;
+  u8[<span class="num">1</span>] = <span class="num">200</span>;
+  console.<span class="fn">log</span>(<span class="str">`設定後: [${u8}]`</span>);  <span class="cm">// [100, 200, 0, 0]</span>
+
+  <span class="cm">// 既存配列から作る</span>
+  <span class="kw">const</span> u8b = <span class="fn">Uint8Array</span>.<span class="fn">from</span>([<span class="num">10</span>, <span class="num">20</span>, <span class="num">30</span>]);
+  console.<span class="fn">log</span>(<span class="str">`from: [${u8b}], byteLength: ${u8b.byteLength}`</span>);
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「範囲外の挙動」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「範囲外の挙動」ボタン: 通常Arrayとの違い</span>
+<span class="kw">function</span> <span class="fn">lab5Range</span>() {
+  <span class="kw">const</span> arr = [<span class="num">100</span>];           <span class="cm">// 通常配列</span>
+  <span class="kw">const</span> u8  = <span class="kw">new</span> <span class="fn">Uint8Array</span>([<span class="num">100</span>]);   <span class="cm">// 0〜255</span>
+
+  arr[<span class="num">0</span>] = <span class="num">300</span>;
+  u8[<span class="num">0</span>]  = <span class="num">300</span>;  <span class="cm">// 範囲外! 自動的に256で剰余 → 44</span>
+
+  console.<span class="fn">log</span>(<span class="str">`Array に 300: ${arr[0]}`</span>);  <span class="cm">// 300 (そのまま)</span>
+  console.<span class="fn">log</span>(<span class="str">`Uint8 に 300: ${u8[0]}`</span>);    <span class="cm">// 44 (300 % 256)</span>
+
+  <span class="cm">// 負の値も同様</span>
+  u8[<span class="num">0</span>] = -<span class="num">1</span>;
+  console.<span class="fn">log</span>(<span class="str">`Uint8 に -1: ${u8[0]}`</span>);    <span class="cm">// 255</span>
+
+  <span class="cm">// 小数は切り捨て</span>
+  u8[<span class="num">0</span>] = <span class="num">3.7</span>;
+  console.<span class="fn">log</span>(<span class="str">`Uint8 に 3.7: ${u8[0]}`</span>);   <span class="cm">// 3</span>
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「同バッファ別ビュー」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「同バッファ別ビュー」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab5View</span>() {
+  <span class="cm">// 8バイトのバッファを確保</span>
+  <span class="kw">const</span> buffer = <span class="kw">new</span> <span class="fn">ArrayBuffer</span>(<span class="num">8</span>);
+
+  <span class="cm">// 同じバッファを2つの異なる型で見る</span>
+  <span class="kw">const</span> u8  = <span class="kw">new</span> <span class="fn">Uint8Array</span>(buffer);    <span class="cm">// 8要素 (1byte × 8)</span>
+  <span class="kw">const</span> u32 = <span class="kw">new</span> <span class="fn">Uint32Array</span>(buffer);   <span class="cm">// 2要素 (4byte × 2)</span>
+
+  u32[<span class="num">0</span>] = <span class="num">0xAABBCCDD</span>;  <span class="cm">// 32bit値を書き込み</span>
+
+  console.<span class="fn">log</span>(<span class="str">`u32[0] = 0xAABBCCDD`</span>);
+  console.<span class="fn">log</span>(<span class="str">`u8[0..3] = [${u8.slice(0,4)}]`</span>);
+  <span class="cm">// → [221, 204, 187, 170] (0xDD,0xCC,0xBB,0xAA リトルエンディアン)</span>
+
+  <span class="cm">// 1つの値を別の型で「再解釈」できる = バイナリプロトコル解析の基本</span>
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 06: Promise ========== -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>Promise — 非同期(all/race/allSettled)</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      非同期処理の結果を表すオブジェクト。<code>then</code>/<code>catch</code>で結果受取。複数並列は<code>all</code>/<code>race</code>/<code>allSettled</code>。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>複数API並列取得して全揃ってから処理(<code>Promise.all</code>)</li>
+        <li>タイムアウト制御(<code>Promise.race</code>で先着勝ち)</li>
+        <li>一部失敗を許容したバッチ処理(<code>allSettled</code>)</li>
+      </ol>
+    </div>
+    <pre class="ascii-art">┌──────────────┬────────────────────────────────────────┐
+│ メソッド      │ 動作                                    │
+├──────────────┼────────────────────────────────────────┤
+│ Promise.all  │ 全成功で待つ。1つでも失敗で即reject       │
+│ Promise.race │ 最初に決着したもの(成功/失敗どちらでも)   │
+│ allSettled   │ 全完了を待つ。成功失敗混在を結果配列で返却 │
+│ Promise.any  │ 最初の成功を返却(全失敗時のみreject)      │
+└──────────────┴────────────────────────────────────────┘</pre>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 並列処理</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab6All()">all (全成功)</button>
+          <button class="demo-btn" onclick="lab6AllFail()">all (1つ失敗)</button>
+          <button class="demo-btn" onclick="lab6Race()">race</button>
+          <button class="demo-btn secondary" onclick="lab6Settled()">allSettled</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">Before: 開始</div>
+            <div class="ba-content" id="lab6-before">(未実行)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">After: 結果</div>
+            <div class="ba-content" id="lab6-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab6-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 共通: 模擬的な非同期処理</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 全ボタン共通: 指定ms後に成功/失敗するPromiseを作るヘルパ</span>
+<span class="kw">const</span> delay = (ms, value, fail = <span class="kw">false</span>) =&gt;
+  <span class="kw">new</span> <span class="fn">Promise</span>((res, rej) =&gt; {
+    <span class="fn">setTimeout</span>(() =&gt; fail ? <span class="fn">rej</span>(value) : <span class="fn">res</span>(value), ms);
+  });</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「all (全成功)」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「all (全成功)」ボタン</span>
+<span class="kw">async function</span> <span class="fn">lab6All</span>() {
+  <span class="kw">const</span> t0 = performance.<span class="fn">now</span>();
+
+  <span class="cm">// 3つを並列で開始 → 全揃うまで待つ</span>
+  <span class="kw">const</span> results = <span class="kw">await</span> Promise.<span class="fn">all</span>([
+    <span class="fn">delay</span>(<span class="num">500</span>, <span class="str">'A'</span>),
+    <span class="fn">delay</span>(<span class="num">700</span>, <span class="str">'B'</span>),
+    <span class="fn">delay</span>(<span class="num">300</span>, <span class="str">'C'</span>)
+  ]);
+
+  <span class="kw">const</span> ms = (performance.<span class="fn">now</span>() - t0).<span class="fn">toFixed</span>(<span class="num">0</span>);
+  console.<span class="fn">log</span>(<span class="str">`全結果: [${results}]`</span>);   <span class="cm">// ['A','B','C']</span>
+  console.<span class="fn">log</span>(<span class="str">`所要時間: ${ms}ms ≒ 700ms (一番遅いもの)`</span>);
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「all (1つ失敗)」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「all (1つ失敗)」ボタン: 1つでも失敗で全体reject</span>
+<span class="kw">async function</span> <span class="fn">lab6AllFail</span>() {
+  <span class="kw">try</span> {
+    <span class="kw">const</span> r = <span class="kw">await</span> Promise.<span class="fn">all</span>([
+      <span class="fn">delay</span>(<span class="num">500</span>, <span class="str">'A'</span>),
+      <span class="fn">delay</span>(<span class="num">300</span>, <span class="str">'B失敗'</span>, <span class="kw">true</span>),  <span class="cm">// 失敗</span>
+      <span class="fn">delay</span>(<span class="num">700</span>, <span class="str">'C'</span>)
+    ]);
+    console.<span class="fn">log</span>(<span class="str">`成功: [${r}]`</span>);  <span class="cm">// 到達しない</span>
+  } <span class="kw">catch</span>(e) {
+    console.<span class="fn">log</span>(<span class="str">`エラー: ${e}`</span>);  <span class="cm">// "B失敗"</span>
+    console.<span class="fn">log</span>(<span class="str">`他の処理結果は取れない`</span>);
+  }
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「race」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「race」ボタン: 最初に決着したものが結果</span>
+<span class="kw">async function</span> <span class="fn">lab6Race</span>() {
+  <span class="cm">// 典型用途: タイムアウト</span>
+  <span class="kw">const</span> winner = <span class="kw">await</span> Promise.<span class="fn">race</span>([
+    <span class="fn">delay</span>(<span class="num">500</span>, <span class="str">'A'</span>),
+    <span class="fn">delay</span>(<span class="num">300</span>, <span class="str">'B'</span>),
+    <span class="fn">delay</span>(<span class="num">700</span>, <span class="str">'C'</span>)
+  ]);
+
+  console.<span class="fn">log</span>(<span class="str">`最速: ${winner}`</span>);  <span class="cm">// "B" (300ms)</span>
+  console.<span class="fn">log</span>(<span class="str">`他の処理は捨てられる(中断はしない)`</span>);
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「allSettled」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「allSettled」ボタン: 失敗込みで全結果回収</span>
+<span class="kw">async function</span> <span class="fn">lab6Settled</span>() {
+  <span class="kw">const</span> results = <span class="kw">await</span> Promise.<span class="fn">allSettled</span>([
+    <span class="fn">delay</span>(<span class="num">500</span>, <span class="str">'A'</span>),
+    <span class="fn">delay</span>(<span class="num">300</span>, <span class="str">'B失敗'</span>, <span class="kw">true</span>),
+    <span class="fn">delay</span>(<span class="num">700</span>, <span class="str">'C'</span>)
+  ]);
+
+  <span class="cm">// 各要素は { status: 'fulfilled'|'rejected', value/reason: ... }</span>
+  results.<span class="fn">forEach</span>((r, i) =&gt; {
+    <span class="kw">if</span> (r.status === <span class="str">'fulfilled'</span>) {
+      console.<span class="fn">log</span>(<span class="str">`[${i}] OK: ${r.value}`</span>);
+    } <span class="kw">else</span> {
+      console.<span class="fn">log</span>(<span class="str">`[${i}] NG: ${r.reason}`</span>);
+    }
+  });
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 07: async/await ========== -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>async/await — Promise糖衣構文</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Promiseチェーンを同期的な見た目で書ける。<code>async</code>関数内で<code>await</code>使用。エラーは<code>try/catch</code>で。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>API取得 → 加工 → 別API取得の連鎖処理</li>
+        <li>条件分岐を含む非同期フロー(thenでは書きにくい)</li>
+        <li>ループ内での順次非同期処理</li>
+      </ol>
+    </div>
+    <pre class="ascii-art">Promiseチェーン版:                 async/await版:
+─────────────────                  ─────────────────
+fetch(url)                          async function load() {
+  .then(r => r.json())                const r = await fetch(url);
+  .then(data => process(data))        const data = await r.json();
+  .then(result => save(result))       const result = await process(data);
+  .catch(err => handle(err));         await save(result);
+                                    } catch(err) { handle(err); }
+
+→ 同期的な見た目で読みやすい
+→ デバッガでステップ実行しやすい</pre>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: async/await</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab7Sequential()">順次実行(遅い)</button>
+          <button class="demo-btn" onclick="lab7Parallel()">並列実行(速い)</button>
+          <button class="demo-btn secondary" onclick="lab7Error()">エラー処理</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">Before: 開始</div>
+            <div class="ba-content" id="lab7-before">(未実行)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">After: 結果</div>
+            <div class="ba-content" id="lab7-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab7-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「順次実行(遅い)」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「順次実行(遅い)」ボタン: 1つずつawait → 合計時間がかかる</span>
+<span class="kw">async function</span> <span class="fn">lab7Sequential</span>() {
+  <span class="kw">const</span> t0 = performance.<span class="fn">now</span>();
+
+  <span class="kw">const</span> a = <span class="kw">await</span> <span class="fn">delay</span>(<span class="num">500</span>, <span class="str">'A'</span>);   <span class="cm">// 500ms待つ</span>
+  <span class="kw">const</span> b = <span class="kw">await</span> <span class="fn">delay</span>(<span class="num">500</span>, <span class="str">'B'</span>);   <span class="cm">// さらに500ms</span>
+  <span class="kw">const</span> c = <span class="kw">await</span> <span class="fn">delay</span>(<span class="num">500</span>, <span class="str">'C'</span>);   <span class="cm">// さらに500ms</span>
+
+  <span class="kw">const</span> ms = (performance.<span class="fn">now</span>() - t0).<span class="fn">toFixed</span>(<span class="num">0</span>);
+  console.<span class="fn">log</span>(<span class="str">`結果: ${a}, ${b}, ${c}`</span>);
+  console.<span class="fn">log</span>(<span class="str">`所要: ${ms}ms ≒ 1500ms (3つを順番に)`</span>);
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「並列実行(速い)」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「並列実行(速い)」ボタン: Promise.allで並列起動</span>
+<span class="kw">async function</span> <span class="fn">lab7Parallel</span>() {
+  <span class="kw">const</span> t0 = performance.<span class="fn">now</span>();
+
+  <span class="cm">// 同時にスタート → 全完了待ち</span>
+  <span class="kw">const</span> [a, b, c] = <span class="kw">await</span> Promise.<span class="fn">all</span>([
+    <span class="fn">delay</span>(<span class="num">500</span>, <span class="str">'A'</span>),
+    <span class="fn">delay</span>(<span class="num">500</span>, <span class="str">'B'</span>),
+    <span class="fn">delay</span>(<span class="num">500</span>, <span class="str">'C'</span>)
+  ]);
+
+  <span class="kw">const</span> ms = (performance.<span class="fn">now</span>() - t0).<span class="fn">toFixed</span>(<span class="num">0</span>);
+  console.<span class="fn">log</span>(<span class="str">`結果: ${a}, ${b}, ${c}`</span>);
+  console.<span class="fn">log</span>(<span class="str">`所要: ${ms}ms ≒ 500ms (並列で1.5秒→0.5秒)`</span>);
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「エラー処理」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「エラー処理」ボタン: try/catchで同期的に書ける</span>
+<span class="kw">async function</span> <span class="fn">lab7Error</span>() {
+  <span class="kw">try</span> {
+    <span class="kw">const</span> a = <span class="kw">await</span> <span class="fn">delay</span>(<span class="num">300</span>, <span class="str">'OK'</span>);
+    console.<span class="fn">log</span>(<span class="str">`成功1: ${a}`</span>);
+
+    <span class="cm">// 第3引数 true で失敗</span>
+    <span class="kw">const</span> b = <span class="kw">await</span> <span class="fn">delay</span>(<span class="num">300</span>, <span class="str">'失敗!'</span>, <span class="kw">true</span>);
+    console.<span class="fn">log</span>(<span class="str">`成功2: ${b}`</span>);  <span class="cm">// 到達しない</span>
+  } <span class="kw">catch</span>(err) {
+    console.<span class="fn">log</span>(<span class="str">`catch: ${err}`</span>);
+  } <span class="kw">finally</span> {
+    console.<span class="fn">log</span>(<span class="str">`finally: 必ず実行`</span>);
+  }
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 08: Generator ========== -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>Generator — 一時停止できる関数</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>function*</code>で定義、<code>yield</code>で一時停止。次の<code>next()</code>で再開。無限数列・遅延評価に。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>無限ID生成器(必要な分だけ取り出し)</li>
+        <li>大きなデータの遅延処理(全件メモリに乗せない)</li>
+        <li>状態マシンの実装(yieldで状態遷移)</li>
+      </ol>
+    </div>
+    <pre class="ascii-art">通常関数: 呼び出すと最後まで一気に実行
+Generator: yield ごとに一時停止、next()で再開
+
+function* gen() {
+  yield 1;   ← ① ここで停止 → next()が {value:1, done:false}
+  yield 2;   ← ② 次のnext()で再開→停止
+  yield 3;   ← ③
+}            ← ④ next()が {value:undefined, done:true}</pre>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: Generator</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab8Basic()">基本(順次取り出し)</button>
+          <button class="demo-btn" onclick="lab8Infinite()">無限数列(ID生成)</button>
+          <button class="demo-btn secondary" onclick="lab8ForOf()">for...ofで反復</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">Before</div>
+            <div class="ba-content" id="lab8-before">(未実行)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">After</div>
+            <div class="ba-content" id="lab8-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab8-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「基本(順次取り出し)」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「基本」ボタン: yield と next() の動作</span>
+<span class="kw">function</span>* <span class="fn">range</span>() {
+  console.<span class="fn">log</span>(<span class="str">'  → start'</span>);
+  <span class="kw">yield</span> <span class="num">1</span>;
+  console.<span class="fn">log</span>(<span class="str">'  → between 1-2'</span>);
+  <span class="kw">yield</span> <span class="num">2</span>;
+  console.<span class="fn">log</span>(<span class="str">'  → between 2-3'</span>);
+  <span class="kw">yield</span> <span class="num">3</span>;
+  console.<span class="fn">log</span>(<span class="str">'  → end'</span>);
+}
+
+<span class="kw">function</span> <span class="fn">lab8Basic</span>() {
+  <span class="kw">const</span> g = <span class="fn">range</span>();
+  console.<span class="fn">log</span>(<span class="str">`next1: ${JSON.stringify(g.next())}`</span>);  <span class="cm">// {value:1, done:false}</span>
+  console.<span class="fn">log</span>(<span class="str">`next2: ${JSON.stringify(g.next())}`</span>);  <span class="cm">// {value:2, done:false}</span>
+  console.<span class="fn">log</span>(<span class="str">`next3: ${JSON.stringify(g.next())}`</span>);  <span class="cm">// {value:3, done:false}</span>
+  console.<span class="fn">log</span>(<span class="str">`next4: ${JSON.stringify(g.next())}`</span>);  <span class="cm">// {value:undefined, done:true}</span>
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「無限数列(ID生成)」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「無限数列」ボタン: 必要な分だけ取り出せる</span>
+<span class="kw">function</span>* <span class="fn">idGen</span>() {
+  <span class="kw">let</span> id = <span class="num">1</span>;
+  <span class="kw">while</span> (<span class="kw">true</span>) {  <span class="cm">// 無限ループでも問題なし</span>
+    <span class="kw">yield</span> <span class="str">`USR-${id++}`</span>;
+  }
+}
+
+<span class="kw">function</span> <span class="fn">lab8Infinite</span>() {
+  <span class="kw">const</span> gen = <span class="fn">idGen</span>();
+  <span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i &lt; <span class="num">5</span>; i++) {
+    console.<span class="fn">log</span>(<span class="str">`発行: ${gen.next().value}`</span>);
+    <span class="cm">// USR-1, USR-2, USR-3, USR-4, USR-5</span>
+  }
+  console.<span class="fn">log</span>(<span class="str">`無限ループだが、必要な5個だけ取得して停止`</span>);
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「for...ofで反復」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「for...of」ボタン: GeneratorはイテラブルなのでforOfで反復可</span>
+<span class="kw">function</span>* <span class="fn">fibonacci</span>(max) {
+  <span class="kw">let</span> [a, b] = [<span class="num">0</span>, <span class="num">1</span>];
+  <span class="kw">while</span> (a &lt; max) {
+    <span class="kw">yield</span> a;
+    [a, b] = [b, a + b];
+  }
+}
+
+<span class="kw">function</span> <span class="fn">lab8ForOf</span>() {
+  <span class="kw">const</span> nums = [];
+  <span class="kw">for</span> (<span class="kw">const</span> n <span class="kw">of</span> <span class="fn">fibonacci</span>(<span class="num">100</span>)) {
+    nums.<span class="fn">push</span>(n);
+  }
+  console.<span class="fn">log</span>(<span class="str">`100未満のフィボナッチ: [${nums}]`</span>);
+
+  <span class="cm">// スプレッドも使える</span>
+  <span class="kw">const</span> arr = [...<span class="fn">fibonacci</span>(<span class="num">50</span>)];
+  console.<span class="fn">log</span>(<span class="str">`50未満: [${arr}]`</span>);
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 09: Iterator ========== -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>Iterator — for...of対応の自作</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>Symbol.iterator</code>メソッドを実装すれば、独自オブジェクトも<code>for...of</code>/スプレッドで反復可能に。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>独自データ構造(LinkedList等)をfor...of対応に</li>
+        <li>カスタム範囲オブジェクト(<code>Range(1,10)</code>等)</li>
+        <li>非同期反復(<code>Symbol.asyncIterator</code>でストリーム処理)</li>
+      </ol>
+    </div>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 独自Iterator</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab9Range()">独自Range作成</button>
+          <button class="demo-btn secondary" onclick="lab9Spread()">スプレッド対応</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">Before: 通常オブジェクト</div>
+            <div class="ba-content" id="lab9-before">(未実行)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">After: Iterator実装後</div>
+            <div class="ba-content" id="lab9-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab9-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「独自Range作成」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「独自Range作成」ボタン: Symbol.iteratorで反復可能化</span>
+<span class="kw">function</span> <span class="fn">lab9Range</span>() {
+  <span class="kw">const</span> range = {
+    from: <span class="num">1</span>,
+    to: <span class="num">5</span>,
+    <span class="cm">// Symbol.iterator: for...ofが内部で呼ぶメソッド</span>
+    [Symbol.iterator]() {
+      <span class="kw">let</span> current = <span class="kw">this</span>.from;
+      <span class="kw">const</span> last = <span class="kw">this</span>.to;
+      <span class="kw">return</span> {
+        <span class="cm">// next(): 次の値を {value, done} で返す</span>
+        <span class="fn">next</span>() {
+          <span class="kw">if</span> (current &lt;= last) {
+            <span class="kw">return</span> { value: current++, done: <span class="kw">false</span> };
+          } <span class="kw">else</span> {
+            <span class="kw">return</span> { value: <span class="kw">undefined</span>, done: <span class="kw">true</span> };
+          }
+        }
+      };
+    }
+  };
+
+  <span class="kw">for</span> (<span class="kw">const</span> n <span class="kw">of</span> range) {
+    console.<span class="fn">log</span>(<span class="str">`値: ${n}`</span>);
+  }
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「スプレッド対応」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「スプレッド対応」ボタン: Iteratorは...でも展開可能</span>
+<span class="kw">function</span> <span class="fn">lab9Spread</span>() {
+  <span class="kw">const</span> range = {
+    from: <span class="num">10</span>, to: <span class="num">14</span>,
+    *[Symbol.iterator]() {  <span class="cm">// Generatorで簡潔に書ける</span>
+      <span class="kw">for</span> (<span class="kw">let</span> i = <span class="kw">this</span>.from; i &lt;= <span class="kw">this</span>.to; i++) <span class="kw">yield</span> i;
+    }
+  };
+
+  <span class="kw">const</span> arr = [...range];   <span class="cm">// Iteratorからスプレッドで配列化</span>
+  console.<span class="fn">log</span>(<span class="str">`スプレッド: [${arr}]`</span>);
+
+  <span class="kw">const</span> max = Math.<span class="fn">max</span>(...range);  <span class="cm">// 関数引数にも展開</span>
+  console.<span class="fn">log</span>(<span class="str">`max: ${max}`</span>);
+
+  <span class="kw">const</span> [first, ...rest] = range;  <span class="cm">// 分割代入も</span>
+  console.<span class="fn">log</span>(<span class="str">`first: ${first}, rest: [${rest}]`</span>);
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 10: Proxy ========== -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>Proxy — プロパティ操作の横取り</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      オブジェクトへの全操作(get/set/deleteなど)を関数で<strong>横取り</strong>。Vue3のリアクティブシステムの基盤。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>リアクティブシステム(変更検知して自動再描画)</li>
+        <li>未定義プロパティのデフォルト値提供</li>
+        <li>APIクライアントの動的メソッド生成</li>
+      </ol>
+    </div>
+    <pre class="ascii-art">target = { name: "Tom" }   ← 元のオブジェクト
+              ↑
+            横取り
+              ↑
+proxy = new Proxy(target, {
+  get(t, key) { return ... }  ← obj.xxx を横取り
+  set(t, key, val) { ... }    ← obj.xxx = ... を横取り
+})
+
+proxy.name  → handler.get(target, 'name') が呼ばれる</pre>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: Proxy</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab10Get()">get横取り(ログ)</button>
+          <button class="demo-btn" onclick="lab10Set()">set横取り(検証)</button>
+          <button class="demo-btn secondary" onclick="lab10Default()">未定義プロパティ</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">Before: 通常オブジェクト</div>
+            <div class="ba-content" id="lab10-before">(未実行)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">After: Proxy</div>
+            <div class="ba-content" id="lab10-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab10-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「get横取り(ログ)」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「get横取り」ボタン: 全プロパティアクセスをログ</span>
+<span class="kw">function</span> <span class="fn">lab10Get</span>() {
+  <span class="kw">const</span> target = { name: <span class="str">'Tom'</span>, age: <span class="num">42</span> };
+
+  <span class="kw">const</span> proxy = <span class="kw">new</span> <span class="fn">Proxy</span>(target, {
+    <span class="fn">get</span>(t, key) {
+      console.<span class="fn">log</span>(<span class="str">`📖 アクセス: ${key}`</span>);
+      <span class="kw">return</span> t[key];
+    }
+  });
+
+  console.<span class="fn">log</span>(<span class="str">`name: ${proxy.name}`</span>);  <span class="cm">// アクセスログ → "Tom"</span>
+  console.<span class="fn">log</span>(<span class="str">`age: ${proxy.age}`</span>);    <span class="cm">// アクセスログ → 42</span>
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「set横取り(検証)」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「set横取り」ボタン: 代入時にバリデーション</span>
+<span class="kw">function</span> <span class="fn">lab10Set</span>() {
+  <span class="kw">const</span> user = <span class="kw">new</span> <span class="fn">Proxy</span>({}, {
+    <span class="fn">set</span>(t, key, value) {
+      <span class="kw">if</span> (key === <span class="str">'age'</span> &amp;&amp; (<span class="kw">typeof</span> value !== <span class="str">'number'</span> || value &lt; <span class="num">0</span>)) {
+        console.<span class="fn">error</span>(<span class="str">`❌ ageは正の数値のみ。受信: ${value}`</span>);
+        <span class="kw">return</span> <span class="kw">false</span>;  <span class="cm">// strictモードならTypeError</span>
+      }
+      t[key] = value;
+      console.<span class="fn">log</span>(<span class="str">`✓ 設定: ${key} = ${value}`</span>);
+      <span class="kw">return</span> <span class="kw">true</span>;
+    }
+  });
+
+  user.name = <span class="str">'Tom'</span>;     <span class="cm">// OK</span>
+  user.age = <span class="num">42</span>;          <span class="cm">// OK</span>
+  user.age = -<span class="num">5</span>;          <span class="cm">// 拒否</span>
+  user.age = <span class="str">'forty'</span>;     <span class="cm">// 拒否</span>
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「未定義プロパティ」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「未定義プロパティ」ボタン: 何もない時のデフォルト値</span>
+<span class="kw">function</span> <span class="fn">lab10Default</span>() {
+  <span class="kw">const</span> safe = <span class="kw">new</span> <span class="fn">Proxy</span>({ name: <span class="str">'Tom'</span> }, {
+    <span class="fn">get</span>(t, key) {
+      <span class="kw">if</span> (key <span class="kw">in</span> t) <span class="kw">return</span> t[key];
+      <span class="kw">return</span> <span class="str">'(未設定)'</span>;  <span class="cm">// デフォルト値</span>
+    }
+  });
+
+  console.<span class="fn">log</span>(<span class="str">`name: ${safe.name}`</span>);    <span class="cm">// "Tom"</span>
+  console.<span class="fn">log</span>(<span class="str">`age: ${safe.age}`</span>);      <span class="cm">// "(未設定)" ← undefined避けられる</span>
+  console.<span class="fn">log</span>(<span class="str">`email: ${safe.email}`</span>);  <span class="cm">// "(未設定)"</span>
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 11: Reflect ========== -->
+<div class="lab" id="lab11">
+  <div class="lab-header">
+    <div class="lab-num">11</div>
+    <h3>Reflect — メタ操作の関数版</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>Object</code>のメタ操作(<code>delete</code>、<code>in</code>、<code>new</code>等)を関数として提供。<code>Proxy</code>と組み合わせて使うことが多い。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li><code>Proxy</code>ハンドラ内でデフォルト動作呼出(<code>Reflect.get</code>等)</li>
+        <li>動的なクラスインスタンス化(<code>Reflect.construct</code>)</li>
+        <li><code>delete obj.xxx</code>を関数として扱う(<code>Reflect.deleteProperty</code>)</li>
+      </ol>
+    </div>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: Reflect</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab11Basic()">演算子→関数</button>
+          <button class="demo-btn secondary" onclick="lab11WithProxy()">Proxyとの併用</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">演算子版</div>
+            <div class="ba-content" id="lab11-before">(未実行)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">Reflect版</div>
+            <div class="ba-content" id="lab11-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab11-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「演算子→関数」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「演算子→関数」ボタン: 演算子と等価のReflectメソッド</span>
+<span class="kw">function</span> <span class="fn">lab11Basic</span>() {
+  <span class="kw">const</span> obj = { name: <span class="str">'Tom'</span>, age: <span class="num">42</span> };
+
+  <span class="cm">// 演算子版              Reflect版</span>
+  console.<span class="fn">log</span>(<span class="str">`'name' in obj: ${'name' in obj}`</span>);
+  console.<span class="fn">log</span>(<span class="str">`Reflect.has: ${Reflect.has(obj, 'name')}`</span>);
+
+  console.<span class="fn">log</span>(<span class="str">`obj.age: ${obj.age}`</span>);
+  console.<span class="fn">log</span>(<span class="str">`Reflect.get: ${Reflect.get(obj, 'age')}`</span>);
+
+  Reflect.<span class="fn">set</span>(obj, <span class="str">'role'</span>, <span class="str">'dev'</span>);   <span class="cm">// obj.role = 'dev' と等価</span>
+  console.<span class="fn">log</span>(<span class="str">`set後: ${JSON.stringify(obj)}`</span>);
+
+  Reflect.<span class="fn">deleteProperty</span>(obj, <span class="str">'age'</span>);  <span class="cm">// delete obj.age と等価</span>
+  console.<span class="fn">log</span>(<span class="str">`delete後: ${JSON.stringify(obj)}`</span>);
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「Proxyとの併用」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「Proxyとの併用」: ハンドラ内でデフォルト動作を呼出</span>
+<span class="kw">function</span> <span class="fn">lab11WithProxy</span>() {
+  <span class="kw">const</span> logged = <span class="kw">new</span> <span class="fn">Proxy</span>({ x: <span class="num">1</span>, y: <span class="num">2</span> }, {
+    <span class="fn">get</span>(t, key, receiver) {
+      console.<span class="fn">log</span>(<span class="str">`get: ${key}`</span>);
+      <span class="cm">// Reflect.getでデフォルトの取得処理を実行</span>
+      <span class="cm">// (t[key]でも動くがthis周りで罠あり、Reflectが安全)</span>
+      <span class="kw">return</span> Reflect.<span class="fn">get</span>(t, key, receiver);
+    },
+    <span class="fn">set</span>(t, key, value, receiver) {
+      console.<span class="fn">log</span>(<span class="str">`set: ${key} = ${value}`</span>);
+      <span class="kw">return</span> Reflect.<span class="fn">set</span>(t, key, value, receiver);
+    }
+  });
+
+  logged.x;          <span class="cm">// "get: x"</span>
+  logged.y = <span class="num">99</span>;     <span class="cm">// "set: y = 99"</span>
+  console.<span class="fn">log</span>(<span class="str">`最終: x=${logged.x}, y=${logged.y}`</span>);
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 12: Intl ========== -->
+<div class="lab" id="lab12">
+  <div class="lab-header">
+    <div class="lab-num">12</div>
+    <h3>Intl — 国際化フォーマッタ</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ロケール対応の数値・日時・相対時間・複数形フォーマッタ。手動実装より圧倒的に確実。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>「¥1,234,567」「$1,234.56」通貨表示の自動切替</li>
+        <li>「3時間前」「3 hours ago」の相対時間表示</li>
+        <li>日本語・英語・タイ語などのロケール対応UI</li>
+      </ol>
+    </div>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: Intl各種</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab12Number()">数値・通貨</button>
+          <button class="demo-btn" onclick="lab12Date()">日時</button>
+          <button class="demo-btn" onclick="lab12Relative()">相対時間</button>
+          <button class="demo-btn secondary" onclick="lab12List()">リスト連結</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">日本語(ja-JP)</div>
+            <div class="ba-content" id="lab12-before">(未実行)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">英語(en-US)</div>
+            <div class="ba-content" id="lab12-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab12-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「数値・通貨」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「数値・通貨」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab12Number</span>() {
+  <span class="kw">const</span> n = <span class="num">1234567.89</span>;
+
+  <span class="cm">// 通貨</span>
+  <span class="kw">const</span> jpy = <span class="kw">new</span> Intl.<span class="fn">NumberFormat</span>(<span class="str">'ja-JP'</span>, { style:<span class="str">'currency'</span>, currency:<span class="str">'JPY'</span> });
+  <span class="kw">const</span> usd = <span class="kw">new</span> Intl.<span class="fn">NumberFormat</span>(<span class="str">'en-US'</span>, { style:<span class="str">'currency'</span>, currency:<span class="str">'USD'</span> });
+
+  console.<span class="fn">log</span>(<span class="str">`JPY: ${jpy.format(n)}`</span>);   <span class="cm">// "￥1,234,568"</span>
+  console.<span class="fn">log</span>(<span class="str">`USD: ${usd.format(n)}`</span>);   <span class="cm">// "$1,234,567.89"</span>
+
+  <span class="cm">// パーセント</span>
+  <span class="kw">const</span> pct = <span class="kw">new</span> Intl.<span class="fn">NumberFormat</span>(<span class="str">'ja-JP'</span>, { style:<span class="str">'percent'</span> });
+  console.<span class="fn">log</span>(<span class="str">`50%: ${pct.format(0.5)}`</span>);   <span class="cm">// "50%"</span>
+
+  <span class="cm">// コンパクト表記</span>
+  <span class="kw">const</span> short = <span class="kw">new</span> Intl.<span class="fn">NumberFormat</span>(<span class="str">'ja-JP'</span>, { notation:<span class="str">'compact'</span> });
+  console.<span class="fn">log</span>(<span class="str">`compact: ${short.format(12000)}`</span>);  <span class="cm">// "1.2万"</span>
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「日時」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「日時」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab12Date</span>() {
+  <span class="kw">const</span> d = <span class="kw">new</span> <span class="fn">Date</span>(<span class="str">'2026-05-06T14:30:00'</span>);
+
+  <span class="kw">const</span> ja = <span class="kw">new</span> Intl.<span class="fn">DateTimeFormat</span>(<span class="str">'ja-JP'</span>, {
+    year:<span class="str">'numeric'</span>, month:<span class="str">'long'</span>, day:<span class="str">'numeric'</span>, weekday:<span class="str">'short'</span>
+  });
+  <span class="kw">const</span> en = <span class="kw">new</span> Intl.<span class="fn">DateTimeFormat</span>(<span class="str">'en-US'</span>, {
+    year:<span class="str">'numeric'</span>, month:<span class="str">'long'</span>, day:<span class="str">'numeric'</span>, weekday:<span class="str">'short'</span>
+  });
+
+  console.<span class="fn">log</span>(<span class="str">`JP: ${ja.format(d)}`</span>);   <span class="cm">// "2026年5月6日(水)"</span>
+  console.<span class="fn">log</span>(<span class="str">`EN: ${en.format(d)}`</span>);   <span class="cm">// "Wed, May 6, 2026"</span>
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「相対時間」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「相対時間」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab12Relative</span>() {
+  <span class="kw">const</span> ja = <span class="kw">new</span> Intl.<span class="fn">RelativeTimeFormat</span>(<span class="str">'ja-JP'</span>, { numeric:<span class="str">'auto'</span> });
+  <span class="kw">const</span> en = <span class="kw">new</span> Intl.<span class="fn">RelativeTimeFormat</span>(<span class="str">'en-US'</span>, { numeric:<span class="str">'auto'</span> });
+
+  console.<span class="fn">log</span>(<span class="str">`JP -3h: ${ja.format(-3, 'hour')}`</span>);   <span class="cm">// "3時間前"</span>
+  console.<span class="fn">log</span>(<span class="str">`EN -3h: ${en.format(-3, 'hour')}`</span>);   <span class="cm">// "3 hours ago"</span>
+
+  console.<span class="fn">log</span>(<span class="str">`JP +2d: ${ja.format(2, 'day')}`</span>);     <span class="cm">// "明後日"</span>
+  console.<span class="fn">log</span>(<span class="str">`EN +2d: ${en.format(2, 'day')}`</span>);     <span class="cm">// "in 2 days"</span>
+
+  <span class="cm">// numeric:'auto' で「昨日/明日」など特別な表現が出る</span>
+  console.<span class="fn">log</span>(<span class="str">`JP -1d: ${ja.format(-1, 'day')}`</span>);    <span class="cm">// "昨日"</span>
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「リスト連結」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「リスト連結」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab12List</span>() {
+  <span class="kw">const</span> items = [<span class="str">'リンゴ'</span>, <span class="str">'ミカン'</span>, <span class="str">'バナナ'</span>];
+
+  <span class="kw">const</span> ja = <span class="kw">new</span> Intl.<span class="fn">ListFormat</span>(<span class="str">'ja-JP'</span>, { type:<span class="str">'conjunction'</span> });
+  <span class="kw">const</span> en = <span class="kw">new</span> Intl.<span class="fn">ListFormat</span>(<span class="str">'en-US'</span>, { type:<span class="str">'conjunction'</span> });
+
+  console.<span class="fn">log</span>(<span class="str">`JP: ${ja.format(items)}`</span>);   <span class="cm">// "リンゴ、ミカン、バナナ"</span>
+  console.<span class="fn">log</span>(<span class="str">`EN: ${en.format(items.map(s=>{const m={リンゴ:'apple',ミカン:'orange',バナナ:'banana'};return m[s]||s;}))}`</span>);
+  <span class="cm">// "apple, orange, and banana" ← 自動でand付与</span>
+
+  <span class="cm">// 選択肢列挙(disjunction)</span>
+  <span class="kw">const</span> disj = <span class="kw">new</span> Intl.<span class="fn">ListFormat</span>(<span class="str">'ja-JP'</span>, { type:<span class="str">'disjunction'</span> });
+  console.<span class="fn">log</span>(<span class="str">`選択: ${disj.format(['赤','青','緑'])}`</span>);  <span class="cm">// "赤、青、または緑"</span>
+}</pre>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<button id="back-to-toc" aria-label="目次に戻る">
+  <span class="arrow">↑</span>
+  <span class="label">目次</span>
+</button>
+
+<script>
+// ============= 共通ユーティリティ =============
+function copyCode(btn) {
+  const block = btn.closest('.code-block');
+  const pre = block.querySelector('pre');
+  if (!pre) return;
+  const text = pre.innerText;
+  const showSuccess = () => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  };
+  const showError = (msg) => {
+    btn.textContent = 'NG: ' + msg;
+    btn.style.borderColor = '#cb2431';
+    btn.style.color = '#cb2431';
+    setTimeout(() => {
+      btn.textContent = 'Copy';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+    }, 2500);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text)
+      .then(showSuccess)
+      .catch(() => fallbackCopy(text, showSuccess, showError));
+  } else {
+    fallbackCopy(text, showSuccess, showError);
+  }
+}
+function fallbackCopy(text, onOk, onErr) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.top = '0';
+  ta.style.left = '0';
+  ta.style.opacity = '0';
+  ta.setAttribute('readonly', '');
+  document.body.appendChild(ta);
+  ta.select();
+  ta.setSelectionRange(0, text.length);
+  try {
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    if (ok) onOk();
+    else onErr('コピー不可');
+  } catch (e) {
+    document.body.removeChild(ta);
+    onErr(e.message.slice(0, 12));
+  }
+}
+function logTo(id, text, cls='') {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const line = document.createElement('div');
+  line.className = 'log-line ' + cls;
+  line.textContent = '> ' + text;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+function clearLog(id) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = '';
+}
+function setBA(labId, before, after) {
+  document.getElementById(labId+'-before').textContent = before;
+  document.getElementById(labId+'-after').textContent = after;
+}
+// console.log/errorをlog-areaにもミラーするヘルパ
+function withLog(labId, fn) {
+  clearLog(labId+'-log');
+  const origLog = console.log;
+  const origErr = console.error;
+  console.log = (...args) => {
+    origLog.apply(console, args);
+    logTo(labId+'-log', args.join(' '), 'info');
+  };
+  console.error = (...args) => {
+    origErr.apply(console, args);
+    logTo(labId+'-log', args.join(' '), 'err');
+  };
+  try { return fn(); }
+  finally { console.log = origLog; console.error = origErr; }
+}
+
+// ============= Lab 0: Array =============
+function lab0Map() {
+  withLog('lab0', () => {
+    const arr = [1, 2, 3, 4, 5];
+    const doubled = arr.map(x => x * 2);
+    setBA('lab0', `[${arr}]`, `[${doubled}]`);
+    console.log(`元: [${arr}]`);
+    console.log(`map → [${doubled}]`);
+    console.log(`元配列は変わらない: [${arr}]`);
+  });
+}
+function lab0Filter() {
+  withLog('lab0', () => {
+    const arr = [2, 4, 6, 8, 10];
+    const big = arr.filter(x => x > 5);
+    setBA('lab0', `[${arr}] (${arr.length}件)`, `[${big}] (${big.length}件)`);
+    console.log(`元: [${arr}]`);
+    console.log(`filter → [${big}]`);
+    console.log(`元の長さ: ${arr.length} → 結果: ${big.length}`);
+  });
+}
+function lab0Reduce() {
+  withLog('lab0', () => {
+    const arr = [6, 8, 10];
+    const sum = arr.reduce((acc, x) => acc + x, 0);
+    setBA('lab0', `[${arr}]`, `合計: ${sum}\n平均: ${sum/arr.length}`);
+    console.log(`元: [${arr}]`);
+    console.log(`合計: ${sum}`);
+    console.log(`平均: ${sum / arr.length}`);
+  });
+}
+function lab0Flat() {
+  withLog('lab0', () => {
+    const nested = [[1, 2], [3, [4, 5]], [6]];
+    setBA('lab0', JSON.stringify(nested),
+      `flat(): ${JSON.stringify(nested.flat())}\nflat(Infinity): ${JSON.stringify(nested.flat(Infinity))}`);
+    console.log(`元: ${JSON.stringify(nested)}`);
+    console.log(`flat() → ${JSON.stringify(nested.flat())}`);
+    console.log(`flat(2) → ${JSON.stringify(nested.flat(2))}`);
+    console.log(`flat(Infinity) → ${JSON.stringify(nested.flat(Infinity))}`);
+  });
+}
+
+// ============= Lab 1: Map =============
+function lab1Basic() {
+  withLog('lab1', () => {
+    const m = new Map();
+    m.set('name', 'Tom');
+    m.set('age', 42);
+    setBA('lab1', `{name:'Tom', age:42}\nObject的書き方`,
+      `Map(2) { 'name'=>'Tom', 'age'=>42 }\nm.size: ${m.size}`);
+    console.log(`m.get('name'): ${m.get('name')}`);
+    console.log(`m.has('age'): ${m.has('age')}`);
+    console.log(`m.size: ${m.size}`);
+    m.delete('age');
+    console.log(`削除後 m.size: ${m.size}`);
+  });
+}
+function lab1ObjKey() {
+  withLog('lab1', () => {
+    const user1 = { id: 1 };
+    const user2 = { id: 2 };
+    const badObj = {};
+    badObj[user1] = 'A';
+    badObj[user2] = 'B';
+    const m = new Map();
+    m.set(user1, 'A');
+    m.set(user2, 'B');
+    setBA('lab1', `Object: キー数 ${Object.keys(badObj).length}\n→ "[object Object]"で衝突`,
+      `Map: size ${m.size}\n→ オブジェクト参照ごとに別物`);
+    console.log(`Object キー数: ${Object.keys(badObj).length}`);
+    console.log(`Map サイズ: ${m.size}`);
+    console.log(`m.get(user1): ${m.get(user1)}`);
+  });
+}
+function lab1Iter() {
+  withLog('lab1', () => {
+    const m = new Map([['first',1],['second',2],['third',3]]);
+    const lines = [];
+    for (const [k, v] of m) {
+      lines.push(`${k} → ${v}`);
+      console.log(`${k} → ${v}`);
+    }
+    setBA('lab1', '挿入順を維持して...', lines.join('\n'));
+    console.log(`配列化: ${JSON.stringify([...m])}`);
+  });
+}
+
+// ============= Lab 2: Set =============
+function lab2Dedup() {
+  withLog('lab2', () => {
+    const arr = [1, 2, 2, 3, 3, 3, 4, 1];
+    const unique = [...new Set(arr)];
+    setBA('lab2', `[${arr}] (${arr.length}件)`, `[${unique}] (${unique.length}件)`);
+    console.log(`元: [${arr}] (${arr.length}件)`);
+    console.log(`重複排除: [${unique}] (${unique.length}件)`);
+  });
+}
+function lab2Ops() {
+  withLog('lab2', () => {
+    const tags = new Set();
+    tags.add('JS');
+    tags.add('CSS');
+    tags.add('JS');
+    setBA('lab2', `add('JS')\nadd('CSS')\nadd('JS') ← 重複は無視`,
+      `size: ${tags.size}\nhas('JS'): ${tags.has('JS')}\n[${[...tags]}]`);
+    console.log(`size: ${tags.size}`);
+    console.log(`has('JS'): ${tags.has('JS')}`);
+    console.log(`has('Java'): ${tags.has('Java')}`);
+    tags.delete('CSS');
+    console.log(`削除後: [${[...tags]}]`);
+  });
+}
+function lab2Perf() {
+  withLog('lab2', () => {
+    const N = 10000;
+    const arr = Array.from({length:N}, (_,i) => i);
+    const set = new Set(arr);
+    const t1 = performance.now();
+    for (let i = 0; i < N; i++) arr.includes(i);
+    const arrTime = performance.now() - t1;
+    const t2 = performance.now();
+    for (let i = 0; i < N; i++) set.has(i);
+    const setTime = performance.now() - t2;
+    setBA('lab2',
+      `Array.includes ×${N}\n${arrTime.toFixed(2)}ms`,
+      `Set.has ×${N}\n${setTime.toFixed(2)}ms\n→ ${(arrTime/setTime).toFixed(0)}倍高速`);
+    console.log(`Array.includes: ${arrTime.toFixed(2)}ms`);
+    console.log(`Set.has:        ${setTime.toFixed(2)}ms`);
+    console.log(`Setが ${(arrTime/setTime).toFixed(0)}倍高速`);
+  });
+}
+
+// ============= Lab 3: WeakMap/WeakRef =============
+function lab3Basic() {
+  withLog('lab3', () => {
+    const wm = new WeakMap();
+    let user = { name: 'Tom' };
+    wm.set(user, { lastLogin: Date.now() });
+    setBA('lab3', `let user = { name:'Tom' }\n強参照(普通のMap)で持つと\nuser=null してもMapが掴み続け\nGCされない`,
+      `wm.has(user): ${wm.has(user)}\nuser=null すると\n→ GC対象 → 自動消去\n(メモリリークなし)`);
+    console.log(`has: ${wm.has(user)}`);
+    console.log(`get: ${JSON.stringify(wm.get(user))}`);
+    user = null;
+    console.log(`user=null後: GCタイミングで自動消去`);
+    console.log(`(注: 即座に確認はできないがメモリリークは起きない)`);
+  });
+}
+function lab3Limit() {
+  withLog('lab3', () => {
+    const wm = new WeakMap();
+    const obj = {};
+    wm.set(obj, 'data');
+    let errMsg = '';
+    try { wm.set('string', 'data'); }
+    catch(e) { errMsg = e.message; console.error(`エラー: ${e.message}`); }
+    setBA('lab3', `wm.size → ${wm.size}\n反復: 不可\nプリミティブキー: 不可`,
+      `理由: GCで内容が変動\n→ 「いま何件?」が決まらない\n→ 反復もできない`);
+    console.log(`size: ${wm.size}`);
+    console.log(`for...ofは使えない`);
+  });
+}
+
+// ============= Lab 4: JSON =============
+function lab4Parse() {
+  withLog('lab4', () => {
+    const jsonStr = '{"name":"Tom","age":42,"tags":["dev","jp"]}';
+    const obj = JSON.parse(jsonStr);
+    setBA('lab4', `文字列: ${jsonStr}`,
+      `オブジェクト:\nname: ${obj.name}\nage: ${obj.age}\ntags: [${obj.tags}]`);
+    console.log(`obj.name: ${obj.name}`);
+    console.log(`obj.age: ${obj.age}`);
+    console.log(`obj.tags: [${obj.tags}]`);
+    console.log(`typeof: ${typeof obj}`);
+    try { JSON.parse('{bad'); }
+    catch(e) { console.log(`不正JSON: ${e.name}`); }
+  });
+}
+function lab4Stringify() {
+  withLog('lab4', () => {
+    const obj = { name: 'Tom', role: 'dev', age: 42 };
+    const compact = JSON.stringify(obj);
+    const pretty = JSON.stringify(obj, null, 2);
+    const filtered = JSON.stringify(obj, ['name', 'age']);
+    setBA('lab4', `compact:\n${compact}`, `pretty:\n${pretty}\n\nfiltered:\n${filtered}`);
+    console.log(`compact: ${compact}`);
+    console.log(`pretty:\n${pretty}`);
+    console.log(`filtered: ${filtered}`);
+  });
+}
+function lab4Reviver() {
+  withLog('lab4', () => {
+    const jsonStr = '{"name":"Tom","createdAt":"2026-05-06T12:00:00Z"}';
+    const obj = JSON.parse(jsonStr, (key, value) => {
+      if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
+        return new Date(value);
+      }
+      return value;
+    });
+    setBA('lab4', `文字列: ...\n"createdAt":"2026-05-06T12:00:00Z"`,
+      `name: ${obj.name}\ncreatedAt: ${obj.createdAt}\nis Date: ${obj.createdAt instanceof Date}`);
+    console.log(`name: ${obj.name}`);
+    console.log(`createdAt: ${obj.createdAt}`);
+    console.log(`is Date: ${obj.createdAt instanceof Date}`);
+  });
+}
+
+// ============= Lab 5: TypedArray =============
+function lab5Basic() {
+  withLog('lab5', () => {
+    const u8 = new Uint8Array(4);
+    u8[0] = 100;
+    u8[1] = 200;
+    const u8b = Uint8Array.from([10, 20, 30]);
+    setBA('lab5', `通常配列: [100, 200]\nメモリ確保: 不定`,
+      `Uint8Array(4): [${u8}]\nbyteLength: ${u8.byteLength}\nfrom: [${u8b}]`);
+    console.log(`初期: [${new Uint8Array(4)}]`);
+    console.log(`設定後: [${u8}]`);
+    console.log(`from: [${u8b}], byteLength: ${u8b.byteLength}`);
+  });
+}
+function lab5Range() {
+  withLog('lab5', () => {
+    const arr = [100];
+    const u8 = new Uint8Array([100]);
+    arr[0] = 300;
+    u8[0] = 300;
+    const arr2 = [100]; arr2[0] = -1;
+    const u8b = new Uint8Array([100]); u8b[0] = -1;
+    setBA('lab5', `Array に 300: ${arr[0]}\nArray に -1: ${arr2[0]}\nArray に 3.7: 3.7`,
+      `Uint8 に 300: ${u8[0]} (300%256)\nUint8 に -1: ${u8b[0]}\nUint8 に 3.7: 3 (切捨)`);
+    console.log(`Array に 300: ${arr[0]}`);
+    console.log(`Uint8 に 300: ${u8[0]}`);
+    console.log(`Uint8 に -1: ${u8b[0]}`);
+    const u8c = new Uint8Array([0]); u8c[0] = 3.7;
+    console.log(`Uint8 に 3.7: ${u8c[0]}`);
+  });
+}
+function lab5View() {
+  withLog('lab5', () => {
+    const buffer = new ArrayBuffer(8);
+    const u8 = new Uint8Array(buffer);
+    const u32 = new Uint32Array(buffer);
+    u32[0] = 0xAABBCCDD;
+    const slice = [...u8.slice(0,4)];
+    setBA('lab5', `ArrayBuffer(8) ← 同じ8バイト`,
+      `Uint32として: 0xAABBCCDD\nUint8として: [${slice}]\n(リトルエンディアン)`);
+    console.log(`u32[0] = 0xAABBCCDD`);
+    console.log(`u8[0..3] = [${slice}]`);
+  });
+}
+
+// ============= Lab 6: Promise =============
+const delay = (ms, value, fail = false) =>
+  new Promise((res, rej) => {
+    setTimeout(() => fail ? rej(value) : res(value), ms);
+  });
+async function lab6All() {
+  withLog('lab6', async () => {
+    setBA('lab6', '3つを並列起動\n500ms, 700ms, 300ms', '計測中...');
+    const t0 = performance.now();
+    const results = await Promise.all([
+      delay(500, 'A'), delay(700, 'B'), delay(300, 'C')
+    ]);
+    const ms = (performance.now() - t0).toFixed(0);
+    document.getElementById('lab6-after').textContent =
+      `結果: [${results}]\n所要: ${ms}ms\n(一番遅い700ms相当)`;
+    console.log(`全結果: [${results}]`);
+    console.log(`所要時間: ${ms}ms ≒ 700ms (一番遅いもの)`);
+  });
+}
+async function lab6AllFail() {
+  withLog('lab6', async () => {
+    setBA('lab6', 'A(成功) B(失敗) C(成功)\nを並列起動', '計測中...');
+    try {
+      const r = await Promise.all([
+        delay(500, 'A'), delay(300, 'B失敗', true), delay(700, 'C')
+      ]);
+      console.log(`成功: [${r}]`);
+    } catch(e) {
+      document.getElementById('lab6-after').textContent =
+        `エラー: ${e}\n他の処理結果は\n取れない(allの特性)`;
+      console.log(`エラー: ${e}`);
+      console.log(`他の処理結果は取れない`);
+    }
+  });
+}
+async function lab6Race() {
+  withLog('lab6', async () => {
+    setBA('lab6', '500ms, 300ms, 700ms\n最速はどれ?', '計測中...');
+    const winner = await Promise.race([
+      delay(500, 'A'), delay(300, 'B'), delay(700, 'C')
+    ]);
+    document.getElementById('lab6-after').textContent =
+      `最速: ${winner}\n(300ms のB)\n他は捨てられる`;
+    console.log(`最速: ${winner}`);
+    console.log(`他の処理は捨てられる(中断はしない)`);
+  });
+}
+async function lab6Settled() {
+  withLog('lab6', async () => {
+    setBA('lab6', 'A(成功) B(失敗) C(成功)\n全結果回収したい', '計測中...');
+    const results = await Promise.allSettled([
+      delay(500, 'A'), delay(300, 'B失敗', true), delay(700, 'C')
+    ]);
+    const lines = [];
+    results.forEach((r, i) => {
+      if (r.status === 'fulfilled') {
+        lines.push(`[${i}] OK: ${r.value}`);
+        console.log(`[${i}] OK: ${r.value}`);
+      } else {
+        lines.push(`[${i}] NG: ${r.reason}`);
+        console.log(`[${i}] NG: ${r.reason}`);
+      }
+    });
+    document.getElementById('lab6-after').textContent = lines.join('\n');
+  });
+}
+
+// ============= Lab 7: async/await =============
+async function lab7Sequential() {
+  withLog('lab7', async () => {
+    setBA('lab7', '500ms × 3 を順次実行', '計測中...');
+    const t0 = performance.now();
+    const a = await delay(500, 'A');
+    const b = await delay(500, 'B');
+    const c = await delay(500, 'C');
+    const ms = (performance.now() - t0).toFixed(0);
+    document.getElementById('lab7-after').textContent =
+      `結果: ${a}, ${b}, ${c}\n所要: ${ms}ms\n(順次なので合計)`;
+    console.log(`結果: ${a}, ${b}, ${c}`);
+    console.log(`所要: ${ms}ms ≒ 1500ms (3つを順番に)`);
+  });
+}
+async function lab7Parallel() {
+  withLog('lab7', async () => {
+    setBA('lab7', '500ms × 3 を並列実行', '計測中...');
+    const t0 = performance.now();
+    const [a, b, c] = await Promise.all([
+      delay(500, 'A'), delay(500, 'B'), delay(500, 'C')
+    ]);
+    const ms = (performance.now() - t0).toFixed(0);
+    document.getElementById('lab7-after').textContent =
+      `結果: ${a}, ${b}, ${c}\n所要: ${ms}ms\n(並列で1.5秒→0.5秒)`;
+    console.log(`結果: ${a}, ${b}, ${c}`);
+    console.log(`所要: ${ms}ms ≒ 500ms (並列で1.5秒→0.5秒)`);
+  });
+}
+async function lab7Error() {
+  withLog('lab7', async () => {
+    setBA('lab7', 'try/catch/finally\nで非同期エラー処理', '実行中...');
+    const lines = [];
+    try {
+      const a = await delay(300, 'OK');
+      lines.push(`成功1: ${a}`); console.log(`成功1: ${a}`);
+      const b = await delay(300, '失敗!', true);
+      lines.push(`成功2: ${b}`);
+    } catch(err) {
+      lines.push(`catch: ${err}`); console.log(`catch: ${err}`);
+    } finally {
+      lines.push(`finally: 必ず実行`); console.log(`finally: 必ず実行`);
+    }
+    document.getElementById('lab7-after').textContent = lines.join('\n');
+  });
+}
+
+// ============= Lab 8: Generator =============
+function* range8() {
+  console.log('  → start');
+  yield 1;
+  console.log('  → between 1-2');
+  yield 2;
+  console.log('  → between 2-3');
+  yield 3;
+  console.log('  → end');
+}
+function lab8Basic() {
+  withLog('lab8', () => {
+    const g = range8();
+    const lines = [];
+    for (let i = 1; i <= 4; i++) {
+      const r = g.next();
+      const s = `next${i}: ${JSON.stringify(r)}`;
+      lines.push(s); console.log(s);
+    }
+    setBA('lab8', '通常関数: 一気に実行', `next()ごとに停止/再開:\n${lines.join('\n')}`);
+  });
+}
+function* idGen() {
+  let id = 1;
+  while (true) yield `USR-${id++}`;
+}
+function lab8Infinite() {
+  withLog('lab8', () => {
+    const gen = idGen();
+    const ids = [];
+    for (let i = 0; i < 5; i++) {
+      const v = gen.next().value;
+      ids.push(v);
+      console.log(`発行: ${v}`);
+    }
+    setBA('lab8', '無限ループ while(true)', `必要な5個だけ取得:\n${ids.join('\n')}`);
+    console.log(`無限ループだが、必要な5個だけ取得して停止`);
+  });
+}
+function* fibonacci(max) {
+  let [a, b] = [0, 1];
+  while (a < max) {
+    yield a;
+    [a, b] = [b, a + b];
+  }
+}
+function lab8ForOf() {
+  withLog('lab8', () => {
+    const nums = [];
+    for (const n of fibonacci(100)) nums.push(n);
+    const arr = [...fibonacci(50)];
+    setBA('lab8', 'function* fibonacci(max)\nyieldで値を返す',
+      `100未満: [${nums}]\n50未満(...展開): [${arr}]`);
+    console.log(`100未満のフィボナッチ: [${nums}]`);
+    console.log(`50未満: [${arr}]`);
+  });
+}
+
+// ============= Lab 9: Iterator =============
+function lab9Range() {
+  withLog('lab9', () => {
+    const range = {
+      from: 1, to: 5,
+      [Symbol.iterator]() {
+        let current = this.from;
+        const last = this.to;
+        return {
+          next() {
+            if (current <= last) return { value: current++, done: false };
+            else return { value: undefined, done: true };
+          }
+        };
+      }
+    };
+    const out = [];
+    for (const n of range) {
+      out.push(n);
+      console.log(`値: ${n}`);
+    }
+    setBA('lab9', '通常オブジェクトは\nfor...of不可',
+      `Symbol.iterator実装後:\n[${out}]`);
+  });
+}
+function lab9Spread() {
+  withLog('lab9', () => {
+    const range = {
+      from: 10, to: 14,
+      *[Symbol.iterator]() {
+        for (let i = this.from; i <= this.to; i++) yield i;
+      }
+    };
+    const arr = [...range];
+    const max = Math.max(...range);
+    const [first, ...rest] = range;
+    setBA('lab9', 'Generator版で\nSymbol.iterator実装',
+      `スプレッド: [${arr}]\nMath.max: ${max}\nfirst: ${first}\nrest: [${rest}]`);
+    console.log(`スプレッド: [${arr}]`);
+    console.log(`max: ${max}`);
+    console.log(`first: ${first}, rest: [${rest}]`);
+  });
+}
+
+// ============= Lab 10: Proxy =============
+function lab10Get() {
+  withLog('lab10', () => {
+    const target = { name: 'Tom', age: 42 };
+    const proxy = new Proxy(target, {
+      get(t, key) {
+        console.log(`📖 アクセス: ${key}`);
+        return t[key];
+      }
+    });
+    const lines = [];
+    const v1 = proxy.name;
+    const v2 = proxy.age;
+    lines.push(`name: ${v1}`, `age: ${v2}`);
+    console.log(`name: ${v1}`);
+    console.log(`age: ${v2}`);
+    setBA('lab10', `target = { name:'Tom', age:42 }\n直接アクセス → ログなし`,
+      `Proxy経由 → ログ出力\n${lines.join('\n')}`);
+  });
+}
+function lab10Set() {
+  withLog('lab10', () => {
+    const user = new Proxy({}, {
+      set(t, key, value) {
+        if (key === 'age' && (typeof value !== 'number' || value < 0)) {
+          console.error(`❌ ageは正の数値のみ。受信: ${value}`);
+          return false;
+        }
+        t[key] = value;
+        console.log(`✓ 設定: ${key} = ${value}`);
+        return true;
+      }
+    });
+    user.name = 'Tom';
+    user.age = 42;
+    user.age = -5;
+    user.age = 'forty';
+    setBA('lab10', 'user.age = -5\nuser.age = "forty"\n通常なら何でも代入',
+      `Proxyで検証:\n✓ name = Tom\n✓ age = 42\n❌ age = -5 (拒否)\n❌ age = forty (拒否)`);
+  });
+}
+function lab10Default() {
+  withLog('lab10', () => {
+    const safe = new Proxy({ name: 'Tom' }, {
+      get(t, key) {
+        if (key in t) return t[key];
+        return '(未設定)';
+      }
+    });
+    const a = safe.name;
+    const b = safe.age;
+    const c = safe.email;
+    setBA('lab10', `obj.age → undefined\nobj.email → undefined`,
+      `safe.name: ${a}\nsafe.age: ${b}\nsafe.email: ${c}`);
+    console.log(`name: ${a}`);
+    console.log(`age: ${b}`);
+    console.log(`email: ${c}`);
+  });
+}
+
+// ============= Lab 11: Reflect =============
+function lab11Basic() {
+  withLog('lab11', () => {
+    const obj = { name: 'Tom', age: 42 };
+    const lines1 = [
+      `'name' in obj: ${'name' in obj}`,
+      `obj.age: ${obj.age}`,
+      `obj.role = 'dev'`,
+      `delete obj.age`
+    ];
+    const lines2 = [
+      `Reflect.has: ${Reflect.has(obj, 'name')}`,
+      `Reflect.get: ${Reflect.get(obj, 'age')}`
+    ];
+    Reflect.set(obj, 'role', 'dev');
+    Reflect.deleteProperty(obj, 'age');
+    lines2.push(`Reflect.set後: ${JSON.stringify(obj)}`);
+    setBA('lab11', lines1.join('\n'), lines2.join('\n'));
+    console.log(`'name' in obj: ${'name' in obj}`);
+    console.log(`Reflect.has: ${Reflect.has(obj, 'name')}`);
+    console.log(`set後: ${JSON.stringify(obj)}`);
+    console.log(`delete後: ${JSON.stringify(obj)}`);
+  });
+}
+function lab11WithProxy() {
+  withLog('lab11', () => {
+    const logged = new Proxy({ x: 1, y: 2 }, {
+      get(t, key, receiver) {
+        console.log(`get: ${key}`);
+        return Reflect.get(t, key, receiver);
+      },
+      set(t, key, value, receiver) {
+        console.log(`set: ${key} = ${value}`);
+        return Reflect.set(t, key, value, receiver);
+      }
+    });
+    logged.x;
+    logged.y = 99;
+    setBA('lab11', 'Proxyハンドラ内で\nt[key]を直接操作',
+      `Reflect.get/setで\nデフォルト動作呼出\n→ thisの罠を回避\n最終: x=${logged.x}, y=${logged.y}`);
+    console.log(`最終: x=${logged.x}, y=${logged.y}`);
+  });
+}
+
+// ============= Lab 12: Intl =============
+function lab12Number() {
+  withLog('lab12', () => {
+    const n = 1234567.89;
+    const jpy = new Intl.NumberFormat('ja-JP', { style:'currency', currency:'JPY' });
+    const usd = new Intl.NumberFormat('en-US', { style:'currency', currency:'USD' });
+    const pct = new Intl.NumberFormat('ja-JP', { style:'percent' });
+    const short = new Intl.NumberFormat('ja-JP', { notation:'compact' });
+    setBA('lab12',
+      `JPY: ${jpy.format(n)}\nパーセント: ${pct.format(0.5)}\nコンパクト: ${short.format(12000)}`,
+      `USD: ${usd.format(n)}\n(同じ値n=${n})`);
+    console.log(`JPY: ${jpy.format(n)}`);
+    console.log(`USD: ${usd.format(n)}`);
+    console.log(`50%: ${pct.format(0.5)}`);
+    console.log(`compact: ${short.format(12000)}`);
+  });
+}
+function lab12Date() {
+  withLog('lab12', () => {
+    const d = new Date('2026-05-06T14:30:00');
+    const ja = new Intl.DateTimeFormat('ja-JP', {
+      year:'numeric', month:'long', day:'numeric', weekday:'short'
+    });
+    const en = new Intl.DateTimeFormat('en-US', {
+      year:'numeric', month:'long', day:'numeric', weekday:'short'
+    });
+    setBA('lab12', `JP: ${ja.format(d)}`, `EN: ${en.format(d)}`);
+    console.log(`JP: ${ja.format(d)}`);
+    console.log(`EN: ${en.format(d)}`);
+  });
+}
+function lab12Relative() {
+  withLog('lab12', () => {
+    const ja = new Intl.RelativeTimeFormat('ja-JP', { numeric:'auto' });
+    const en = new Intl.RelativeTimeFormat('en-US', { numeric:'auto' });
+    setBA('lab12',
+      `JP -3h: ${ja.format(-3,'hour')}\nJP +2d: ${ja.format(2,'day')}\nJP -1d: ${ja.format(-1,'day')}`,
+      `EN -3h: ${en.format(-3,'hour')}\nEN +2d: ${en.format(2,'day')}\nEN -1d: ${en.format(-1,'day')}`);
+    console.log(`JP -3h: ${ja.format(-3, 'hour')}`);
+    console.log(`EN -3h: ${en.format(-3, 'hour')}`);
+    console.log(`JP +2d: ${ja.format(2, 'day')}`);
+    console.log(`EN +2d: ${en.format(2, 'day')}`);
+    console.log(`JP -1d: ${ja.format(-1, 'day')}`);
+  });
+}
+function lab12List() {
+  withLog('lab12', () => {
+    const items = ['リンゴ','ミカン','バナナ'];
+    const itemsEn = ['apple','orange','banana'];
+    const ja = new Intl.ListFormat('ja-JP', { type:'conjunction' });
+    const en = new Intl.ListFormat('en-US', { type:'conjunction' });
+    const disj = new Intl.ListFormat('ja-JP', { type:'disjunction' });
+    setBA('lab12',
+      `連結(JP): ${ja.format(items)}\n選択肢(JP): ${disj.format(['赤','青','緑'])}`,
+      `連結(EN): ${en.format(itemsEn)}`);
+    console.log(`JP: ${ja.format(items)}`);
+    console.log(`EN: ${en.format(itemsEn)}`);
+    console.log(`選択: ${disj.format(['赤','青','緑'])}`);
+  });
+}
+
+// ============= サイドバー: ボタンクリックでスクロール =============
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('[data-target]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = document.getElementById(btn.getAttribute('data-target'));
+      if (target) target.scrollIntoView({ behavior:'smooth', block:'start' });
+    });
+  });
+
+  const navItems = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+  const targetMap = new Map();
+  navItems.forEach(btn => {
+    const id = btn.getAttribute('data-target');
+    const el = document.getElementById(id);
+    if (el) targetMap.set(el, btn);
+  });
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) {
+      const btn = targetMap.get(e.target);
+      if (btn) {
+        navItems.forEach(n => n.classList.remove('active'));
+        btn.classList.add('active');
+      }
+    }
+  }), { rootMargin:'-30% 0px -60% 0px' });
+  document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+  const backBtn = document.getElementById('back-to-toc');
+  const toc = document.getElementById('toc');
+  backBtn.addEventListener('click', () => {
+    if (toc) toc.scrollIntoView({ behavior:'smooth', block:'start' });
+    else window.scrollTo({ top:0, behavior:'smooth' });
+  });
+  const toggleBackBtn = () => {
+    backBtn.classList.toggle('visible', window.scrollY > window.innerHeight * 0.8);
+  };
+  window.addEventListener('scroll', toggleBackBtn, { passive:true });
+  toggleBackBtn();
+});
+</script>
+
+</body>
+</html>

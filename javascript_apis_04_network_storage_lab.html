@@ -1,0 +1,2441 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JavaScript標準API Lab #4 — Network・Storage編</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  border-top:none; border-right:none; border-bottom:none;
+  background:transparent; width:100%; text-align:left; cursor:pointer;
+  font-family:inherit;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+#sidebar .file-nav { padding:8px 16px; margin:6px 0; background:var(--surface2);
+  border-top:1px solid var(--border); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.7rem; color:var(--text-dim); }
+#sidebar .file-nav a { display:block; padding:3px 0; color:var(--accent);
+  text-decoration:none; font-size:.72rem; }
+#sidebar .file-nav a.current { color:var(--text); font-weight:700; }
+
+.hero { padding:50px 30px 30px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:1.9rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:.95rem; margin-top:8px; }
+.hero .file-tag { display:inline-block; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; background:var(--accent); color:#fff;
+  margin-top:10px; }
+
+.toc { max-width:1100px; margin:24px auto; padding:0 20px; }
+.toc h2 { font-size:1rem; color:var(--accent); margin-bottom:10px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:8px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:9px 12px;
+  background:var(--surface); border:1px solid var(--border); border-radius:7px;
+  text-decoration:none; color:var(--text); font-size:.84rem;
+  font-family:inherit; cursor:pointer; text-align:left; width:100%;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.78rem; min-width:24px; }
+
+.container { max-width:1100px; margin:0 auto; padding:0 20px 60px; }
+.lab { margin-top:32px; border:1px solid var(--border); border-radius:10px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:10px; padding:14px 18px;
+  background:var(--surface2); border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:28px; height:28px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.78rem; }
+.lab-header h3 { font-size:1.05rem; font-weight:600; flex:1; min-width:140px; }
+.compat-badges { display:flex; gap:5px; flex-wrap:wrap; }
+.compat-badge { font-family:var(--mono); font-size:.65rem; padding:2px 7px;
+  border-radius:10px; border:1px solid; }
+.compat-yes { color:var(--success); border-color:var(--success);
+  background:rgba(34,134,58,.08); }
+.compat-no { color:var(--error); border-color:var(--error);
+  background:rgba(203,36,49,.08); }
+.compat-partial { color:var(--accent4); border-color:var(--accent4);
+  background:rgba(176,136,0,.08); }
+.lab-body { padding:18px; }
+.lab-desc { font-size:.9rem; color:var(--text-dim); margin-bottom:14px; line-height:1.75; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.82rem; color:var(--accent); }
+
+.scenes { background:rgba(0,92,197,.04); border:1px solid rgba(0,92,197,.2);
+  border-left:3px solid var(--accent); border-radius:6px;
+  padding:10px 14px; margin:12px 0; font-size:.85rem; line-height:1.75; }
+.scenes-title { font-family:var(--mono); font-size:.7rem; color:var(--accent);
+  font-weight:700; margin-bottom:5px; letter-spacing:.05em; }
+.scenes ol { margin-left:20px; margin-top:3px; }
+.scenes ol li { margin-bottom:3px; color:var(--text); }
+
+.ascii-art { font-family:var(--mono); font-size:.74rem;
+  line-height:1.45; background:var(--code-bg); padding:10px 12px;
+  border:1px solid var(--border); border-radius:6px;
+  margin:10px 0; color:var(--text); overflow-x:auto; white-space:pre; }
+
+.demo { border:1px solid var(--border); border-radius:8px; margin:14px 0;
+  overflow:hidden; background:var(--bg); }
+.demo-bar { padding:8px 12px; background:var(--surface2);
+  border-bottom:1px solid var(--border); font-family:var(--mono); font-size:.7rem;
+  color:var(--text-dim); letter-spacing:.05em; }
+.demo-body { padding:14px; }
+.demo-input { display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+.demo-input input, .demo-input textarea, .demo-input select {
+  font-family:var(--mono); font-size:.85rem; padding:7px 10px;
+  border:1px solid var(--border); border-radius:5px; background:#fff;
+  color:var(--text); flex:1; min-width:120px; }
+.demo-input textarea { min-height:55px; resize:vertical; flex-basis:100%; }
+.demo-btn { font-family:var(--mono); font-size:.82rem; padding:8px 16px;
+  border-radius:6px; border:1px solid var(--accent); background:var(--accent);
+  color:#fff; cursor:pointer; transition:all .15s; }
+.demo-btn:hover { opacity:.85; }
+.demo-btn.secondary { background:var(--surface); color:var(--accent); }
+.demo-btn:disabled { opacity:.5; cursor:not-allowed; }
+
+.ba-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0; }
+.ba-col { border-radius:6px; padding:10px 12px; font-size:.82rem;
+  line-height:1.6; border:1px solid; min-height:60px; }
+.ba-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.ba-after { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.ba-label { font-family:var(--mono); font-size:.62rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:4px; font-weight:700; opacity:.85; }
+.ba-before .ba-label { color:var(--error); }
+.ba-after .ba-label { color:var(--success); }
+.ba-content { font-family:var(--mono); font-size:.78rem; word-break:break-all;
+  white-space:pre-wrap; min-height:30px; }
+
+.log-area { background:#0d1117; color:#c9d1d9; font-family:var(--mono);
+  font-size:.78rem; padding:10px 12px; border-radius:6px;
+  max-height:200px; overflow-y:auto; margin:8px 0;
+  border:1px solid var(--border); white-space:pre-wrap; word-break:break-all;
+  line-height:1.5; }
+.log-area:empty::before { content:'(実行待ち...ボタンを押してください)';
+  color:#6e7681; font-style:italic; }
+.log-line { padding:1px 0; }
+.log-line.info { color:#79c0ff; }
+.log-line.ok { color:#7ee787; }
+.log-line.err { color:#ff7b72; }
+.log-line.dim { color:#6e7681; }
+
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:7px; margin:10px 0; overflow:hidden; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:7px 12px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.7rem; color:var(--text-dim); letter-spacing:.04em; }
+.code-block pre { padding:10px 14px 12px; overflow-x:auto;
+  font-family:var(--mono); font-size:.78rem; line-height:1.55;
+  color:var(--text); white-space:pre; tab-size:2; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.68rem;
+  padding:3px 9px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+
+.info-box { border-radius:7px; padding:10px 13px; font-size:.85rem;
+  line-height:1.7; margin:12px 0; border-left:3px solid; }
+.info-box.ok { border-color:var(--success); background:rgba(34,134,58,.08); color:#154f1e; }
+.info-box.info { border-color:var(--accent); background:rgba(0,92,197,.08); color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08); color:#7a5c00; }
+.info-box.err { border-color:var(--error); background:rgba(203,36,49,.08); color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 5px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .ba-grid { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.5rem; }
+  .toc-grid { grid-template-columns:1fr; }
+  .lab-body { padding:14px; }
+  .demo-input input, .demo-input textarea { min-width:100%; }
+}
+
+/* 📑 フローティング「目次に戻る」ボタン */
+#back-to-toc { position:fixed; bottom:20px; right:20px; z-index:100;
+  width:54px; height:54px; border-radius:50%; border:none;
+  background:var(--accent); color:#fff; cursor:pointer;
+  font-family:var(--mono); font-size:.7rem; font-weight:700;
+  box-shadow:0 4px 12px rgba(0,92,197,.35);
+  display:none; align-items:center; justify-content:center;
+  flex-direction:column; line-height:1.1;
+  transition:transform .15s,opacity .2s,background .15s; opacity:0; }
+#back-to-toc.visible { display:flex; opacity:1; }
+#back-to-toc:hover { background:#003d8f; transform:translateY(-2px); }
+#back-to-toc:active { transform:translateY(0); }
+#back-to-toc .arrow { font-size:1.1rem; line-height:1; margin-bottom:2px; }
+#back-to-toc .label { font-size:.6rem; letter-spacing:.05em; }
+
+/* === File 03 専用追加スタイル === */
+.dom-stage { border:1px dashed var(--border); border-radius:6px;
+  padding:10px; min-height:50px; background:#fff; margin:6px 0; }
+.dom-stage .dyn-item { padding:6px 10px; margin:3px 0; background:var(--surface2);
+  border-left:3px solid var(--accent); border-radius:4px; font-family:var(--mono);
+  font-size:.8rem; }
+.tag-chip { display:inline-block; padding:1px 7px; background:var(--accent);
+  color:#fff; border-radius:10px; font-family:var(--mono); font-size:.7rem;
+  margin-right:4px; }
+.scroll-track { height:200px; overflow-y:auto; border:1px solid var(--border);
+  border-radius:6px; background:var(--code-bg); padding:8px; margin:8px 0; }
+.scroll-track .io-item { padding:50px 12px; margin:12px 0;
+  background:#fff; border:2px solid var(--border); border-radius:6px;
+  text-align:center; font-family:var(--mono); font-size:.85rem;
+  transition:all .3s; }
+.scroll-track .io-item.entered { border-color:var(--success);
+  background:rgba(34,134,58,.08); transform:scale(1.02); }
+.resize-target { resize:both; overflow:auto;
+  width:200px; height:100px; padding:10px; background:#fff;
+  border:2px solid var(--accent); border-radius:6px; font-family:var(--mono);
+  font-size:.78rem; }
+.event-tree { padding:8px; border-radius:6px; }
+.event-tree .ev-outer { padding:18px; background:rgba(203,36,49,.06);
+  border:2px solid var(--error); border-radius:8px; cursor:pointer; }
+.event-tree .ev-middle { padding:14px; background:rgba(176,136,0,.08);
+  border:2px solid var(--accent4); border-radius:8px;
+  margin-top:8px; cursor:pointer; }
+.event-tree .ev-inner { padding:12px; background:rgba(34,134,58,.08);
+  border:2px solid var(--success); border-radius:8px;
+  margin-top:8px; cursor:pointer; text-align:center; font-weight:600; }
+.shadow-host { padding:8px 12px; background:var(--surface2);
+  border:1px solid var(--border); border-radius:6px; margin:6px 0; }
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// JS API Lab #4<br><span style="color:var(--text-dim);font-size:.7rem;">Network・Storage編</span></div>
+  <div class="file-nav">
+    <div style="font-size:.7rem;color:var(--text-dim);padding:2px 0;">📘 全8ファイル中の #4</div>
+    <div style="font-size:.68rem;color:var(--text-dim);padding:2px 0;line-height:1.4;">fetch / Storage / IndexedDB / WS</div>
+  </div>
+  <div class="nav-section">fetch 基本系</div>
+  <button class="nav-item" data-target="lab1"><span class="nav-num">01</span>fetch (GET/POST)</button>
+  <button class="nav-item" data-target="lab2"><span class="nav-num">02</span>Headers/Request/Response</button>
+  <button class="nav-item" data-target="lab3"><span class="nav-num">03</span>FormData</button>
+  <button class="nav-item" data-target="lab4"><span class="nav-num">04</span>AbortController</button>
+  <button class="nav-item" data-target="lab5"><span class="nav-num">05</span>URL/URLSearchParams</button>
+  <div class="nav-section">Storage 基本系</div>
+  <button class="nav-item" data-target="lab6"><span class="nav-num">06</span>localStorage</button>
+  <button class="nav-item" data-target="lab7"><span class="nav-num">07</span>sessionStorage</button>
+  <button class="nav-item" data-target="lab8"><span class="nav-num">08</span>Cookies</button>
+  <button class="nav-item" data-target="lab9"><span class="nav-num">09</span>storage.estimate</button>
+  <button class="nav-item" data-target="lab10"><span class="nav-num">10</span>BroadcastChannel</button>
+  <div class="nav-section">IndexedDB / 通信</div>
+  <button class="nav-item" data-target="lab11"><span class="nav-num">11</span>IndexedDB - open/put</button>
+  <button class="nav-item" data-target="lab12"><span class="nav-num">12</span>IndexedDB - get/cursor</button>
+  <button class="nav-item" data-target="lab13"><span class="nav-num">13</span>IndexedDB - delete/tx</button>
+  <button class="nav-item" data-target="lab14"><span class="nav-num">14</span>postMessage</button>
+  <button class="nav-item" data-target="lab15"><span class="nav-num">15</span>EventSource</button>
+  <button class="nav-item" data-target="lab16"><span class="nav-num">16</span>WebSocket</button>
+</nav>
+
+<div class="hero">
+  <h1>JavaScript標準API Lab</h1>
+  <p class="subtitle">Network・Storage編 — fetch / Storage / IndexedDB / WebSocket</p>
+  <span class="file-tag">📘 File #4 / 8</span>
+</div>
+
+<div class="toc" id="toc">
+  <h2>// 目次(16ラボ)</h2>
+  <div class="toc-grid">
+    <button class="toc-item" data-target="lab1"><span class="toc-num">01</span>fetch (GET/POST/JSON)</button>
+    <button class="toc-item" data-target="lab2"><span class="toc-num">02</span>Headers / Request / Response</button>
+    <button class="toc-item" data-target="lab3"><span class="toc-num">03</span>FormData</button>
+    <button class="toc-item" data-target="lab4"><span class="toc-num">04</span>AbortController + fetch</button>
+    <button class="toc-item" data-target="lab5"><span class="toc-num">05</span>URL / URLSearchParams</button>
+    <button class="toc-item" data-target="lab6"><span class="toc-num">06</span>localStorage</button>
+    <button class="toc-item" data-target="lab7"><span class="toc-num">07</span>sessionStorage</button>
+    <button class="toc-item" data-target="lab8"><span class="toc-num">08</span>Cookies</button>
+    <button class="toc-item" data-target="lab9"><span class="toc-num">09</span>navigator.storage.estimate</button>
+    <button class="toc-item" data-target="lab10"><span class="toc-num">10</span>BroadcastChannel</button>
+    <button class="toc-item" data-target="lab11"><span class="toc-num">11</span>IndexedDB - open/put</button>
+    <button class="toc-item" data-target="lab12"><span class="toc-num">12</span>IndexedDB - get/cursor</button>
+    <button class="toc-item" data-target="lab13"><span class="toc-num">13</span>IndexedDB - delete/tx</button>
+    <button class="toc-item" data-target="lab14"><span class="toc-num">14</span>postMessage</button>
+    <button class="toc-item" data-target="lab15"><span class="toc-num">15</span>EventSource (SSE)</button>
+    <button class="toc-item" data-target="lab16"><span class="toc-num">16</span>WebSocket</button>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ========== Lab 01: fetch (GET/POST/JSON) ========== -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>fetch — HTTPリクエストの標準API</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">XMLHttpRequest の現代版。Promiseベースで、GET/POST/JSON/FormDataを統一的に扱える。OutSystems のCSAやReactフロントから REST APIを叩くときの土台。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>OutSystems Server Action を REST 公開して CSA から呼ぶ</li>
+        <li>外部APIから JSON 取得して Wijmo FlexGrid に流し込む</li>
+        <li>POST で SubmitOrder API を呼び、結果で画面遷移</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  fetch(url, options)
+    │
+    ├─ Promise&lt;Response&gt; を返す
+    │   │
+    │   ├─ res.ok          (status 200-299 で true)
+    │   ├─ res.status      (200, 404, 500 など)
+    │   ├─ res.json()      → Promise&lt;Object&gt; (Body を消費)
+    │   ├─ res.text()      → Promise&lt;string&gt;
+    │   └─ res.blob()      → Promise&lt;Blob&gt;
+    │
+    └─ ⚠ Body は1回しか読めない (ストリーム)
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: Server Action を REST化して fetch で叩けば、CSA(Client-Side Action)外でも同じAPIを再利用可。Token はヘッダで送る。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 公開API (jsonplaceholder) から JSON を GET</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab1Get()">GET (JSON取得)</button>
+          <button class="demo-btn" onclick="lab1Post()">POST (送信)</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab1Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab1-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab1-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab1-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「GET」「POST」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>async function lab1Get() {
+  const res = await fetch('https://jsonplaceholder.typicode.com/todos/1');
+  console.log(`status: ${res.status}, ok: ${res.ok}`);
+  const data = await res.json();
+  console.log(`title: ${data.title}`);
+  console.log(`completed: ${data.completed}`);
+}
+
+async function lab1Post() {
+  const res = await fetch('https://jsonplaceholder.typicode.com/posts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title: 'foo', body: 'bar', userId: 1 })
+  });
+  const data = await res.json();
+  console.log(`新ID: ${data.id}`);
+  console.log(`echo: ${JSON.stringify(data).slice(0, 60)}...`);
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 02: Headers / Request / Response ========== -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>Headers / Request / Response — fetch の構成要素</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">fetch の引数と戻り値の正体。Headers は Map ライク、Request/Response は再利用や clone が可能なオブジェクト。Service Worker でも頻出。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>Authorization ヘッダに Bearer Token を載せて API を叩く</li>
+        <li>Response を clone() してログとUIで2回 body を読む</li>
+        <li>Request オブジェクトを使い回して同じリクエストを複数発射</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  Request                       Response
+  ┌──────────────┐              ┌──────────────┐
+  │ url          │              │ status       │ 200/404/500
+  │ method       │  fetch(req)  │ statusText   │ "OK"
+  │ headers ─────┼─────────────►│ headers ─────┤ Map-like
+  │ body         │              │ body (Stream)│
+  │ mode/cred.   │              │ ok / type    │
+  └──────────────┘              │ clone()      │ ⭐ 2回読める
+                                └──────────────┘
+</pre>
+    <div class="info-box warn">⚠ <b>body の二度読み禁止</b>: <code>res.json()</code> 後にもう一度 <code>res.text()</code> はできない。両方欲しいなら <code>res.clone()</code> してから片方を読む。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: Headers / Request を組み立てて clone</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab2Headers()">Headers構築</button>
+          <button class="demo-btn" onclick="lab2Clone()">Response.clone()</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab2Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab2-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab2-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab2-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「Headers構築」「clone」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab2Headers() {
+  const h = new Headers();
+  h.append('Authorization', 'Bearer xxx.yyy.zzz');
+  h.append('X-Trace-Id', 'abc-123');
+  h.set('Content-Type', 'application/json');
+  console.log(`has Authorization: ${h.has('Authorization')}`);
+  console.log(`get X-Trace-Id: ${h.get('X-Trace-Id')}`);
+  // Headers は反復可能
+  for (const [k, v] of h.entries()) {
+    console.log(`  ${k}: ${v}`);
+  }
+  const req = new Request('https://example.com/api', {
+    method: 'POST', headers: h, body: '{}'
+  });
+  console.log(`req.method: ${req.method}, url末尾: ${req.url.slice(-12)}`);
+}
+
+async function lab2Clone() {
+  const res = await fetch('https://jsonplaceholder.typicode.com/todos/2');
+  const copy = res.clone();
+  const t1 = await res.text();    // 元から text として読む
+  const t2 = await copy.json();   // clone から json として読む
+  console.log(`text長: ${t1.length}文字`);
+  console.log(`json.title: ${t2.title}`);
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 03: FormData ========== -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>FormData — フォーム送信 / multipart 構築</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">multipart/form-data を簡単に組み立てる。ファイルアップロードは fetch の body に渡すだけで Content-Type も自動付与される。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>OutSystems で画像/CSVを REST API へアップロード</li>
+        <li>HTML form の値をまとめて API に POST</li>
+        <li>動的にフィールドを追加して送信(タグ複数選択など)</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  HTML &lt;form&gt;            FormData (JS)
+  ┌────────────┐         ┌──────────────────┐
+  │ name=foo   │         │ append('name','foo')
+  │ file=img   │ ───────►│ append('file', File)
+  └────────────┘         └────────┬─────────┘
+                                  │
+                                  ▼
+                         multipart/form-data 自動構築
+                         (Content-Type 境界文字列含む)
+                                  │
+                                  ▼
+                         fetch(url, { method:'POST', body: fd })
+</pre>
+    <div class="info-box info">📌 <b>注意</b>: FormData を body に渡すとき <code>Content-Type</code> ヘッダは <b>手動で設定しない</b>。boundary が壊れる。fetch が自動で正しい multipart ヘッダを付ける。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: フォーム→FormData→ echo API へ送信</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <input type="text" id="lab3-name" placeholder="名前" value="Tom" style="padding:8px; margin:4px; border:1px solid var(--border); border-radius:6px;">
+          <input type="file" id="lab3-file" accept="image/*,text/*" style="padding:8px; margin:4px;">
+          <br>
+          <button class="demo-btn" onclick="lab3Send()">送信</button>
+          <button class="demo-btn" onclick="lab3Inspect()">中身を見る (送信せず)</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab3Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab3-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab3-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab3-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「送信」「中身を見る」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab3Inspect() {
+  const fd = new FormData();
+  fd.append('name', document.getElementById('lab3-name').value);
+  const f = document.getElementById('lab3-file').files[0];
+  if (f) fd.append('file', f);
+  fd.append('tags', 'urgent');
+  fd.append('tags', 'demo');  // 同名を複数append可
+  for (const [k, v] of fd.entries()) {
+    console.log(`  ${k}: ${v instanceof File ? `(File: ${v.name}, ${v.size}B)` : v}`);
+  }
+}
+
+async function lab3Send() {
+  const fd = new FormData();
+  fd.append('name', document.getElementById('lab3-name').value);
+  const f = document.getElementById('lab3-file').files[0];
+  if (f) fd.append('file', f);
+  // ⚠ Content-Type は付けない (boundaryが壊れる)
+  const res = await fetch('https://httpbin.org/post', {
+    method: 'POST', body: fd
+  });
+  const data = await res.json();
+  console.log(`受信form: ${JSON.stringify(data.form)}`);
+  if (data.files?.file) console.log(`受信file長: ${data.files.file.length}文字`);
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 04: AbortController + fetch ========== -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>AbortController + fetch — リクエストのキャンセル / タイムアウト</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">fetch に signal を渡し、外から abort() で中断する。タイムアウト・ユーザのキャンセル操作・遷移時のクリーンアップに必須。File 03 のイベント編にも登場した汎用機構。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>5秒以内に応答が無ければ自動キャンセル(タイムアウト)</li>
+        <li>ユーザが画面を切り替えたら未完了fetchを中断(リーク防止)</li>
+        <li>連打されたら前のリクエストを破棄して最新だけ採用</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  ┌─────────────────────────────────────────────────┐
+  │  const ctrl = new AbortController()            │
+  │                                                 │
+  │  fetch(url, { signal: ctrl.signal })           │
+  │       │                                         │
+  │       │   ◄────── ctrl.abort()                 │
+  │       │           (タイムアウト or ユーザ操作)│
+  │       ▼                                         │
+  │  Promise reject → AbortError                   │
+  └─────────────────────────────────────────────────┘
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: BPT で長時間かかるサーバ処理を呼ぶときに 30秒タイムアウトを設定したい場合、CSA で AbortController + setTimeout で組める。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: タイムアウト or 手動キャンセル</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab4Timeout()">2秒タイムアウト (delay=5s)</button>
+          <button class="demo-btn" onclick="lab4Manual()">手動キャンセル開始</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab4Abort()">▶ Abort!</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab4Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab4-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab4-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab4-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「タイムアウト」「手動キャンセル」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>// 2秒で自動タイムアウト (httpbin /delay/5 は5秒返さない)
+async function lab4Timeout() {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 2000);
+  console.log('fetch開始 (delay=5s, timeout=2s)');
+  try {
+    const res = await fetch('https://httpbin.org/delay/5',
+                            { signal: ctrl.signal });
+    console.log(`まさかの成功: ${res.status}`);
+  } catch (e) {
+    console.log(`例外: ${e.name} - ${e.message}`);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// 手動キャンセル: AbortController を保持しておく
+let lab4Ctrl = null;
+async function lab4Manual() {
+  lab4Ctrl = new AbortController();
+  console.log('開始: ▶Abort!ボタンを押すと中断します');
+  try {
+    const res = await fetch('https://httpbin.org/delay/10',
+                            { signal: lab4Ctrl.signal });
+    console.log(`受信: ${res.status}`);
+  } catch (e) {
+    console.log(`中断: ${e.name}`);
+  }
+}
+function lab4Abort() {
+  if (lab4Ctrl) { lab4Ctrl.abort(); lab4Ctrl = null; }
+  else console.log('開始ボタンを先に押してください');
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 05: URL / URLSearchParams ========== -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>URL / URLSearchParams — URLの組み立てとクエリ操作</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">文字列連結でURLを作るな、の答え。エンコード/デコードを正しく扱い、クエリパラメータを Map ライクに編集できる。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>検索画面の絞り込み条件をクエリ文字列にまとめて API へ</li>
+        <li>OutSystems URL から token=xxx を解析してログイン状態判定</li>
+        <li>絶対/相対URL の解決 (base + path)</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  URL コンストラクタ
+  ┌───────────────────────────────────────────────────┐
+  │ const u = new URL('/api?q=foo', 'https://ex.com')│
+  │                                                   │
+  │ u.protocol  → "https:"                           │
+  │ u.host      → "ex.com"                           │
+  │ u.pathname  → "/api"                             │
+  │ u.search    → "?q=foo"                           │
+  │ u.searchParams (URLSearchParams)                 │
+  │   ├─ .get('q') → "foo"                           │
+  │   ├─ .set('p', 1)                                │
+  │   ├─ .append('tag', 'a')                         │
+  │   └─ .toString() → "q=foo&amp;p=1&amp;tag=a"           │
+  └───────────────────────────────────────────────────┘
+</pre>
+    <div class="info-box info">📌 <b>エンコード自動</b>: <code>params.set('q', '日本語 含む')</code> で <code>q=%E6%97%A5...</code> に自動変換される。<code>encodeURIComponent</code> を手で呼ぶ必要なし。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: URL/クエリの組み立てと解析</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab5Build()">URL組み立て</button>
+          <button class="demo-btn" onclick="lab5Parse()">現在URLを解析</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab5Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab5-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab5-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab5-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「URL組み立て」「現在URL解析」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab5Build() {
+  const u = new URL('/search', 'https://example.com');
+  u.searchParams.set('q', '日本語 含む');
+  u.searchParams.set('page', 1);
+  u.searchParams.append('tag', 'urgent');
+  u.searchParams.append('tag', 'demo');
+  console.log(`完成URL: ${u.toString()}`);
+  console.log(`query: ${u.search}`);
+  console.log(`tag全部: ${u.searchParams.getAll('tag').join(',')}`);
+}
+
+function lab5Parse() {
+  const u = new URL(location.href);
+  console.log(`origin:   ${u.origin}`);
+  console.log(`pathname: ${u.pathname}`);
+  console.log(`hash:     ${u.hash || '(空)'}`);
+  // クエリの全パラメータ
+  const params = [...u.searchParams.entries()];
+  console.log(`params数: ${params.length}`);
+  params.slice(0, 3).forEach(([k, v]) =>
+    console.log(`  ${k} = ${v.slice(0, 30)}`));
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 06: localStorage ========== -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>localStorage — オリジン単位の永続キー値ストア</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+      <span class="compat-badge compat-warn">⚠ Sandbox不可</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">同じオリジンで永続化されるキー値ストア(タブを閉じても残る)。値は文字列のみ。容量目安は5-10MB。同期APIなのでメインスレッドをブロックする点に注意。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>OutSystemsで User Token / 表示設定を保存し、リロード後も維持</li>
+        <li>下書きフォームの内容を localStorage に退避(誤閉じ対策)</li>
+        <li>ダークモード/言語設定など UI Preference の永続化</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  オリジン (https://example.com) ────────────┐
+  ┌─────────────────────────────────────────┐│
+  │ localStorage                            ││ ← タブを閉じても消えない
+  │  ├─ "user.token"  → "abc.def.ghi"      ││
+  │  ├─ "ui.theme"    → "dark"             ││
+  │  └─ "form.draft"  → '{"title":"..."}' ││
+  ├─────────────────────────────────────────┤│
+  │ sessionStorage  ※タブ単位/閉じたら消える││
+  └─────────────────────────────────────────┘│
+                                              ▼
+  別オリジン (https://other.com) は別の領域  ← 隔離
+</pre>
+    <div class="info-box warn">⚠ <b>同期API</b>: 大量書込はメインスレッド停止の原因に。1キー数十KB以上を頻繁に書くなら IndexedDB を検討。値はオブジェクトを <code>JSON.stringify</code> してから保存する。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 保存・取得・削除・全列挙</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <input type="text" id="lab6-key" placeholder="key" value="user.theme" style="padding:8px; margin:4px; border:1px solid var(--border); border-radius:6px;">
+          <input type="text" id="lab6-val" placeholder="value" value="dark" style="padding:8px; margin:4px; border:1px solid var(--border); border-radius:6px;">
+          <br>
+          <button class="demo-btn" onclick="lab6Set()">setItem</button>
+          <button class="demo-btn" onclick="lab6Get()">getItem</button>
+          <button class="demo-btn" onclick="lab6Remove()">removeItem</button>
+          <button class="demo-btn" onclick="lab6List()">全列挙</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab6Clear()">クリア(ログ)</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab6-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab6-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab6-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「setItem/getItem/removeItem/全列挙」の中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab6Set() {
+  const k = document.getElementById('lab6-key').value;
+  const v = document.getElementById('lab6-val').value;
+  localStorage.setItem(k, v);
+  console.log(`保存: ${k} = ${v}`);
+}
+function lab6Get() {
+  const k = document.getElementById('lab6-key').value;
+  const v = localStorage.getItem(k);
+  console.log(`取得: ${k} = ${v === null ? '(null=未保存)' : v}`);
+}
+function lab6Remove() {
+  const k = document.getElementById('lab6-key').value;
+  localStorage.removeItem(k);
+  console.log(`削除: ${k}`);
+}
+function lab6List() {
+  console.log(`総キー数: ${localStorage.length}`);
+  for (let i = 0; i &lt; localStorage.length; i++) {
+    const k = localStorage.key(i);
+    const v = localStorage.getItem(k);
+    console.log(`  [${i}] ${k} = ${v.slice(0, 30)}`);
+  }
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 07: sessionStorage ========== -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>sessionStorage — タブ単位で生きるキー値ストア</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+      <span class="compat-badge compat-warn">⚠ Sandbox不可</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">localStorageと API は同じだが、寿命が「タブを閉じるまで」。リロードでは残るが、新規タブには引き継がれない。一時的な状態保持に。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>多段ウィザードの途中状態をリロード復帰用に保持</li>
+        <li>ログイン後の一時トークンをタブ閉じで自動破棄</li>
+        <li>OAuth state パラメータの突合確認用</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  比較表
+  ┌──────────────────┬───────────────┬──────────────┐
+  │ 観点             │ localStorage  │ sessionStorage│
+  ├──────────────────┼───────────────┼──────────────┤
+  │ 寿命             │ 永続           │ タブ閉じまで  │
+  │ 別タブと共有     │ ◯ 同オリジン   │ ✗ 隔離       │
+  │ リロード後       │ 残る           │ 残る          │
+  │ 容量目安         │ 5-10MB        │ 5-10MB       │
+  │ API              │ 同じ           │ 同じ          │
+  └──────────────────┴───────────────┴──────────────┘
+</pre>
+    <div class="info-box info">📌 <b>使い分け</b>: 「次回もユーザに見せたい」→ localStorage。「このタブを閉じたら忘れたい」→ sessionStorage。OAuth の state は後者が安全。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 同じAPIで動作だが寿命が違うことを体感</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab7Set()">sessionStorage に保存</button>
+          <button class="demo-btn" onclick="lab7Compare()">両方を一覧</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab7Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab7-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab7-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab7-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「sessionStorageに保存」「両方を一覧」の中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab7Set() {
+  const ts = new Date().toISOString().slice(11, 19);
+  sessionStorage.setItem('lab7.timestamp', ts);
+  sessionStorage.setItem('lab7.tabId', Math.random().toString(36).slice(2, 8));
+  console.log(`session保存: timestamp = ${ts}`);
+  console.log(`session保存: tabId = ${sessionStorage.getItem('lab7.tabId')}`);
+  console.log('別タブで同URL開くと、tabId が違うことを確認できます');
+}
+
+function lab7Compare() {
+  console.log('=== localStorage ===');
+  console.log(`総数: ${localStorage.length}`);
+  for (let i = 0; i &lt; Math.min(3, localStorage.length); i++) {
+    const k = localStorage.key(i);
+    console.log(`  ${k}`);
+  }
+  console.log('=== sessionStorage ===');
+  console.log(`総数: ${sessionStorage.length}`);
+  for (let i = 0; i &lt; Math.min(3, sessionStorage.length); i++) {
+    const k = sessionStorage.key(i);
+    console.log(`  ${k} = ${sessionStorage.getItem(k)}`);
+  }
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 08: Cookies ========== -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>document.cookie — 文字列ベースのCookie操作</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+      <span class="compat-badge compat-warn">⚠ HttpOnly不可視</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">JSから読み書きできるCookie。HttpOnly属性のCookieは見えない(認証用は通常HttpOnly)。新APIの CookieStore は iOS Safari 未対応のため document.cookie が現実解。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>OutSystems osVisitorCookie の確認・読み取り</li>
+        <li>CSRF対策トークンを Cookie ↔ ヘッダで突合</li>
+        <li>UIプリファレンス(言語/テーマ)を Cookie でサーバへ自動送信</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  document.cookie の癖
+  ┌─────────────────────────────────────────────────┐
+  │ 読み: 全Cookieが "k1=v1; k2=v2; k3=v3" の文字列 │
+  │       → split で自分でパースする必要あり        │
+  │                                                 │
+  │ 書き: cookie = "k=v; path=/; max-age=3600"     │
+  │       → 1個ずつ書く (上書きではなく追加)        │
+  │                                                 │
+  │ 属性                                            │
+  │  ├─ path=/         全パスに送信                 │
+  │  ├─ max-age=N      N秒後に失効                  │
+  │  ├─ Secure         HTTPSのみ送信                │
+  │  ├─ SameSite=Lax   クロスサイト保護             │
+  │  └─ HttpOnly ※    JSから不可視 (サーバ側設定)  │
+  └─────────────────────────────────────────────────┘
+</pre>
+    <div class="info-box warn">⚠ <b>HttpOnly</b>: サーバが <code>Set-Cookie: ...; HttpOnly</code> で送ると JS から一切見えない。認証Cookieはこれが基本。XSSで盗まれるのを防ぐため。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 読み書きと属性の効果</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab8Set()">Cookie書込</button>
+          <button class="demo-btn" onclick="lab8Read()">全Cookie表示</button>
+          <button class="demo-btn" onclick="lab8Parse()">パース→Map化</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab8Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab8-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab8-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab8-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「書込/全表示/パース」の中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab8Set() {
+  // path=/ で同オリジン全パスに送信、max-age=300 で5分後失効
+  document.cookie = 'lab8_theme=dark; path=/; max-age=300; SameSite=Lax';
+  document.cookie = 'lab8_lang=ja; path=/; max-age=300; SameSite=Lax';
+  console.log('書込: lab8_theme=dark, lab8_lang=ja (5分有効)');
+}
+
+function lab8Read() {
+  // 全Cookieが1本の文字列として返る
+  const all = document.cookie;
+  console.log(`raw: ${all || '(空)'}`);
+  console.log(`長さ: ${all.length}文字`);
+}
+
+function lab8Parse() {
+  // "k1=v1; k2=v2" を Map にパース
+  const map = new Map(
+    document.cookie.split('; ')
+      .filter(s =&gt; s)
+      .map(s =&gt; {
+        const i = s.indexOf('=');
+        return [s.slice(0, i), decodeURIComponent(s.slice(i + 1))];
+      })
+  );
+  console.log(`Cookie数: ${map.size}`);
+  for (const [k, v] of map) {
+    console.log(`  ${k} = ${v.slice(0, 30)}`);
+  }
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 09: navigator.storage.estimate ========== -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>navigator.storage.estimate — 使用容量と上限の取得</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">オリジンが使えるストレージの上限と現在使用量を取得。IndexedDB / Cache / localStorage の合計値。容量警告UIや事前判定に使う。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>大きな添付ファイルを保存する前に空き容量チェック</li>
+        <li>オフライン用キャッシュが上限の8割を超えたら古いものを削除</li>
+        <li>ユーザに「現在 12MB / 1GB 使用中」と表示</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  navigator.storage.estimate()
+       │
+       ▼
+   { quota: 1073741824,    // バイト (上限の目安)
+     usage: 12582912,      // バイト (使用中)
+     usageDetails: {        // ※ ブラウザ依存
+       indexedDB: 8000000,
+       caches:     3000000,
+       ...
+     } }
+
+  使用率 = usage / quota
+</pre>
+    <div class="info-box info">📌 <b>注意</b>: 値は環境依存。iOS Safari は控えめ(数十MB〜)、Chrome Android は GB 級。あくまで「これ以上使ったら追い出される可能性がある」目安。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 自分の端末の容量を確認</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab9Estimate()">estimate実行</button>
+          <button class="demo-btn" onclick="lab9Persist()">persisted? 確認</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab9Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab9-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab9-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab9-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「estimate/persisted」の中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>async function lab9Estimate() {
+  if (!navigator.storage?.estimate) {
+    console.log('未対応のブラウザです');
+    return;
+  }
+  const e = await navigator.storage.estimate();
+  const mb = (n) =&gt; (n / 1024 / 1024).toFixed(2) + ' MB';
+  console.log(`使用中:  ${mb(e.usage)}`);
+  console.log(`上限:    ${mb(e.quota)}`);
+  console.log(`使用率:  ${(e.usage / e.quota * 100).toFixed(2)}%`);
+  if (e.usageDetails) {
+    for (const [k, v] of Object.entries(e.usageDetails)) {
+      console.log(`  ${k}: ${mb(v)}`);
+    }
+  }
+}
+
+async function lab9Persist() {
+  if (!navigator.storage?.persisted) {
+    console.log('未対応');
+    return;
+  }
+  const p = await navigator.storage.persisted();
+  console.log(`永続モード: ${p ? '◯有効' : '✗未付与'}`);
+  console.log('navigator.storage.persist() でユーザに許可を求める');
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 10: BroadcastChannel ========== -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>BroadcastChannel — 同オリジンの別タブとメッセージ交換</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">同じオリジンの全タブ・iframe・Worker でブロードキャスト通信ができる。サーバ不要・自分から自分には届かないのが特徴。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>あるタブでログアウトしたら他のタブも即時ログアウト</li>
+        <li>OutSystems で多タブ作業中、データ更新を全タブに通知</li>
+        <li>テーマ切替を別タブにも即時反映</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+   タブA                BroadcastChannel('logout')         タブB
+  ┌──────┐                       │                       ┌──────┐
+  │ ch.postMessage({u:1}) ──────►│                       │      │
+  └──────┘                       │  ◄─ ch.onmessage ─────┤      │
+                                 │      (タブBで受信)    └──────┘
+                                 │
+                                 │  ◄─ ch.onmessage ─────タブC
+                                 │      (タブCでも受信)
+   同オリジン全タブ ─────────────┘
+   ⚠ 送信元自身には届かない (postしたタブAでは onmessage しない)
+</pre>
+    <div class="info-box info">📌 <b>postMessage との違い</b>: window.postMessage は宛先を1つ指定。BroadcastChannel は名前付きチャネルへの全員配信。Pub/Sub に近い。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: このページを別タブでも開いて送信ボタンを押す</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab10Init()">受信開始 (subscribe)</button>
+          <button class="demo-btn" onclick="lab10Send()">送信</button>
+          <button class="demo-btn" onclick="lab10Close()">close</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab10Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab10-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab10-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab10-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「受信開始/送信/close」の中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>let lab10Ch = null;
+function lab10Init() {
+  if (lab10Ch) { console.log('既に受信中'); return; }
+  lab10Ch = new BroadcastChannel('lab4-demo');
+  lab10Ch.onmessage = (e) =&gt; {
+    console.log(`◀ 受信: ${JSON.stringify(e.data)}`);
+  };
+  console.log('subscribe完了。別タブで送信してみてください');
+}
+
+function lab10Send() {
+  if (!lab10Ch) lab10Ch = new BroadcastChannel('lab4-demo');
+  const msg = { type:'ping', from: location.href.slice(-20),
+                ts: Date.now() };
+  lab10Ch.postMessage(msg);
+  console.log(`▶ 送信: ${JSON.stringify(msg)}`);
+  console.log('  ⚠ 自分のタブでは onmessage しません');
+}
+
+function lab10Close() {
+  if (lab10Ch) {
+    lab10Ch.close();
+    lab10Ch = null;
+    console.log('close完了。これ以降 onmessage しない');
+  }
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 11: IndexedDB - open/put ========== -->
+<div class="lab" id="lab11">
+  <div class="lab-header">
+    <div class="lab-num">11</div>
+    <h3>IndexedDB - open / put — 大容量・構造化されたDB</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">ブラウザ組込のNoSQL風DB。非同期・トランザクション付・MB〜GB級まで保存可能。多段イベントAPIなのでPromiseでラップして使う。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>OutSystemsモバイルで オフライン時の入力をキャッシュ</li>
+        <li>大量CSV/画像をクライアント側に索引付きで保存</li>
+        <li>localStorageでは収まらない数MB〜数十MBのデータ</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  IndexedDB の3階層
+  ┌─────────────────────────────────────────────────┐
+  │ Database  (lab4_db, version=1)                  │
+  │  ├─ ObjectStore  "items" (主キー: id, autoIncr) │
+  │  │     └─ レコード { id:1, name:"foo", ... }    │
+  │  ├─ ObjectStore  "users" (主キー: email)        │
+  │  └─ ObjectStore  "settings" (主キー: key)       │
+  └─────────────────────────────────────────────────┘
+
+  操作の流れ
+  open(name, version)
+    │
+    ├─ onupgradeneeded → ObjectStore作成 (初回 or バージョンアップ時のみ)
+    │
+    ├─ onsuccess → db取得
+    │     │
+    │     └─ db.transaction([store], 'readwrite')
+    │            └─ tx.objectStore(store)
+    │                  └─ store.put(value) / store.get(key)
+</pre>
+    <div class="info-box warn">⚠ <b>多段イベント</b>: open→onupgradeneeded→onsuccess→transaction→objectStore→request→onsuccess の鎖を Promise でラップしておくのが現実解。下のコードは薄いラッパ <code>idbOpen</code> を使う形。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: DB作成 → put でレコード追加</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab11Open()">DB open (初回はupgrade)</button>
+          <button class="demo-btn" onclick="lab11Put()">put 3件追加</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab11Clear()">クリア(ログ)</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab11-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab11-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab11-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「open / put」の中身 + idbOpenヘルパ</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>// 多段イベントAPIをPromiseで包む薄いヘルパ
+function idbOpen(name, version, onUpgrade) {
+  return new Promise((resolve, reject) =&gt; {
+    const req = indexedDB.open(name, version);
+    req.onupgradeneeded = (e) =&gt; onUpgrade(req.result, e.oldVersion);
+    req.onsuccess = () =&gt; resolve(req.result);
+    req.onerror = () =&gt; reject(req.error);
+  });
+}
+function idbReq(req) {
+  return new Promise((resolve, reject) =&gt; {
+    req.onsuccess = () =&gt; resolve(req.result);
+    req.onerror = () =&gt; reject(req.error);
+  });
+}
+
+async function lab11Open() {
+  const db = await idbOpen('lab4_db', 1, (db) =&gt; {
+    if (!db.objectStoreNames.contains('items')) {
+      db.createObjectStore('items',
+        { keyPath:'id', autoIncrement:true });
+      console.log('items ストア作成 (autoIncrement)');
+    }
+  });
+  console.log(`open完了 ${db.name} v${db.version}`);
+  console.log(`store一覧: ${[...db.objectStoreNames].join(',')}`);
+  db.close();
+}
+
+async function lab11Put() {
+  const db = await idbOpen('lab4_db', 1, () =&gt; {});
+  const tx = db.transaction(['items'], 'readwrite');
+  const store = tx.objectStore('items');
+  const items = [
+    { name:'お茶',     price:150 },
+    { name:'おにぎり', price:130 },
+    { name:'コーヒー', price:200 }
+  ];
+  for (const it of items) {
+    const id = await idbReq(store.put(it));
+    console.log(`put: id=${id}, ${it.name}`);
+  }
+  db.close();
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 12: IndexedDB - get / cursor ========== -->
+<div class="lab" id="lab12">
+  <div class="lab-header">
+    <div class="lab-num">12</div>
+    <h3>IndexedDB - get / cursor — 1件取得 / 全件走査</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">単件は <code>store.get(key)</code>、全件は <code>store.getAll()</code> または <code>openCursor()</code>。cursor は1件ずつ流すので大量データ向き。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>主キーで個別レコードを引く(O(log n))</li>
+        <li>全件をUIに一覧表示する(getAll で配列に)</li>
+        <li>1万件以上を順番に処理しメモリ使用を抑える(cursor)</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  get vs getAll vs cursor
+  ┌──────────┬────────────────────────────────────┐
+  │ get(key) │ 1件 → Promise&lt;value&gt;               │
+  │ getAll() │ 全件 → Promise&lt;Array&lt;value&gt;&gt;       │
+  │          │   ⚠ 巨大DBは一気にメモリ展開して死ぬ│
+  │ cursor   │ 1件ずつ → continue() で次へ進める  │
+  │          │   メモリ最小、途中break可          │
+  └──────────┴────────────────────────────────────┘
+
+  cursor の継続パターン
+   onsuccess(e) {
+     const cur = e.target.result;
+     if (!cur) { 終了 }
+     else { useValue(cur.value); cur.continue(); }
+   }
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈</b>: モバイルで5000件のオフラインリストを絞り込み表示するなら、cursor + 早期 break が安全。getAll は数百件まで。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: Lab 11 で put した3件を取得</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab12Get()">get(id=1)</button>
+          <button class="demo-btn" onclick="lab12GetAll()">getAll()</button>
+          <button class="demo-btn" onclick="lab12Cursor()">cursor 全走査</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab12Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab12-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab12-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab12-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「get/getAll/cursor」の中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>async function lab12Get() {
+  const db = await idbOpen('lab4_db', 1, () =&gt; {});
+  const store = db.transaction(['items'], 'readonly').objectStore('items');
+  const v = await idbReq(store.get(1));
+  console.log(`get(1): ${JSON.stringify(v) || '(なし)'}`);
+  db.close();
+}
+
+async function lab12GetAll() {
+  const db = await idbOpen('lab4_db', 1, () =&gt; {});
+  const store = db.transaction(['items'], 'readonly').objectStore('items');
+  const all = await idbReq(store.getAll());
+  console.log(`総件数: ${all.length}`);
+  all.forEach(it =&gt; console.log(`  id=${it.id}: ${it.name} (${it.price}円)`));
+  db.close();
+}
+
+async function lab12Cursor() {
+  const db = await idbOpen('lab4_db', 1, () =&gt; {});
+  const store = db.transaction(['items'], 'readonly').objectStore('items');
+  let count = 0;
+  await new Promise((resolve, reject) =&gt; {
+    const req = store.openCursor();
+    req.onsuccess = (e) =&gt; {
+      const cur = e.target.result;
+      if (!cur) { resolve(); return; }
+      count++;
+      console.log(`  [${count}] ${cur.value.name}`);
+      cur.continue();   // ⭐ 次の1件へ
+    };
+    req.onerror = () =&gt; reject(req.error);
+  });
+  console.log(`cursor走査完了: ${count}件`);
+  db.close();
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 13: IndexedDB - delete / transaction ========== -->
+<div class="lab" id="lab13">
+  <div class="lab-header">
+    <div class="lab-num">13</div>
+    <h3>IndexedDB - delete / transaction — 削除と原子性</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">トランザクションは複数操作を1単位で実行。途中で失敗すれば自動ロールバック。<code>tx.oncomplete</code> でコミット完了を検知できる。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>関連する2ストアを同時更新(在庫+履歴)し、片方失敗で巻戻し</li>
+        <li>不要レコードの一括削除をアトミックに</li>
+        <li>クリーンアップ用に DB全体を削除して再構築</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  Transaction の生死
+   db.transaction([store1, store2], 'readwrite')
+        │
+        ├─ tx.objectStore(...).put(...)
+        ├─ tx.objectStore(...).delete(...)
+        │
+        ├─ ✓ tx.oncomplete   全成功でコミット完了
+        └─ ✗ tx.onerror      1つでも失敗 → 全体ロールバック
+
+  寿命: txはマイクロタスクの隙間で「自動でcommit」する。
+       awaitを挟みすぎると tx finished エラー注意。
+</pre>
+    <div class="info-box warn">⚠ <b>tx の寿命</b>: tx を作ったら、別の await を挟まずに連続で操作すること。間に <code>await fetch(...)</code> など別ロジックを挟むと「TransactionInactiveError」で死ぬ。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 削除 → DB全体削除</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab13Delete()">id=1 を削除</button>
+          <button class="demo-btn" onclick="lab13Tx()">tx一括 (put+delete)</button>
+          <button class="demo-btn" onclick="lab13Drop()">DB全体削除</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab13Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab13-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab13-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab13-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「delete / tx一括 / DB削除」の中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>async function lab13Delete() {
+  const db = await idbOpen('lab4_db', 1, () =&gt; {});
+  const tx = db.transaction(['items'], 'readwrite');
+  await idbReq(tx.objectStore('items').delete(1));
+  await new Promise(r =&gt; tx.oncomplete = r);
+  console.log('id=1 削除完了 (commit)');
+  db.close();
+}
+
+async function lab13Tx() {
+  const db = await idbOpen('lab4_db', 1, () =&gt; {});
+  const tx = db.transaction(['items'], 'readwrite');
+  const store = tx.objectStore('items');
+  // 1tx内で複数操作 - 1つでも失敗で全部ロールバック
+  store.put({ name:'紅茶', price:170 });
+  store.delete(2);
+  await new Promise((res, rej) =&gt; {
+    tx.oncomplete = () =&gt; res();
+    tx.onerror    = () =&gt; rej(tx.error);
+  });
+  console.log('tx 一括コミット完了 (put+delete原子的)');
+  db.close();
+}
+
+async function lab13Drop() {
+  await new Promise((res, rej) =&gt; {
+    const req = indexedDB.deleteDatabase('lab4_db');
+    req.onsuccess = () =&gt; res();
+    req.onerror   = () =&gt; rej(req.error);
+  });
+  console.log('lab4_db 削除完了。Lab 11からやり直し可');
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 14: postMessage ========== -->
+<div class="lab" id="lab14">
+  <div class="lab-header">
+    <div class="lab-num">14</div>
+    <h3>postMessage — window 間 / iframe とメッセージ交換</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">同/別オリジンのwindow・iframe・popup・Workerと安全にメッセージ交換。BroadcastChannelと違い、宛先1つに送る。クロスオリジンも可。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>OutSystems画面に外部ダッシュボード(iframe)を埋め込み連携</li>
+        <li>Tableau Embedding APIでフィルタ変更を子→親へ通知</li>
+        <li>OAuth ポップアップで認可コードを親 window に返す</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+   親 window                       子 iframe (or popup)
+  ┌──────────────┐                ┌──────────────┐
+  │ iframe.contentWindow.postMessage(           │
+  │   data, targetOrigin)         │              │
+  │       ──────────────────────► │              │
+  │                                │              │
+  │                                │ window.addEventListener(
+  │                                │   'message', e =&gt; {        │
+  │                                │     if(e.origin !== ...) return; │
+  │                                │     /* 検証してから処理 */       │
+  │                                │   })                      │
+  │       ◄────────── e.source.postMessage(reply, e.origin)    │
+  └──────────────┘                └──────────────┘
+   ⚠ targetOrigin に '*' は危険 (情報漏洩)
+   ⚠ 受信側で e.origin と e.source を必ず検証
+</pre>
+    <div class="info-box warn">⚠ <b>セキュリティ必須</b>: 受信側は <code>e.origin</code> を検証してから処理すること。<code>'*'</code> 送信や検証無しは XSS 同等のリスク。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 自分自身に postMessage (同window実験)</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab14Listen()">受信開始</button>
+          <button class="demo-btn" onclick="lab14Send()">自分に送信</button>
+          <button class="demo-btn" onclick="lab14Stop()">受信停止</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab14Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab14-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab14-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab14-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「受信/送信」の中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>let lab14Handler = null;
+function lab14Listen() {
+  if (lab14Handler) { console.log('既に受信中'); return; }
+  lab14Handler = (e) =&gt; {
+    // ⭐ 必ずorigin検証 (実プロジェクトでは厳密に絞る)
+    if (e.origin !== location.origin) {
+      console.log(`✗ 拒否: origin=${e.origin}`);
+      return;
+    }
+    if (e.data?.type !== 'lab14') return; // 関係ない message を弾く
+    console.log(`◀ 受信 origin=${e.origin}`);
+    console.log(`  data: ${JSON.stringify(e.data)}`);
+  };
+  window.addEventListener('message', lab14Handler);
+  console.log('受信開始');
+}
+
+function lab14Send() {
+  // 自分の window に投げる (本番は iframe.contentWindow など)
+  window.postMessage(
+    { type:'lab14', payload:'hello', ts: Date.now() },
+    location.origin   // ⭐ '*' ではなく明示
+  );
+  console.log(`▶ 送信 target=${location.origin}`);
+}
+
+function lab14Stop() {
+  if (lab14Handler) {
+    window.removeEventListener('message', lab14Handler);
+    lab14Handler = null;
+    console.log('受信停止');
+  }
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 15: EventSource (SSE) ========== -->
+<div class="lab" id="lab15">
+  <div class="lab-header">
+    <div class="lab-num">15</div>
+    <h3>EventSource — Server-Sent Events (サーバ→クライアント片方向)</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+      <span class="compat-badge compat-warn">⚠ HTTPS推奨</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">サーバから一方向にイベントを流し続けるAPI。WebSocketより軽量で、自動再接続も内蔵。HTTPベースなので Proxy/CDN 経由で動く。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>OutSystems Timer の進捗をリアルタイム表示</li>
+        <li>株価/通知のプッシュ配信(クライアントから返信不要)</li>
+        <li>BPT の Wait アクティビティの状態通知</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  WebSocket vs SSE vs Long-Polling
+  ┌──────────────┬──────────────┬───────────────┐
+  │ WebSocket    │ SSE          │ Long-Polling  │
+  ├──────────────┼──────────────┼───────────────┤
+  │ 双方向       │ サーバ→クラ  │ サーバ→クラ   │
+  │ 専用プロトコル│ HTTPそのまま │ HTTPそのまま  │
+  │ 再接続: 自前 │ 自動         │ 自前 (毎回新規)│
+  │ Proxyで詰まる│ 普通に通る   │ 普通に通る    │
+  │ バイナリ可   │ テキストのみ │ テキストのみ  │
+  └──────────────┴──────────────┴───────────────┘
+
+  EventSource プロトコル (text/event-stream)
+   data: {"value":42}\n\n          ← 1メッセージ
+   event: stock\n
+   data: {"sym":"AAPL"}\n\n        ← named event
+</pre>
+    <div class="info-box info">📌 <b>サーバ要件</b>: Content-Type: text/event-stream を出し、空行(<code>\n\n</code>)で区切ったデータを延々と返す。下のデモは公開SSEテストエンドポイントを利用。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 公開SSEに接続して受信 (HTTPS環境必須)</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab15Connect()">接続</button>
+          <button class="demo-btn" onclick="lab15Close()">切断</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab15Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab15-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab15-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab15-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「接続/切断」の中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>let lab15Es = null;
+function lab15Connect() {
+  if (lab15Es) { console.log('既に接続中'); return; }
+  // sse.dev の公開デモ (1秒間隔で時刻を流す)
+  const url = 'https://sse.dev/test';
+  console.log(`接続: ${url}`);
+  lab15Es = new EventSource(url);
+
+  lab15Es.onopen    = () =&gt; console.log('◯ open');
+  lab15Es.onerror   = () =&gt; console.log('✗ error (自動再接続を試みる)');
+  lab15Es.onmessage = (e) =&gt; {
+    // 既定の event は "message"
+    console.log(`◀ data: ${e.data.slice(0, 60)}`);
+  };
+  // 名前付きeventも受信できる
+  lab15Es.addEventListener('ping', (e) =&gt; {
+    console.log(`◀ ping: ${e.data}`);
+  });
+}
+
+function lab15Close() {
+  if (lab15Es) {
+    lab15Es.close();   // ⭐ 自動再接続を止める
+    lab15Es = null;
+    console.log('close完了');
+  }
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 16: WebSocket ========== -->
+<div class="lab" id="lab16">
+  <div class="lab-header">
+    <div class="lab-num">16</div>
+    <h3>WebSocket — 双方向の常時接続通信</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+      <span class="compat-badge compat-warn">⚠ WSS必須(本番)</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">クライアント・サーバ双方向の常時接続。チャット・対戦ゲーム・コラボ編集など低遅延双方向通信に。HTTPSページからは <code>wss://</code> 必須。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>OutSystems画面で他ユーザの編集を即時反映(共同編集)</li>
+        <li>ダッシュボードでサーバからのプッシュ + クライアントの操作通知</li>
+        <li>チャット・通知・リアルタイムゲーム</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  WebSocket ライフサイクル
+   new WebSocket(url)
+        │
+        ├─ readyState=0 (CONNECTING)
+        │        │
+        │        ▼
+        ├─ onopen → readyState=1 (OPEN)
+        │        │
+        │        ├─ ws.send(text/binary) ─────►
+        │        ├─ onmessage(e.data)    ◄─────
+        │        │
+        ├─ ws.close() or ネットワーク断
+        │        │
+        ├─ readyState=2 (CLOSING)
+        ├─ onclose → readyState=3 (CLOSED)
+        │
+        └─ ⚠ 自動再接続なし - 必要なら自前で setTimeout
+</pre>
+    <div class="info-box warn">⚠ <b>自動再接続なし</b>: SSEと違い、切断後の再接続は自前実装が必要。指数バックオフ + 最大試行回数を入れるのが定石。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: echo サーバに接続して送受信</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab16Connect()">接続 (wss://echo)</button>
+          <input type="text" id="lab16-msg" placeholder="送信メッセージ" value="hello from File 04" style="padding:8px; margin:4px; border:1px solid var(--border); border-radius:6px; min-width:200px;">
+          <button class="demo-btn" onclick="lab16Send()">send</button>
+          <button class="demo-btn" onclick="lab16Close()">close</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab16Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab16-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab16-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab16-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「接続/送信/切断」の中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>let lab16Ws = null;
+function lab16Connect() {
+  if (lab16Ws) { console.log('既に接続中'); return; }
+  // echo サーバ: 送ったものをそのまま返す
+  const url = 'wss://echo.websocket.events';
+  console.log(`接続: ${url}`);
+  lab16Ws = new WebSocket(url);
+  lab16Ws.onopen    = () =&gt; console.log(`◯ open (state=${lab16Ws.readyState})`);
+  lab16Ws.onmessage = (e) =&gt; console.log(`◀ ${typeof e.data}: ${String(e.data).slice(0, 60)}`);
+  lab16Ws.onerror   = () =&gt; console.log(`✗ error`);
+  lab16Ws.onclose   = (e) =&gt; {
+    console.log(`✗ close code=${e.code}, clean=${e.wasClean}`);
+    lab16Ws = null;
+  };
+}
+
+function lab16Send() {
+  if (!lab16Ws || lab16Ws.readyState !== 1) {
+    console.log('未接続。先に「接続」を押してください'); return;
+  }
+  const msg = document.getElementById('lab16-msg').value;
+  lab16Ws.send(msg);
+  console.log(`▶ send: ${msg}`);
+}
+
+function lab16Close() {
+  if (lab16Ws) {
+    lab16Ws.close(1000, 'client done');   // 1000=normal closure
+    console.log('close要求送信');
+  }
+}</pre>
+    </div>
+  </div>
+</div>
+
+</div><!-- /.container -->
+
+<!-- 📑 フローティング「目次に戻る」ボタン -->
+<button id="back-to-toc" aria-label="目次に戻る">
+  <span class="arrow">▲</span>
+  <span class="label">目次</span>
+</button>
+
+<script>
+// ============= 共通ユーティリティ =============
+function copyCode(btn) {
+  const block = btn.closest('.code-block');
+  const pre = block.querySelector('pre');
+  if (!pre) return;
+  const text = pre.innerText;
+
+  const showSuccess = () => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  };
+  const showError = (msg) => {
+    btn.textContent = 'NG: ' + msg;
+    btn.style.borderColor = '#cb2431';
+    btn.style.color = '#cb2431';
+    setTimeout(() => {
+      btn.textContent = 'Copy';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+    }, 2500);
+  };
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text)
+      .then(showSuccess)
+      .catch(() => fallbackCopy(text, showSuccess, showError));
+  } else {
+    fallbackCopy(text, showSuccess, showError);
+  }
+}
+
+function fallbackCopy(text, onOk, onErr) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.top = '0';
+  ta.style.left = '0';
+  ta.style.opacity = '0';
+  ta.setAttribute('readonly', '');
+  document.body.appendChild(ta);
+  ta.select();
+  ta.setSelectionRange(0, text.length);
+  try {
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    if (ok) onOk();
+    else onErr('コピー不可');
+  } catch (e) {
+    document.body.removeChild(ta);
+    onErr(e.message.slice(0, 12));
+  }
+}
+function logTo(id, text, cls='') {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const line = document.createElement('div');
+  line.className = 'log-line ' + cls;
+  line.textContent = '> ' + text;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+function clearLog(id) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = '';
+}
+function setBA(labId, before, after) {
+  document.getElementById(labId+'-before').textContent = before;
+  document.getElementById(labId+'-after').textContent = after;
+}
+
+// ============= console.log を log-area へ転送 =============
+// 各ラボのconsole.logを画面に表示するため、ラボ内で console.log を呼ぶたびに
+// そのラボの log-area へ書き込む薄いプロキシをかける
+(function() {
+  const origLog = console.log.bind(console);
+  console.log = function(...args) {
+    origLog(...args);
+    // 直近にクリックされたボタンが属するラボのlog-areaに書き込む
+    const lab = window.__currentLab;
+    if (lab) {
+      const el = document.getElementById(lab + '-log');
+      if (el) {
+        const line = document.createElement('div');
+        line.className = 'log-line';
+        line.textContent = '> ' + args.map(a =>
+          typeof a === 'object' ? JSON.stringify(a) : String(a)
+        ).join(' ');
+        el.appendChild(line);
+        el.scrollTop = el.scrollHeight;
+      }
+    }
+  };
+
+  // ボタンクリック時に「現在のラボ」を識別 (data-target も除外)
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    if (btn.classList.contains('nav-item') || btn.classList.contains('toc-item')) return;
+    const lab = btn.closest('.lab');
+    if (lab) window.__currentLab = lab.id;
+  }, true);
+})();
+
+// ============= Lab 01: fetch (GET/POST) =============
+async function lab1Get() {
+  clearLog('lab1-log');
+  setBA('lab1', 'fetch未実行', '');
+  try {
+    const res = await fetch('https://jsonplaceholder.typicode.com/todos/1');
+    console.log(`status: ${res.status}, ok: ${res.ok}`);
+    const data = await res.json();
+    console.log(`title: ${data.title}`);
+    console.log(`completed: ${data.completed}`);
+    setBA('lab1', '(待機)', `id=${data.id} / completed=${data.completed}\ntitle: ${data.title}`);
+  } catch (e) { console.log(`✗ ${e.message}`); }
+}
+async function lab1Post() {
+  clearLog('lab1-log');
+  setBA('lab1', 'POST送信前', '');
+  try {
+    const res = await fetch('https://jsonplaceholder.typicode.com/posts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: 'foo', body: 'bar', userId: 1 })
+    });
+    const data = await res.json();
+    console.log(`新ID: ${data.id}`);
+    console.log(`echo: ${JSON.stringify(data).slice(0, 60)}...`);
+    setBA('lab1', 'POST送信前', `status=${res.status}\n新ID=${data.id}`);
+  } catch (e) { console.log(`✗ ${e.message}`); }
+}
+function lab1Clear() { clearLog('lab1-log'); setBA('lab1', '(未実行)', '(未実行)'); }
+
+// ============= Lab 02: Headers / Request / Response =============
+function lab2Headers() {
+  clearLog('lab2-log');
+  const h = new Headers();
+  h.append('Authorization', 'Bearer xxx.yyy.zzz');
+  h.append('X-Trace-Id', 'abc-123');
+  h.set('Content-Type', 'application/json');
+  console.log(`has Authorization: ${h.has('Authorization')}`);
+  console.log(`get X-Trace-Id: ${h.get('X-Trace-Id')}`);
+  for (const [k, v] of h.entries()) {
+    console.log(`  ${k}: ${v.slice(0, 30)}`);
+  }
+  const req = new Request('https://example.com/api', {
+    method: 'POST', headers: h, body: '{}'
+  });
+  console.log(`req.method: ${req.method}, url末尾: ${req.url.slice(-12)}`);
+  setBA('lab2', '空のHeaders', `3項目セット\nrequest生成済`);
+}
+async function lab2Clone() {
+  clearLog('lab2-log');
+  try {
+    const res = await fetch('https://jsonplaceholder.typicode.com/todos/2');
+    const copy = res.clone();
+    const t1 = await res.text();
+    const t2 = await copy.json();
+    console.log(`text長: ${t1.length}文字`);
+    console.log(`json.title: ${t2.title}`);
+    setBA('lab2', 'Response 1個', `text + json 両方読了\n(clone無しなら2回目失敗)`);
+  } catch (e) { console.log(`✗ ${e.message}`); }
+}
+function lab2Clear() { clearLog('lab2-log'); setBA('lab2', '(未実行)', '(未実行)'); }
+
+// ============= Lab 03: FormData =============
+function lab3Inspect() {
+  clearLog('lab3-log');
+  const fd = new FormData();
+  fd.append('name', document.getElementById('lab3-name').value);
+  const f = document.getElementById('lab3-file').files[0];
+  if (f) fd.append('file', f);
+  fd.append('tags', 'urgent');
+  fd.append('tags', 'demo');
+  let count = 0;
+  for (const [k, v] of fd.entries()) {
+    console.log(`  ${k}: ${v instanceof File ? `(File: ${v.name}, ${v.size}B)` : v}`);
+    count++;
+  }
+  setBA('lab3', 'FormData空', `${count}項目 (送信せず確認のみ)`);
+}
+async function lab3Send() {
+  clearLog('lab3-log');
+  try {
+    const fd = new FormData();
+    fd.append('name', document.getElementById('lab3-name').value);
+    const f = document.getElementById('lab3-file').files[0];
+    if (f) fd.append('file', f);
+    const res = await fetch('https://httpbin.org/post', {
+      method: 'POST', body: fd
+    });
+    const data = await res.json();
+    console.log(`受信form: ${JSON.stringify(data.form)}`);
+    if (data.files?.file) console.log(`受信file長: ${data.files.file.length}文字`);
+    setBA('lab3', '送信前', `status=${res.status}\nサーバが受信したform確認OK`);
+  } catch (e) { console.log(`✗ ${e.message}`); }
+}
+function lab3Clear() { clearLog('lab3-log'); setBA('lab3', '(未実行)', '(未実行)'); }
+
+// ============= Lab 04: AbortController + fetch =============
+async function lab4Timeout() {
+  clearLog('lab4-log');
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 2000);
+  console.log('fetch開始 (delay=5s, timeout=2s)');
+  setBA('lab4', '進行中…', '');
+  try {
+    const res = await fetch('https://httpbin.org/delay/5', { signal: ctrl.signal });
+    console.log(`まさかの成功: ${res.status}`);
+    setBA('lab4', '進行中…', `status=${res.status}`);
+  } catch (e) {
+    console.log(`例外: ${e.name} - ${e.message}`);
+    setBA('lab4', '進行中…', `${e.name} で2秒後に中断`);
+  } finally { clearTimeout(timer); }
+}
+let lab4Ctrl = null;
+async function lab4Manual() {
+  clearLog('lab4-log');
+  lab4Ctrl = new AbortController();
+  console.log('開始: ▶Abort!ボタンを押すと中断します');
+  setBA('lab4', '進行中…', '');
+  try {
+    const res = await fetch('https://httpbin.org/delay/10', { signal: lab4Ctrl.signal });
+    console.log(`受信: ${res.status}`);
+    setBA('lab4', '進行中…', `完走 status=${res.status}`);
+  } catch (e) {
+    console.log(`中断: ${e.name}`);
+    setBA('lab4', '進行中…', `${e.name} (Abort成功)`);
+  }
+}
+function lab4Abort() {
+  if (lab4Ctrl) { lab4Ctrl.abort(); lab4Ctrl = null; console.log('▶ Abort送信'); }
+  else console.log('開始ボタンを先に押してください');
+}
+function lab4Clear() { clearLog('lab4-log'); setBA('lab4', '(未実行)', '(未実行)'); }
+
+// ============= Lab 05: URL / URLSearchParams =============
+function lab5Build() {
+  clearLog('lab5-log');
+  const u = new URL('/search', 'https://example.com');
+  u.searchParams.set('q', '日本語 含む');
+  u.searchParams.set('page', 1);
+  u.searchParams.append('tag', 'urgent');
+  u.searchParams.append('tag', 'demo');
+  console.log(`完成URL: ${u.toString()}`);
+  console.log(`query: ${u.search}`);
+  console.log(`tag全部: ${u.searchParams.getAll('tag').join(',')}`);
+  setBA('lab5', '空のpath', `URL組み立て完了\nクエリ4項目`);
+}
+function lab5Parse() {
+  clearLog('lab5-log');
+  const u = new URL(location.href);
+  console.log(`origin:   ${u.origin}`);
+  console.log(`pathname: ${u.pathname}`);
+  console.log(`hash:     ${u.hash || '(空)'}`);
+  const params = [...u.searchParams.entries()];
+  console.log(`params数: ${params.length}`);
+  params.slice(0, 3).forEach(([k, v]) => console.log(`  ${k} = ${v.slice(0, 30)}`));
+  setBA('lab5', '生のlocation.href', `分解済 origin/path/hash/params`);
+}
+function lab5Clear() { clearLog('lab5-log'); setBA('lab5', '(未実行)', '(未実行)'); }
+
+// ============= Lab 06: localStorage =============
+function lab6Set() {
+  clearLog('lab6-log');
+  const k = document.getElementById('lab6-key').value;
+  const v = document.getElementById('lab6-val').value;
+  try {
+    localStorage.setItem(k, v);
+    console.log(`保存: ${k} = ${v}`);
+    setBA('lab6', `${k} 未保存`, `${k} = ${v}`);
+  } catch (e) {
+    console.log(`✗ ${e.name}: ${e.message}`);
+    setBA('lab6', '保存失敗', `${e.name}`);
+  }
+}
+function lab6Get() {
+  clearLog('lab6-log');
+  const k = document.getElementById('lab6-key').value;
+  try {
+    const v = localStorage.getItem(k);
+    console.log(`取得: ${k} = ${v === null ? '(null=未保存)' : v}`);
+    setBA('lab6', `${k} 読込前`, v === null ? 'null' : v);
+  } catch (e) { console.log(`✗ ${e.message}`); }
+}
+function lab6Remove() {
+  clearLog('lab6-log');
+  const k = document.getElementById('lab6-key').value;
+  try {
+    localStorage.removeItem(k);
+    console.log(`削除: ${k}`);
+    setBA('lab6', `${k} あり`, `${k} 削除済`);
+  } catch (e) { console.log(`✗ ${e.message}`); }
+}
+function lab6List() {
+  clearLog('lab6-log');
+  try {
+    console.log(`総キー数: ${localStorage.length}`);
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      const v = localStorage.getItem(k);
+      console.log(`  [${i}] ${k} = ${v.slice(0, 30)}`);
+    }
+    setBA('lab6', '?', `${localStorage.length}件`);
+  } catch (e) { console.log(`✗ ${e.message}`); }
+}
+function lab6Clear() { clearLog('lab6-log'); setBA('lab6', '(未実行)', '(未実行)'); }
+
+// ============= Lab 07: sessionStorage =============
+function lab7Set() {
+  clearLog('lab7-log');
+  try {
+    const ts = new Date().toISOString().slice(11, 19);
+    sessionStorage.setItem('lab7.timestamp', ts);
+    sessionStorage.setItem('lab7.tabId', Math.random().toString(36).slice(2, 8));
+    console.log(`session保存: timestamp = ${ts}`);
+    console.log(`session保存: tabId = ${sessionStorage.getItem('lab7.tabId')}`);
+    console.log('別タブで同URL開くと、tabId が違うことを確認できます');
+    setBA('lab7', '空', `保存済 (このタブ限定)`);
+  } catch (e) { console.log(`✗ ${e.message}`); }
+}
+function lab7Compare() {
+  clearLog('lab7-log');
+  try {
+    console.log('=== localStorage ===');
+    console.log(`総数: ${localStorage.length}`);
+    for (let i = 0; i < Math.min(3, localStorage.length); i++) {
+      console.log(`  ${localStorage.key(i)}`);
+    }
+    console.log('=== sessionStorage ===');
+    console.log(`総数: ${sessionStorage.length}`);
+    for (let i = 0; i < Math.min(3, sessionStorage.length); i++) {
+      const k = sessionStorage.key(i);
+      console.log(`  ${k} = ${sessionStorage.getItem(k)}`);
+    }
+    setBA('lab7', '?', `local=${localStorage.length} / session=${sessionStorage.length}`);
+  } catch (e) { console.log(`✗ ${e.message}`); }
+}
+function lab7Clear() { clearLog('lab7-log'); setBA('lab7', '(未実行)', '(未実行)'); }
+
+// ============= Lab 08: Cookies =============
+function lab8Set() {
+  clearLog('lab8-log');
+  document.cookie = 'lab8_theme=dark; path=/; max-age=300; SameSite=Lax';
+  document.cookie = 'lab8_lang=ja; path=/; max-age=300; SameSite=Lax';
+  console.log('書込: lab8_theme=dark, lab8_lang=ja (5分有効)');
+  setBA('lab8', '書込前', `2件追加 (5分有効)`);
+}
+function lab8Read() {
+  clearLog('lab8-log');
+  const all = document.cookie;
+  console.log(`raw: ${all || '(空)'}`);
+  console.log(`長さ: ${all.length}文字`);
+  setBA('lab8', '?', `raw文字列 ${all.length}文字`);
+}
+function lab8Parse() {
+  clearLog('lab8-log');
+  const map = new Map(
+    document.cookie.split('; ')
+      .filter(s => s)
+      .map(s => {
+        const i = s.indexOf('=');
+        return [s.slice(0, i), decodeURIComponent(s.slice(i + 1))];
+      })
+  );
+  console.log(`Cookie数: ${map.size}`);
+  for (const [k, v] of map) console.log(`  ${k} = ${v.slice(0, 30)}`);
+  setBA('lab8', 'raw文字列', `Map(${map.size}) にパース`);
+}
+function lab8Clear() { clearLog('lab8-log'); setBA('lab8', '(未実行)', '(未実行)'); }
+
+
+// ============= Lab 09: navigator.storage.estimate =============
+async function lab9Estimate() {
+  clearLog('lab9-log');
+  if (!navigator.storage?.estimate) {
+    console.log('未対応のブラウザです');
+    setBA('lab9', '?', '未対応');
+    return;
+  }
+  try {
+    const e = await navigator.storage.estimate();
+    const mb = (n) => (n / 1024 / 1024).toFixed(2) + ' MB';
+    console.log(`使用中:  ${mb(e.usage)}`);
+    console.log(`上限:    ${mb(e.quota)}`);
+    console.log(`使用率:  ${(e.usage / e.quota * 100).toFixed(2)}%`);
+    if (e.usageDetails) {
+      for (const [k, v] of Object.entries(e.usageDetails)) {
+        console.log(`  ${k}: ${mb(v)}`);
+      }
+    }
+    setBA('lab9', '?', `${mb(e.usage)} / ${mb(e.quota)}`);
+  } catch (err) { console.log(`✗ ${err.message}`); }
+}
+async function lab9Persist() {
+  clearLog('lab9-log');
+  if (!navigator.storage?.persisted) { console.log('未対応'); return; }
+  const p = await navigator.storage.persisted();
+  console.log(`永続モード: ${p ? '◯有効' : '✗未付与'}`);
+  console.log('navigator.storage.persist() でユーザに許可を求める');
+  setBA('lab9', '?', p ? '永続◯' : '永続✗');
+}
+function lab9Clear() { clearLog('lab9-log'); setBA('lab9', '(未実行)', '(未実行)'); }
+
+// ============= Lab 10: BroadcastChannel =============
+let lab10Ch = null;
+function lab10Init() {
+  clearLog('lab10-log');
+  if (lab10Ch) { console.log('既に受信中'); return; }
+  try {
+    lab10Ch = new BroadcastChannel('lab4-demo');
+    lab10Ch.onmessage = (e) => {
+      console.log(`◀ 受信: ${JSON.stringify(e.data)}`);
+    };
+    console.log('subscribe完了。別タブで送信してみてください');
+    setBA('lab10', 'チャネル無し', `lab4-demo を subscribe中`);
+  } catch (e) { console.log(`✗ ${e.message}`); }
+}
+function lab10Send() {
+  clearLog('lab10-log');
+  try {
+    if (!lab10Ch) lab10Ch = new BroadcastChannel('lab4-demo');
+    const msg = { type: 'ping', from: location.href.slice(-20), ts: Date.now() };
+    lab10Ch.postMessage(msg);
+    console.log(`▶ 送信: ${JSON.stringify(msg)}`);
+    console.log('  ⚠ 自分のタブでは onmessage しません');
+    setBA('lab10', '?', `送信済 (他タブで受信される)`);
+  } catch (e) { console.log(`✗ ${e.message}`); }
+}
+function lab10Close() {
+  clearLog('lab10-log');
+  if (lab10Ch) {
+    lab10Ch.close();
+    lab10Ch = null;
+    console.log('close完了。これ以降 onmessage しない');
+    setBA('lab10', 'subscribe中', `close済`);
+  } else console.log('未接続');
+}
+function lab10Clear() { clearLog('lab10-log'); setBA('lab10', '(未実行)', '(未実行)'); }
+
+// ============= IndexedDB 共通ヘルパ (Lab 11-13共通) =============
+function idbOpen(name, version, onUpgrade) {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(name, version);
+    req.onupgradeneeded = (e) => onUpgrade(req.result, e.oldVersion);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+function idbReq(req) {
+  return new Promise((resolve, reject) => {
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// ============= Lab 11: IndexedDB - open/put =============
+async function lab11Open() {
+  clearLog('lab11-log');
+  try {
+    const db = await idbOpen('lab4_db', 1, (db) => {
+      if (!db.objectStoreNames.contains('items')) {
+        db.createObjectStore('items', { keyPath: 'id', autoIncrement: true });
+        console.log('items ストア作成 (autoIncrement)');
+      }
+    });
+    console.log(`open完了 ${db.name} v${db.version}`);
+    console.log(`store一覧: ${[...db.objectStoreNames].join(',')}`);
+    setBA('lab11', 'DB無し', `${db.name} v${db.version} 起動済`);
+    db.close();
+  } catch (e) { console.log(`✗ ${e.name}: ${e.message}`); }
+}
+async function lab11Put() {
+  clearLog('lab11-log');
+  try {
+    const db = await idbOpen('lab4_db', 1, () => {});
+    const tx = db.transaction(['items'], 'readwrite');
+    const store = tx.objectStore('items');
+    const items = [
+      { name: 'お茶',     price: 150 },
+      { name: 'おにぎり', price: 130 },
+      { name: 'コーヒー', price: 200 }
+    ];
+    for (const it of items) {
+      const id = await idbReq(store.put(it));
+      console.log(`put: id=${id}, ${it.name}`);
+    }
+    setBA('lab11', '?', `3件 put完了`);
+    db.close();
+  } catch (e) { console.log(`✗ ${e.name}: ${e.message}`); }
+}
+function lab11Clear() { clearLog('lab11-log'); setBA('lab11', '(未実行)', '(未実行)'); }
+
+// ============= Lab 12: IndexedDB - get/cursor =============
+async function lab12Get() {
+  clearLog('lab12-log');
+  try {
+    const db = await idbOpen('lab4_db', 1, () => {});
+    const store = db.transaction(['items'], 'readonly').objectStore('items');
+    const v = await idbReq(store.get(1));
+    console.log(`get(1): ${JSON.stringify(v) || '(なし - Lab 11のputが必要)'}`);
+    setBA('lab12', '?', v ? JSON.stringify(v) : '(なし)');
+    db.close();
+  } catch (e) { console.log(`✗ ${e.name}: ${e.message}`); }
+}
+async function lab12GetAll() {
+  clearLog('lab12-log');
+  try {
+    const db = await idbOpen('lab4_db', 1, () => {});
+    const store = db.transaction(['items'], 'readonly').objectStore('items');
+    const all = await idbReq(store.getAll());
+    console.log(`総件数: ${all.length}`);
+    all.forEach(it => console.log(`  id=${it.id}: ${it.name} (${it.price}円)`));
+    setBA('lab12', '?', `${all.length}件 取得`);
+    db.close();
+  } catch (e) { console.log(`✗ ${e.name}: ${e.message}`); }
+}
+async function lab12Cursor() {
+  clearLog('lab12-log');
+  try {
+    const db = await idbOpen('lab4_db', 1, () => {});
+    const store = db.transaction(['items'], 'readonly').objectStore('items');
+    let count = 0;
+    await new Promise((resolve, reject) => {
+      const req = store.openCursor();
+      req.onsuccess = (e) => {
+        const cur = e.target.result;
+        if (!cur) { resolve(); return; }
+        count++;
+        console.log(`  [${count}] ${cur.value.name}`);
+        cur.continue();
+      };
+      req.onerror = () => reject(req.error);
+    });
+    console.log(`cursor走査完了: ${count}件`);
+    setBA('lab12', '?', `cursor走査 ${count}件`);
+    db.close();
+  } catch (e) { console.log(`✗ ${e.name}: ${e.message}`); }
+}
+function lab12Clear() { clearLog('lab12-log'); setBA('lab12', '(未実行)', '(未実行)'); }
+
+// ============= Lab 13: IndexedDB - delete/transaction =============
+async function lab13Delete() {
+  clearLog('lab13-log');
+  try {
+    const db = await idbOpen('lab4_db', 1, () => {});
+    const tx = db.transaction(['items'], 'readwrite');
+    await idbReq(tx.objectStore('items').delete(1));
+    await new Promise(r => tx.oncomplete = r);
+    console.log('id=1 削除完了 (commit)');
+    setBA('lab13', '?', `id=1 削除`);
+    db.close();
+  } catch (e) { console.log(`✗ ${e.name}: ${e.message}`); }
+}
+async function lab13Tx() {
+  clearLog('lab13-log');
+  try {
+    const db = await idbOpen('lab4_db', 1, () => {});
+    const tx = db.transaction(['items'], 'readwrite');
+    const store = tx.objectStore('items');
+    store.put({ name: '紅茶', price: 170 });
+    store.delete(2);
+    await new Promise((res, rej) => {
+      tx.oncomplete = () => res();
+      tx.onerror = () => rej(tx.error);
+    });
+    console.log('tx 一括コミット完了 (put+delete原子的)');
+    setBA('lab13', '?', `1tx で put+delete`);
+    db.close();
+  } catch (e) { console.log(`✗ ${e.name}: ${e.message}`); }
+}
+async function lab13Drop() {
+  clearLog('lab13-log');
+  try {
+    await new Promise((res, rej) => {
+      const req = indexedDB.deleteDatabase('lab4_db');
+      req.onsuccess = () => res();
+      req.onerror = () => rej(req.error);
+    });
+    console.log('lab4_db 削除完了。Lab 11からやり直し可');
+    setBA('lab13', 'DBあり', `DB全削除`);
+  } catch (e) { console.log(`✗ ${e.name}: ${e.message}`); }
+}
+function lab13Clear() { clearLog('lab13-log'); setBA('lab13', '(未実行)', '(未実行)'); }
+
+// ============= Lab 14: postMessage =============
+let lab14Handler = null;
+function lab14Listen() {
+  clearLog('lab14-log');
+  if (lab14Handler) { console.log('既に受信中'); return; }
+  lab14Handler = (e) => {
+    if (e.origin !== location.origin) {
+      console.log(`✗ 拒否: origin=${e.origin}`);
+      return;
+    }
+    if (e.data?.type !== 'lab14') return;
+    console.log(`◀ 受信 origin=${e.origin}`);
+    console.log(`  data: ${JSON.stringify(e.data)}`);
+  };
+  window.addEventListener('message', lab14Handler);
+  console.log('受信開始');
+  setBA('lab14', 'リスナ無し', `message リスナ追加済`);
+}
+function lab14Send() {
+  clearLog('lab14-log');
+  window.postMessage(
+    { type: 'lab14', payload: 'hello', ts: Date.now() },
+    location.origin
+  );
+  console.log(`▶ 送信 target=${location.origin}`);
+  setBA('lab14', '?', `送信済 (受信中なら↑にログ)`);
+}
+function lab14Stop() {
+  clearLog('lab14-log');
+  if (lab14Handler) {
+    window.removeEventListener('message', lab14Handler);
+    lab14Handler = null;
+    console.log('受信停止');
+    setBA('lab14', 'リスナあり', `停止済`);
+  } else console.log('リスナ無し');
+}
+function lab14Clear() { clearLog('lab14-log'); setBA('lab14', '(未実行)', '(未実行)'); }
+
+// ============= Lab 15: EventSource (SSE) =============
+let lab15Es = null;
+function lab15Connect() {
+  clearLog('lab15-log');
+  if (lab15Es) { console.log('既に接続中'); return; }
+  try {
+    const url = 'https://sse.dev/test';
+    console.log(`接続: ${url}`);
+    lab15Es = new EventSource(url);
+    lab15Es.onopen = () => console.log('◯ open');
+    lab15Es.onerror = () => console.log('✗ error (自動再接続を試みる)');
+    lab15Es.onmessage = (e) => {
+      console.log(`◀ data: ${e.data.slice(0, 60)}`);
+    };
+    lab15Es.addEventListener('ping', (e) => {
+      console.log(`◀ ping: ${e.data}`);
+    });
+    setBA('lab15', '未接続', `EventSource 接続中`);
+  } catch (e) { console.log(`✗ ${e.message}`); }
+}
+function lab15Close() {
+  clearLog('lab15-log');
+  if (lab15Es) {
+    lab15Es.close();
+    lab15Es = null;
+    console.log('close完了');
+    setBA('lab15', '接続中', `close済`);
+  } else console.log('未接続');
+}
+function lab15Clear() { clearLog('lab15-log'); setBA('lab15', '(未実行)', '(未実行)'); }
+
+// ============= Lab 16: WebSocket =============
+let lab16Ws = null;
+function lab16Connect() {
+  clearLog('lab16-log');
+  if (lab16Ws) { console.log('既に接続中'); return; }
+  try {
+    const url = 'wss://echo.websocket.events';
+    console.log(`接続: ${url}`);
+    lab16Ws = new WebSocket(url);
+    lab16Ws.onopen = () => {
+      console.log(`◯ open (state=${lab16Ws.readyState})`);
+      setBA('lab16', '接続前', `OPEN (echo準備OK)`);
+    };
+    lab16Ws.onmessage = (e) =>
+      console.log(`◀ ${typeof e.data}: ${String(e.data).slice(0, 60)}`);
+    lab16Ws.onerror = () => console.log('✗ error');
+    lab16Ws.onclose = (e) => {
+      console.log(`✗ close code=${e.code}, clean=${e.wasClean}`);
+      lab16Ws = null;
+    };
+    setBA('lab16', '未接続', `接続中…`);
+  } catch (e) { console.log(`✗ ${e.message}`); }
+}
+function lab16Send() {
+  clearLog('lab16-log');
+  if (!lab16Ws || lab16Ws.readyState !== 1) {
+    console.log('未接続。先に「接続」を押してください');
+    return;
+  }
+  const msg = document.getElementById('lab16-msg').value;
+  lab16Ws.send(msg);
+  console.log(`▶ send: ${msg}`);
+  setBA('lab16', 'OPEN', `send: ${msg.slice(0, 30)}`);
+}
+function lab16Close() {
+  clearLog('lab16-log');
+  if (lab16Ws) {
+    lab16Ws.close(1000, 'client done');
+    console.log('close要求送信');
+    setBA('lab16', 'OPEN', `close要求送信`);
+  } else console.log('未接続');
+}
+function lab16Clear() { clearLog('lab16-log'); setBA('lab16', '(未実行)', '(未実行)'); }
+
+// ============= サイドバー: ボタンクリックでスクロール =============
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('[data-target]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.getAttribute('data-target');
+      const target = document.getElementById(targetId);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+
+  const navItems = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+  const targetMap = new Map();
+  navItems.forEach(btn => {
+    const id = btn.getAttribute('data-target');
+    const el = document.getElementById(id);
+    if (el) targetMap.set(el, btn);
+  });
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) {
+      const btn = targetMap.get(e.target);
+      if (btn) {
+        navItems.forEach(n => n.classList.remove('active'));
+        btn.classList.add('active');
+      }
+    }
+  }), { rootMargin: '-30% 0px -60% 0px' });
+  document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+  const backBtn = document.getElementById('back-to-toc');
+  const toc = document.getElementById('toc');
+  backBtn.addEventListener('click', () => {
+    if (toc) toc.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    else window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+  const toggleBackBtn = () => {
+    const threshold = window.innerHeight * 0.8;
+    if (window.scrollY > threshold) backBtn.classList.add('visible');
+    else backBtn.classList.remove('visible');
+  };
+  window.addEventListener('scroll', toggleBackBtn, { passive: true });
+  toggleBackBtn();
+});
+
+
+</script>
+
+</body>
+</html>

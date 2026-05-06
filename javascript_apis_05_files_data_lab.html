@@ -1,0 +1,2149 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JavaScript標準API Lab #5 — Files・Data編</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  border-top:none; border-right:none; border-bottom:none;
+  background:transparent; width:100%; text-align:left; cursor:pointer;
+  font-family:inherit;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+#sidebar .file-nav { padding:8px 16px; margin:6px 0; background:var(--surface2);
+  border-top:1px solid var(--border); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.7rem; color:var(--text-dim); }
+#sidebar .file-nav a { display:block; padding:3px 0; color:var(--accent);
+  text-decoration:none; font-size:.72rem; }
+#sidebar .file-nav a.current { color:var(--text); font-weight:700; }
+
+.hero { padding:50px 30px 30px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:1.9rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:.95rem; margin-top:8px; }
+.hero .file-tag { display:inline-block; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; background:var(--accent); color:#fff;
+  margin-top:10px; }
+
+.toc { max-width:1100px; margin:24px auto; padding:0 20px; }
+.toc h2 { font-size:1rem; color:var(--accent); margin-bottom:10px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:8px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:9px 12px;
+  background:var(--surface); border:1px solid var(--border); border-radius:7px;
+  text-decoration:none; color:var(--text); font-size:.84rem;
+  font-family:inherit; cursor:pointer; text-align:left; width:100%;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.78rem; min-width:24px; }
+
+.container { max-width:1100px; margin:0 auto; padding:0 20px 60px; }
+.lab { margin-top:32px; border:1px solid var(--border); border-radius:10px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:10px; padding:14px 18px;
+  background:var(--surface2); border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:28px; height:28px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.78rem; }
+.lab-header h3 { font-size:1.05rem; font-weight:600; flex:1; min-width:140px; }
+.compat-badges { display:flex; gap:5px; flex-wrap:wrap; }
+.compat-badge { font-family:var(--mono); font-size:.65rem; padding:2px 7px;
+  border-radius:10px; border:1px solid; }
+.compat-yes { color:var(--success); border-color:var(--success);
+  background:rgba(34,134,58,.08); }
+.compat-no { color:var(--error); border-color:var(--error);
+  background:rgba(203,36,49,.08); }
+.compat-partial { color:var(--accent4); border-color:var(--accent4);
+  background:rgba(176,136,0,.08); }
+.lab-body { padding:18px; }
+.lab-desc { font-size:.9rem; color:var(--text-dim); margin-bottom:14px; line-height:1.75; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.82rem; color:var(--accent); }
+
+.scenes { background:rgba(0,92,197,.04); border:1px solid rgba(0,92,197,.2);
+  border-left:3px solid var(--accent); border-radius:6px;
+  padding:10px 14px; margin:12px 0; font-size:.85rem; line-height:1.75; }
+.scenes-title { font-family:var(--mono); font-size:.7rem; color:var(--accent);
+  font-weight:700; margin-bottom:5px; letter-spacing:.05em; }
+.scenes ol { margin-left:20px; margin-top:3px; }
+.scenes ol li { margin-bottom:3px; color:var(--text); }
+
+.ascii-art { font-family:var(--mono); font-size:.74rem;
+  line-height:1.45; background:var(--code-bg); padding:10px 12px;
+  border:1px solid var(--border); border-radius:6px;
+  margin:10px 0; color:var(--text); overflow-x:auto; white-space:pre; }
+
+.demo { border:1px solid var(--border); border-radius:8px; margin:14px 0;
+  overflow:hidden; background:var(--bg); }
+.demo-bar { padding:8px 12px; background:var(--surface2);
+  border-bottom:1px solid var(--border); font-family:var(--mono); font-size:.7rem;
+  color:var(--text-dim); letter-spacing:.05em; }
+.demo-body { padding:14px; }
+.demo-input { display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+.demo-input input, .demo-input textarea, .demo-input select {
+  font-family:var(--mono); font-size:.85rem; padding:7px 10px;
+  border:1px solid var(--border); border-radius:5px; background:#fff;
+  color:var(--text); flex:1; min-width:120px; }
+.demo-input textarea { min-height:55px; resize:vertical; flex-basis:100%; }
+.demo-btn { font-family:var(--mono); font-size:.82rem; padding:8px 16px;
+  border-radius:6px; border:1px solid var(--accent); background:var(--accent);
+  color:#fff; cursor:pointer; transition:all .15s; }
+.demo-btn:hover { opacity:.85; }
+.demo-btn.secondary { background:var(--surface); color:var(--accent); }
+.demo-btn:disabled { opacity:.5; cursor:not-allowed; }
+
+.ba-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0; }
+.ba-col { border-radius:6px; padding:10px 12px; font-size:.82rem;
+  line-height:1.6; border:1px solid; min-height:60px; }
+.ba-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.ba-after { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.ba-label { font-family:var(--mono); font-size:.62rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:4px; font-weight:700; opacity:.85; }
+.ba-before .ba-label { color:var(--error); }
+.ba-after .ba-label { color:var(--success); }
+.ba-content { font-family:var(--mono); font-size:.78rem; word-break:break-all;
+  white-space:pre-wrap; min-height:30px; }
+
+.log-area { background:#0d1117; color:#c9d1d9; font-family:var(--mono);
+  font-size:.78rem; padding:10px 12px; border-radius:6px;
+  max-height:200px; overflow-y:auto; margin:8px 0;
+  border:1px solid var(--border); white-space:pre-wrap; word-break:break-all;
+  line-height:1.5; }
+.log-area:empty::before { content:'(実行待ち...ボタンを押してください)';
+  color:#6e7681; font-style:italic; }
+.log-line { padding:1px 0; }
+.log-line.info { color:#79c0ff; }
+.log-line.ok { color:#7ee787; }
+.log-line.err { color:#ff7b72; }
+.log-line.dim { color:#6e7681; }
+
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:7px; margin:10px 0; overflow:hidden; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:7px 12px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.7rem; color:var(--text-dim); letter-spacing:.04em; }
+.code-block pre { padding:10px 14px 12px; overflow-x:auto;
+  font-family:var(--mono); font-size:.78rem; line-height:1.55;
+  color:var(--text); white-space:pre; tab-size:2; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.68rem;
+  padding:3px 9px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+
+.info-box { border-radius:7px; padding:10px 13px; font-size:.85rem;
+  line-height:1.7; margin:12px 0; border-left:3px solid; }
+.info-box.ok { border-color:var(--success); background:rgba(34,134,58,.08); color:#154f1e; }
+.info-box.info { border-color:var(--accent); background:rgba(0,92,197,.08); color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08); color:#7a5c00; }
+.info-box.err { border-color:var(--error); background:rgba(203,36,49,.08); color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 5px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .ba-grid { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.5rem; }
+  .toc-grid { grid-template-columns:1fr; }
+  .lab-body { padding:14px; }
+  .demo-input input, .demo-input textarea { min-width:100%; }
+}
+
+/* 📑 フローティング「目次に戻る」ボタン */
+#back-to-toc { position:fixed; bottom:20px; right:20px; z-index:100;
+  width:54px; height:54px; border-radius:50%; border:none;
+  background:var(--accent); color:#fff; cursor:pointer;
+  font-family:var(--mono); font-size:.7rem; font-weight:700;
+  box-shadow:0 4px 12px rgba(0,92,197,.35);
+  display:none; align-items:center; justify-content:center;
+  flex-direction:column; line-height:1.1;
+  transition:transform .15s,opacity .2s,background .15s; opacity:0; }
+#back-to-toc.visible { display:flex; opacity:1; }
+#back-to-toc:hover { background:#003d8f; transform:translateY(-2px); }
+#back-to-toc:active { transform:translateY(0); }
+#back-to-toc .arrow { font-size:1.1rem; line-height:1; margin-bottom:2px; }
+#back-to-toc .label { font-size:.6rem; letter-spacing:.05em; }
+
+/* === File 03 専用追加スタイル === */
+.dom-stage { border:1px dashed var(--border); border-radius:6px;
+  padding:10px; min-height:50px; background:#fff; margin:6px 0; }
+.dom-stage .dyn-item { padding:6px 10px; margin:3px 0; background:var(--surface2);
+  border-left:3px solid var(--accent); border-radius:4px; font-family:var(--mono);
+  font-size:.8rem; }
+.tag-chip { display:inline-block; padding:1px 7px; background:var(--accent);
+  color:#fff; border-radius:10px; font-family:var(--mono); font-size:.7rem;
+  margin-right:4px; }
+.scroll-track { height:200px; overflow-y:auto; border:1px solid var(--border);
+  border-radius:6px; background:var(--code-bg); padding:8px; margin:8px 0; }
+.scroll-track .io-item { padding:50px 12px; margin:12px 0;
+  background:#fff; border:2px solid var(--border); border-radius:6px;
+  text-align:center; font-family:var(--mono); font-size:.85rem;
+  transition:all .3s; }
+.scroll-track .io-item.entered { border-color:var(--success);
+  background:rgba(34,134,58,.08); transform:scale(1.02); }
+.resize-target { resize:both; overflow:auto;
+  width:200px; height:100px; padding:10px; background:#fff;
+  border:2px solid var(--accent); border-radius:6px; font-family:var(--mono);
+  font-size:.78rem; }
+.event-tree { padding:8px; border-radius:6px; }
+.event-tree .ev-outer { padding:18px; background:rgba(203,36,49,.06);
+  border:2px solid var(--error); border-radius:8px; cursor:pointer; }
+.event-tree .ev-middle { padding:14px; background:rgba(176,136,0,.08);
+  border:2px solid var(--accent4); border-radius:8px;
+  margin-top:8px; cursor:pointer; }
+.event-tree .ev-inner { padding:12px; background:rgba(34,134,58,.08);
+  border:2px solid var(--success); border-radius:8px;
+  margin-top:8px; cursor:pointer; text-align:center; font-weight:600; }
+.shadow-host { padding:8px 12px; background:var(--surface2);
+  border:1px solid var(--border); border-radius:6px; margin:6px 0; }
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// JS API Lab #5<br><span style="color:var(--text-dim);font-size:.7rem;">Files・Data編</span></div>
+  <div class="file-nav">
+    <div style="font-size:.7rem;color:var(--text-dim);padding:2px 0;">📘 全8ファイル中の #5</div>
+    <div style="font-size:.68rem;color:var(--text-dim);padding:2px 0;line-height:1.4;">バイナリ/JSON/Stream/Crypto</div>
+  </div>
+
+  <div class="nav-section">A. バイナリ・ファイル基礎</div>
+  <button class="nav-item" data-target="lab1"><span class="nav-num">01</span>Blob</button>
+  <button class="nav-item" data-target="lab2"><span class="nav-num">02</span>File</button>
+  <button class="nav-item" data-target="lab3"><span class="nav-num">03</span>FileReader</button>
+  <button class="nav-item" data-target="lab4"><span class="nav-num">04</span>createObjectURL</button>
+  <button class="nav-item" data-target="lab5"><span class="nav-num">05</span>ArrayBuffer/TA</button>
+
+  <div class="nav-section">B. データ操作・国際化</div>
+  <button class="nav-item" data-target="lab6"><span class="nav-num">06</span>structuredClone</button>
+  <button class="nav-item" data-target="lab7"><span class="nav-num">07</span>JSON 応用</button>
+  <button class="nav-item" data-target="lab8"><span class="nav-num">08</span>BigInt</button>
+  <button class="nav-item" data-target="lab9"><span class="nav-num">09</span>Intl.Number/Date</button>
+  <button class="nav-item" data-target="lab10"><span class="nav-num">10</span>Intl.Collator</button>
+
+  <div class="nav-section">C. エンコード・Stream・Crypto</div>
+  <button class="nav-item" data-target="lab11"><span class="nav-num">11</span>Text Enc/Dec</button>
+  <button class="nav-item" data-target="lab12"><span class="nav-num">12</span>Stream 基礎</button>
+  <button class="nav-item" data-target="lab13"><span class="nav-num">13</span>fetch streaming</button>
+  <button class="nav-item" data-target="lab14"><span class="nav-num">14</span>Compression</button>
+  <button class="nav-item" data-target="lab15"><span class="nav-num">15</span>SHA-256 digest</button>
+</nav>
+
+<div class="hero">
+  <h1>JavaScript標準API Lab</h1>
+  <p class="subtitle">Files・Data編 — バイナリ操作 / JSON / 国際化 / Stream / Crypto を実機で叩く</p>
+  <span class="file-tag">📘 File #5 / 8</span>
+</div>
+
+<div class="toc" id="toc">
+  <h2>// 目次(15ラボ)</h2>
+  <div class="toc-grid">
+    <button class="toc-item" data-target="lab1"><span class="toc-num">01</span>Blob — バイナリの基本単位</button>
+    <button class="toc-item" data-target="lab2"><span class="toc-num">02</span>File — Blob拡張、input から取得</button>
+    <button class="toc-item" data-target="lab3"><span class="toc-num">03</span>FileReader — Text/DataURL/ArrayBuffer</button>
+    <button class="toc-item" data-target="lab4"><span class="toc-num">04</span>URL.createObjectURL — Blob を img に</button>
+    <button class="toc-item" data-target="lab5"><span class="toc-num">05</span>ArrayBuffer / TypedArray / DataView</button>
+    <button class="toc-item" data-target="lab6"><span class="toc-num">06</span>structuredClone — 深いコピー</button>
+    <button class="toc-item" data-target="lab7"><span class="toc-num">07</span>JSON 応用 — replacer / reviver</button>
+    <button class="toc-item" data-target="lab8"><span class="toc-num">08</span>BigInt — 任意精度整数</button>
+    <button class="toc-item" data-target="lab9"><span class="toc-num">09</span>Intl.NumberFormat / DateTimeFormat</button>
+    <button class="toc-item" data-target="lab10"><span class="toc-num">10</span>Intl.Collator — 文字列比較</button>
+    <button class="toc-item" data-target="lab11"><span class="toc-num">11</span>TextEncoder / TextDecoder</button>
+    <button class="toc-item" data-target="lab12"><span class="toc-num">12</span>ReadableStream — Stream 基礎</button>
+    <button class="toc-item" data-target="lab13"><span class="toc-num">13</span>fetch streaming — 進捗バー</button>
+    <button class="toc-item" data-target="lab14"><span class="toc-num">14</span>CompressionStream — gzip</button>
+    <button class="toc-item" data-target="lab15"><span class="toc-num">15</span>SubtleCrypto.digest — SHA-256</button>
+  </div>
+</div>
+
+<div class="container">
+<!-- ============================================================
+     Part 2: Labs 01-05 (Part A: バイナリ・ファイル基礎)
+     ============================================================ -->
+
+<!-- ========== Lab 01: Blob ========== -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>Blob — バイナリデータの基本単位 (型/サイズ/slice)</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">Blob は「型 (MIME) を持った不変のバイナリ塊」。文字列・ArrayBuffer・TypedArray などを材料に new Blob([...], {type:...}) で作る。slice() で部分切り出し、size と type で内容を確認できる。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>CSV/JSON文字列を Blob 化 → ダウンロードリンク経由で保存</li>
+        <li>大きいファイルを slice で分割 → チャンクアップロード (Tom が以前やった案件)</li>
+        <li>Canvas や FileReader 等の API 間でバイナリを受け渡す共通コンテナ</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  Blob = 不変のバイナリ塊
+  ┌────────────────────────────┐
+  │  parts:  ['hello,', 'world']
+  │  type:   'text/plain'      │
+  │  size:   11 bytes          │
+  └────────────────────────────┘
+        │
+        ▼  blob.slice(0, 5, 'text/plain')
+  ┌────────────────────────────┐
+  │  ['hello'] / 'text/plain'  │
+  │  size: 5                   │
+  └────────────────────────────┘
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: 帳票エクスポート(CSV/Excel)時、サーバから Base64 で受けた文字列を Blob 化 → createObjectURL で &lt;a download&gt; に渡せば、Server Action 不要でブラウザ完結のダウンロードが実現できる。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: テキスト → Blob → 内容確認</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab1Run()">Blob を作る</button>
+          <button class="demo-btn" onclick="lab1Slice()">最初の5バイトを slice</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab1Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab1-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab1-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab1-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「Blob を作る」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab1Run() {
+  clearLog('lab1-log');
+  const blob = new Blob(['hello,', 'world'], { type: 'text/plain' });
+  console.log('size:', blob.size, 'bytes');
+  console.log('type:', blob.type);
+  console.log('constructor:', blob.constructor.name);
+  // Blob は不変 — 中身を取り出すには text() / arrayBuffer() / stream()
+  blob.text().then(t =&gt; console.log('text():', t));
+  setBA('lab1', '材料: 文字列の配列', 'Blob (size=11, type=text/plain)');
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 02: File ========== -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>File — Blob 拡張、input type=file から取得</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">File は Blob のサブクラス。name と lastModified が追加されているだけで、それ以外は Blob と同じ API (slice / text / arrayBuffer / stream)。&lt;input type="file"&gt; から files[i] で取れる。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>ユーザがアップロードする画像/CSV/PDF をクライアント側で確認</li>
+        <li>ファイル名/サイズ/MIME型 でクライアントバリデーション</li>
+        <li>選択された複数ファイルを 1つずつ FileReader で読む</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  File extends Blob
+  ┌──────────────────────────────────┐
+  │  Blob のプロパティ:              │
+  │    .size, .type                  │
+  │    .slice(), .text(), .stream()  │
+  │  + File 固有プロパティ:          │
+  │    .name           ← 'photo.jpg' │
+  │    .lastModified   ← 1714560000  │
+  └──────────────────────────────────┘
+        ▲
+        │ &lt;input type="file"&gt;.files[0]
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: OutSystems の Upload Widget は内部で &lt;input type=file&gt; を使う。BinaryData 変換前にクライアントで File オブジェクトを取り出せば、JS で MIME型・サイズの先行チェックができ、ムダな Server Action 呼び出しを削減できる。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: ファイルを選んで情報を表示</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <input type="file" id="lab2-input" style="font-size:.9rem;">
+          <button class="demo-btn" onclick="lab2Run()">情報を表示</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab2Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab2-before">(未選択)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab2-after">(未選択)</div></div>
+        </div>
+        <div class="log-area" id="lab2-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「情報を表示」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab2Run() {
+  clearLog('lab2-log');
+  const input = document.getElementById('lab2-input');
+  const file = input.files &amp;&amp; input.files[0];
+  if (!file) { console.log('ファイル未選択'); return; }
+  console.log('name:', file.name);
+  console.log('size:', file.size, 'bytes');
+  console.log('type:', file.type || '(不明)');
+  console.log('lastModified:', new Date(file.lastModified).toISOString());
+  console.log('instanceof Blob:', file instanceof Blob);  // true
+  setBA('lab2', '入力: input[type=file]', file.name + ' / ' + file.size + 'B');
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 03: FileReader ========== -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>FileReader — Blob/File を3形式で読む (Text / DataURL / ArrayBuffer)</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">古典的な非同期読み込み API。readAsText で文字列、readAsDataURL で base64 込みの data: URL、readAsArrayBuffer でバイナリそのままを取り出せる。完了は onload イベントで受ける。最近は Blob.text() / arrayBuffer() で代替できることも多い。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>選択された画像を data:URL に変換 → &lt;img src&gt; でプレビュー</li>
+        <li>CSV を文字列で読んで内容パース</li>
+        <li>バイナリの先頭バイト (マジックナンバー) を見て本当に PDF か検証</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  FileReader: 3形式の読み出し
+  ┌─────────────────────────────────────┐
+  │ readAsText(blob, 'utf-8')           │
+  │   → result: "hello, world"          │
+  ├─────────────────────────────────────┤
+  │ readAsDataURL(blob)                 │
+  │   → result: "data:text/plain;base64,│
+  │              aGVsbG8sd29ybGQ="      │
+  ├─────────────────────────────────────┤
+  │ readAsArrayBuffer(blob)             │
+  │   → result: ArrayBuffer(11)         │
+  │      [0x68 0x65 0x6c 0x6c 0x6f ...] │
+  └─────────────────────────────────────┘
+   onload で result を取り出す (非同期)
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: OutSystems の BinaryData は Server 側で扱うが、Client Action から JS で FileReader を使えば、サーバ往復ゼロで「画像プレビュー → ユーザOK後にアップロード」のUXが組める。サーバ負荷も帯域も削減。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 同じ Blob を3形式で読み比べ</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab3Run()">3形式で読む</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab3Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab3-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab3-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab3-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「3形式で読む」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab3Run() {
+  clearLog('lab3-log');
+  const blob = new Blob(['hello,world'], { type: 'text/plain' });
+
+  // [1] readAsText
+  const r1 = new FileReader();
+  r1.onload = () =&gt; console.log('Text:', r1.result);
+  r1.readAsText(blob, 'utf-8');
+
+  // [2] readAsDataURL
+  const r2 = new FileReader();
+  r2.onload = () =&gt; console.log('DataURL:', r2.result);
+  r2.readAsDataURL(blob);
+
+  // [3] readAsArrayBuffer → 先頭5バイトを 16進で表示
+  const r3 = new FileReader();
+  r3.onload = () =&gt; {
+    const u8 = new Uint8Array(r3.result);
+    const hex = [...u8.slice(0, 5)].map(b =&gt; b.toString(16).padStart(2, '0')).join(' ');
+    console.log('ArrayBuffer head5(hex):', hex);
+  };
+  r3.readAsArrayBuffer(blob);
+  setBA('lab3', 'Blob 1個', '同一Blobを3形式で取り出し');
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 04: URL.createObjectURL ========== -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>URL.createObjectURL — Blob を blob: URL に変換 / revoke で解放</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">Blob を一意の blob:https://... URL に変換する。&lt;img src&gt;, &lt;a href download&gt;, &lt;video src&gt; などにそのまま渡せる。使い終わったら revokeObjectURL で必ず解放しないと、Blob がメモリに居座り続けてリークする。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>選択画像のプレビュー (DataURL より高速・省メモリ)</li>
+        <li>サーバから Blob で取得した PDF を新タブで開く</li>
+        <li>動的生成した CSV/Excel を &lt;a download&gt; でダウンロード</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  ライフサイクル: 必ず revoke
+  ┌─────────────────────────────────┐
+  │  const url = createObjectURL(blob)
+  │     ↓ blob:https://example/abc-123
+  │  &lt;img src=url&gt;  ← 表示          │
+  │     ↓ 表示完了                   │
+  │  img.onload = () =&gt;             │
+  │     URL.revokeObjectURL(url)    │
+  │     ↓                           │
+  │  メモリ解放 ✓                   │
+  └─────────────────────────────────┘
+   revokeしないと blob: が永遠に残る
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: BinaryData → Server-side で base64文字列を Client に返却 → JS で Blob化 → createObjectURL で &lt;a download&gt; に。これだけで「Server Action でファイルを返す」より高速 (再ロード不要) かつスマホでもダウンロードが安定する。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: CSV を生成 → blob: URL でダウンロードリンク</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab4Run()">CSVを生成しリンクを作る</button>
+          <button class="demo-btn" onclick="lab4Revoke()">URL を revoke</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab4Clear()">クリア</button>
+        </div>
+        <div id="lab4-link-area" style="margin:10px 0;font-size:.9rem;"></div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab4-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab4-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab4-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「CSVを生成しリンクを作る」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab4Run() {
+  clearLog('lab4-log');
+  const csv = 'name,age\nAlice,30\nBob,25\n';
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  console.log('生成URL:', url);
+
+  // &lt;a download&gt; を作って差し込む
+  const area = document.getElementById('lab4-link-area');
+  area.innerHTML = '';
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'sample.csv';
+  a.textContent = '📥 sample.csv をダウンロード';
+  a.style.color = 'var(--accent)';
+  area.appendChild(a);
+
+  window.__lab4Url = url;  // revoke 用に保持
+  setBA('lab4', 'Blob のみ', 'blob: URL + ダウンロードリンク');
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 05: ArrayBuffer / TypedArray / DataView ========== -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>ArrayBuffer / TypedArray / DataView — 生バイナリ操作の3層</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">ArrayBuffer は「型のない素のバイト列」。直接アクセスはできず、ビュー (Uint8Array, Float32Array...) または DataView を被せて読み書きする。TypedArray は同じ型での連続アクセス向き、DataView はバイトオーダー (endianness) を意識した混在型読み書き向き。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>WebSocket / fetch で受けたバイナリプロトコルをパース</li>
+        <li>PNG/JPEG のヘッダ先頭バイトを見てMIME検証</li>
+        <li>WASM や Canvas (ImageData) との高速データ受け渡し</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  3層モデル
+  ┌─────────────────────────────────────┐
+  │ ArrayBuffer (16 bytes 確保)         │
+  │ [00 00 00 00 00 00 00 00            │
+  │  00 00 00 00 00 00 00 00]           │
+  └─────────────────────────────────────┘
+       ▲                      ▲
+       │ 同じバッファに2つの  │
+       │ ビューを被せられる   │
+  ┌─────────────┐      ┌──────────────┐
+  │ Uint8Array  │      │ Float32Array │
+  │ 16要素 (1B) │      │ 4要素 (4B)   │
+  │ [0..255]    │      │ [浮動小数点] │
+  └─────────────┘      └──────────────┘
+                       ┌──────────────┐
+                       │ DataView     │
+                       │ 任意offset+型│
+                       │ +endian指定  │
+                       └──────────────┘
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: OutSystems Extension で C# が返す byte[] を JS 側で受けるとき、ArrayBuffer → Uint8Array に被せれば配列のように扱える。VB.NET の Byte() 配列ともメモリレイアウトが対応するので、バイナリプロトコル設計のメンタルモデルを揃えやすい。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 16バイトを TypedArray と DataView で操作</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab5Run()">バッファを操作</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab5Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab5-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab5-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab5-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「バッファを操作」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab5Run() {
+  clearLog('lab5-log');
+  const buf = new ArrayBuffer(16);  // 16バイト確保
+  console.log('byteLength:', buf.byteLength);
+
+  // [1] Uint8Array でビュー → 1バイトずつ書き込み
+  const u8 = new Uint8Array(buf);
+  u8[0] = 0x48; u8[1] = 0x69;  // 'H', 'i'
+  console.log('u8[0..2]:', Array.from(u8.slice(0, 2)));
+
+  // [2] DataView で 4バイト目に Int32 (Big Endian) を書く
+  const dv = new DataView(buf);
+  dv.setInt32(4, 0x01020304, false);  // false = BigEndian
+  console.log('byte[4..8]:', Array.from(u8.slice(4, 8)).map(b =&gt; b.toString(16)));
+
+  // [3] DataView で同じ位置を Little Endian で読む → 値が逆転
+  const leVal = dv.getInt32(4, true);
+  console.log('LE で読むと:', '0x' + leVal.toString(16));
+  setBA('lab5', '16B のゼロ埋めバッファ', 'Hi + Int32 を埋めた状態');
+}</pre>
+    </div>
+  </div>
+</div>
+<!-- ============================================================
+     Part 3: Labs 06-10 (Part B: データ操作・国際化)
+     ============================================================ -->
+
+<!-- ========== Lab 06: structuredClone ========== -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>structuredClone — 真の deep copy (循環参照・Map/Set もOK)</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS 15.4+</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">JSON.parse(JSON.stringify(x)) では取りこぼす Date/Map/Set/RegExp/ArrayBuffer/循環参照まで、構造化複製アルゴリズムで正しく深くコピーする標準API。Node.js 17+ / 主要ブラウザで利用可。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>state を一切共有しないで丸ごと複製 (Redux 風の不変更新)</li>
+        <li>Date や Map を含むキャッシュ/設定オブジェクトのスナップショット</li>
+        <li>postMessage の送信前検証 (clone 可能なら postMessage も通る)</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  3手法 比較表
+  ┌──────────────────┬──────┬──────┬──────┐
+  │ 手法              │ Date │ Map  │ 循環  │
+  ├──────────────────┼──────┼──────┼──────┤
+  │ Object.assign({}) │ 浅い │ 浅い │ 浅い │
+  │ {...obj} スプレッド│ 浅い │ 浅い │ 浅い │
+  │ JSON.parse(JSON…)│ ✗string│ ✗{} │ ✗例外│
+  │ structuredClone  │ ✓    │ ✓    │ ✓    │
+  └──────────────────┴──────┴──────┴──────┘
+  注: 関数 / DOM / Symbol は clone不可 (例外)
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: Wijmo CollectionView の元データを一時編集→キャンセルで戻したい場合、ロード時に structuredClone で「原本」を取っておけば、commitEdit/cancelEdit を待たずに任意のタイミングで完全復元できる。Date 列が string化されない点が JSON.parse 方式より優秀。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: JSON 方式と structuredClone を比較</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab6Run()">3手法で deep copy 比較</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab6Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab6-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab6-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab6-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「3手法で deep copy 比較」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab6Run() {
+  clearLog('lab6-log');
+  const original = {
+    when: new Date('2025-01-01'),
+    tags: new Map([['env', 'prod']]),
+    nums: [1, 2, 3]
+  };
+  original.self = original;  // 循環参照
+
+  // [1] スプレッド (浅い)
+  const c1 = { ...original };
+  console.log('spread: nums同一?', c1.nums === original.nums);  // true (浅い)
+
+  // [2] JSON 経由 (循環で例外)
+  try {
+    const c2 = JSON.parse(JSON.stringify(original));
+    console.log('JSON: ' + c2);
+  } catch (e) {
+    console.log('JSON 経由: 循環参照で例外', e.message.slice(0, 30));
+  }
+
+  // [3] structuredClone (循環OK / Date/Map保持)
+  const c3 = structuredClone(original);
+  console.log('clone: nums同一?', c3.nums === original.nums);   // false
+  console.log('clone: Date型?', c3.when instanceof Date);       // true
+  console.log('clone: Map型?', c3.tags instanceof Map);         // true
+  setBA('lab6', '原本: Date/Map/循環あり', 'cloneのみ全保持・独立');
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 07: JSON 応用 (replacer / reviver) ========== -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>JSON.stringify/parse 応用 — replacer / reviver / BigInt 対応</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">JSON.stringify(value, replacer, space) と JSON.parse(text, reviver)。第2引数で「シリアライズ時にキー/値を加工する関数」、parse 側では「復元時にDateや BigInt に戻す関数」を渡せる。BigInt は標準では throw するので replacer で文字列化が定石。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>パスワード/トークン等の機密フィールドを除外して送信</li>
+        <li>"2025-01-01T00:00:00Z" を JSON.parse で自動 Date 化</li>
+        <li>BigInt を含むデータを JSON 化 (普通は throw する)</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  シリアライズ パイプライン
+  ┌──────────┐   replacer    ┌────────┐
+  │ オブジェクト│ ───────→     │ 加工後  │
+  └──────────┘  各(k,v)で呼び  └────────┘
+                  返り値が       │
+                  実際にJSONに   │ stringify
+                                 ▼
+                          "{"name":"...",...}"
+                                 │ parse
+                                 ▼
+                          ┌────────┐
+                          │ 加工後  │
+                          └────────┘
+                            ▲
+                            │ reviver で復元
+                          (例: ISO文字列 → Date)
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: REST API の JSONOutput / JSONInput の OnAfterResponse / OnBeforeRequest で、共通的に「Decimal を文字列化」「null を空文字に」等のフィルタを噛ませたい場合、JS 経由の場合は replacer/reviver で集中処理できる。Server Action 側のシリアライザ拡張より軽量。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: パスワード除外 / Date復元 / BigInt 対応</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab7Run()">3パターン実行</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab7Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab7-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab7-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab7-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「3パターン実行」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab7Run() {
+  clearLog('lab7-log');
+
+  // [1] replacer: password キーを除外
+  const user = { name: 'tom', password: 'secret', age: 40 };
+  const safe = JSON.stringify(user, (k, v) =&gt; k === 'password' ? undefined : v);
+  console.log('安全版:', safe);
+
+  // [2] reviver: ISO文字列 → Date 復元
+  const text = '{"when":"2025-01-01T00:00:00Z","name":"tom"}';
+  const obj = JSON.parse(text, (k, v) =&gt; {
+    if (typeof v === 'string' &amp;&amp; /^\d{4}-\d{2}-\d{2}T/.test(v)) return new Date(v);
+    return v;
+  });
+  console.log('復元 when 型:', obj.when.constructor.name);  // Date
+
+  // [3] BigInt: replacer で文字列化、reviver で復元
+  const data = { id: 9007199254740993n };  // Number 限界超
+  const json = JSON.stringify(data, (k, v) =&gt;
+    typeof v === 'bigint' ? v.toString() + 'n' : v);
+  console.log('BigInt JSON:', json);
+  const back = JSON.parse(json, (k, v) =&gt;
+    typeof v === 'string' &amp;&amp; /^\d+n$/.test(v) ? BigInt(v.slice(0, -1)) : v);
+  console.log('復元 id:', back.id, typeof back.id);  // bigint
+  setBA('lab7', '生オブジェクト3種', 'replacer/reviver で加工済み');
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 08: BigInt ========== -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>BigInt — 任意精度整数 (123n リテラル / Number との非互換)</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">Number は IEEE 754 で 2^53-1 (Number.MAX_SAFE_INTEGER) を超えると精度が落ちる。BigInt は末尾 n リテラルか BigInt(...) で生成する任意精度の整数型。Number と直接の算術はできない (TypeError)。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>RDB の bigint / Java/.NET の long をフロントで丸めずに扱う</li>
+        <li>暗号関連の大きな素数・モジュロ演算</li>
+        <li>UNIXミリ秒のさらに細かいタイムスタンプ (高精度ID等)</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  Number vs BigInt
+  ┌──────────────────────────────────────┐
+  │ Number.MAX_SAFE_INTEGER              │
+  │   = 2^53 - 1 = 9007199254740991      │
+  │ → これを超えると精度欠落             │
+  │                                      │
+  │   9007199254740993       ← Number    │
+  │ ≠ 9007199254740993n      ← BigInt    │
+  │                                      │
+  │ 9007199254740993 === 9007199254740992│
+  │   // true!! (Number は丸める)        │
+  └──────────────────────────────────────┘
+  混在禁止: 1n + 1 → TypeError
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: Azure SQL の bigint 列 (例: 採番ID) を Server Action で Long に乗せて返却 → JSON 化されるとき Number 範囲を超えると JS 側で値が壊れる。文字列化して送り、フロントで BigInt 化して比較すれば桁落ちゼロ。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: Number 丸め問題と BigInt の救済</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab8Run()">大整数を扱う</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab8Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab8-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab8-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab8-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「大整数を扱う」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab8Run() {
+  clearLog('lab8-log');
+
+  // [1] Number 丸め問題
+  const a = 9007199254740993;       // Number
+  const b = 9007199254740992;
+  console.log('Number a===b ?:', a === b);    // true !!
+
+  // [2] BigInt なら正確
+  const ba = 9007199254740993n;
+  const bb = 9007199254740992n;
+  console.log('BigInt ba===bb ?:', ba === bb); // false
+
+  // [3] 演算
+  console.log('2n ** 100n =', (2n ** 100n).toString());
+  console.log('typeof 1n:', typeof 1n);  // 'bigint'
+
+  // [4] 混在は例外
+  try {
+    const x = 1n + 1;
+  } catch (e) {
+    console.log('1n + 1 →', e.constructor.name + ': ' + e.message.slice(0, 40));
+  }
+
+  // [5] Number 同士の比較変換は明示的に
+  console.log('Number(1n) + 1 =', Number(1n) + 1);
+  setBA('lab8', 'Number で 9e15 → 桁落ち', 'BigInt なら正確に保持');
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 09: Intl.NumberFormat / DateTimeFormat ========== -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>Intl.NumberFormat / DateTimeFormat — 通貨・日付の国際化</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">ロケール (ja-JP / en-US / ...) と オプション (style / currency / dateStyle ...) を渡すだけで、3桁区切り・通貨記号・年月日順序などを自動でローカライズ。手書きの format 関数を撲滅できる ECMA-402 仕様。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>金額表示を ja-JP は「¥1,000」、en-US は「$1,000」</li>
+        <li>日付を ja-JP は「2025年1月1日」、en-US は「Jan 1, 2025」</li>
+        <li>「3 hours ago」相当の Intl.RelativeTimeFormat (補完)</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  Intl ファミリー (主要)
+  ┌──────────────────────────────────────┐
+  │ Intl.NumberFormat                    │
+  │   通貨/百分率/単位/桁区切り          │
+  │   ('ja-JP', {style:'currency',...})  │
+  ├──────────────────────────────────────┤
+  │ Intl.DateTimeFormat                  │
+  │   年月日/時刻/タイムゾーン           │
+  │   (..., {dateStyle:'long', ...})     │
+  ├──────────────────────────────────────┤
+  │ Intl.RelativeTimeFormat              │
+  │   "3日前" "in 2 hours"               │
+  ├──────────────────────────────────────┤
+  │ Intl.Collator → Lab 10               │
+  └──────────────────────────────────────┘
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: OutSystems の組み込みフォーマット (FormatDecimal, FormatDateTime) はサーバ依存で言語切替が面倒。Wijmo FlexGrid の cell template や formatItem 内で Intl.NumberFormat を使えば、ロケール切替が即時&JS制御で確実。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 同じ値を ja-JP / en-US / de-DE で表示</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab9Run()">3ロケール比較</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab9Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab9-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab9-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab9-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「3ロケール比較」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab9Run() {
+  clearLog('lab9-log');
+  const amount = 1234567.89;
+  const date = new Date('2025-04-15T10:30:00');
+
+  // [1] 通貨フォーマット
+  const ja = new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' });
+  const en = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+  const de = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
+  console.log('ja-JP JPY:', ja.format(amount));
+  console.log('en-US USD:', en.format(amount));
+  console.log('de-DE EUR:', de.format(amount));
+
+  // [2] 日付フォーマット
+  console.log('ja-JP 日付:', new Intl.DateTimeFormat('ja-JP', { dateStyle: 'long' }).format(date));
+  console.log('en-US 日付:', new Intl.DateTimeFormat('en-US', { dateStyle: 'long' }).format(date));
+
+  // [3] 単位 (bytes / km / percent)
+  const fmt = new Intl.NumberFormat('ja-JP', { style: 'unit', unit: 'kilobyte', unitDisplay: 'short' });
+  console.log('単位:', fmt.format(2048));  // "2,048 kB"
+
+  // [4] パーセント
+  const pct = new Intl.NumberFormat('ja-JP', { style: 'percent', minimumFractionDigits: 1 });
+  console.log('百分率:', pct.format(0.876));  // "87.6%"
+  setBA('lab9', '生数値: 1234567.89', '3言語の正規表現付き表示');
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 10: Intl.Collator ========== -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>Intl.Collator — 言語別の文字列比較 (sort時の正しい順序)</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">String.prototype.localeCompare の裏で動くロケール対応比較器。numeric:true で「item2 &lt; item10」を実現、sensitivity 指定で大文字小文字無視・カナひらがな同一視も可能。array.sort() に渡せばロケールに沿った並びに。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>ファイル名一覧を「自然な数値順 (file1 → file2 → file10)」で並べる</li>
+        <li>大文字小文字を無視してユーザ名で sort</li>
+        <li>日本語の五十音順 (Wijmo グリッドの sort)</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  デフォルト sort vs Collator
+  ┌─────────────────────────────────────┐
+  │ ['file1', 'file10', 'file2'].sort() │
+  │   → ['file1', 'file10', 'file2']    │  ← 文字列順 (まずい)
+  │                                     │
+  │ Intl.Collator(undefined,            │
+  │   {numeric: true}).compare で sort  │
+  │   → ['file1', 'file2', 'file10']    │  ← 数値混在で正しい
+  └─────────────────────────────────────┘
+
+  sensitivity の効き方
+   'base':       a=A=á  ← 全部同じ扱い
+   'accent':     a=A≠á  ← 大文字小文字のみ無視
+   'case':       a≠A=á  ← アクセントのみ無視
+   'variant':    a≠A≠á  ← 全部別物 (デフォルト)
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: Wijmo FlexGrid で sort をカスタマイズしたい場合、CollectionView の sortComparer に Intl.Collator(...).compare を渡すだけで「ファイル名_001, ファイル名_002, ファイル名_010」を自然順で並べられる。Excel と同じソート挙動を実現。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 自然順ソート / 大文字小文字無視 / 日本語</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab10Run()">3パターン比較</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab10Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab10-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab10-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab10-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「3パターン比較」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab10Run() {
+  clearLog('lab10-log');
+
+  // [1] 自然順ソート
+  const files = ['file10', 'file2', 'file1', 'file20'];
+  const naive = [...files].sort();
+  const natural = [...files].sort(new Intl.Collator(undefined, { numeric: true }).compare);
+  console.log('文字列順:', naive.join(','));
+  console.log('自然順:', natural.join(','));
+
+  // [2] 大文字小文字無視
+  const names = ['banana', 'Apple', 'cherry', 'apricot'];
+  const ci = [...names].sort(new Intl.Collator('en', { sensitivity: 'base' }).compare);
+  console.log('CI sort:', ci.join(','));
+
+  // [3] 日本語 (五十音)
+  const jp = ['さくら', 'あさひ', 'すいか', 'いちご'];
+  const jpSorted = [...jp].sort(new Intl.Collator('ja').compare);
+  console.log('日本語sort:', jpSorted.join(','));
+
+  // [4] 比較結果の意味 (-1 / 0 / 1)
+  const c = new Intl.Collator('ja').compare;
+  console.log("c('あ','い'):", c('あ', 'い'));  // -1
+  console.log("c('あ','あ'):", c('あ', 'あ'));  // 0
+  setBA('lab10', '混在配列', 'ロケール準拠の自然な並び');
+}</pre>
+    </div>
+  </div>
+</div>
+<!-- ============================================================
+     Part 4: Labs 11-15 (Part C: エンコード・Stream・Crypto)
+     ============================================================ -->
+
+<!-- ========== Lab 11: TextEncoder / TextDecoder ========== -->
+<div class="lab" id="lab11">
+  <div class="lab-header">
+    <div class="lab-num">11</div>
+    <h3>TextEncoder / TextDecoder — UTF-8 ↔ Uint8Array 変換</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">文字列とバイト列の橋渡し。TextEncoder は常に UTF-8 で string → Uint8Array、TextDecoder は (UTF-8/UTF-16/Shift_JIS 等のラベル指定で) Uint8Array → string。stream:true で分割データの追記デコードもできる。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>WebSocket で送る前に文字列をバイト数で計測 (UTF-8基準)</li>
+        <li>fetch ストリームでチャンクごとに増えるテキストを表示</li>
+        <li>Web Crypto に渡すために文字列を Uint8Array に変換</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  双方向変換
+  ┌─────────────────────────────────────┐
+  │  "あ"  ←──── UTF-8 規約 ────→  3byte │
+  │                                     │
+  │  TextEncoder().encode("あ")         │
+  │   → Uint8Array [0xE3, 0x81, 0x82]   │
+  │                                     │
+  │  new TextDecoder('utf-8')           │
+  │   .decode(Uint8Array(3))            │
+  │   → "あ"                            │
+  └─────────────────────────────────────┘
+
+  byte長 vs 文字数
+   "abc"  : 3文字 / 3バイト
+   "あいう": 3文字 / 9バイト  ← UTF-8では各3バイト
+   "🍣"   : 1文字(扱い)/ 4バイト
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: フィールドの「最大バイト数」制限 (例: VARCHAR(255) でUTF-8前提のとき) を、入力検証ロジックとして JS でリアルタイム表示できる。「文字数」ではなく「バイト数」表示が必要な日本語サービスで重宝。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 文字列 ↔ バイト列の往復</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab11Run()">エンコード/デコード実行</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab11Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab11-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab11-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab11-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「エンコード/デコード実行」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab11Run() {
+  clearLog('lab11-log');
+
+  const enc = new TextEncoder();   // 常に utf-8
+  const dec = new TextDecoder('utf-8');
+
+  // [1] 英字
+  const u8a = enc.encode('abc');
+  console.log('"abc" =&gt;', Array.from(u8a), '(' + u8a.byteLength + 'B)');
+
+  // [2] 日本語
+  const u8b = enc.encode('あいう');
+  console.log('"あいう" =&gt;', Array.from(u8b).map(b =&gt; '0x' + b.toString(16)).join(' '));
+  console.log('byte長:', u8b.byteLength + 'B (3文字)');
+
+  // [3] 絵文字
+  const u8c = enc.encode('🍣');
+  console.log('"🍣" =&gt;', u8c.byteLength + 'B (サロゲートペアで4バイト)');
+
+  // [4] デコード往復
+  console.log('デコード:', dec.decode(u8b));
+
+  // [5] バイト数で文字制限する関数
+  function byteLen(s) { return new TextEncoder().encode(s).byteLength; }
+  console.log('byteLen("ab🍣"):', byteLen('ab🍣'));  // 6
+  setBA('lab11', '文字列のみ', 'バイト列に変換 + 復元');
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 12: ReadableStream / WritableStream (基礎) ========== -->
+<div class="lab" id="lab12">
+  <div class="lab-header">
+    <div class="lab-num">12</div>
+    <h3>ReadableStream / WritableStream — Streams API 基礎</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">大きなデータを一気にメモリに乗せず、チャンク単位で処理するための標準 API。ReadableStream で「読み」、WritableStream で「書き」、TransformStream で「中間加工」。pipeTo / pipeThrough で連結。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>巨大なログファイルを行単位で処理 (メモリ最小化)</li>
+        <li>fetch のレスポンスを到着順にUI反映 (Lab 13 で応用)</li>
+        <li>圧縮 / 暗号化を pipeThrough で挟む (Lab 14 で実例)</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  Stream の3要素 + パイプ
+  ┌─────────────┐    ┌──────────────┐    ┌─────────────┐
+  │ Readable    │───▶│  Transform   │───▶│  Writable   │
+  │ (source)    │    │  (filter等)  │    │  (sink)     │
+  └─────────────┘    └──────────────┘    └─────────────┘
+       │                  ▲                     ▲
+       │ pipeThrough(t)   │                     │ pipeTo(w)
+       └──────────────────┘                     │
+                                                │
+   一括メモリ        vs       Stream
+   ─────────────────         ─────────────────
+   1GB一気にロード    →       チャンクごと逐次
+   メモリ 1GB                  メモリ 数十KB
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: 大容量CSV/Excel のクライアント側プレビュー。FileReader.readAsText だと全部メモリに載るが、file.stream() で ReadableStream を取れば、最初の100行だけ表示してすぐ閉じられる。スマホでも安定。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: チャンクを生成して TransformStream で大文字化</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab12Run()">Streamパイプ実行</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab12Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab12-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab12-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab12-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「Streamパイプ実行」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>async function lab12Run() {
+  clearLog('lab12-log');
+
+  // [1] ReadableStream をチャンクで構築
+  const readable = new ReadableStream({
+    start(controller) {
+      ['hello', ' ', 'stream', ' ', 'world'].forEach(c =&gt; controller.enqueue(c));
+      controller.close();
+    }
+  });
+
+  // [2] 大文字化する TransformStream
+  const upper = new TransformStream({
+    transform(chunk, controller) {
+      controller.enqueue(chunk.toUpperCase());
+    }
+  });
+
+  // [3] WritableStream で蓄積 + ログ
+  let acc = '';
+  const writable = new WritableStream({
+    write(chunk) {
+      acc += chunk;
+      console.log('chunk:', JSON.stringify(chunk));
+    },
+    close() {
+      console.log('完了 / 結合結果:', acc);
+    }
+  });
+
+  // [4] Read → Transform → Write を pipe で連結
+  await readable.pipeThrough(upper).pipeTo(writable);
+  setBA('lab12', '5チャンク (small)', '大文字化 + 結合');
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 13: Response.body.getReader() ========== -->
+<div class="lab" id="lab13">
+  <div class="lab-header">
+    <div class="lab-num">13</div>
+    <h3>fetch streaming — Response.body から進捗バーを作る</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">fetch のレスポンスは Response.body が ReadableStream。getReader() で 1チャンクずつ受け取り、Content-Length と比較して受信バイト数を計算 → 進捗UIに反映できる。await response.text() より重い処理が可能。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>大きい JSON / 動画 / 圧縮ファイルのダウンロード進捗バー</li>
+        <li>サーバ側の Server-Sent Events / NDJSON を逐次処理</li>
+        <li>ChatGPT風の「文字がストリームで降ってくる」UI</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  fetch streaming のループ
+  ┌────────────────────────────────────────┐
+  │  res = await fetch(url)                │
+  │  total = +res.headers.get('content-len')
+  │  reader = res.body.getReader()         │
+  │                                        │
+  │  while (true) {                        │
+  │    {value, done} = await reader.read() │
+  │    if (done) break                     │
+  │    received += value.length            │
+  │    progress = received / total         │
+  │    →  UI更新                           │
+  │  }                                     │
+  └────────────────────────────────────────┘
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: 帳票PDF (10MB) のダウンロード等で OutSystems の Download Action だと進捗が見えない。Client Action で fetch ストリームを使えば「3.2MB / 10MB」の表示が可能。Tom が以前やったチャンクアップロードの逆方向版。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 自前 ReadableStream で疑似ダウンロード</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab13Run()">疑似ダウンロード開始</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab13Clear()">クリア</button>
+        </div>
+        <div style="margin:10px 0;background:var(--surface2);border-radius:6px;height:14px;overflow:hidden;">
+          <div id="lab13-bar" style="background:var(--accent);height:100%;width:0%;transition:width .15s;"></div>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab13-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab13-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab13-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「疑似ダウンロード開始」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>async function lab13Run() {
+  clearLog('lab13-log');
+  const TOTAL = 100;  // 仮の総バイト数 (擬似)
+  const CHUNKS = 10;
+
+  // ReadableStream で 10チャンク × 10byte を吐く擬似サーバ
+  const stream = new ReadableStream({
+    async start(controller) {
+      for (let i = 0; i &lt; CHUNKS; i++) {
+        await new Promise(r =&gt; setTimeout(r, 200));
+        controller.enqueue(new Uint8Array(10));
+      }
+      controller.close();
+    }
+  });
+
+  // fetch streaming と同じ要領で読む
+  const reader = stream.getReader();
+  let received = 0;
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    received += value.length;
+    const pct = Math.round(received / TOTAL * 100);
+    document.getElementById('lab13-bar').style.width = pct + '%';
+    console.log(received + ' / ' + TOTAL + ' (' + pct + '%)');
+  }
+  console.log('ダウンロード完了');
+  setBA('lab13', '進捗 0%', '進捗 100% (ストリーム読み完了)');
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 14: CompressionStream / DecompressionStream ========== -->
+<div class="lab" id="lab14">
+  <div class="lab-header">
+    <div class="lab-num">14</div>
+    <h3>CompressionStream / DecompressionStream — gzip 圧縮/展開</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-warn">⚠ iOS 16.4+</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">'gzip' / 'deflate' / 'deflate-raw' のいずれかを指定して TransformStream として動作。Stream で連結できるので、メモリ上で巨大データの圧縮/展開が可能。Safari は 16.4 以降で対応。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>Server へ送る大きい JSON を gzip 化して帯域節約</li>
+        <li>localStorage / IndexedDB へ保存する文字列を圧縮</li>
+        <li>受信 .gz ファイルをサーバ復号せずクライアントで展開</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  Stream で挟む圧縮/展開
+  ┌─────────┐    ┌──────────────────┐    ┌─────────┐
+  │ 元データ │───▶│ Compression('gz')│───▶│ 圧縮Blob │
+  │ 1.0 MB  │    │  = TransformStream│   │ 0.3 MB  │
+  └─────────┘    └──────────────────┘    └─────────┘
+       ▲                                       │
+       │ ◀─── Decompression('gzip') ◀──────────┘
+       │   = TransformStream
+
+  使い方: blob.stream().pipeThrough(new CompressionStream('gzip'))
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: モバイル網で帳票出力やマスタダウンロードする業務アプリで、JSON を 70%サイズに圧縮できる。サーバ側は gzip 受信を IIS で自動展開できるため、JS 側で gzip 化 → POST するだけで帯域削減。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: テキストを gzip 圧縮 → 展開で復元</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab14Run()">圧縮 → 展開</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab14Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab14-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab14-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab14-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「圧縮 → 展開」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>async function lab14Run() {
+  clearLog('lab14-log');
+  if (typeof CompressionStream === 'undefined') {
+    console.log('この環境は CompressionStream 非対応');
+    setBA('lab14', '原文', '非対応で実行不可');
+    return;
+  }
+
+  // [1] 圧縮対象 (繰り返しでよく圧縮される)
+  const original = 'hello,world,'.repeat(200);  // 2400文字
+  const u8 = new TextEncoder().encode(original);
+  console.log('原文 byteLength:', u8.byteLength);
+
+  // [2] gzip 圧縮 (Blob で出力)
+  const compressed = await new Response(
+    new Blob([u8]).stream().pipeThrough(new CompressionStream('gzip'))
+  ).blob();
+  console.log('gzip後:', compressed.size + 'B (' + Math.round(compressed.size / u8.byteLength * 100) + '%)');
+
+  // [3] 展開して文字列に戻す
+  const restored = await new Response(
+    compressed.stream().pipeThrough(new DecompressionStream('gzip'))
+  ).text();
+  console.log('復元一致?:', restored === original);
+  console.log('復元先頭:', restored.slice(0, 30));
+  setBA('lab14', u8.byteLength + 'B', compressed.size + 'B (gzip)');
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 15: SubtleCrypto.digest (SHA-256) ========== -->
+<div class="lab" id="lab15">
+  <div class="lab-header">
+    <div class="lab-num">15</div>
+    <h3>SubtleCrypto.digest — SHA-256 ハッシュ (ファイル整合性検証)</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+      <span class="compat-badge compat-warn">⚠ HTTPS/localhost必須</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">crypto.subtle.digest('SHA-256', buffer) で ArrayBuffer のハッシュを ArrayBuffer で得る非同期 API。Hex文字列にしたければ Uint8Array に被せて 16進化。secure context (https または localhost) のみ動作。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li><b>チャンクアップロードの整合性検証</b> (Tom が以前やった案件)</li>
+        <li>ダウンロードしたファイルの改ざん検出 (公開ハッシュと比較)</li>
+        <li>ローカルのバージョン管理: 内容が変わった時だけ保存</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  チャンクアップロード文脈での使い方
+  ┌─────────────────────────────────────┐
+  │  巨大ファイル (100MB)               │
+  │  → file.slice() で 1MB×100チャンク  │
+  │  → 各チャンクの SHA-256 を計算      │
+  │  → サーバへ {chunk, hash} 送信      │
+  │  → サーバ再計算 → 一致なら受理       │
+  │  → 全チャンク到着後、全結合の        │
+  │     SHA-256 をクライアントから受信   │
+  │  → サーバ全体ハッシュと比較で検証    │
+  └─────────────────────────────────────┘
+
+  digest API の流れ:
+   string ──TextEncoder──▶ Uint8Array
+   ──crypto.subtle.digest('SHA-256')──▶ ArrayBuffer(32B)
+   ──Uint8Array──▶ hex化 ──▶ "abc123..." 64文字
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: 以前 OutSystems Cloud で実装したチャンクアップロード+JSZip+SHA-256検証は、まさにこの API。Server側 (.NET) では System.Security.Cryptography.SHA256 で同じハッシュを計算 → クライアントとサーバで突き合わせで改ざん検証ができる。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 文字列の SHA-256 を計算</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <input type="text" id="lab15-input" value="hello,world" style="font-size:.9rem;padding:5px;width:200px;">
+          <button class="demo-btn" onclick="lab15Run()">SHA-256 計算</button>
+          <button class="demo-btn demo-btn-secondary" onclick="lab15Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab15-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab15-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab15-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「SHA-256 計算」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>async function lab15Run() {
+  clearLog('lab15-log');
+  if (!crypto.subtle) {
+    console.log('crypto.subtle 不在 (HTTPS/localhost で動作)');
+    setBA('lab15', '入力あり', 'secure context 必須');
+    return;
+  }
+
+  const text = document.getElementById('lab15-input').value;
+  console.log('対象:', JSON.stringify(text));
+
+  // [1] 文字列 → Uint8Array
+  const u8 = new TextEncoder().encode(text);
+
+  // [2] SHA-256 ハッシュ計算 (ArrayBuffer 32バイトが返る)
+  const hashBuf = await crypto.subtle.digest('SHA-256', u8);
+  console.log('hash byteLength:', hashBuf.byteLength);
+
+  // [3] hex 文字列化 (64文字)
+  const hashArr = Array.from(new Uint8Array(hashBuf));
+  const hex = hashArr.map(b =&gt; b.toString(16).padStart(2, '0')).join('');
+  console.log('SHA-256:', hex);
+
+  // [4] 別アルゴリズム (SHA-1 / SHA-512 も同じ要領)
+  const sha1Buf = await crypto.subtle.digest('SHA-1', u8);
+  const sha1Hex = Array.from(new Uint8Array(sha1Buf))
+    .map(b =&gt; b.toString(16).padStart(2, '0')).join('');
+  console.log('SHA-1 (40文字):', sha1Hex);
+  setBA('lab15', '入力: ' + text, 'SHA-256: ' + hex.slice(0, 16) + '...');
+}</pre>
+    </div>
+  </div>
+</div>
+
+</div><!-- /.container -->
+
+<!-- 📑 フローティング「目次に戻る」ボタン -->
+<button id="back-to-toc" aria-label="目次に戻る">
+  <span class="arrow">▲</span>
+  <span class="label">目次</span>
+</button>
+<script>
+// ============= 共通ユーティリティ =============
+function copyCode(btn) {
+  const block = btn.closest('.code-block');
+  const pre = block.querySelector('pre');
+  if (!pre) return;
+  const text = pre.innerText;
+
+  const showSuccess = () => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  };
+  const showError = (msg) => {
+    btn.textContent = 'NG: ' + msg;
+    btn.style.borderColor = '#cb2431';
+    btn.style.color = '#cb2431';
+    setTimeout(() => {
+      btn.textContent = 'Copy';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+    }, 2500);
+  };
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text)
+      .then(showSuccess)
+      .catch(() => fallbackCopy(text, showSuccess, showError));
+  } else {
+    fallbackCopy(text, showSuccess, showError);
+  }
+}
+
+function fallbackCopy(text, onOk, onErr) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.top = '0';
+  ta.style.left = '0';
+  ta.style.opacity = '0';
+  ta.setAttribute('readonly', '');
+  document.body.appendChild(ta);
+  ta.select();
+  ta.setSelectionRange(0, text.length);
+  try {
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    if (ok) onOk();
+    else onErr('コピー不可');
+  } catch (e) {
+    document.body.removeChild(ta);
+    onErr(e.message.slice(0, 12));
+  }
+}
+function logTo(id, text, cls='') {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const line = document.createElement('div');
+  line.className = 'log-line ' + cls;
+  line.textContent = '> ' + text;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+function clearLog(id) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = '';
+}
+function setBA(labId, before, after) {
+  document.getElementById(labId+'-before').textContent = before;
+  document.getElementById(labId+'-after').textContent = after;
+}
+
+// ============= console.log を log-area へ転送 =============
+// 各ラボのconsole.logを画面に表示するため、ラボ内で console.log を呼ぶたびに
+// そのラボの log-area へ書き込む薄いプロキシをかける
+(function() {
+  const origLog = console.log.bind(console);
+  console.log = function(...args) {
+    origLog(...args);
+    // 直近にクリックされたボタンが属するラボのlog-areaに書き込む
+    const lab = window.__currentLab;
+    if (lab) {
+      const el = document.getElementById(lab + '-log');
+      if (el) {
+        const line = document.createElement('div');
+        line.className = 'log-line';
+        line.textContent = '> ' + args.map(a =>
+          typeof a === 'object' ? JSON.stringify(a) : String(a)
+        ).join(' ');
+        el.appendChild(line);
+        el.scrollTop = el.scrollHeight;
+      }
+    }
+  };
+
+  // ボタンクリック時に「現在のラボ」を識別 (data-target も除外)
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    if (btn.classList.contains('nav-item') || btn.classList.contains('toc-item')) return;
+    const lab = btn.closest('.lab');
+    if (lab) window.__currentLab = lab.id;
+  }, true);
+})();
+// ============================================================
+// Part 5a: Labs 01-08 JS ロジック
+// ============================================================
+// 各 labNRun は HTML の <pre> の中身そのまま (重複定義)。
+// Clear / 補助関数を含む完全実装をここに置く。
+// ============================================================
+
+// ========== Lab 01: Blob ==========
+function lab1Run() {
+  clearLog('lab1-log');
+  const blob = new Blob(['hello,', 'world'], { type: 'text/plain' });
+  console.log('size:', blob.size, 'bytes');
+  console.log('type:', blob.type);
+  console.log('constructor:', blob.constructor.name);
+  blob.text().then(t => console.log('text():', t));
+  setBA('lab1', '材料: 文字列の配列', 'Blob (size=11, type=text/plain)');
+}
+function lab1Slice() {
+  clearLog('lab1-log');
+  const blob = new Blob(['hello,', 'world'], { type: 'text/plain' });
+  const sliced = blob.slice(0, 5, 'text/plain');
+  console.log('元 size:', blob.size);
+  console.log('slice(0,5) size:', sliced.size);
+  sliced.text().then(t => console.log('slice text():', t));
+  setBA('lab1', '元 Blob 11B', 'sliced Blob 5B (= "hello")');
+}
+function lab1Clear() {
+  clearLog('lab1-log');
+  setBA('lab1', '(未実行)', '(未実行)');
+}
+
+// ========== Lab 02: File ==========
+function lab2Run() {
+  clearLog('lab2-log');
+  const input = document.getElementById('lab2-input');
+  const file = input.files && input.files[0];
+  if (!file) { console.log('ファイル未選択'); return; }
+  console.log('name:', file.name);
+  console.log('size:', file.size, 'bytes');
+  console.log('type:', file.type || '(不明)');
+  console.log('lastModified:', new Date(file.lastModified).toISOString());
+  console.log('instanceof Blob:', file instanceof Blob);
+  setBA('lab2', '入力: input[type=file]', file.name + ' / ' + file.size + 'B');
+}
+function lab2Clear() {
+  clearLog('lab2-log');
+  const input = document.getElementById('lab2-input');
+  if (input) input.value = '';
+  setBA('lab2', '(未選択)', '(未選択)');
+}
+
+// ========== Lab 03: FileReader ==========
+function lab3Run() {
+  clearLog('lab3-log');
+  const blob = new Blob(['hello,world'], { type: 'text/plain' });
+
+  const r1 = new FileReader();
+  r1.onload = () => console.log('Text:', r1.result);
+  r1.readAsText(blob, 'utf-8');
+
+  const r2 = new FileReader();
+  r2.onload = () => console.log('DataURL:', r2.result);
+  r2.readAsDataURL(blob);
+
+  const r3 = new FileReader();
+  r3.onload = () => {
+    const u8 = new Uint8Array(r3.result);
+    const hex = [...u8.slice(0, 5)].map(b => b.toString(16).padStart(2, '0')).join(' ');
+    console.log('ArrayBuffer head5(hex):', hex);
+  };
+  r3.readAsArrayBuffer(blob);
+  setBA('lab3', 'Blob 1個', '同一Blobを3形式で取り出し');
+}
+function lab3Clear() {
+  clearLog('lab3-log');
+  setBA('lab3', '(未実行)', '(未実行)');
+}
+
+// ========== Lab 04: createObjectURL ==========
+function lab4Run() {
+  clearLog('lab4-log');
+  const csv = 'name,age\nAlice,30\nBob,25\n';
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  console.log('生成URL:', url);
+
+  const area = document.getElementById('lab4-link-area');
+  area.innerHTML = '';
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'sample.csv';
+  a.textContent = '📥 sample.csv をダウンロード';
+  a.style.color = 'var(--accent)';
+  area.appendChild(a);
+
+  window.__lab4Url = url;
+  setBA('lab4', 'Blob のみ', 'blob: URL + ダウンロードリンク');
+}
+function lab4Revoke() {
+  clearLog('lab4-log');
+  if (!window.__lab4Url) {
+    console.log('まだ URL がありません');
+    return;
+  }
+  URL.revokeObjectURL(window.__lab4Url);
+  console.log('revoke 完了:', window.__lab4Url);
+  console.log('→ リンクをクリックしても無効になっているはず');
+  // リンクの href は残るが Blob 参照が解放されたので開けない
+  setBA('lab4', 'blob: URL 有効', 'revoke 完了 (メモリ解放)');
+  window.__lab4Url = null;
+}
+function lab4Clear() {
+  clearLog('lab4-log');
+  const area = document.getElementById('lab4-link-area');
+  if (area) area.innerHTML = '';
+  if (window.__lab4Url) { URL.revokeObjectURL(window.__lab4Url); window.__lab4Url = null; }
+  setBA('lab4', '(未実行)', '(未実行)');
+}
+
+// ========== Lab 05: ArrayBuffer / TypedArray / DataView ==========
+function lab5Run() {
+  clearLog('lab5-log');
+  const buf = new ArrayBuffer(16);
+  console.log('byteLength:', buf.byteLength);
+
+  const u8 = new Uint8Array(buf);
+  u8[0] = 0x48; u8[1] = 0x69;
+  console.log('u8[0..2]:', Array.from(u8.slice(0, 2)));
+
+  const dv = new DataView(buf);
+  dv.setInt32(4, 0x01020304, false);
+  console.log('byte[4..8]:', Array.from(u8.slice(4, 8)).map(b => b.toString(16)));
+
+  const leVal = dv.getInt32(4, true);
+  console.log('LE で読むと:', '0x' + leVal.toString(16));
+  setBA('lab5', '16B のゼロ埋めバッファ', 'Hi + Int32 を埋めた状態');
+}
+function lab5Clear() {
+  clearLog('lab5-log');
+  setBA('lab5', '(未実行)', '(未実行)');
+}
+
+// ========== Lab 06: structuredClone ==========
+function lab6Run() {
+  clearLog('lab6-log');
+  const original = {
+    when: new Date('2025-01-01'),
+    tags: new Map([['env', 'prod']]),
+    nums: [1, 2, 3]
+  };
+  original.self = original;
+
+  const c1 = { ...original };
+  console.log('spread: nums同一?', c1.nums === original.nums);
+
+  try {
+    const c2 = JSON.parse(JSON.stringify(original));
+    console.log('JSON: ' + c2);
+  } catch (e) {
+    console.log('JSON 経由: 循環参照で例外', e.message.slice(0, 30));
+  }
+
+  const c3 = structuredClone(original);
+  console.log('clone: nums同一?', c3.nums === original.nums);
+  console.log('clone: Date型?', c3.when instanceof Date);
+  console.log('clone: Map型?', c3.tags instanceof Map);
+  setBA('lab6', '原本: Date/Map/循環あり', 'cloneのみ全保持・独立');
+}
+function lab6Clear() {
+  clearLog('lab6-log');
+  setBA('lab6', '(未実行)', '(未実行)');
+}
+
+// ========== Lab 07: JSON 応用 ==========
+function lab7Run() {
+  clearLog('lab7-log');
+
+  const user = { name: 'tom', password: 'secret', age: 40 };
+  const safe = JSON.stringify(user, (k, v) => k === 'password' ? undefined : v);
+  console.log('安全版:', safe);
+
+  const text = '{"when":"2025-01-01T00:00:00Z","name":"tom"}';
+  const obj = JSON.parse(text, (k, v) => {
+    if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(v)) return new Date(v);
+    return v;
+  });
+  console.log('復元 when 型:', obj.when.constructor.name);
+
+  const data = { id: 9007199254740993n };
+  const json = JSON.stringify(data, (k, v) =>
+    typeof v === 'bigint' ? v.toString() + 'n' : v);
+  console.log('BigInt JSON:', json);
+  const back = JSON.parse(json, (k, v) =>
+    typeof v === 'string' && /^\d+n$/.test(v) ? BigInt(v.slice(0, -1)) : v);
+  console.log('復元 id:', back.id, typeof back.id);
+  setBA('lab7', '生オブジェクト3種', 'replacer/reviver で加工済み');
+}
+function lab7Clear() {
+  clearLog('lab7-log');
+  setBA('lab7', '(未実行)', '(未実行)');
+}
+
+// ========== Lab 08: BigInt ==========
+function lab8Run() {
+  clearLog('lab8-log');
+
+  const a = 9007199254740993;
+  const b = 9007199254740992;
+  console.log('Number a===b ?:', a === b);
+
+  const ba = 9007199254740993n;
+  const bb = 9007199254740992n;
+  console.log('BigInt ba===bb ?:', ba === bb);
+
+  console.log('2n ** 100n =', (2n ** 100n).toString());
+  console.log('typeof 1n:', typeof 1n);
+
+  try {
+    const x = 1n + 1;
+  } catch (e) {
+    console.log('1n + 1 →', e.constructor.name + ': ' + e.message.slice(0, 40));
+  }
+
+  console.log('Number(1n) + 1 =', Number(1n) + 1);
+  setBA('lab8', 'Number で 9e15 → 桁落ち', 'BigInt なら正確に保持');
+}
+function lab8Clear() {
+  clearLog('lab8-log');
+  setBA('lab8', '(未実行)', '(未実行)');
+}
+// ============================================================
+// Part 5b: Labs 09-15 JS ロジック
+// ============================================================
+
+// ========== Lab 09: Intl.NumberFormat / DateTimeFormat ==========
+function lab9Run() {
+  clearLog('lab9-log');
+  const amount = 1234567.89;
+  const date = new Date('2025-04-15T10:30:00');
+
+  const ja = new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' });
+  const en = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+  const de = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
+  console.log('ja-JP JPY:', ja.format(amount));
+  console.log('en-US USD:', en.format(amount));
+  console.log('de-DE EUR:', de.format(amount));
+
+  console.log('ja-JP 日付:', new Intl.DateTimeFormat('ja-JP', { dateStyle: 'long' }).format(date));
+  console.log('en-US 日付:', new Intl.DateTimeFormat('en-US', { dateStyle: 'long' }).format(date));
+
+  const fmt = new Intl.NumberFormat('ja-JP', { style: 'unit', unit: 'kilobyte', unitDisplay: 'short' });
+  console.log('単位:', fmt.format(2048));
+
+  const pct = new Intl.NumberFormat('ja-JP', { style: 'percent', minimumFractionDigits: 1 });
+  console.log('百分率:', pct.format(0.876));
+  setBA('lab9', '生数値: 1234567.89', '3言語の正規表現付き表示');
+}
+function lab9Clear() {
+  clearLog('lab9-log');
+  setBA('lab9', '(未実行)', '(未実行)');
+}
+
+// ========== Lab 10: Intl.Collator ==========
+function lab10Run() {
+  clearLog('lab10-log');
+
+  const files = ['file10', 'file2', 'file1', 'file20'];
+  const naive = [...files].sort();
+  const natural = [...files].sort(new Intl.Collator(undefined, { numeric: true }).compare);
+  console.log('文字列順:', naive.join(','));
+  console.log('自然順:', natural.join(','));
+
+  const names = ['banana', 'Apple', 'cherry', 'apricot'];
+  const ci = [...names].sort(new Intl.Collator('en', { sensitivity: 'base' }).compare);
+  console.log('CI sort:', ci.join(','));
+
+  const jp = ['さくら', 'あさひ', 'すいか', 'いちご'];
+  const jpSorted = [...jp].sort(new Intl.Collator('ja').compare);
+  console.log('日本語sort:', jpSorted.join(','));
+
+  const c = new Intl.Collator('ja').compare;
+  console.log("c('あ','い'):", c('あ', 'い'));
+  console.log("c('あ','あ'):", c('あ', 'あ'));
+  setBA('lab10', '混在配列', 'ロケール準拠の自然な並び');
+}
+function lab10Clear() {
+  clearLog('lab10-log');
+  setBA('lab10', '(未実行)', '(未実行)');
+}
+
+// ========== Lab 11: TextEncoder / TextDecoder ==========
+function lab11Run() {
+  clearLog('lab11-log');
+
+  const enc = new TextEncoder();
+  const dec = new TextDecoder('utf-8');
+
+  const u8a = enc.encode('abc');
+  console.log('"abc" =>', Array.from(u8a), '(' + u8a.byteLength + 'B)');
+
+  const u8b = enc.encode('あいう');
+  console.log('"あいう" =>', Array.from(u8b).map(b => '0x' + b.toString(16)).join(' '));
+  console.log('byte長:', u8b.byteLength + 'B (3文字)');
+
+  const u8c = enc.encode('🍣');
+  console.log('"🍣" =>', u8c.byteLength + 'B (サロゲートペアで4バイト)');
+
+  console.log('デコード:', dec.decode(u8b));
+
+  function byteLen(s) { return new TextEncoder().encode(s).byteLength; }
+  console.log('byteLen("ab🍣"):', byteLen('ab🍣'));
+  setBA('lab11', '文字列のみ', 'バイト列に変換 + 復元');
+}
+function lab11Clear() {
+  clearLog('lab11-log');
+  setBA('lab11', '(未実行)', '(未実行)');
+}
+
+// ========== Lab 12: ReadableStream / WritableStream ==========
+async function lab12Run() {
+  clearLog('lab12-log');
+
+  const readable = new ReadableStream({
+    start(controller) {
+      ['hello', ' ', 'stream', ' ', 'world'].forEach(c => controller.enqueue(c));
+      controller.close();
+    }
+  });
+
+  const upper = new TransformStream({
+    transform(chunk, controller) {
+      controller.enqueue(chunk.toUpperCase());
+    }
+  });
+
+  let acc = '';
+  const writable = new WritableStream({
+    write(chunk) {
+      acc += chunk;
+      console.log('chunk:', JSON.stringify(chunk));
+    },
+    close() {
+      console.log('完了 / 結合結果:', acc);
+    }
+  });
+
+  await readable.pipeThrough(upper).pipeTo(writable);
+  setBA('lab12', '5チャンク (small)', '大文字化 + 結合');
+}
+function lab12Clear() {
+  clearLog('lab12-log');
+  setBA('lab12', '(未実行)', '(未実行)');
+}
+
+// ========== Lab 13: fetch streaming ==========
+async function lab13Run() {
+  clearLog('lab13-log');
+  const TOTAL = 100;
+  const CHUNKS = 10;
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      for (let i = 0; i < CHUNKS; i++) {
+        await new Promise(r => setTimeout(r, 200));
+        controller.enqueue(new Uint8Array(10));
+      }
+      controller.close();
+    }
+  });
+
+  const reader = stream.getReader();
+  let received = 0;
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    received += value.length;
+    const pct = Math.round(received / TOTAL * 100);
+    document.getElementById('lab13-bar').style.width = pct + '%';
+    console.log(received + ' / ' + TOTAL + ' (' + pct + '%)');
+  }
+  console.log('ダウンロード完了');
+  setBA('lab13', '進捗 0%', '進捗 100% (ストリーム読み完了)');
+}
+function lab13Clear() {
+  clearLog('lab13-log');
+  const bar = document.getElementById('lab13-bar');
+  if (bar) bar.style.width = '0%';
+  setBA('lab13', '(未実行)', '(未実行)');
+}
+
+// ========== Lab 14: CompressionStream ==========
+async function lab14Run() {
+  clearLog('lab14-log');
+  if (typeof CompressionStream === 'undefined') {
+    console.log('この環境は CompressionStream 非対応');
+    setBA('lab14', '原文', '非対応で実行不可');
+    return;
+  }
+
+  const original = 'hello,world,'.repeat(200);
+  const u8 = new TextEncoder().encode(original);
+  console.log('原文 byteLength:', u8.byteLength);
+
+  const compressed = await new Response(
+    new Blob([u8]).stream().pipeThrough(new CompressionStream('gzip'))
+  ).blob();
+  console.log('gzip後:', compressed.size + 'B (' + Math.round(compressed.size / u8.byteLength * 100) + '%)');
+
+  const restored = await new Response(
+    compressed.stream().pipeThrough(new DecompressionStream('gzip'))
+  ).text();
+  console.log('復元一致?:', restored === original);
+  console.log('復元先頭:', restored.slice(0, 30));
+  setBA('lab14', u8.byteLength + 'B', compressed.size + 'B (gzip)');
+}
+function lab14Clear() {
+  clearLog('lab14-log');
+  setBA('lab14', '(未実行)', '(未実行)');
+}
+
+// ========== Lab 15: SubtleCrypto.digest ==========
+async function lab15Run() {
+  clearLog('lab15-log');
+  if (!crypto.subtle) {
+    console.log('crypto.subtle 不在 (HTTPS/localhost で動作)');
+    setBA('lab15', '入力あり', 'secure context 必須');
+    return;
+  }
+
+  const text = document.getElementById('lab15-input').value;
+  console.log('対象:', JSON.stringify(text));
+
+  const u8 = new TextEncoder().encode(text);
+
+  const hashBuf = await crypto.subtle.digest('SHA-256', u8);
+  console.log('hash byteLength:', hashBuf.byteLength);
+
+  const hashArr = Array.from(new Uint8Array(hashBuf));
+  const hex = hashArr.map(b => b.toString(16).padStart(2, '0')).join('');
+  console.log('SHA-256:', hex);
+
+  const sha1Buf = await crypto.subtle.digest('SHA-1', u8);
+  const sha1Hex = Array.from(new Uint8Array(sha1Buf))
+    .map(b => b.toString(16).padStart(2, '0')).join('');
+  console.log('SHA-1 (40文字):', sha1Hex);
+  setBA('lab15', '入力: ' + text, 'SHA-256: ' + hex.slice(0, 16) + '...');
+}
+function lab15Clear() {
+  clearLog('lab15-log');
+  setBA('lab15', '(未実行)', '(未実行)');
+}
+// ============= サイドバー: ボタンクリックでスクロール =============
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('[data-target]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.getAttribute('data-target');
+      const target = document.getElementById(targetId);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+
+  const navItems = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+  const targetMap = new Map();
+  navItems.forEach(btn => {
+    const id = btn.getAttribute('data-target');
+    const el = document.getElementById(id);
+    if (el) targetMap.set(el, btn);
+  });
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) {
+      const btn = targetMap.get(e.target);
+      if (btn) {
+        navItems.forEach(n => n.classList.remove('active'));
+        btn.classList.add('active');
+      }
+    }
+  }), { rootMargin: '-30% 0px -60% 0px' });
+  document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+  const backBtn = document.getElementById('back-to-toc');
+  const toc = document.getElementById('toc');
+  backBtn.addEventListener('click', () => {
+    if (toc) toc.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    else window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+  const toggleBackBtn = () => {
+    const threshold = window.innerHeight * 0.8;
+    if (window.scrollY > threshold) backBtn.classList.add('visible');
+    else backBtn.classList.remove('visible');
+  };
+  window.addEventListener('scroll', toggleBackBtn, { passive: true });
+  toggleBackBtn();
+});
+
+
+</script>
+
+</body>
+</html>

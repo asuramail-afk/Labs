@@ -1,0 +1,1750 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JavaScript標準API Lab #1 — ECMAScript Core</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  border-top:none; border-right:none; border-bottom:none;
+  background:transparent; width:100%; text-align:left; cursor:pointer;
+  font-family:inherit;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+#sidebar .file-nav { padding:8px 16px; margin:6px 0; background:var(--surface2);
+  border-top:1px solid var(--border); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.7rem; color:var(--text-dim); }
+#sidebar .file-nav a { display:block; padding:3px 0; color:var(--accent);
+  text-decoration:none; font-size:.72rem; }
+#sidebar .file-nav a.current { color:var(--text); font-weight:700; }
+
+.hero { padding:50px 30px 30px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:1.9rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:.95rem; margin-top:8px; }
+.hero .file-tag { display:inline-block; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; background:var(--accent); color:#fff;
+  margin-top:10px; }
+
+.toc { max-width:1100px; margin:24px auto; padding:0 20px; }
+.toc h2 { font-size:1rem; color:var(--accent); margin-bottom:10px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:8px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:9px 12px;
+  background:var(--surface); border:1px solid var(--border); border-radius:7px;
+  text-decoration:none; color:var(--text); font-size:.84rem;
+  font-family:inherit; cursor:pointer; text-align:left; width:100%;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.78rem; min-width:24px; }
+
+.container { max-width:1100px; margin:0 auto; padding:0 20px 60px; }
+.lab { margin-top:32px; border:1px solid var(--border); border-radius:10px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:10px; padding:14px 18px;
+  background:var(--surface2); border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:28px; height:28px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.78rem; }
+.lab-header h3 { font-size:1.05rem; font-weight:600; flex:1; min-width:140px; }
+.compat-badges { display:flex; gap:5px; flex-wrap:wrap; }
+.compat-badge { font-family:var(--mono); font-size:.65rem; padding:2px 7px;
+  border-radius:10px; border:1px solid; }
+.compat-yes { color:var(--success); border-color:var(--success);
+  background:rgba(34,134,58,.08); }
+.compat-no { color:var(--error); border-color:var(--error);
+  background:rgba(203,36,49,.08); }
+.compat-partial { color:var(--accent4); border-color:var(--accent4);
+  background:rgba(176,136,0,.08); }
+.lab-body { padding:18px; }
+.lab-desc { font-size:.9rem; color:var(--text-dim); margin-bottom:14px; line-height:1.75; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.82rem; color:var(--accent); }
+
+.scenes { background:rgba(0,92,197,.04); border:1px solid rgba(0,92,197,.2);
+  border-left:3px solid var(--accent); border-radius:6px;
+  padding:10px 14px; margin:12px 0; font-size:.85rem; line-height:1.75; }
+.scenes-title { font-family:var(--mono); font-size:.7rem; color:var(--accent);
+  font-weight:700; margin-bottom:5px; letter-spacing:.05em; }
+.scenes ol { margin-left:20px; margin-top:3px; }
+.scenes ol li { margin-bottom:3px; color:var(--text); }
+
+.ascii-art { font-family:var(--mono); font-size:.74rem;
+  line-height:1.45; background:var(--code-bg); padding:10px 12px;
+  border:1px solid var(--border); border-radius:6px;
+  margin:10px 0; color:var(--text); overflow-x:auto; white-space:pre; }
+
+.demo { border:1px solid var(--border); border-radius:8px; margin:14px 0;
+  overflow:hidden; background:var(--bg); }
+.demo-bar { padding:8px 12px; background:var(--surface2);
+  border-bottom:1px solid var(--border); font-family:var(--mono); font-size:.7rem;
+  color:var(--text-dim); letter-spacing:.05em; }
+.demo-body { padding:14px; }
+.demo-input { display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+.demo-input input, .demo-input textarea, .demo-input select {
+  font-family:var(--mono); font-size:.85rem; padding:7px 10px;
+  border:1px solid var(--border); border-radius:5px; background:#fff;
+  color:var(--text); flex:1; min-width:120px; }
+.demo-input textarea { min-height:55px; resize:vertical; flex-basis:100%; }
+.demo-btn { font-family:var(--mono); font-size:.82rem; padding:8px 16px;
+  border-radius:6px; border:1px solid var(--accent); background:var(--accent);
+  color:#fff; cursor:pointer; transition:all .15s; }
+.demo-btn:hover { opacity:.85; }
+.demo-btn.secondary { background:var(--surface); color:var(--accent); }
+.demo-btn:disabled { opacity:.5; cursor:not-allowed; }
+
+.ba-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0; }
+.ba-col { border-radius:6px; padding:10px 12px; font-size:.82rem;
+  line-height:1.6; border:1px solid; min-height:60px; }
+.ba-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.ba-after { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.ba-label { font-family:var(--mono); font-size:.62rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:4px; font-weight:700; opacity:.85; }
+.ba-before .ba-label { color:var(--error); }
+.ba-after .ba-label { color:var(--success); }
+.ba-content { font-family:var(--mono); font-size:.78rem; word-break:break-all;
+  white-space:pre-wrap; min-height:30px; }
+
+.log-area { background:#0d1117; color:#c9d1d9; font-family:var(--mono);
+  font-size:.78rem; padding:10px 12px; border-radius:6px;
+  max-height:200px; overflow-y:auto; margin:8px 0;
+  border:1px solid var(--border); white-space:pre-wrap; word-break:break-all;
+  line-height:1.5; }
+.log-area:empty::before { content:'(実行待ち...ボタンを押してください)';
+  color:#6e7681; font-style:italic; }
+.log-line { padding:1px 0; }
+.log-line.info { color:#79c0ff; }
+.log-line.ok { color:#7ee787; }
+.log-line.err { color:#ff7b72; }
+.log-line.dim { color:#6e7681; }
+
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:7px; margin:10px 0; overflow:hidden; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:7px 12px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.7rem; color:var(--text-dim); letter-spacing:.04em; }
+.code-block pre { padding:10px 14px 12px; overflow-x:auto;
+  font-family:var(--mono); font-size:.78rem; line-height:1.55;
+  color:var(--text); white-space:pre; tab-size:2; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.68rem;
+  padding:3px 9px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+
+.info-box { border-radius:7px; padding:10px 13px; font-size:.85rem;
+  line-height:1.7; margin:12px 0; border-left:3px solid; }
+.info-box.ok { border-color:var(--success); background:rgba(34,134,58,.08); color:#154f1e; }
+.info-box.info { border-color:var(--accent); background:rgba(0,92,197,.08); color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08); color:#7a5c00; }
+.info-box.err { border-color:var(--error); background:rgba(203,36,49,.08); color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 5px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .ba-grid { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.5rem; }
+  .toc-grid { grid-template-columns:1fr; }
+  .lab-body { padding:14px; }
+  .demo-input input, .demo-input textarea { min-width:100%; }
+}
+
+/* 📑 フローティング「目次に戻る」ボタン */
+#back-to-toc { position:fixed; bottom:20px; right:20px; z-index:100;
+  width:54px; height:54px; border-radius:50%; border:none;
+  background:var(--accent); color:#fff; cursor:pointer;
+  font-family:var(--mono); font-size:.7rem; font-weight:700;
+  box-shadow:0 4px 12px rgba(0,92,197,.35);
+  display:none; align-items:center; justify-content:center;
+  flex-direction:column; line-height:1.1;
+  transition:transform .15s,opacity .2s,background .15s; opacity:0; }
+#back-to-toc.visible { display:flex; opacity:1; }
+#back-to-toc:hover { background:#003d8f; transform:translateY(-2px); }
+#back-to-toc:active { transform:translateY(0); }
+#back-to-toc .arrow { font-size:1.1rem; line-height:1; margin-bottom:2px; }
+#back-to-toc .label { font-size:.6rem; letter-spacing:.05em; }
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// JS API Lab #1<br><span style="color:var(--text-dim);font-size:.7rem;">ECMAScript Core</span></div>
+  <div class="file-nav">
+    <div style="font-size:.7rem;color:var(--text-dim);padding:2px 0;">📘 全8ファイル中の #1</div>
+    <div style="font-size:.68rem;color:var(--text-dim);padding:2px 0;line-height:1.4;">基本/数値/数学/文字列</div>
+  </div>
+  <div class="nav-section">基本オブジェクト</div>
+  <button class="nav-item" data-target="lab0"><span class="nav-num">00</span>Object</button>
+  <button class="nav-item" data-target="lab1"><span class="nav-num">01</span>Function</button>
+  <button class="nav-item" data-target="lab2"><span class="nav-num">02</span>Boolean</button>
+  <button class="nav-item" data-target="lab3"><span class="nav-num">03</span>Symbol</button>
+  <button class="nav-item" data-target="lab4"><span class="nav-num">04</span>Error</button>
+  <button class="nav-item" data-target="lab5"><span class="nav-num">05</span>globalThis</button>
+  <div class="nav-section">数値・数学</div>
+  <button class="nav-item" data-target="lab6"><span class="nav-num">06</span>Number</button>
+  <button class="nav-item" data-target="lab7"><span class="nav-num">07</span>BigInt</button>
+  <button class="nav-item" data-target="lab8"><span class="nav-num">08</span>Math</button>
+  <button class="nav-item" data-target="lab9"><span class="nav-num">09</span>Date</button>
+  <button class="nav-item" data-target="lab10"><span class="nav-num">10</span>Temporal</button>
+  <div class="nav-section">文字列・正規表現</div>
+  <button class="nav-item" data-target="lab11"><span class="nav-num">11</span>String</button>
+  <button class="nav-item" data-target="lab12"><span class="nav-num">12</span>RegExp</button>
+</nav>
+
+<div class="hero">
+  <h1>JavaScript標準API Lab</h1>
+  <p class="subtitle">ECMAScript Core — 基本オブジェクト/数値/数学/文字列</p>
+  <span class="file-tag">📘 File #1 / 8</span>
+</div>
+
+<div class="toc" id="toc">
+  <h2>// 目次(13ラボ)</h2>
+  <div class="toc-grid">
+    <button class="toc-item" data-target="lab0"><span class="toc-num">00</span>Object</button>
+    <button class="toc-item" data-target="lab1"><span class="toc-num">01</span>Function</button>
+    <button class="toc-item" data-target="lab2"><span class="toc-num">02</span>Boolean</button>
+    <button class="toc-item" data-target="lab3"><span class="toc-num">03</span>Symbol</button>
+    <button class="toc-item" data-target="lab4"><span class="toc-num">04</span>Error</button>
+    <button class="toc-item" data-target="lab5"><span class="toc-num">05</span>globalThis</button>
+    <button class="toc-item" data-target="lab6"><span class="toc-num">06</span>Number</button>
+    <button class="toc-item" data-target="lab7"><span class="toc-num">07</span>BigInt</button>
+    <button class="toc-item" data-target="lab8"><span class="toc-num">08</span>Math</button>
+    <button class="toc-item" data-target="lab9"><span class="toc-num">09</span>Date</button>
+    <button class="toc-item" data-target="lab10"><span class="toc-num">10</span>Temporal</button>
+    <button class="toc-item" data-target="lab11"><span class="toc-num">11</span>String</button>
+    <button class="toc-item" data-target="lab12"><span class="toc-num">12</span>RegExp</button>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ========== Lab 00: Object ========== -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>Object — プロパティ操作の基本</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>Object.keys/values/entries</code>でオブジェクトを配列化、<code>Object.freeze</code>で不変化、<code>Object.assign</code>で合成。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>APIレスポンスを<code>Object.entries</code>でキー値ペアに展開してテーブル表示</li>
+        <li><code>Object.freeze</code>で設定オブジェクトを不変化(誤上書き防止)</li>
+        <li><code>Object.assign({}, default, user)</code>でデフォルト+ユーザ設定をマージ</li>
+      </ol>
+    </div>
+    <pre class="ascii-art">obj = { name:"Tom", age:42 }
+
+Object.keys(obj)    → ["name","age"]
+Object.values(obj)  → ["Tom",42]
+Object.entries(obj) → [["name","Tom"],["age",42]]
+                       └────キー値ペアの配列────┘</pre>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: Object メソッド比較</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <textarea id="lab0-input">{"name":"Tom","role":"dev","city":"Osaka"}</textarea>
+        </div>
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab0Run('keys')">keys()</button>
+          <button class="demo-btn" onclick="lab0Run('values')">values()</button>
+          <button class="demo-btn" onclick="lab0Run('entries')">entries()</button>
+          <button class="demo-btn secondary" onclick="lab0Freeze()">freeze試験</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">Before(入力)</div>
+            <div class="ba-content" id="lab0-before">(未実行)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">After(結果)</div>
+            <div class="ba-content" id="lab0-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab0-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — keys/values/entries ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「keys()」「values()」「entries()」ボタンが実行する処理</span>
+<span class="kw">function</span> <span class="fn">lab0Run</span>(method) {
+  <span class="kw">const</span> txt = document.<span class="fn">getElementById</span>(<span class="str">'lab0-input'</span>).value;
+  <span class="kw">const</span> obj = JSON.<span class="fn">parse</span>(txt);
+
+  <span class="kw">let</span> result;
+  <span class="kw">if</span> (method === <span class="str">'keys'</span>)    result = Object.<span class="fn">keys</span>(obj);
+  <span class="kw">else if</span> (method === <span class="str">'values'</span>)  result = Object.<span class="fn">values</span>(obj);
+  <span class="kw">else if</span> (method === <span class="str">'entries'</span>) result = Object.<span class="fn">entries</span>(obj);
+
+  console.<span class="fn">log</span>(<span class="str">`Object.${method}() を適用`</span>);
+  console.<span class="fn">log</span>(<span class="str">`配列長: ${result.length}`</span>);
+  <span class="kw">return</span> result;
+}
+<span class="cm">// 入力例: {"name":"Tom","role":"dev","city":"Osaka"}</span>
+<span class="cm">// keys()    → ["name","role","city"]</span>
+<span class="cm">// values()  → ["Tom","dev","Osaka"]</span>
+<span class="cm">// entries() → [["name","Tom"],["role","dev"],["city","Osaka"]]</span></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — freeze試験 ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「freeze試験」ボタンが実行する処理</span>
+<span class="kw">function</span> <span class="fn">lab0Freeze</span>() {
+  <span class="kw">const</span> obj = { count: <span class="num">1</span> };
+  Object.<span class="fn">freeze</span>(obj);
+
+  obj.count = <span class="num">999</span>;   <span class="cm">// 無視される(strictモードなら例外)</span>
+  obj.newProp = <span class="str">'x'</span>;  <span class="cm">// 追加も無視される</span>
+
+  console.<span class="fn">log</span>(<span class="str">`count: ${obj.count}`</span>);     <span class="cm">// "count: 1" (変わらず)</span>
+  console.<span class="fn">log</span>(<span class="str">`isFrozen: ${Object.isFrozen(obj)}`</span>); <span class="cm">// true</span>
+  <span class="kw">return</span> obj;
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 01: Function ========== -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>Function — bind/call/apply</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      関数のthisを固定する<code>bind</code>、即時呼出の<code>call/apply</code>、引数数を取る<code>fn.length</code>。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>イベントハンドラのthisをコンポーネント自身に固定(<code>bind</code>)</li>
+        <li>配列の最大値を求める(<code>Math.max.apply(null, arr)</code>)</li>
+        <li>クラス外から配列メソッドを借用(<code>[].slice.call(arguments)</code>)</li>
+      </ol>
+    </div>
+    <pre class="ascii-art">┌────────┬──────────────┬────────────┬──────────────────┐
+│ メソッド │ 実行タイミング │ 引数の渡し方 │ 戻り値           │
+├────────┼──────────────┼────────────┼──────────────────┤
+│ bind   │ 後で実行     │ 個別に列挙   │ 新しい関数(再利用) │
+│ call   │ その場で実行  │ 個別に列挙   │ 関数の戻り値      │
+│ apply  │ その場で実行  │ 配列で渡す   │ 関数の戻り値      │
+└────────┴──────────────┴────────────┴──────────────────┘
+共通点: 第1引数で this を指定する
+
+fn.bind(obj, a, b)  → 後で fn() を呼ぶ用の新関数を作る
+fn.call(obj, a, b)  → 今すぐ fn(a,b) を obj.fn(a,b) として呼ぶ
+fn.apply(obj, [a,b])→ 今すぐ fn(a,b) を obj.fn(a,b) として呼ぶ(配列形式)</pre>
+
+    <div class="info-box info">
+      📌 <strong>「Math.max.apply(<code>null</code>, [...])」のnullは何?</strong><br>
+      apply の第1引数は本来「<code>this</code> の中身」を指定する場所。でも <code>Math.max</code> は内部で <code>this</code> を使わない関数なので、何を渡しても結果は同じ。「使わないよ」を明示する慣例として <code>null</code> を渡す(<code>undefined</code> や <code>{}</code> でも動く)。<br>
+      逆に <code>user.greet.apply(user, [...])</code> のように <code>this</code> を使うメソッドでは、第1引数で適切なオブジェクトを必ず指定する必要がある。
+    </div>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: bind/call/apply 比較</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn secondary" onclick="lab1Unbound()">①thisなし(失敗)</button>
+          <button class="demo-btn" onclick="lab1Bound()">②bind</button>
+          <button class="demo-btn" onclick="lab1Call()">③call</button>
+          <button class="demo-btn" onclick="lab1Apply()">④apply</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">Before: this脱落</div>
+            <div class="ba-content" id="lab1-before">(未実行)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">After: 各方法で固定</div>
+            <div class="ba-content" id="lab1-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab1-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 共通の関数定義(全ボタン共有)</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 全ボタンが共有するユーザオブジェクト</span>
+<span class="kw">const</span> lab1User = {
+  name: <span class="str">'Tom'</span>,
+  <span class="cm">// 引数 prefix と suffix を受け取る挨拶関数</span>
+  <span class="fn">greet</span>(prefix, suffix) {
+    <span class="kw">return</span> <span class="str">`${prefix}, ${this.name}${suffix}`</span>;
+  }
+};</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — ①「thisなし」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「①thisなし(失敗)」ボタン: thisが外れる例</span>
+<span class="kw">function</span> <span class="fn">lab1Unbound</span>() {
+  <span class="kw">const</span> f = lab1User.greet;   <span class="cm">// メソッドを変数に移すと this 脱落</span>
+  <span class="kw">const</span> result = <span class="fn">f</span>(<span class="str">'Hi'</span>, <span class="str">'!'</span>);   <span class="cm">// "Hi, undefined!"</span>
+  console.<span class="fn">log</span>(<span class="str">`結果: ${result}`</span>);
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — ②「bind」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「②bind」ボタン: 後で実行する用の新関数を作る</span>
+<span class="kw">function</span> <span class="fn">lab1Bound</span>() {
+  <span class="cm">// bind(this指定, 引数1, 引数2, ...) → 新関数を返す</span>
+  <span class="kw">const</span> g = lab1User.greet.<span class="fn">bind</span>(lab1User, <span class="str">'Hi'</span>, <span class="str">'!'</span>);
+
+  console.<span class="fn">log</span>(<span class="str">`gは関数: ${typeof g}`</span>);   <span class="cm">// "function"</span>
+  console.<span class="fn">log</span>(<span class="str">`g()結果: ${g()}`</span>);          <span class="cm">// "Hi, Tom!"</span>
+
+  <span class="cm">// イベントハンドラやsetTimeoutで使うのが定番</span>
+  <span class="cm">// setTimeout(g, 1000); // 1秒後に "Hi, Tom!"</span>
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — ③「call」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「③call」ボタン: その場で実行(引数を個別に列挙)</span>
+<span class="kw">function</span> <span class="fn">lab1Call</span>() {
+  <span class="cm">// call(this指定, 引数1, 引数2, ...) → 即実行して戻り値を返す</span>
+  <span class="kw">const</span> result = lab1User.greet.<span class="fn">call</span>(lab1User, <span class="str">'Hello'</span>, <span class="str">'!!'</span>);
+  console.<span class="fn">log</span>(<span class="str">`call結果: ${result}`</span>);   <span class="cm">// "Hello, Tom!!"</span>
+
+  <span class="cm">// 別のオブジェクトのthisで借用も可能</span>
+  <span class="kw">const</span> other = { name: <span class="str">'Yu'</span> };
+  <span class="kw">const</span> r2 = lab1User.greet.<span class="fn">call</span>(other, <span class="str">'Hi'</span>, <span class="str">'!'</span>);
+  console.<span class="fn">log</span>(<span class="str">`他オブジェクトthis: ${r2}`</span>);   <span class="cm">// "Hi, Yu!"</span>
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — ④「apply」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「④apply」ボタン: その場で実行(引数を配列で渡す)</span>
+<span class="kw">function</span> <span class="fn">lab1Apply</span>() {
+  <span class="kw">const</span> args = [<span class="str">'Hey'</span>, <span class="str">'!?'</span>];   <span class="cm">// 引数を配列に</span>
+
+  <span class="cm">// apply(this指定, 引数の配列) → 即実行</span>
+  <span class="kw">const</span> result = lab1User.greet.<span class="fn">apply</span>(lab1User, args);
+  console.<span class="fn">log</span>(<span class="str">`apply結果: ${result}`</span>);   <span class="cm">// "Hey, Tom!?"</span>
+
+  <span class="cm">// ━━━ 典型用途: 配列を関数の個別引数に展開 ━━━</span>
+  <span class="kw">const</span> nums = [<span class="num">3</span>, <span class="num">1</span>, <span class="num">4</span>, <span class="num">1</span>, <span class="num">5</span>, <span class="num">9</span>];
+
+  <span class="cm">// Math.max は引数を個別に列挙する関数:</span>
+  <span class="cm">//   Math.max(3, 1, 4, 1, 5, 9) → OK</span>
+  <span class="cm">//   Math.max([3,1,4,1,5,9])    → NG (配列はNaNになる)</span>
+  <span class="cm">// → applyを使うと配列を個別引数に展開できる</span>
+
+  <span class="cm">// 第1引数の null の意味:</span>
+  <span class="cm">//   apply(this指定, 引数配列) の「this指定」は本来必須だが、</span>
+  <span class="cm">//   Math.max は内部で this を使わない関数なので何でも良い。</span>
+  <span class="cm">//   「使わないよ」を明示する慣例として null を渡す。</span>
+  <span class="cm">//   undefined や {} でも動くが、null が業界標準。</span>
+  <span class="kw">const</span> max = Math.max.<span class="fn">apply</span>(<span class="kw">null</span>, nums);  <span class="cm">// 9</span>
+  console.<span class="fn">log</span>(<span class="str">`Math.max.apply: ${max}`</span>);
+
+  <span class="cm">// ━━━ 現代では ... スプレッド構文が同じ用途で使える ━━━</span>
+  <span class="cm">// Math.max(...nums)  → 9  (ES2015以降。これが推奨)</span>
+  <span class="cm">// applyは古い環境(IE等)互換が必要なときの選択肢</span>
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 02: Boolean ========== -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>Boolean — truthy/falsy判定</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>Boolean(値)</code>でtruthy/falsy判定を明示化。<code>filter(Boolean)</code>で空値除去が定石。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>配列から<code>null</code>/<code>undefined</code>/空文字を一括除去</li>
+        <li>条件式の値を真偽値に正規化(<code>!!value</code>と等価)</li>
+        <li>関数の戻り値が「ある/ない」の判定統一</li>
+      </ol>
+    </div>
+    <pre class="ascii-art">Falsy値(7つ): false, 0, -0, 0n, "", null, undefined, NaN
+それ以外は全部 truthy: [], {}, "0", " ", function(){}
+
+[1, 0, "", "ok", null, "go", undefined].filter(Boolean)
+                                    ↓
+                       [1, "ok", "go"]   ← 空値が除去された</pre>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: filter(Boolean)</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab2Run()">空値除去を実行</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">Before</div>
+            <div class="ba-content" id="lab2-before">(未実行)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">After</div>
+            <div class="ba-content" id="lab2-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab2-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「空値除去を実行」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「空値除去を実行」ボタンが実行する処理</span>
+<span class="kw">function</span> <span class="fn">lab2Run</span>() {
+  <span class="cm">// 10要素: 6つのfalsy値を含む</span>
+  <span class="kw">const</span> arr = [<span class="num">1</span>, <span class="num">0</span>, <span class="str">''</span>, <span class="str">'ok'</span>, <span class="kw">null</span>, <span class="str">'go'</span>, <span class="kw">undefined</span>, NaN, <span class="kw">false</span>, <span class="str">'final'</span>];
+
+  <span class="kw">const</span> filtered = arr.<span class="fn">filter</span>(Boolean);
+  <span class="cm">// → [1, 'ok', 'go', 'final']</span>
+
+  console.<span class="fn">log</span>(<span class="str">`元の長さ: ${arr.length}`</span>);       <span class="cm">// 10</span>
+  console.<span class="fn">log</span>(<span class="str">`フィルタ後: ${filtered.length}`</span>);    <span class="cm">// 4</span>
+  console.<span class="fn">log</span>(<span class="str">`除去された: ${arr.length - filtered.length}個`</span>); <span class="cm">// 6</span>
+  <span class="kw">return</span> filtered;
+}
+
+<span class="cm">// Falsy値の全リスト(7つ): false, 0, -0, 0n, "", null, undefined, NaN</span>
+<span class="cm">// それ以外は全部 truthy なので注意:</span>
+Boolean([]);  <span class="cm">// true ← 空配列はtruthy!</span>
+Boolean({});  <span class="cm">// true ← 空オブジェクトもtruthy!</span></pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 03: Symbol ========== -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>Symbol — 一意な識別子</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      毎回ユニークな値を生成。同じ説明文字列でも別物。<code>Symbol.iterator</code>で独自イテレータ実装。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>オブジェクトプロパティのキー衝突回避(ライブラリ作者向け)</li>
+        <li><code>Symbol.iterator</code>で独自オブジェクトを<code>for...of</code>対応に</li>
+        <li>列挙型(enum)の代替として一意性を保証</li>
+      </ol>
+    </div>
+    <pre class="ascii-art">Symbol("foo") === Symbol("foo")  →  false  ← 毎回別物!
+"foo" === "foo"                  →  true   ← 普通の文字列</pre>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 一意性の確認</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab3Run()">同じ説明で2つ作る</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">通常の文字列</div>
+            <div class="ba-content" id="lab3-before">(未実行)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">Symbol</div>
+            <div class="ba-content" id="lab3-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab3-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「同じ説明で2つ作る」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「同じ説明で2つ作る」ボタンが実行する処理</span>
+<span class="kw">function</span> <span class="fn">lab3Run</span>() {
+  <span class="cm">// 通常の文字列(参照不要)</span>
+  <span class="kw">const</span> str1 = <span class="str">"id"</span>;
+  <span class="kw">const</span> str2 = <span class="str">"id"</span>;
+  console.<span class="fn">log</span>(<span class="str">`"id" === "id" → ${str1 === str2}`</span>);  <span class="cm">// true</span>
+
+  <span class="cm">// Symbolは毎回別物</span>
+  <span class="kw">const</span> sym1 = <span class="fn">Symbol</span>(<span class="str">"id"</span>);
+  <span class="kw">const</span> sym2 = <span class="fn">Symbol</span>(<span class="str">"id"</span>);
+  console.<span class="fn">log</span>(<span class="str">`Symbol("id") === Symbol("id") → ${sym1 === sym2}`</span>); <span class="cm">// false</span>
+  console.<span class="fn">log</span>(<span class="str">`description: "${sym1.description}"`</span>);  <span class="cm">// "id"</span>
+
+  <span class="kw">return</span> { sym1, sym2 };
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 04: Error ========== -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>Error — 例外の種類と原因チェーン</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>TypeError</code>/<code>RangeError</code>等のサブクラスを<code>instanceof</code>で判別。<code>cause</code>で原因チェーン。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>API呼出失敗で<code>NetworkError</code>と<code>ValidationError</code>を別処理</li>
+        <li>ネスト処理で深い例外の<code>cause</code>を保持して原因追跡</li>
+        <li>業務例外をカスタムErrorクラスで型付け</li>
+      </ol>
+    </div>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: エラー種別を投げて分岐</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab4Throw('type')">TypeError</button>
+          <button class="demo-btn" onclick="lab4Throw('range')">RangeError</button>
+          <button class="demo-btn" onclick="lab4Throw('cause')">cause付き</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">Before: try前</div>
+            <div class="ba-content" id="lab4-before">処理開始予定</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">After: catch後</div>
+            <div class="ba-content" id="lab4-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab4-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「TypeError」「RangeError」「cause付き」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 3つのボタン全てを処理する関数</span>
+<span class="kw">function</span> <span class="fn">lab4Throw</span>(kind) {
+  <span class="kw">try</span> {
+    <span class="kw">if</span> (kind === <span class="str">'type'</span>)  <span class="kw">throw new</span> <span class="fn">TypeError</span>(<span class="str">'値の型が違います'</span>);
+    <span class="kw">if</span> (kind === <span class="str">'range'</span>) <span class="kw">throw new</span> <span class="fn">RangeError</span>(<span class="str">'範囲外の値です'</span>);
+    <span class="kw">if</span> (kind === <span class="str">'cause'</span>) {
+      <span class="kw">try</span> { JSON.<span class="fn">parse</span>(<span class="str">'{bad json'</span>); }
+      <span class="kw">catch</span>(orig) {
+        <span class="cm">// causeで原因チェーンを保持</span>
+        <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">'処理失敗'</span>, { cause: orig });
+      }
+    }
+  } <span class="kw">catch</span>(e) {
+    console.<span class="fn">log</span>(<span class="str">`name: ${e.name}`</span>);
+    console.<span class="fn">log</span>(<span class="str">`message: ${e.message}`</span>);
+    console.<span class="fn">log</span>(<span class="str">`instanceof Error: ${e instanceof Error}`</span>);
+    <span class="kw">if</span> (e.cause) {
+      console.<span class="fn">log</span>(<span class="str">`cause: ${e.cause.name}: ${e.cause.message}`</span>);
+    }
+  }
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 05: globalThis ========== -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>globalThis — 環境統一参照</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ブラウザの<code>window</code>、Workerの<code>self</code>、Node.jsの<code>global</code>を統一。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>ブラウザ/Worker/Node両対応ライブラリの環境判定不要化</li>
+        <li>ポリフィル登録先として統一(<code>globalThis.MyAPI = ...</code>)</li>
+        <li>テストランナーでwindow/global両対応モック</li>
+      </ol>
+    </div>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: globalThis === window?</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab5Run()">参照同一性チェック</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">window</div>
+            <div class="ba-content" id="lab5-before">(未実行)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">globalThis</div>
+            <div class="ba-content" id="lab5-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab5-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「参照同一性チェック」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「参照同一性チェック」ボタンが実行する処理</span>
+<span class="kw">function</span> <span class="fn">lab5Run</span>() {
+  <span class="kw">const</span> isWindow = (<span class="kw">typeof</span> window !== <span class="str">'undefined'</span>)
+                    &amp;&amp; (globalThis === window);
+
+  console.<span class="fn">log</span>(<span class="str">`typeof window: ${typeof window}`</span>);
+  console.<span class="fn">log</span>(<span class="str">`globalThis === window: ${isWindow}`</span>);
+  console.<span class="fn">log</span>(<span class="str">`constructor: ${globalThis.constructor.name}`</span>);
+
+  <span class="cm">// ブラウザ → Window</span>
+  <span class="cm">// Web Worker → DedicatedWorkerGlobalScope</span>
+  <span class="cm">// Node.js → Object (global)</span>
+  <span class="kw">return</span> globalThis.constructor.name;
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 06: Number ========== -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>Number — 数値判定とEPSILON</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>Number.isFinite/isInteger/isNaN</code>で型安全な判定。<code>EPSILON</code>で浮動小数点比較。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>フォーム入力値の妥当性チェック(NaNや無限大を除外)</li>
+        <li>金額計算で<code>0.1+0.2 !== 0.3</code>問題を<code>EPSILON</code>で回避</li>
+        <li>DB主キーが整数かチェック</li>
+      </ol>
+    </div>
+    <div class="info-box info">
+      📐 <strong>EPSILON(イプシロン)とは?</strong><br>
+      ギリシャ文字の <code>ε</code>(エプシロン/イプシロン)。数学では「ごく小さな正の数」を表す慣習的な記号として使われる。<br><br>
+      <code>Number.EPSILON</code> は、JavaScriptが扱える最小の「1との差」=<strong>約 2.22 × 10⁻¹⁶</strong>(0.0000000000000002...)。<br>
+      これは「これより小さい違いはコンピュータでは表現できない」という<strong>計算の精度限界</strong>を示す値。<br><br>
+      浮動小数点演算の誤差(下記の0.1+0.2問題)はだいたいこの精度限界くらいで発生するため、「2つの値の差がEPSILON未満なら実質同じ」と判定するために使う。
+    </div>
+    <pre class="ascii-art">なぜ 0.1 + 0.2 ≠ 0.3 なのか?
+─────────────────────────────
+コンピュータは2進数で数値を保持する。
+0.1 や 0.2 は2進数では循環小数(無限に続く)になる。
+0.1(10進) → 0.0001100110011001100...(2進、無限)
+
+→ どこかで打ち切るしかない → 微小な誤差が残る
+→ 演算結果が 0.30000000000000004 になる
+
+0.1 + 0.2          → 0.30000000000000004  ← 浮動小数点誤差!
+0.1 + 0.2 === 0.3  → false                ← 直接比較は危険
+
+解決法: 差がEPSILON以下なら「実質同じ」とみなす
+Math.abs(a - b) &lt; Number.EPSILON
+        ↓
+    差の絶対値 が 微小値ε より小さければ等価扱い</pre>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 浮動小数点比較</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab6Run()">0.1+0.2 を比較</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">Before: 直接比較</div>
+            <div class="ba-content" id="lab6-before">(未実行)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">After: EPSILON使用</div>
+            <div class="ba-content" id="lab6-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab6-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「0.1+0.2 を比較」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「0.1+0.2 を比較」ボタンが実行する処理</span>
+<span class="kw">function</span> <span class="fn">lab6Run</span>() {
+  <span class="kw">const</span> a = <span class="num">0.1</span> + <span class="num">0.2</span>;
+
+  <span class="cm">// 直接比較は失敗する</span>
+  <span class="kw">const</span> direct = (a === <span class="num">0.3</span>);
+  console.<span class="fn">log</span>(<span class="str">`0.1 + 0.2 = ${a}`</span>);                  <span class="cm">// 0.30000000000000004</span>
+  console.<span class="fn">log</span>(<span class="str">`a === 0.3 → ${direct}`</span>);              <span class="cm">// false</span>
+
+  <span class="cm">// EPSILON で誤差吸収</span>
+  <span class="kw">const</span> epsilon = Math.<span class="fn">abs</span>(a - <span class="num">0.3</span>) &lt; Number.EPSILON;
+  console.<span class="fn">log</span>(<span class="str">`Number.EPSILON = ${Number.EPSILON}`</span>);
+  console.<span class="fn">log</span>(<span class="str">`|a - 0.3| &lt; EPSILON → ${epsilon}`</span>);     <span class="cm">// true</span>
+
+  <span class="cm">// その他のNumber判定メソッド</span>
+  Number.<span class="fn">isFinite</span>(<span class="num">42</span>);     <span class="cm">// true</span>
+  Number.<span class="fn">isFinite</span>(<span class="str">"42"</span>);   <span class="cm">// false (型変換しない)</span>
+  Number.<span class="fn">isInteger</span>(<span class="num">3.0</span>);   <span class="cm">// true (3と等価)</span>
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 07: BigInt ========== -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>BigInt — 任意精度整数</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS 14+</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>2^53</code>を超える整数も精度欠損なし。末尾<code>n</code>か<code>BigInt()</code>で生成。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>DBのbigint型主キーをそのまま扱う(JSON.stringifyは別途対応必要)</li>
+        <li>暗号計算・大きな素数演算</li>
+        <li>ナノ秒精度のタイムスタンプ計算</li>
+      </ol>
+    </div>
+    <pre class="ascii-art">Number.MAX_SAFE_INTEGER = 9007199254740991 (2^53 - 1)
+
+Number(9007199254740993)   → 9007199254740992  ← 欠損!
+BigInt("9007199254740993") → 9007199254740993n ← 保持OK</pre>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 巨大整数の精度</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab7Run()">2^53超の値を比較</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">Before: Number</div>
+            <div class="ba-content" id="lab7-before">(未実行)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">After: BigInt</div>
+            <div class="ba-content" id="lab7-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab7-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「2^53超の値を比較」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「2^53超の値を比較」ボタンが実行する処理</span>
+<span class="kw">function</span> <span class="fn">lab7Run</span>() {
+  <span class="kw">const</span> target = <span class="str">"9007199254740993"</span>;  <span class="cm">// 2^53 + 1</span>
+
+  <span class="cm">// Number は精度欠損</span>
+  <span class="kw">const</span> asNum = <span class="fn">Number</span>(target);
+  console.<span class="fn">log</span>(<span class="str">`Number("${target}") → ${asNum}`</span>);
+  console.<span class="fn">log</span>(<span class="str">`欠損: ${asNum.toString() !== target}`</span>);  <span class="cm">// true</span>
+
+  <span class="cm">// BigInt は精度保持</span>
+  <span class="kw">const</span> asBig = <span class="fn">BigInt</span>(target);
+  console.<span class="fn">log</span>(<span class="str">`BigInt("${target}") → ${asBig}n`</span>);
+  console.<span class="fn">log</span>(<span class="str">`欠損: ${asBig.toString() !== target}`</span>);  <span class="cm">// false</span>
+
+  <span class="cm">// BigInt演算: 同士のみOK</span>
+  <span class="kw">const</span> doubled = asBig * <span class="num">2n</span>;  <span class="cm">// OK</span>
+  <span class="cm">// asBig * 2  → TypeError (BigIntとNumberは混合不可)</span>
+
+  console.<span class="fn">log</span>(<span class="str">`MAX_SAFE_INTEGER: ${Number.MAX_SAFE_INTEGER}`</span>);
+  <span class="kw">return</span> { asNum, asBig, doubled };
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 08: Math ========== -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>Math — random/floor/hypot</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>Math.random</code>(0以上1未満)、<code>Math.floor/ceil/round</code>、<code>Math.hypot</code>(2点間距離)。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>サイコロ・ガチャ・テストデータ生成(<code>Math.random</code>)</li>
+        <li>ページネーションのページ数算出(<code>Math.ceil(total/perPage)</code>)</li>
+        <li>地図UIで2地点距離(<code>Math.hypot(dx,dy)</code>)</li>
+      </ol>
+    </div>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 各種Math関数</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab8Random()">サイコロ10回</button>
+          <button class="demo-btn" onclick="lab8Hypot()">距離計算</button>
+          <button class="demo-btn" onclick="lab8Round()">round/floor/ceil</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">Before: 入力</div>
+            <div class="ba-content" id="lab8-before">(未実行)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">After: 結果</div>
+            <div class="ba-content" id="lab8-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab8-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「サイコロ10回」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「サイコロ10回」ボタンが実行する処理</span>
+<span class="kw">function</span> <span class="fn">lab8Random</span>() {
+  <span class="cm">// Math.random() は 0以上1未満</span>
+  <span class="cm">// × 6 → 0以上6未満 / floor → 0〜5 / +1 → 1〜6</span>
+  <span class="kw">const</span> dice = Array.<span class="fn">from</span>(
+    {length:<span class="num">10</span>},
+    () =&gt; Math.<span class="fn">floor</span>(Math.<span class="fn">random</span>()*<span class="num">6</span>) + <span class="num">1</span>
+  );
+  <span class="kw">const</span> avg = dice.<span class="fn">reduce</span>((a,b)=&gt;a+b,<span class="num">0</span>) / <span class="num">10</span>;
+  console.<span class="fn">log</span>(<span class="str">`結果: ${dice.join(', ')}`</span>);
+  console.<span class="fn">log</span>(<span class="str">`平均: ${avg.toFixed(2)}`</span>);
+  <span class="kw">return</span> dice;
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「距離計算」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「距離計算」ボタンが実行する処理</span>
+<span class="kw">function</span> <span class="fn">lab8Hypot</span>() {
+  <span class="kw">const</span> dx = <span class="num">3</span>, dy = <span class="num">4</span>;
+  <span class="cm">// √(dx² + dy²) を一発で</span>
+  <span class="kw">const</span> dist = Math.<span class="fn">hypot</span>(dx, dy);  <span class="cm">// 5</span>
+  console.<span class="fn">log</span>(<span class="str">`Math.hypot(${dx},${dy}) = ${dist}`</span>);
+  <span class="kw">return</span> dist;
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「round/floor/ceil」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「round/floor/ceil」ボタンが実行する処理</span>
+<span class="kw">function</span> <span class="fn">lab8Round</span>() {
+  <span class="kw">const</span> v = <span class="num">2.5</span>;
+  console.<span class="fn">log</span>(<span class="str">`floor(${v}) = ${Math.floor(v)}`</span>);  <span class="cm">// 2 (切り捨て)</span>
+  console.<span class="fn">log</span>(<span class="str">`round(${v}) = ${Math.round(v)}`</span>);  <span class="cm">// 3 (0.5は+方向)</span>
+  console.<span class="fn">log</span>(<span class="str">`ceil(${v})  = ${Math.ceil(v)}`</span>);   <span class="cm">// 3 (切り上げ)</span>
+  console.<span class="fn">log</span>(<span class="str">`trunc(${-v}) = ${Math.trunc(-v)}`</span>);  <span class="cm">// -2 (0方向に切り捨て)</span>
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 09: Date ========== -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>Date — 日時のレガシー(注意点あり)</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+      <span class="compat-badge compat-partial">⚠ 設計古い</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>new Date()</code>、<code>toISOString</code>、ミリ秒差で経過時間。月は0始まりなど落とし穴多数。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>ログのタイムスタンプ記録(<code>new Date().toISOString()</code>)</li>
+        <li>カウントダウン(<code>endTime - Date.now()</code>)</li>
+        <li>API送信用ISO文字列フォーマット</li>
+      </ol>
+    </div>
+    <div class="info-box warn">
+      ⚠ <strong>落とし穴</strong>: 月は<code>0-11</code>(1月=0)。<code>new Date(2026, 4, 6)</code>は5月6日。新規開発は<code>Temporal</code>(Lab10)を検討。
+    </div>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 現在時刻と経過計測</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab9Now()">現在時刻取得</button>
+          <button class="demo-btn" onclick="lab9Elapsed()">3秒待機計測</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">Before</div>
+            <div class="ba-content" id="lab9-before">(未実行)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">After</div>
+            <div class="ba-content" id="lab9-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab9-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「現在時刻取得」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「現在時刻取得」ボタンが実行する処理</span>
+<span class="kw">function</span> <span class="fn">lab9Now</span>() {
+  <span class="kw">const</span> d = <span class="kw">new</span> <span class="fn">Date</span>();
+
+  console.<span class="fn">log</span>(<span class="str">`ISO: ${d.toISOString()}`</span>);
+  <span class="cm">// "2026-05-06T13:42:00.000Z"</span>
+  console.<span class="fn">log</span>(<span class="str">`locale: ${d.toLocaleString('ja-JP')}`</span>);
+  <span class="cm">// "2026/5/6 22:42:00"</span>
+  console.<span class="fn">log</span>(<span class="str">`epoch: ${d.getTime()}ms`</span>);
+  console.<span class="fn">log</span>(<span class="str">`getMonth(): ${d.getMonth()}  ※0始まり!`</span>);
+  <span class="cm">// 5月なら getMonth() === 4</span>
+  <span class="kw">return</span> d;
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「3秒待機計測」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「3秒待機計測」ボタンが実行する処理</span>
+<span class="kw">function</span> <span class="fn">lab9Elapsed</span>() {
+  <span class="kw">const</span> start = Date.<span class="fn">now</span>();  <span class="cm">// 現在エポックms</span>
+  console.<span class="fn">log</span>(<span class="str">`開始: ${start}`</span>);
+
+  <span class="fn">setTimeout</span>(() =&gt; {
+    <span class="kw">const</span> elapsed = Date.<span class="fn">now</span>() - start;
+    console.<span class="fn">log</span>(<span class="str">`経過: ${elapsed}ms`</span>);  <span class="cm">// ≒3000</span>
+  }, <span class="num">3000</span>);
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 10: Temporal ========== -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>Temporal — 新世代日時API</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-no">✗ iOS</span>
+      <span class="compat-badge compat-no">✗ Android(Stage 3)</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>Date</code>の問題を全て解消した次世代API。タイムゾーン明示、不変、月は1始まり。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>タイムゾーン跨ぎの会議スケジューラ(東京⇔NY)</li>
+        <li><code>PlainDate</code>で誕生日など時刻なし日付を厳密に</li>
+        <li><code>Duration</code>で工数集計(時間+日+月の合算)</li>
+      </ol>
+    </div>
+    <div class="info-box err">
+      🚫 <strong>未対応</strong>: 2026年5月時点でブラウザ実装なし(Stage 3)。下記はpolyfill前提のコード例参照のみ。
+    </div>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機チェック: ブラウザ対応状況</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab10Check()">Temporal対応確認</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">期待</div>
+            <div class="ba-content" id="lab10-before">typeof Temporal === "object"</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">実機</div>
+            <div class="ba-content" id="lab10-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab10-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「Temporal対応確認」ボタンの中身(実機で動く)</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「Temporal対応確認」ボタンが実行する処理</span>
+<span class="kw">function</span> <span class="fn">lab10Check</span>() {
+  <span class="kw">const</span> has = (<span class="kw">typeof</span> Temporal !== <span class="str">'undefined'</span>);
+  console.<span class="fn">log</span>(<span class="str">`typeof Temporal: ${typeof Temporal}`</span>);
+  console.<span class="fn">log</span>(<span class="str">`対応: ${has ? '✓' : '✗ (現状ブラウザ未実装)'}`</span>);
+
+  <span class="kw">if</span> (!has) {
+    console.<span class="fn">log</span>(<span class="str">'polyfill候補: @js-temporal/polyfill'</span>);
+  }
+  <span class="kw">return</span> has;
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 将来仕様コード(参考のみ・実機では動作しない)</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 月は1始まり(直感的!)</span>
+<span class="kw">const</span> d = Temporal.PlainDate.<span class="fn">from</span>(<span class="str">"2026-05-06"</span>);
+d.month;  <span class="cm">// 5 (Dateだと4だった)</span>
+
+<span class="cm">// タイムゾーン明示の日時</span>
+<span class="kw">const</span> meeting = Temporal.ZonedDateTime.<span class="fn">from</span>({
+  timeZone: <span class="str">"Asia/Tokyo"</span>,
+  year: <span class="num">2026</span>, month: <span class="num">5</span>, day: <span class="num">6</span>,
+  hour: <span class="num">14</span>, minute: <span class="num">30</span>
+});
+
+<span class="cm">// 不変(Dateは可変だった)</span>
+<span class="kw">const</span> next = d.<span class="fn">add</span>({ days: <span class="num">7</span> });  <span class="cm">// 新しいオブジェクト返却</span></pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 11: String ========== -->
+<div class="lab" id="lab11">
+  <div class="lab-header">
+    <div class="lab-num">11</div>
+    <h3>String — padStart/replaceAll/normalize</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>padStart</code>でゼロパディング、<code>replaceAll</code>で全置換、<code>normalize</code>で全角半角統一。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>注文番号の桁揃え(<code>"5".padStart(6,"0")</code> → "000005")</li>
+        <li>テンプレート変数の全置換(<code>replaceAll</code>)</li>
+        <li>検索のため全角/半角・濁点を統一(<code>normalize("NFC")</code>)</li>
+      </ol>
+    </div>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 文字列加工</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <input type="text" id="lab11-input" value="42">
+          <button class="demo-btn" onclick="lab11Pad()">padStart 6桁</button>
+          <button class="demo-btn" onclick="lab11Replace()">replaceAll</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">Before</div>
+            <div class="ba-content" id="lab11-before">(未実行)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">After</div>
+            <div class="ba-content" id="lab11-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab11-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「padStart 6桁」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「padStart 6桁」ボタンが実行する処理</span>
+<span class="kw">function</span> <span class="fn">lab11Pad</span>() {
+  <span class="kw">const</span> v = document.<span class="fn">getElementById</span>(<span class="str">'lab11-input'</span>).value;
+  <span class="kw">const</span> padded = v.<span class="fn">padStart</span>(<span class="num">6</span>, <span class="str">'0'</span>);
+  <span class="cm">// "42" → "000042"</span>
+
+  console.<span class="fn">log</span>(<span class="str">`入力: "${v}" (長さ${v.length})`</span>);
+  console.<span class="fn">log</span>(<span class="str">`padStart(6,"0") → "${padded}"`</span>);
+  <span class="kw">return</span> padded;
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「replaceAll」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「replaceAll」ボタンが実行する処理</span>
+<span class="kw">function</span> <span class="fn">lab11Replace</span>() {
+  <span class="kw">const</span> text = <span class="str">"a-b-c-d-e"</span>;
+  <span class="kw">const</span> replaced = text.<span class="fn">replaceAll</span>(<span class="str">'-'</span>, <span class="str">'_'</span>);
+  <span class="cm">// "a_b_c_d_e" (全件置換)</span>
+
+  console.<span class="fn">log</span>(<span class="str">`元: "${text}"`</span>);
+  console.<span class="fn">log</span>(<span class="str">`replaceAll → "${replaced}"`</span>);
+
+  <span class="cm">// 比較: replaceは最初の1個だけ</span>
+  text.<span class="fn">replace</span>(<span class="str">'-'</span>, <span class="str">'_'</span>);  <span class="cm">// "a_b-c-d-e"</span>
+  <span class="kw">return</span> replaced;
+}
+
+<span class="cm">// その他の便利メソッド</span>
+<span class="str">"カ\u3099"</span>.<span class="fn">normalize</span>(<span class="str">"NFC"</span>);  <span class="cm">// "ガ" (1文字に統合)</span>
+<span class="str">"  Hello  "</span>.<span class="fn">trim</span>();         <span class="cm">// "Hello"</span></pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 12: RegExp ========== -->
+<div class="lab" id="lab12">
+  <div class="lab-header">
+    <div class="lab-num">12</div>
+    <h3>RegExp — 名前付きキャプチャ・matchAll</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>(?&lt;name&gt;...)</code>で名前付きキャプチャ、<code>matchAll</code>で全マッチ取得。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>日付文字列パース<code>(?&lt;year&gt;\d{4})</code>で<code>groups.year</code>取得</li>
+        <li>本文中のメンション(@user)を全件抽出(<code>matchAll</code>)</li>
+        <li>メールアドレス・電話番号バリデーション</li>
+      </ol>
+    </div>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 日付パース</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <input type="text" id="lab12-input" value="2026-05-06">
+          <button class="demo-btn" onclick="lab12Run()">名前付きキャプチャ実行</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">Before: 入力</div>
+            <div class="ba-content" id="lab12-before">(未実行)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">After: groups</div>
+            <div class="ba-content" id="lab12-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab12-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「名前付きキャプチャ実行」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「名前付きキャプチャ実行」ボタンが実行する処理</span>
+<span class="kw">function</span> <span class="fn">lab12Run</span>() {
+  <span class="kw">const</span> v = document.<span class="fn">getElementById</span>(<span class="str">'lab12-input'</span>).value;
+
+  <span class="cm">// (?&lt;名前&gt;...) で名前付きキャプチャグループ</span>
+  <span class="kw">const</span> re = /(?&lt;year&gt;\d{<span class="num">4</span>})-(?&lt;month&gt;\d{<span class="num">2</span>})-(?&lt;day&gt;\d{<span class="num">2</span>})/;
+  <span class="kw">const</span> m = v.<span class="fn">match</span>(re);
+
+  <span class="kw">if</span> (m) {
+    console.<span class="fn">log</span>(<span class="str">`年: ${m.groups.year}`</span>);   <span class="cm">// "2026"</span>
+    console.<span class="fn">log</span>(<span class="str">`月: ${m.groups.month}`</span>);  <span class="cm">// "05"</span>
+    console.<span class="fn">log</span>(<span class="str">`日: ${m.groups.day}`</span>);    <span class="cm">// "06"</span>
+    <span class="kw">return</span> m.groups;
+  } <span class="kw">else</span> {
+    console.<span class="fn">error</span>(<span class="str">'YYYY-MM-DD形式で入力してください'</span>);
+  }
+}
+
+<span class="cm">// 全マッチ取得 (matchAll)</span>
+[...<span class="str">"a1 b2 c3"</span>.<span class="fn">matchAll</span>(/[a-z](\d)/g)];
+<span class="cm">// → 3件のマッチ配列</span></pre>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<button id="back-to-toc" aria-label="目次に戻る">
+  <span class="arrow">↑</span>
+  <span class="label">目次</span>
+</button>
+
+<script>
+// ============= 共通ユーティリティ =============
+function copyCode(btn) {
+  const block = btn.closest('.code-block');
+  const pre = block.querySelector('pre');
+  if (!pre) return;
+  const text = pre.innerText;
+
+  const showSuccess = () => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  };
+  const showError = (msg) => {
+    btn.textContent = 'NG: ' + msg;
+    btn.style.borderColor = '#cb2431';
+    btn.style.color = '#cb2431';
+    setTimeout(() => {
+      btn.textContent = 'Copy';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+    }, 2500);
+  };
+
+  // 方法1: モダンAPI (HTTPSやlocalhost必須。file://だと失敗することあり)
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text)
+      .then(showSuccess)
+      .catch(() => fallbackCopy(text, showSuccess, showError));
+  } else {
+    fallbackCopy(text, showSuccess, showError);
+  }
+}
+
+// フォールバック: textareaを一時生成してexecCommand('copy')
+function fallbackCopy(text, onOk, onErr) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.top = '0';
+  ta.style.left = '0';
+  ta.style.opacity = '0';
+  ta.setAttribute('readonly', '');
+  document.body.appendChild(ta);
+  ta.select();
+  ta.setSelectionRange(0, text.length); // iOS Safari用
+  try {
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    if (ok) onOk();
+    else onErr('コピー不可');
+  } catch (e) {
+    document.body.removeChild(ta);
+    onErr(e.message.slice(0, 12));
+  }
+}
+function logTo(id, text, cls='') {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const line = document.createElement('div');
+  line.className = 'log-line ' + cls;
+  line.textContent = '> ' + text;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+function clearLog(id) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = '';
+}
+function setBA(labId, before, after) {
+  document.getElementById(labId+'-before').textContent = before;
+  document.getElementById(labId+'-after').textContent = after;
+}
+
+// ============= Lab 0: Object =============
+function lab0Run(method) {
+  clearLog('lab0-log');
+  const txt = document.getElementById('lab0-input').value;
+  try {
+    const obj = JSON.parse(txt);
+    let result;
+    if (method === 'keys') result = Object.keys(obj);
+    else if (method === 'values') result = Object.values(obj);
+    else if (method === 'entries') result = Object.entries(obj);
+    setBA('lab0', JSON.stringify(obj, null, 2), JSON.stringify(result, null, 2));
+    logTo('lab0-log', `Object.${method}() を適用`, 'info');
+    logTo('lab0-log', `配列長: ${result.length}`, 'ok');
+  } catch(e) {
+    logTo('lab0-log', 'JSON parse error: ' + e.message, 'err');
+  }
+}
+function lab0Freeze() {
+  clearLog('lab0-log');
+  const obj = { count: 1 };
+  Object.freeze(obj);
+  setBA('lab0', `count: ${obj.count}\nfrozen: ${Object.isFrozen(obj)}`, '...');
+  try {
+    obj.count = 999;
+    obj.newProp = 'x';
+    setBA('lab0',
+      `count: 1\nfrozen: false`,
+      `count: ${obj.count}\nfrozen: ${Object.isFrozen(obj)}\n→ 変更できなかった!`);
+    logTo('lab0-log', 'freeze後の代入は無視される(strictモードなら例外)', 'ok');
+  } catch(e) {
+    logTo('lab0-log', '例外: ' + e.message, 'err');
+  }
+}
+
+// ============= Lab 1: Function bind/call/apply =============
+const lab1User = {
+  name: 'Tom',
+  greet(prefix, suffix) {
+    return `${prefix}, ${this.name}${suffix}`;
+  }
+};
+function lab1Unbound() {
+  clearLog('lab1-log');
+  const f = lab1User.greet;
+  const result = f('Hi', '!');
+  document.getElementById('lab1-before').textContent =
+    `f = user.greet (this脱落)\nf('Hi','!')\n→ "${result}"`;
+  document.getElementById('lab1-after').textContent = '(②③④を試して比較)';
+  logTo('lab1-log', `thisが失われ name=undefined`, 'err');
+  logTo('lab1-log', `結果: "${result}"`, 'err');
+}
+function lab1Bound() {
+  clearLog('lab1-log');
+  const g = lab1User.greet.bind(lab1User, 'Hi', '!');
+  const result = g();
+  document.getElementById('lab1-after').textContent =
+    `bind(user, 'Hi', '!') → 新関数\ng() → "${result}"`;
+  logTo('lab1-log', `bindは新関数を返す: typeof g = ${typeof g}`, 'info');
+  logTo('lab1-log', `g()結果: "${result}"`, 'ok');
+  logTo('lab1-log', `bindは「後で実行する」用途(setTimeout等)に最適`, 'info');
+}
+function lab1Call() {
+  clearLog('lab1-log');
+  const result = lab1User.greet.call(lab1User, 'Hello', '!!');
+  const other = { name: 'Yu' };
+  const r2 = lab1User.greet.call(other, 'Hi', '!');
+  document.getElementById('lab1-after').textContent =
+    `call(user, 'Hello', '!!')\n→ "${result}"\n\ncall(other, 'Hi', '!')\n→ "${r2}" ← 借用OK`;
+  logTo('lab1-log', `callはその場で即実行(戻り値が結果)`, 'info');
+  logTo('lab1-log', `自オブジェクト: "${result}"`, 'ok');
+  logTo('lab1-log', `他オブジェクト借用: "${r2}"`, 'ok');
+}
+function lab1Apply() {
+  clearLog('lab1-log');
+  const args = ['Hey', '!?'];
+  const result = lab1User.greet.apply(lab1User, args);
+  const nums = [3, 1, 4, 1, 5, 9];
+  const max = Math.max.apply(null, nums);
+  document.getElementById('lab1-after').textContent =
+    `apply(user, ['Hey','!?'])\n→ "${result}"\n\nMath.max.apply(null, [${nums}])\n→ ${max}`;
+  logTo('lab1-log', `applyはcallと同じだが引数を配列で渡す`, 'info');
+  logTo('lab1-log', `挨拶結果: "${result}"`, 'ok');
+  logTo('lab1-log', `配列の最大値: ${max} (Math.max(...nums)と等価)`, 'ok');
+}
+
+// ============= Lab 2: Boolean =============
+function lab2Run() {
+  clearLog('lab2-log');
+  const arr = [1, 0, '', 'ok', null, 'go', undefined, NaN, false, 'final'];
+  const filtered = arr.filter(Boolean);
+  setBA('lab2', JSON.stringify(arr), JSON.stringify(filtered));
+  logTo('lab2-log', `元の長さ: ${arr.length}`, 'info');
+  logTo('lab2-log', `フィルタ後: ${filtered.length}`, 'ok');
+  logTo('lab2-log', `除去された: ${arr.length - filtered.length} 個`, 'info');
+}
+
+// ============= Lab 3: Symbol =============
+function lab3Run() {
+  clearLog('lab3-log');
+  const str1 = "id", str2 = "id";
+  const sym1 = Symbol("id"), sym2 = Symbol("id");
+  document.getElementById('lab3-before').textContent =
+    `"id" === "id"\n→ ${str1 === str2}`;
+  document.getElementById('lab3-after').textContent =
+    `Symbol("id") === Symbol("id")\n→ ${sym1 === sym2}\ndescription: "${sym1.description}"`;
+  logTo('lab3-log', '文字列は同値比較がtrue', 'info');
+  logTo('lab3-log', 'Symbolは必ず別物 = 一意性保証', 'ok');
+}
+
+// ============= Lab 4: Error =============
+function lab4Throw(kind) {
+  clearLog('lab4-log');
+  try {
+    if (kind === 'type') throw new TypeError('値の型が違います');
+    if (kind === 'range') throw new RangeError('範囲外の値です');
+    if (kind === 'cause') {
+      try { JSON.parse('{bad json'); }
+      catch(orig) { throw new Error('処理失敗', { cause: orig }); }
+    }
+  } catch(e) {
+    let info = `name: ${e.name}\nmessage: ${e.message}`;
+    if (e.cause) info += `\ncause: ${e.cause.name}: ${e.cause.message}`;
+    document.getElementById('lab4-after').textContent = info;
+    logTo('lab4-log', `e instanceof ${e.constructor.name}: true`, 'ok');
+    logTo('lab4-log', `instanceof Error: ${e instanceof Error}`, 'ok');
+    if (e.cause) logTo('lab4-log', '原因チェーン保持OK', 'ok');
+  }
+}
+
+// ============= Lab 5: globalThis =============
+function lab5Run() {
+  clearLog('lab5-log');
+  const isWindow = (typeof window !== 'undefined') && (globalThis === window);
+  document.getElementById('lab5-before').textContent =
+    `typeof window: ${typeof window}`;
+  document.getElementById('lab5-after').textContent =
+    `globalThis === window\n→ ${isWindow}\nconstructor: ${globalThis.constructor.name}`;
+  logTo('lab5-log', `この環境では globalThis = ${globalThis.constructor.name}`, 'ok');
+  logTo('lab5-log', 'WorkerだとSelfGlobalScope, Nodeだとglobal', 'info');
+}
+
+// ============= Lab 6: Number EPSILON =============
+function lab6Run() {
+  clearLog('lab6-log');
+  const a = 0.1 + 0.2;
+  const direct = (a === 0.3);
+  const epsilon = Math.abs(a - 0.3) < Number.EPSILON;
+  document.getElementById('lab6-before').textContent =
+    `0.1 + 0.2 = ${a}\n=== 0.3 → ${direct}`;
+  document.getElementById('lab6-after').textContent =
+    `EPSILON = ${Number.EPSILON}\n|a - 0.3| < EPSILON → ${epsilon}`;
+  logTo('lab6-log', `直接比較は失敗: 浮動小数点誤差 ${a - 0.3}`, 'err');
+  logTo('lab6-log', `EPSILONで吸収すれば正しく等価判定`, 'ok');
+}
+
+// ============= Lab 7: BigInt =============
+function lab7Run() {
+  clearLog('lab7-log');
+  const target = "9007199254740993"; // 2^53 + 1
+  const asNum = Number(target);
+  const asBig = BigInt(target);
+  document.getElementById('lab7-before').textContent =
+    `Number("${target}")\n→ ${asNum}\n精度欠損: ${asNum.toString() !== target}`;
+  document.getElementById('lab7-after').textContent =
+    `BigInt("${target}")\n→ ${asBig}n\n精度欠損: ${asBig.toString() !== target}`;
+  logTo('lab7-log', `Number.MAX_SAFE_INTEGER = ${Number.MAX_SAFE_INTEGER}`, 'info');
+  logTo('lab7-log', `Numberは末尾が ${asNum}(欠損)`, 'err');
+  logTo('lab7-log', `BigIntは ${asBig} (完全保持)`, 'ok');
+}
+
+// ============= Lab 8: Math =============
+function lab8Random() {
+  clearLog('lab8-log');
+  const dice = Array.from({length:10}, () => Math.floor(Math.random()*6)+1);
+  setBA('lab8', '10回振ります', dice.join(', '));
+  logTo('lab8-log', `平均: ${(dice.reduce((a,b)=>a+b,0)/10).toFixed(2)}`, 'info');
+  logTo('lab8-log', `1〜6の整数のみ生成`, 'ok');
+}
+function lab8Hypot() {
+  clearLog('lab8-log');
+  const dx = 3, dy = 4;
+  setBA('lab8', `(0,0)から(${dx},${dy})へ`, `Math.hypot(${dx},${dy}) = ${Math.hypot(dx,dy)}`);
+  logTo('lab8-log', `√(${dx}² + ${dy}²) = √${dx*dx+dy*dy} = ${Math.hypot(dx,dy)}`, 'ok');
+}
+function lab8Round() {
+  clearLog('lab8-log');
+  const v = 2.5;
+  setBA('lab8', `値: ${v}`,
+    `floor: ${Math.floor(v)}\nround: ${Math.round(v)}\nceil:  ${Math.ceil(v)}\ntrunc: ${Math.trunc(-v)}`);
+  logTo('lab8-log', `floor=切り捨て / ceil=切り上げ / round=四捨五入(0.5は+方向)`, 'info');
+}
+
+// ============= Lab 9: Date =============
+function lab9Now() {
+  clearLog('lab9-log');
+  const d = new Date();
+  setBA('lab9', '現在時刻取得',
+    `ISO: ${d.toISOString()}\nlocale: ${d.toLocaleString('ja-JP')}\nepoch: ${d.getTime()}ms`);
+  logTo('lab9-log', `getMonth() = ${d.getMonth()} (※0始まり!)`, 'info');
+}
+function lab9Elapsed() {
+  clearLog('lab9-log');
+  const start = Date.now();
+  setBA('lab9', `開始: ${start}`, '計測中...');
+  logTo('lab9-log', '3秒待機します...', 'info');
+  setTimeout(() => {
+    const elapsed = Date.now() - start;
+    document.getElementById('lab9-after').textContent =
+      `開始: ${start}\n終了: ${start+elapsed}\n経過: ${elapsed}ms`;
+    logTo('lab9-log', `実測経過時間: ${elapsed}ms (≒3000)`, 'ok');
+  }, 3000);
+}
+
+// ============= Lab 10: Temporal =============
+function lab10Check() {
+  clearLog('lab10-log');
+  const has = (typeof Temporal !== 'undefined');
+  document.getElementById('lab10-after').textContent =
+    `typeof Temporal: ${typeof Temporal}\n対応: ${has ? '✓' : '✗ (現状ブラウザ未実装)'}`;
+  if (has) {
+    logTo('lab10-log', 'Temporal対応!', 'ok');
+  } else {
+    logTo('lab10-log', '未対応ブラウザ - polyfill必要', 'err');
+    logTo('lab10-log', '@js-temporal/polyfill をimportする方法あり', 'info');
+  }
+}
+
+// ============= Lab 11: String =============
+function lab11Pad() {
+  clearLog('lab11-log');
+  const v = document.getElementById('lab11-input').value;
+  const padded = v.padStart(6, '0');
+  setBA('lab11', `入力: "${v}" (長さ${v.length})`, `padStart(6,"0")\n→ "${padded}"`);
+  logTo('lab11-log', `先頭ゼロ埋め完了`, 'ok');
+}
+function lab11Replace() {
+  clearLog('lab11-log');
+  const text = "a-b-c-d-e";
+  const replaced = text.replaceAll('-', '_');
+  setBA('lab11', `元: "${text}"`, `replaceAll("-","_")\n→ "${replaced}"`);
+  logTo('lab11-log', `replaceAllは全件置換 (replaceは最初の1個のみ)`, 'info');
+}
+
+// ============= Lab 12: RegExp =============
+function lab12Run() {
+  clearLog('lab12-log');
+  const v = document.getElementById('lab12-input').value;
+  const re = /(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})/;
+  const m = v.match(re);
+  if (m) {
+    setBA('lab12', `入力: "${v}"`,
+      `年: ${m.groups.year}\n月: ${m.groups.month}\n日: ${m.groups.day}`);
+    logTo('lab12-log', `groups.yearで名前アクセス可能`, 'ok');
+    logTo('lab12-log', `m[1]${m[1]}と等価だが意味が明確`, 'info');
+  } else {
+    setBA('lab12', `入力: "${v}"`, 'マッチなし');
+    logTo('lab12-log', 'YYYY-MM-DD形式で入力してください', 'err');
+  }
+}
+
+// ============= サイドバー: ボタンクリックでスクロール =============
+document.addEventListener('DOMContentLoaded', () => {
+  // (1) クリックで該当ラボへスクロール (nav-item と toc-item 両方)
+  document.querySelectorAll('[data-target]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const targetId = btn.getAttribute('data-target');
+      const target = document.getElementById(targetId);
+      if (target) {
+        target.scrollIntoView({ behavior:'smooth', block:'start' });
+      }
+    });
+  });
+
+  // (2) サイドバーのactive追従 (スクロール位置に応じて)
+  const navItems = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+  const targetMap = new Map();  // labElement → navButton
+  navItems.forEach(btn => {
+    const id = btn.getAttribute('data-target');
+    const el = document.getElementById(id);
+    if (el) targetMap.set(el, btn);
+  });
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) {
+      const btn = targetMap.get(e.target);
+      if (btn) {
+        navItems.forEach(n => n.classList.remove('active'));
+        btn.classList.add('active');
+      }
+    }
+  }), { rootMargin:'-30% 0px -60% 0px' });
+  document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+  // (3) 「目次に戻る」フローティングボタン
+  const backBtn = document.getElementById('back-to-toc');
+  const toc = document.getElementById('toc');
+
+  // クリック → 目次へスクロール
+  backBtn.addEventListener('click', () => {
+    if (toc) {
+      toc.scrollIntoView({ behavior:'smooth', block:'start' });
+    } else {
+      window.scrollTo({ top:0, behavior:'smooth' });
+    }
+  });
+
+  // スクロール量に応じて表示/非表示 (画面1つ分以上スクロールしたら表示)
+  const toggleBackBtn = () => {
+    const threshold = window.innerHeight * 0.8;  // 画面8割スクロールで出現
+    if (window.scrollY > threshold) {
+      backBtn.classList.add('visible');
+    } else {
+      backBtn.classList.remove('visible');
+    }
+  };
+  window.addEventListener('scroll', toggleBackBtn, { passive:true });
+  toggleBackBtn();  // 初期状態判定
+});
+</script>
+
+</body>
+</html>

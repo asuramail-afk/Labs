@@ -1,0 +1,2620 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JavaScript標準API Lab #3 — DOM・イベント編</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  border-top:none; border-right:none; border-bottom:none;
+  background:transparent; width:100%; text-align:left; cursor:pointer;
+  font-family:inherit;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+#sidebar .file-nav { padding:8px 16px; margin:6px 0; background:var(--surface2);
+  border-top:1px solid var(--border); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.7rem; color:var(--text-dim); }
+#sidebar .file-nav a { display:block; padding:3px 0; color:var(--accent);
+  text-decoration:none; font-size:.72rem; }
+#sidebar .file-nav a.current { color:var(--text); font-weight:700; }
+
+.hero { padding:50px 30px 30px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:1.9rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:.95rem; margin-top:8px; }
+.hero .file-tag { display:inline-block; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; background:var(--accent); color:#fff;
+  margin-top:10px; }
+
+.toc { max-width:1100px; margin:24px auto; padding:0 20px; }
+.toc h2 { font-size:1rem; color:var(--accent); margin-bottom:10px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:8px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:9px 12px;
+  background:var(--surface); border:1px solid var(--border); border-radius:7px;
+  text-decoration:none; color:var(--text); font-size:.84rem;
+  font-family:inherit; cursor:pointer; text-align:left; width:100%;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.78rem; min-width:24px; }
+
+.container { max-width:1100px; margin:0 auto; padding:0 20px 60px; }
+.lab { margin-top:32px; border:1px solid var(--border); border-radius:10px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:10px; padding:14px 18px;
+  background:var(--surface2); border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:28px; height:28px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.78rem; }
+.lab-header h3 { font-size:1.05rem; font-weight:600; flex:1; min-width:140px; }
+.compat-badges { display:flex; gap:5px; flex-wrap:wrap; }
+.compat-badge { font-family:var(--mono); font-size:.65rem; padding:2px 7px;
+  border-radius:10px; border:1px solid; }
+.compat-yes { color:var(--success); border-color:var(--success);
+  background:rgba(34,134,58,.08); }
+.compat-no { color:var(--error); border-color:var(--error);
+  background:rgba(203,36,49,.08); }
+.compat-partial { color:var(--accent4); border-color:var(--accent4);
+  background:rgba(176,136,0,.08); }
+.lab-body { padding:18px; }
+.lab-desc { font-size:.9rem; color:var(--text-dim); margin-bottom:14px; line-height:1.75; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.82rem; color:var(--accent); }
+
+.scenes { background:rgba(0,92,197,.04); border:1px solid rgba(0,92,197,.2);
+  border-left:3px solid var(--accent); border-radius:6px;
+  padding:10px 14px; margin:12px 0; font-size:.85rem; line-height:1.75; }
+.scenes-title { font-family:var(--mono); font-size:.7rem; color:var(--accent);
+  font-weight:700; margin-bottom:5px; letter-spacing:.05em; }
+.scenes ol { margin-left:20px; margin-top:3px; }
+.scenes ol li { margin-bottom:3px; color:var(--text); }
+
+.ascii-art { font-family:var(--mono); font-size:.74rem;
+  line-height:1.45; background:var(--code-bg); padding:10px 12px;
+  border:1px solid var(--border); border-radius:6px;
+  margin:10px 0; color:var(--text); overflow-x:auto; white-space:pre; }
+
+.demo { border:1px solid var(--border); border-radius:8px; margin:14px 0;
+  overflow:hidden; background:var(--bg); }
+.demo-bar { padding:8px 12px; background:var(--surface2);
+  border-bottom:1px solid var(--border); font-family:var(--mono); font-size:.7rem;
+  color:var(--text-dim); letter-spacing:.05em; }
+.demo-body { padding:14px; }
+.demo-input { display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+.demo-input input, .demo-input textarea, .demo-input select {
+  font-family:var(--mono); font-size:.85rem; padding:7px 10px;
+  border:1px solid var(--border); border-radius:5px; background:#fff;
+  color:var(--text); flex:1; min-width:120px; }
+.demo-input textarea { min-height:55px; resize:vertical; flex-basis:100%; }
+.demo-btn { font-family:var(--mono); font-size:.82rem; padding:8px 16px;
+  border-radius:6px; border:1px solid var(--accent); background:var(--accent);
+  color:#fff; cursor:pointer; transition:all .15s; }
+.demo-btn:hover { opacity:.85; }
+.demo-btn.secondary { background:var(--surface); color:var(--accent); }
+.demo-btn:disabled { opacity:.5; cursor:not-allowed; }
+
+.ba-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0; }
+.ba-col { border-radius:6px; padding:10px 12px; font-size:.82rem;
+  line-height:1.6; border:1px solid; min-height:60px; }
+.ba-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.ba-after { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.ba-label { font-family:var(--mono); font-size:.62rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:4px; font-weight:700; opacity:.85; }
+.ba-before .ba-label { color:var(--error); }
+.ba-after .ba-label { color:var(--success); }
+.ba-content { font-family:var(--mono); font-size:.78rem; word-break:break-all;
+  white-space:pre-wrap; min-height:30px; }
+
+.log-area { background:#0d1117; color:#c9d1d9; font-family:var(--mono);
+  font-size:.78rem; padding:10px 12px; border-radius:6px;
+  max-height:200px; overflow-y:auto; margin:8px 0;
+  border:1px solid var(--border); white-space:pre-wrap; word-break:break-all;
+  line-height:1.5; }
+.log-area:empty::before { content:'(実行待ち...ボタンを押してください)';
+  color:#6e7681; font-style:italic; }
+.log-line { padding:1px 0; }
+.log-line.info { color:#79c0ff; }
+.log-line.ok { color:#7ee787; }
+.log-line.err { color:#ff7b72; }
+.log-line.dim { color:#6e7681; }
+
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:7px; margin:10px 0; overflow:hidden; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:7px 12px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.7rem; color:var(--text-dim); letter-spacing:.04em; }
+.code-block pre { padding:10px 14px 12px; overflow-x:auto;
+  font-family:var(--mono); font-size:.78rem; line-height:1.55;
+  color:var(--text); white-space:pre; tab-size:2; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.68rem;
+  padding:3px 9px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+
+.info-box { border-radius:7px; padding:10px 13px; font-size:.85rem;
+  line-height:1.7; margin:12px 0; border-left:3px solid; }
+.info-box.ok { border-color:var(--success); background:rgba(34,134,58,.08); color:#154f1e; }
+.info-box.info { border-color:var(--accent); background:rgba(0,92,197,.08); color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08); color:#7a5c00; }
+.info-box.err { border-color:var(--error); background:rgba(203,36,49,.08); color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 5px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .ba-grid { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.5rem; }
+  .toc-grid { grid-template-columns:1fr; }
+  .lab-body { padding:14px; }
+  .demo-input input, .demo-input textarea { min-width:100%; }
+}
+
+/* 📑 フローティング「目次に戻る」ボタン */
+#back-to-toc { position:fixed; bottom:20px; right:20px; z-index:100;
+  width:54px; height:54px; border-radius:50%; border:none;
+  background:var(--accent); color:#fff; cursor:pointer;
+  font-family:var(--mono); font-size:.7rem; font-weight:700;
+  box-shadow:0 4px 12px rgba(0,92,197,.35);
+  display:none; align-items:center; justify-content:center;
+  flex-direction:column; line-height:1.1;
+  transition:transform .15s,opacity .2s,background .15s; opacity:0; }
+#back-to-toc.visible { display:flex; opacity:1; }
+#back-to-toc:hover { background:#003d8f; transform:translateY(-2px); }
+#back-to-toc:active { transform:translateY(0); }
+#back-to-toc .arrow { font-size:1.1rem; line-height:1; margin-bottom:2px; }
+#back-to-toc .label { font-size:.6rem; letter-spacing:.05em; }
+
+/* === File 03 専用追加スタイル === */
+.dom-stage { border:1px dashed var(--border); border-radius:6px;
+  padding:10px; min-height:50px; background:#fff; margin:6px 0; }
+.dom-stage .dyn-item { padding:6px 10px; margin:3px 0; background:var(--surface2);
+  border-left:3px solid var(--accent); border-radius:4px; font-family:var(--mono);
+  font-size:.8rem; }
+.tag-chip { display:inline-block; padding:1px 7px; background:var(--accent);
+  color:#fff; border-radius:10px; font-family:var(--mono); font-size:.7rem;
+  margin-right:4px; }
+.scroll-track { height:200px; overflow-y:auto; border:1px solid var(--border);
+  border-radius:6px; background:var(--code-bg); padding:8px; margin:8px 0; }
+.scroll-track .io-item { padding:50px 12px; margin:12px 0;
+  background:#fff; border:2px solid var(--border); border-radius:6px;
+  text-align:center; font-family:var(--mono); font-size:.85rem;
+  transition:all .3s; }
+.scroll-track .io-item.entered { border-color:var(--success);
+  background:rgba(34,134,58,.08); transform:scale(1.02); }
+.resize-target { resize:both; overflow:auto;
+  width:200px; height:100px; padding:10px; background:#fff;
+  border:2px solid var(--accent); border-radius:6px; font-family:var(--mono);
+  font-size:.78rem; }
+.event-tree { padding:8px; border-radius:6px; }
+.event-tree .ev-outer { padding:18px; background:rgba(203,36,49,.06);
+  border:2px solid var(--error); border-radius:8px; cursor:pointer; }
+.event-tree .ev-middle { padding:14px; background:rgba(176,136,0,.08);
+  border:2px solid var(--accent4); border-radius:8px;
+  margin-top:8px; cursor:pointer; }
+.event-tree .ev-inner { padding:12px; background:rgba(34,134,58,.08);
+  border:2px solid var(--success); border-radius:8px;
+  margin-top:8px; cursor:pointer; text-align:center; font-weight:600; }
+.shadow-host { padding:8px 12px; background:var(--surface2);
+  border:1px solid var(--border); border-radius:6px; margin:6px 0; }
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// JS API Lab #3<br><span style="color:var(--text-dim);font-size:.7rem;">DOM・イベント編</span></div>
+  <div class="file-nav">
+    <div style="font-size:.7rem;color:var(--text-dim);padding:2px 0;">📘 全8ファイル中の #3</div>
+    <div style="font-size:.68rem;color:var(--text-dim);padding:2px 0;line-height:1.4;">DOM/Event/Observer/WC</div>
+  </div>
+  <div class="nav-section">DOM 基本</div>
+  <button class="nav-item" data-target="lab0"><span class="nav-num">00</span>Document/Node</button>
+  <button class="nav-item" data-target="lab1"><span class="nav-num">01</span>createElement</button>
+  <button class="nav-item" data-target="lab2"><span class="nav-num">02</span>classList</button>
+  <button class="nav-item" data-target="lab3"><span class="nav-num">03</span>querySelector</button>
+  <button class="nav-item" data-target="lab4"><span class="nav-num">04</span>attributes/dataset</button>
+  <div class="nav-section">イベント</div>
+  <button class="nav-item" data-target="lab5"><span class="nav-num">05</span>addEventListener</button>
+  <button class="nav-item" data-target="lab6"><span class="nav-num">06</span>CustomEvent</button>
+  <button class="nav-item" data-target="lab7"><span class="nav-num">07</span>イベント伝搬</button>
+  <button class="nav-item" data-target="lab8"><span class="nav-num">08</span>AbortController</button>
+  <div class="nav-section">Observer 三兄弟</div>
+  <button class="nav-item" data-target="lab9"><span class="nav-num">09</span>MutationObserver</button>
+  <button class="nav-item" data-target="lab10"><span class="nav-num">10</span>IntersectionObs.</button>
+  <button class="nav-item" data-target="lab11"><span class="nav-num">11</span>ResizeObserver</button>
+  <div class="nav-section">Web Components</div>
+  <button class="nav-item" data-target="lab12"><span class="nav-num">12</span>HTML Templates</button>
+  <button class="nav-item" data-target="lab13"><span class="nav-num">13</span>Custom Elements</button>
+  <button class="nav-item" data-target="lab14"><span class="nav-num">14</span>Shadow DOM</button>
+</nav>
+
+<div class="hero">
+  <h1>JavaScript標準API Lab</h1>
+  <p class="subtitle">DOM・イベント編 — DOM操作 / Event / Observer / Web Components</p>
+  <span class="file-tag">📘 File #3 / 8</span>
+</div>
+
+<div class="toc" id="toc">
+  <h2>// 目次(15ラボ)</h2>
+  <div class="toc-grid">
+    <button class="toc-item" data-target="lab0"><span class="toc-num">00</span>Document/Node 基本</button>
+    <button class="toc-item" data-target="lab1"><span class="toc-num">01</span>createElement</button>
+    <button class="toc-item" data-target="lab2"><span class="toc-num">02</span>classList</button>
+    <button class="toc-item" data-target="lab3"><span class="toc-num">03</span>querySelector</button>
+    <button class="toc-item" data-target="lab4"><span class="toc-num">04</span>attributes/dataset</button>
+    <button class="toc-item" data-target="lab5"><span class="toc-num">05</span>addEventListener</button>
+    <button class="toc-item" data-target="lab6"><span class="toc-num">06</span>CustomEvent</button>
+    <button class="toc-item" data-target="lab7"><span class="toc-num">07</span>イベント伝搬</button>
+    <button class="toc-item" data-target="lab8"><span class="toc-num">08</span>AbortController</button>
+    <button class="toc-item" data-target="lab9"><span class="toc-num">09</span>MutationObserver</button>
+    <button class="toc-item" data-target="lab10"><span class="toc-num">10</span>IntersectionObserver</button>
+    <button class="toc-item" data-target="lab11"><span class="toc-num">11</span>ResizeObserver</button>
+    <button class="toc-item" data-target="lab12"><span class="toc-num">12</span>HTML Templates</button>
+    <button class="toc-item" data-target="lab13"><span class="toc-num">13</span>Custom Elements</button>
+    <button class="toc-item" data-target="lab14"><span class="toc-num">14</span>Shadow DOM</button>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ========== Lab 00: Document/Node 基本 ========== -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>Document / Element / Node — DOMツリーの基本構造</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      DOMはツリー構造。<code>document</code>がルート、すべての要素は<code>Node</code>を継承。<code>parentNode</code>/<code>children</code>/<code>nextElementSibling</code>でツリーを辿る。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>クリックされた要素の親要素までイベントを「上り」たい(<code>parentNode</code>)</li>
+        <li>テーブルの全行を<code>children</code>でループし、各セルの値を集計</li>
+        <li>同じ階層の次の要素を<code>nextElementSibling</code>で探してフォーカス移動</li>
+      </ol>
+    </div>
+    <pre class="ascii-art">document  ← ルート(Documentオブジェクト)
+   │
+   └─ html
+       ├─ head
+       └─ body
+           ├─ div#app  ← Element(Nodeを継承)
+           │   ├─ h1   ← Element
+           │   │   └─ "Hello"  ← Text Node
+           │   └─ p
+           └─ div#footer
+
+▼ ナビゲーション API
+parentNode          → 親へ
+children            → 子(要素のみ・配列風)
+childNodes          → 子(テキストノード含む)
+firstElementChild   → 最初の子要素
+nextElementSibling  → 次の兄弟要素</pre>
+
+    <div class="info-box info">
+      📌 <strong>NodeとElementの違い</strong><br>
+      <code>Node</code>はDOMツリーの全要素の基底型(テキスト・コメント・要素すべて)。<code>Element</code>はその中で「タグを持つもの」(<code>&lt;div&gt;</code>等)。<br>
+      テキストノードを除いて要素だけ扱いたい時は <code>children</code> / <code>firstElementChild</code> を使うのが安全。
+    </div>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 自身のDOMを探検</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab0Inspect()">document情報</button>
+          <button class="demo-btn" onclick="lab0Tree()">このラボのツリー</button>
+          <button class="demo-btn secondary" onclick="lab0Sibling()">兄弟要素を辿る</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">Before</div>
+            <div class="ba-content" id="lab0-before">(未実行)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">After</div>
+            <div class="ba-content" id="lab0-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab0-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「document情報」「このラボのツリー」「兄弟要素を辿る」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「document情報」ボタンが実行する処理</span>
+<span class="kw">function</span> <span class="fn">lab0Inspect</span>() {
+  console.<span class="fn">log</span>(<span class="str">`title: ${document.title}`</span>);
+  console.<span class="fn">log</span>(<span class="str">`URL: ${document.URL}`</span>);
+  console.<span class="fn">log</span>(<span class="str">`要素総数: ${document.querySelectorAll(<span class="str">'*'</span>).length}`</span>);
+}
+
+<span class="cm">// 「このラボのツリー」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab0Tree</span>() {
+  <span class="kw">const</span> lab = document.<span class="fn">getElementById</span>(<span class="str">'lab0'</span>);
+  console.<span class="fn">log</span>(<span class="str">`tagName: ${lab.tagName}`</span>);          <span class="cm">// "DIV"</span>
+  console.<span class="fn">log</span>(<span class="str">`children数: ${lab.children.length}`</span>);   <span class="cm">// 要素の子のみ</span>
+  console.<span class="fn">log</span>(<span class="str">`childNodes数: ${lab.childNodes.length}`</span>); <span class="cm">// テキスト含む</span>
+  console.<span class="fn">log</span>(<span class="str">`firstElementChild: ${lab.firstElementChild.tagName}`</span>);
+}
+
+<span class="cm">// 「兄弟要素を辿る」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab0Sibling</span>() {
+  <span class="kw">let</span> el = document.<span class="fn">getElementById</span>(<span class="str">'lab0'</span>).firstElementChild;
+  <span class="kw">while</span> (el) {
+    console.<span class="fn">log</span>(el.tagName + <span class="str">' .'</span> + el.className);
+    el = el.nextElementSibling;
+  }
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 01: createElement ========== -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>createElement / appendChild / remove — 要素の生成・追加・削除</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      DOM要素は<code>document.createElement('div')</code>で空のまま生成し、<code>parent.appendChild(el)</code>でツリーに繋ぐと初めて画面に出る。<code>el.remove()</code>で自身を切り離す。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>APIから取得した一覧をループで動的にカード生成して画面に挿入</li>
+        <li>「+追加」ボタンでフォーム行を増やす(動的フォーム)</li>
+        <li>削除アイコンを押した行を<code>remove()</code>でDOMから消す</li>
+      </ol>
+    </div>
+    <pre class="ascii-art">①生成        ②属性設定         ③ツリーに挿入
+─────       ─────────         ─────────────
+const el =  el.textContent     parent.appendChild(el)
+  document    = "Item"                  │
+  .createEl  el.className               ▼
+  ("div")     = "card"          画面に表示される
+
+▼ 挿入位置のバリエーション
+appendChild(el)         → 末尾に追加
+prepend(el)             → 先頭に追加
+insertBefore(el, ref)   → ref の前に追加
+el.before(newEl)        → el の直前に追加 (新API)
+el.after(newEl)         → el の直後に追加 (新API)</pre>
+
+    <div class="info-box info">
+      📌 <strong>「ツリーに繋ぐ」とは?</strong><br>
+      <code>createElement</code>で作っただけの要素は「メモリ上のオブジェクト」で、画面には出ない。親要素の<code>appendChild</code>や<code>append</code>でDOMツリーに接続して初めて表示される。<br>
+      切り離した要素は変数で持っていれば再利用可能(別の場所に再挿入できる)。
+    </div>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 動的に要素を生成・削除</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab1Add()">+ 要素を追加</button>
+          <button class="demo-btn" onclick="lab1Prepend()">先頭に追加</button>
+          <button class="demo-btn secondary" onclick="lab1Clear()">全削除</button>
+        </div>
+        <div class="dom-stage" id="lab1-stage">
+          <span style="color:var(--text-dim);font-size:.78rem;">(ここに動的に追加されます)</span>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">Before</div>
+            <div class="ba-content" id="lab1-before">(未実行)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">After</div>
+            <div class="ba-content" id="lab1-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab1-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「+ 要素を追加」「先頭に追加」「全削除」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「+ 要素を追加」ボタンが実行する処理</span>
+<span class="kw">let</span> lab1Counter = <span class="num">0</span>;
+<span class="kw">function</span> <span class="fn">lab1Add</span>() {
+  <span class="kw">const</span> stage = document.<span class="fn">getElementById</span>(<span class="str">'lab1-stage'</span>);
+  <span class="kw">const</span> el = document.<span class="fn">createElement</span>(<span class="str">'div'</span>);
+  el.className = <span class="str">'dyn-item'</span>;
+  el.textContent = <span class="str">`Item #${++lab1Counter} @ ${new Date().toLocaleTimeString()}`</span>;
+  stage.<span class="fn">appendChild</span>(el);  <span class="cm">// 末尾に追加</span>
+  console.<span class="fn">log</span>(<span class="str">`stage.children.length = ${stage.children.length}`</span>);
+}
+
+<span class="cm">// 「先頭に追加」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab1Prepend</span>() {
+  <span class="kw">const</span> stage = document.<span class="fn">getElementById</span>(<span class="str">'lab1-stage'</span>);
+  <span class="kw">const</span> el = document.<span class="fn">createElement</span>(<span class="str">'div'</span>);
+  el.className = <span class="str">'dyn-item'</span>;
+  el.textContent = <span class="str">`★ Top #${++lab1Counter}`</span>;
+  stage.<span class="fn">prepend</span>(el);  <span class="cm">// 先頭に追加 (新API)</span>
+}
+
+<span class="cm">// 「全削除」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab1Clear</span>() {
+  <span class="kw">const</span> stage = document.<span class="fn">getElementById</span>(<span class="str">'lab1-stage'</span>);
+  <span class="cm">// 子要素を全て remove</span>
+  Array.<span class="fn">from</span>(stage.children).<span class="fn">forEach</span>(c => c.<span class="fn">remove</span>());
+  console.<span class="fn">log</span>(<span class="str">'すべて削除完了'</span>);
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 02: classList ========== -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>classList — クラスの追加・削除・トグル</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>el.classList</code>はクラス名の操作専用API。<code>add</code>/<code>remove</code>/<code>toggle</code>/<code>contains</code>でCSSクラスを切り替える。<code>className</code>を文字列で書き換えるより安全。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>ダークモード切替で<code>document.body.classList.toggle('dark')</code></li>
+        <li>タブUIでアクティブ要素に<code>active</code>クラス付与/他は除去</li>
+        <li>バリデーションエラー時に<code>error</code>クラスを付けて赤枠表示</li>
+      </ol>
+    </div>
+    <pre class="ascii-art">▼ classList API 比較
+
+el.className = "a b c"        ← 文字列全置換(他のクラスが消える)
+el.classList.add("d")         ← d を追加(既存はそのまま)
+el.classList.remove("a")      ← a だけ除去
+el.classList.toggle("active") ← あれば消し、なければ付ける
+el.classList.contains("a")    ← true / false を返す
+el.classList.replace("a","z") ← a を z に差し替え
+
+▼ toggle の戻り値 = 操作後にクラスが付いているか
+const isOn = btn.classList.toggle('on');
+if (isOn) startWatching();</pre>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: ボックスの見た目をクラスで切替</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab2Toggle('big')">.big</button>
+          <button class="demo-btn" onclick="lab2Toggle('round')">.round</button>
+          <button class="demo-btn" onclick="lab2Toggle('warn')">.warn</button>
+          <button class="demo-btn secondary" onclick="lab2Reset()">リセット</button>
+        </div>
+        <div id="lab2-target" style="padding:14px;background:var(--accent);color:#fff;border-radius:4px;font-family:var(--mono);text-align:center;transition:all .3s;">対象要素</div>
+        <style>
+          #lab2-target.big { font-size:1.4rem; padding:30px; }
+          #lab2-target.round { border-radius:50px; }
+          #lab2-target.warn { background:var(--accent4); }
+        </style>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">Before(クリック前)</div>
+            <div class="ba-content" id="lab2-before">(未実行)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">After(現在)</div>
+            <div class="ba-content" id="lab2-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab2-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「.big/.round/.warn」「リセット」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 各クラスボタンが実行する処理(toggle)</span>
+<span class="kw">function</span> <span class="fn">lab2Toggle</span>(cls) {
+  <span class="kw">const</span> el = document.<span class="fn">getElementById</span>(<span class="str">'lab2-target'</span>);
+  <span class="kw">const</span> before = el.className || <span class="str">'(空)'</span>;
+  <span class="kw">const</span> isOn = el.classList.<span class="fn">toggle</span>(cls);  <span class="cm">// あれば外し、なければ付ける</span>
+  console.<span class="fn">log</span>(<span class="str">`${cls}: ${isOn ? '付与' : '除去'}`</span>);
+  console.<span class="fn">log</span>(<span class="str">`現在のクラス: "${el.className}"`</span>);
+}
+
+<span class="cm">// 「リセット」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab2Reset</span>() {
+  <span class="kw">const</span> el = document.<span class="fn">getElementById</span>(<span class="str">'lab2-target'</span>);
+  el.className = <span class="str">''</span>;  <span class="cm">// 全クラス除去</span>
+  console.<span class="fn">log</span>(<span class="str">'クラス全削除'</span>);
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 03: querySelector ========== -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>querySelector / querySelectorAll — CSSセレクタで要素検索</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>querySelector('セレクタ')</code>は最初の1個、<code>querySelectorAll</code>は全件(NodeList)。CSSと同じセレクタ記法で書ける。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>フォーム内の<code>input[required]</code>を全件取り、未入力チェック</li>
+        <li>テーブル行の<code>tr.error</code>だけを抽出してハイライト</li>
+        <li>クリックされたボタンの祖先カードを<code>closest('.card')</code>で取得</li>
+      </ol>
+    </div>
+    <pre class="ascii-art">▼ 検索系API比較
+
+document.getElementById('id')         → 1件 (idのみ・最速)
+document.getElementsByClassName('c')  → HTMLCollection(動的)
+document.getElementsByTagName('div')  → HTMLCollection(動的)
+document.querySelector('セレクタ')      → 最初の1件
+document.querySelectorAll('セレクタ')   → NodeList(静的・スナップショット)
+
+▼ NodeList と HTMLCollection の違い
+querySelectorAll → NodeList(forEach使える / 静的)
+getElementsBy*   → HTMLCollection(forEach不可 / 動的)
+
+▼ closest: 自分から「上」へセレクタにマッチする最初の祖先
+btn.closest('.card')   → ボタンを含むカードを取得</pre>
+
+    <div class="info-box info">
+      📌 <strong>静的(static)と動的(live)コレクションの違い</strong><br>
+      <code>querySelectorAll</code>の結果は呼出時点のスナップショット。後でDOMが変わっても結果は変わらない。<br>
+      <code>getElementsByClassName</code>はDOMの変更が即反映される「ライブコレクション」。ループ中に要素を消すと混乱するので注意。
+    </div>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 自身のページから要素を探す</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <input id="lab3-input" type="text" value=".lab-num" placeholder="CSSセレクタ">
+          <button class="demo-btn" onclick="lab3Find()">検索</button>
+          <button class="demo-btn secondary" onclick="lab3Closest()">closestデモ</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">セレクタ</div>
+            <div class="ba-content" id="lab3-before">(未実行)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">マッチ結果</div>
+            <div class="ba-content" id="lab3-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab3-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「検索」「closestデモ」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「検索」ボタンが実行する処理</span>
+<span class="kw">function</span> <span class="fn">lab3Find</span>() {
+  <span class="kw">const</span> sel = document.<span class="fn">getElementById</span>(<span class="str">'lab3-input'</span>).value;
+  <span class="kw">try</span> {
+    <span class="kw">const</span> first = document.<span class="fn">querySelector</span>(sel);
+    <span class="kw">const</span> all   = document.<span class="fn">querySelectorAll</span>(sel);
+    console.<span class="fn">log</span>(<span class="str">`セレクタ: "${sel}"`</span>);
+    console.<span class="fn">log</span>(<span class="str">`querySelector → ${first ? first.tagName : 'null'}`</span>);
+    console.<span class="fn">log</span>(<span class="str">`querySelectorAll → ${all.length}件`</span>);
+  } <span class="kw">catch</span> (e) {
+    console.<span class="fn">log</span>(<span class="str">`構文エラー: ${e.message}`</span>);
+  }
+}
+
+<span class="cm">// 「closestデモ」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab3Closest</span>() {
+  <span class="kw">const</span> btn = document.<span class="fn">getElementById</span>(<span class="str">'lab3-input'</span>);
+  <span class="kw">const</span> ancestor = btn.<span class="fn">closest</span>(<span class="str">'.lab'</span>);  <span class="cm">// 祖先で .lab を持つ最初の要素</span>
+  console.<span class="fn">log</span>(<span class="str">`closest('.lab') → id="${ancestor.id}"`</span>);
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 04: attributes / dataset ========== -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>attributes / dataset — 属性とdata-*の操作</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      標準属性は<code>el.id</code>のように直接アクセス、独自属性は<code>data-*</code>で書いて<code>el.dataset.キー</code>で読み書きする。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>削除ボタンに<code>data-id="123"</code>を付け、クリック時に<code>e.target.dataset.id</code>でDB主キー取得</li>
+        <li>OutSystems Wijmo グリッドの行に<code>data-row-key</code>を埋め込み行特定</li>
+        <li>CSSで<code>[data-status="error"]</code>のように属性セレクタでスタイル分岐</li>
+      </ol>
+    </div>
+    <pre class="ascii-art">HTML側
+<span class="tag">&lt;button</span> <span class="kw">id</span>=<span class="str">"btn1"</span>
+        <span class="kw">data-user-id</span>=<span class="str">"42"</span>
+        <span class="kw">data-action</span>=<span class="str">"delete"</span><span class="tag">&gt;</span>削除<span class="tag">&lt;/button&gt;</span>
+                                ▼
+JS側
+btn.id                       → "btn1"
+btn.dataset.userId           → "42"      (data-user-id → userId にキャメル化)
+btn.dataset.action           → "delete"
+btn.dataset.action = "save"  → 書込もOK
+
+▼ 汎用API
+btn.getAttribute('data-user-id')      → "42"
+btn.setAttribute('data-user-id','99') → 書込
+btn.hasAttribute('disabled')          → true/false
+btn.removeAttribute('disabled')       → 削除</pre>
+
+    <div class="info-box info">
+      📐 <strong>data-* のキー名変換ルール</strong><br>
+      HTML側はケバブケース(<code>data-user-id</code>)、JS側は自動でキャメルケース(<code>dataset.userId</code>)に変換される。<br>
+      数字始まりや大文字始まりは使えない、すべて文字列値(数値も<code>"42"</code>として返る)。
+    </div>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: data-*属性の読み書き</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab4Read()">data-*を読む</button>
+          <button class="demo-btn" onclick="lab4Write()">data-*を書く</button>
+          <button class="demo-btn secondary" onclick="lab4Toggle()">disabled切替</button>
+        </div>
+        <button id="lab4-target" data-user-id="42" data-action="delete" class="demo-btn secondary" style="cursor:default;">対象ボタン (data-user-id=42)</button>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">Before</div>
+            <div class="ba-content" id="lab4-before">(未実行)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">After</div>
+            <div class="ba-content" id="lab4-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab4-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「data-*を読む」「書く」「disabled切替」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「data-*を読む」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab4Read</span>() {
+  <span class="kw">const</span> el = document.<span class="fn">getElementById</span>(<span class="str">'lab4-target'</span>);
+  console.<span class="fn">log</span>(<span class="str">`dataset.userId: "${el.dataset.userId}"`</span>);
+  console.<span class="fn">log</span>(<span class="str">`dataset.action: "${el.dataset.action}"`</span>);
+  console.<span class="fn">log</span>(<span class="str">`getAttribute('data-user-id'): "${el.getAttribute('data-user-id')}"`</span>);
+}
+
+<span class="cm">// 「data-*を書く」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab4Write</span>() {
+  <span class="kw">const</span> el = document.<span class="fn">getElementById</span>(<span class="str">'lab4-target'</span>);
+  el.dataset.userId = String(<span class="fn">Math.floor</span>(<span class="fn">Math.random</span>()*<span class="num">1000</span>));
+  el.dataset.timestamp = <span class="fn">Date.now</span>();
+  console.<span class="fn">log</span>(<span class="str">`書込み後: data-user-id="${el.dataset.userId}"`</span>);
+  console.<span class="fn">log</span>(<span class="str">`新規追加: data-timestamp="${el.dataset.timestamp}"`</span>);
+}
+
+<span class="cm">// 「disabled切替」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab4Toggle</span>() {
+  <span class="kw">const</span> el = document.<span class="fn">getElementById</span>(<span class="str">'lab4-target'</span>);
+  <span class="kw">if</span> (el.<span class="fn">hasAttribute</span>(<span class="str">'disabled'</span>)) {
+    el.<span class="fn">removeAttribute</span>(<span class="str">'disabled'</span>);
+    console.<span class="fn">log</span>(<span class="str">'disabled除去'</span>);
+  } <span class="kw">else</span> {
+    el.<span class="fn">setAttribute</span>(<span class="str">'disabled'</span>, <span class="str">''</span>);
+    console.<span class="fn">log</span>(<span class="str">'disabled付与'</span>);
+  }
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 05: addEventListener ========== -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>addEventListener / removeEventListener — リスナの登録と解除</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>el.addEventListener('click', fn)</code>でイベントを購読、<code>removeEventListener('click', fn)</code>で解除。<strong>解除には登録時と同じ関数参照が必要</strong>(これがハマりどころ)。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>SPA画面遷移前に登録した<code>scroll</code>リスナを解除してメモリリーク防止</li>
+        <li><code>once: true</code>オプションで「初回クリックのみ」反応するボタン</li>
+        <li><code>passive: true</code>でスクロール中の<code>touchmove</code>を高速化</li>
+      </ol>
+    </div>
+    <pre class="ascii-art">▼ 基本形
+el.addEventListener('click', handler);
+el.removeEventListener('click', handler);   ← 同じ関数参照が必要
+
+▼ よくある罠: アロー関数を直接渡すと解除不能
+el.addEventListener('click', () => doX());     ← 参照を保持してない
+el.removeEventListener('click', () => doX());  ← 別関数なので解除されない!
+
+▼ 正解: 関数を変数に入れる
+const handler = () => doX();
+el.addEventListener('click', handler);
+el.removeEventListener('click', handler);   ← OK
+
+▼ オプション(第3引数)
+{ once: true }    → 1回だけ呼ばれて自動解除
+{ passive: true } → preventDefault() 不可だが高速化(スクロール系)
+{ capture: true } → キャプチャフェーズで発火 (Lab 07参照)</pre>
+
+    <div class="info-box info">
+      📌 <strong>onClickプロパティ vs addEventListener</strong><br>
+      <code>el.onclick = fn</code>は1つしか登録できない(上書き)。<code>addEventListener</code>は同じイベントに何個でも登録可能。現代では基本後者を使う。
+    </div>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: リスナ登録/解除/once</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab5Add()">①リスナ登録</button>
+          <button class="demo-btn secondary" onclick="lab5Remove()">②リスナ解除</button>
+          <button class="demo-btn" onclick="lab5Once()">③once付き登録</button>
+        </div>
+        <button id="lab5-target" class="demo-btn secondary" style="margin-top:6px;">▼ ここをタップ(リスナ反応)</button>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">登録状態</div>
+            <div class="ba-content" id="lab5-before">未登録</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">クリック回数</div>
+            <div class="ba-content" id="lab5-after">0</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab5-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「①リスナ登録」「②解除」「③once」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// クリックカウンタ用 (ボタン外で共有)</span>
+<span class="kw">let</span> lab5Count = <span class="num">0</span>;
+<span class="kw">const</span> lab5Handler = () =&gt; {
+  lab5Count++;
+  document.<span class="fn">getElementById</span>(<span class="str">'lab5-after'</span>).textContent = lab5Count;
+  console.<span class="fn">log</span>(<span class="str">`click! count=${lab5Count}`</span>);
+};
+
+<span class="cm">// 「①リスナ登録」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab5Add</span>() {
+  <span class="kw">const</span> btn = document.<span class="fn">getElementById</span>(<span class="str">'lab5-target'</span>);
+  btn.<span class="fn">addEventListener</span>(<span class="str">'click'</span>, lab5Handler);
+  document.<span class="fn">getElementById</span>(<span class="str">'lab5-before'</span>).textContent = <span class="str">'登録中(タップで反応)'</span>;
+  console.<span class="fn">log</span>(<span class="str">'addEventListener 完了'</span>);
+}
+
+<span class="cm">// 「②リスナ解除」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab5Remove</span>() {
+  <span class="kw">const</span> btn = document.<span class="fn">getElementById</span>(<span class="str">'lab5-target'</span>);
+  btn.<span class="fn">removeEventListener</span>(<span class="str">'click'</span>, lab5Handler);
+  document.<span class="fn">getElementById</span>(<span class="str">'lab5-before'</span>).textContent = <span class="str">'解除済(タップしても反応なし)'</span>;
+  console.<span class="fn">log</span>(<span class="str">'removeEventListener 完了 — 同じ関数参照で解除'</span>);
+}
+
+<span class="cm">// 「③once付き登録」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab5Once</span>() {
+  <span class="kw">const</span> btn = document.<span class="fn">getElementById</span>(<span class="str">'lab5-target'</span>);
+  btn.<span class="fn">addEventListener</span>(<span class="str">'click'</span>, () =&gt; {
+    console.<span class="fn">log</span>(<span class="str">'★ 1回だけ反応(自動解除)'</span>);
+  }, { once: <span class="kw">true</span> });
+  console.<span class="fn">log</span>(<span class="str">'once: true で登録 → 初回後に自動remove'</span>);
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 06: CustomEvent ========== -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>Event / CustomEvent — 自作イベントとdetail</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>new CustomEvent('名前', { detail: データ })</code>で独自イベント生成、<code>el.dispatchEvent(ev)</code>で発火。<code>detail</code>に任意データを乗せられる。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>子コンポーネントから親に「保存完了しました」を伝える(<code>save:done</code>イベント)</li>
+        <li>OutSystemsの自作Block/Web Componentで状態変化を発信</li>
+        <li>異なるモジュール間の疎結合な通信(イベントバスパターン)</li>
+      </ol>
+    </div>
+    <pre class="ascii-art">▼ 標準イベント vs カスタムイベント
+
+標準: el.click()  → "click"イベント発火 (DOMが用意済み)
+
+カスタム:
+  // 1. リスナを先に登録
+  el.addEventListener('user:login', e =&gt; {
+    console.log(e.detail.userId);   ← detailで任意データ受取
+  });
+
+  // 2. イベント生成
+  const ev = new CustomEvent('user:login', {
+    detail: { userId: 42, name: 'Tom' },
+    bubbles: true   ← 親へ伝搬させたい場合
+  });
+
+  // 3. 発火
+  el.dispatchEvent(ev);   → リスナが呼ばれる</pre>
+
+    <div class="info-box info">
+      📌 <strong>イベント名の慣例</strong><br>
+      標準イベント名(<code>click</code>等)と衝突しないよう、コロン区切りの名前空間が広く使われる: <code>app:ready</code> / <code>cart:updated</code> / <code>user:logout</code>。
+    </div>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: カスタムイベントのdispatch</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <input id="lab6-input" type="text" value="Tom" placeholder="userName">
+          <button class="demo-btn" onclick="lab6Setup()">①リスナ準備</button>
+          <button class="demo-btn" onclick="lab6Fire()">②イベント発火</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">準備状態</div>
+            <div class="ba-content" id="lab6-before">(未準備)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">受信したdetail</div>
+            <div class="ba-content" id="lab6-after">(未発火)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab6-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「①リスナ準備」「②イベント発火」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「①リスナ準備」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab6Setup</span>() {
+  <span class="kw">const</span> el = document.<span class="fn">getElementById</span>(<span class="str">'lab6-input'</span>);
+  el.<span class="fn">addEventListener</span>(<span class="str">'user:login'</span>, (e) =&gt; {
+    document.<span class="fn">getElementById</span>(<span class="str">'lab6-after'</span>).textContent =
+      <span class="str">`name: ${e.detail.name}\nat: ${e.detail.at}`</span>;
+    console.<span class="fn">log</span>(<span class="str">`受信: ${JSON.stringify(e.detail)}`</span>);
+  });
+  document.<span class="fn">getElementById</span>(<span class="str">'lab6-before'</span>).textContent = <span class="str">'リスナ登録済'</span>;
+  console.<span class="fn">log</span>(<span class="str">'user:login リスナ登録'</span>);
+}
+
+<span class="cm">// 「②イベント発火」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab6Fire</span>() {
+  <span class="kw">const</span> el = document.<span class="fn">getElementById</span>(<span class="str">'lab6-input'</span>);
+  <span class="kw">const</span> name = el.value || <span class="str">'(空)'</span>;
+  <span class="kw">const</span> ev = <span class="kw">new</span> <span class="fn">CustomEvent</span>(<span class="str">'user:login'</span>, {
+    detail: { name: name, at: <span class="kw">new</span> <span class="fn">Date</span>().<span class="fn">toLocaleTimeString</span>() },
+    bubbles: <span class="kw">true</span>
+  });
+  el.<span class="fn">dispatchEvent</span>(ev);
+  console.<span class="fn">log</span>(<span class="str">'dispatchEvent 完了'</span>);
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 07: イベント伝搬 ========== -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>イベント伝搬 — capture / bubble / stopPropagation</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      DOMイベントは <strong>capture(下り)→ target → bubble(上り)</strong>の3フェーズで伝搬する。<code>stopPropagation()</code>で停止、<code>preventDefault()</code>で標準動作キャンセル。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>親要素1つにリスナを登録し、子要素のクリックを<strong>イベント委譲</strong>で処理(動的追加要素にも効く)</li>
+        <li>モーダル外クリックで閉じる処理を、内側クリックで<code>stopPropagation()</code>して防ぐ</li>
+        <li>フォーム<code>submit</code>を<code>preventDefault()</code>で止め、JSでバリデーション後に手動送信</li>
+      </ol>
+    </div>
+    <pre class="ascii-art">▼ イベントの3フェーズ
+
+         ① CAPTURE(下り)
+                │
+   ┌─ outer ◄──┼──┐
+   │   ┌─ middle ◄┐│
+   │   │   ┌inner ◄││
+   │   │   │  ⚡target  ② TARGET
+   │   │   └──────►│
+   │   └──────────►│
+   └──────────────►│  ③ BUBBLE(上り) ← 通常のリスナはここ
+
+▼ addEventListener の第3引数
+addEventListener('click', fn)              → bubbleフェーズで発火 (既定)
+addEventListener('click', fn, true)        → captureフェーズで発火
+addEventListener('click', fn, {capture:true}) → 同上(オブジェクト形式)
+
+▼ 制御メソッド
+e.stopPropagation()            → これ以降の伝搬を止める
+e.stopImmediatePropagation()   → 同要素の他リスナも止める
+e.preventDefault()             → ブラウザ標準動作キャンセル
+                                 (リンク遷移/フォーム送信など)</pre>
+
+    <div class="info-box info">
+      📌 <strong>イベント委譲(delegation)</strong><br>
+      bubbleを利用した実装パターン。子要素1個ずつにリスナを付ける代わりに、親に1個だけ付けて<code>e.target</code>で発生元を判定する。動的に追加された子要素にも効く・メモリ効率も良い。
+    </div>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 3層ネストでフェーズ確認</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab7Setup()">①リスナ準備(全層)</button>
+          <button class="demo-btn secondary" onclick="lab7Stop()">②真ん中でstop</button>
+          <button class="demo-btn secondary" onclick="lab7Reset()">リセット</button>
+        </div>
+        <div class="event-tree">
+          <div id="lab7-outer" class="ev-outer">外側 (outer)
+            <div id="lab7-middle" class="ev-middle">真ん中 (middle)
+              <div id="lab7-inner" class="ev-inner">⚡ ここをタップ (inner)</div>
+            </div>
+          </div>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">準備状態</div>
+            <div class="ba-content" id="lab7-before">(未準備)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">最後の発火順</div>
+            <div class="ba-content" id="lab7-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab7-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「①リスナ準備」「②真ん中でstop」「リセット」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">let</span> lab7Order = [];
+<span class="kw">let</span> lab7StopAtMiddle = <span class="kw">false</span>;
+
+<span class="cm">// 「①リスナ準備」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab7Setup</span>() {
+  <span class="fn">lab7Reset</span>();
+  <span class="kw">const</span> outer  = document.<span class="fn">getElementById</span>(<span class="str">'lab7-outer'</span>);
+  <span class="kw">const</span> middle = document.<span class="fn">getElementById</span>(<span class="str">'lab7-middle'</span>);
+  <span class="kw">const</span> inner  = document.<span class="fn">getElementById</span>(<span class="str">'lab7-inner'</span>);
+
+  <span class="cm">// capture フェーズ(第3引数 true)</span>
+  outer.<span class="fn">addEventListener</span>(<span class="str">'click'</span>, () =&gt; lab7Order.<span class="fn">push</span>(<span class="str">'outer:CAPTURE'</span>), <span class="kw">true</span>);
+  middle.<span class="fn">addEventListener</span>(<span class="str">'click'</span>, (e) =&gt; {
+    lab7Order.<span class="fn">push</span>(<span class="str">'middle:CAPTURE'</span>);
+    <span class="kw">if</span> (lab7StopAtMiddle) e.<span class="fn">stopPropagation</span>();
+  }, <span class="kw">true</span>);
+
+  <span class="cm">// target & bubble フェーズ</span>
+  inner.<span class="fn">addEventListener</span>(<span class="str">'click'</span>, () =&gt; lab7Order.<span class="fn">push</span>(<span class="str">'inner:TARGET'</span>));
+  middle.<span class="fn">addEventListener</span>(<span class="str">'click'</span>, () =&gt; lab7Order.<span class="fn">push</span>(<span class="str">'middle:BUBBLE'</span>));
+  outer.<span class="fn">addEventListener</span>(<span class="str">'click'</span>, () =&gt; {
+    lab7Order.<span class="fn">push</span>(<span class="str">'outer:BUBBLE'</span>);
+    document.<span class="fn">getElementById</span>(<span class="str">'lab7-after'</span>).textContent = lab7Order.<span class="fn">join</span>(<span class="str">'\n→ '</span>);
+    console.<span class="fn">log</span>(<span class="str">'発火順: '</span> + lab7Order.<span class="fn">join</span>(<span class="str">' → '</span>));
+    lab7Order = [];
+  });
+
+  document.<span class="fn">getElementById</span>(<span class="str">'lab7-before'</span>).textContent = <span class="str">'準備完了 (innerをタップ)'</span>;
+  console.<span class="fn">log</span>(<span class="str">'リスナ登録完了 — innerをタップしてください'</span>);
+}
+
+<span class="cm">// 「②真ん中でstop」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab7Stop</span>() {
+  lab7StopAtMiddle = <span class="kw">true</span>;
+  console.<span class="fn">log</span>(<span class="str">'middle でcaptureフェーズで stopPropagation する設定にしました'</span>);
+}
+
+<span class="cm">// 「リセット」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab7Reset</span>() {
+  lab7StopAtMiddle = <span class="kw">false</span>;
+  lab7Order = [];
+  document.<span class="fn">getElementById</span>(<span class="str">'lab7-after'</span>).textContent = <span class="str">'(未実行)'</span>;
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 08: AbortController ========== -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>AbortController — 複数リスナの一括解除</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>addEventListener('click', fn, { signal })</code>でsignalを渡しておくと、<code>controller.abort()</code>1回で<strong>全部のリスナを一度に解除</strong>できる。<code>fetch</code>のキャンセルも同じAPIで可能。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>SPAコンポーネント破棄時に、登録した10個のリスナを<code>abort()</code>1発で解除</li>
+        <li>長時間の<code>fetch</code>を5秒でタイムアウト(<code>AbortSignal.timeout(5000)</code>)</li>
+        <li>OutSystemsのOnDestroyイベントで、当該画面で登録したリスナをすべて確実に外す</li>
+      </ol>
+    </div>
+    <pre class="ascii-art">▼ Before: 個別解除でハンドラ参照を全部覚える必要あり
+const h1 = (e) =&gt; ...;
+const h2 = (e) =&gt; ...;
+const h3 = (e) =&gt; ...;
+elA.addEventListener('click', h1);
+elB.addEventListener('input', h2);
+elC.addEventListener('scroll', h3);
+                  ↓ 解除時
+elA.removeEventListener('click', h1);
+elB.removeEventListener('input', h2);
+elC.removeEventListener('scroll', h3);
+
+▼ After: AbortControllerで一括
+const ctrl = new AbortController();
+const sig = ctrl.signal;
+elA.addEventListener('click',  () =&gt; ..., { signal: sig });
+elB.addEventListener('input',  () =&gt; ..., { signal: sig });
+elC.addEventListener('scroll', () =&gt; ..., { signal: sig });
+                  ↓ 解除時
+ctrl.abort();   ← これ1行で全解除
+
+▼ fetch にも同じ signal が使える
+fetch('/api', { signal: sig });   ← abort()でキャンセル</pre>
+
+    <div class="info-box ok">
+      ✓ <strong>OutSystems文脈での旨味</strong><br>
+      Wijmoの<code>FlexGrid.beginningEdit</code>等を複数登録した画面で、画面遷移時に確実に全部外したい時に強力。<br>
+      OnDestroy内で<code>controller.abort()</code>1行で済むので、ハンドラ参照管理から解放される。
+    </div>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 5個のリスナを1発で解除</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab8Setup()">①5個リスナ登録</button>
+          <button class="demo-btn secondary" onclick="lab8Abort()">②abort()1発解除</button>
+        </div>
+        <div id="lab8-area" style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0;">
+          <button class="demo-btn secondary lab8-btn" data-id="A">A</button>
+          <button class="demo-btn secondary lab8-btn" data-id="B">B</button>
+          <button class="demo-btn secondary lab8-btn" data-id="C">C</button>
+          <button class="demo-btn secondary lab8-btn" data-id="D">D</button>
+          <button class="demo-btn secondary lab8-btn" data-id="E">E</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">登録状態</div>
+            <div class="ba-content" id="lab8-before">未登録</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">クリック反応</div>
+            <div class="ba-content" id="lab8-after">(未実行)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab8-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「①5個リスナ登録」「②abort()解除」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">let</span> lab8Ctrl = <span class="kw">null</span>;
+
+<span class="cm">// 「①5個リスナ登録」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab8Setup</span>() {
+  lab8Ctrl = <span class="kw">new</span> <span class="fn">AbortController</span>();
+  <span class="kw">const</span> sig = lab8Ctrl.signal;
+
+  document.<span class="fn">querySelectorAll</span>(<span class="str">'.lab8-btn'</span>).<span class="fn">forEach</span>(btn =&gt; {
+    btn.<span class="fn">addEventListener</span>(<span class="str">'click'</span>, () =&gt; {
+      <span class="kw">const</span> id = btn.dataset.id;
+      document.<span class="fn">getElementById</span>(<span class="str">'lab8-after'</span>).textContent = <span class="str">`${id} がクリックされた`</span>;
+      console.<span class="fn">log</span>(<span class="str">`btn ${id} click`</span>);
+    }, { signal: sig });   <span class="cm">// ← signalを渡しておく</span>
+  });
+
+  document.<span class="fn">getElementById</span>(<span class="str">'lab8-before'</span>).textContent = <span class="str">'5個全て登録中'</span>;
+  console.<span class="fn">log</span>(<span class="str">'5個のリスナ登録(全て同じsignal)'</span>);
+}
+
+<span class="cm">// 「②abort()1発解除」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab8Abort</span>() {
+  <span class="kw">if</span> (!lab8Ctrl) {
+    console.<span class="fn">log</span>(<span class="str">'まず①で登録してください'</span>);
+    <span class="kw">return</span>;
+  }
+  lab8Ctrl.<span class="fn">abort</span>();   <span class="cm">// ← 1行で5個全部解除</span>
+  document.<span class="fn">getElementById</span>(<span class="str">'lab8-before'</span>).textContent = <span class="str">'全解除済(タップしても無反応)'</span>;
+  console.<span class="fn">log</span>(<span class="str">'controller.abort() — 5個まとめて解除'</span>);
+  lab8Ctrl = <span class="kw">null</span>;
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 09: MutationObserver ========== -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>MutationObserver — DOM変更を非同期監視</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      要素の追加・削除・属性変化を非同期で検知。サードパーティ製のDOM変更を監視したり、無限スクロールでの画像遅延読込を補助したりに使える。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>外部スクリプトが挿入する広告タグの出現を検知してログ送信</li>
+        <li>OutSystems画面で動的に挿入されるエラーメッセージを監視して画面読み上げ補助</li>
+        <li>WijmoのDataGridがレンダリングしたDOMを後追いで装飾</li>
+      </ol>
+    </div>
+    <pre class="ascii-art">▼ MutationObserver の構成
+
+const observer = new MutationObserver((mutations) =&gt; {
+  for (const m of mutations) {
+    m.type            → 'childList' | 'attributes' | 'characterData'
+    m.addedNodes      → 追加された Node のリスト
+    m.removedNodes    → 削除された Node のリスト
+    m.attributeName   → 変化した属性名 (type='attributes'時)
+  }
+});
+
+▼ 監視オプション(observe の第2引数)
+{
+  childList: true,        ← 子要素の追加/削除
+  attributes: true,       ← 属性の変化
+  characterData: true,    ← テキスト内容の変化
+  subtree: true,          ← 子孫すべて
+  attributeOldValue: true ← 変更前の値も取得
+}
+
+observer.observe(targetEl, options);
+observer.disconnect();    ← 監視停止</pre>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: DOMをいじって検知ログを見る</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab9Start()">①監視開始</button>
+          <button class="demo-btn" onclick="lab9AddChild()">②子要素追加</button>
+          <button class="demo-btn" onclick="lab9ChangeAttr()">③属性変更</button>
+          <button class="demo-btn secondary" onclick="lab9Stop()">監視停止</button>
+        </div>
+        <div id="lab9-target" data-status="idle" class="dom-stage" style="min-height:80px;">
+          <span style="color:var(--text-dim);font-size:.78rem;">監視対象 (data-status="idle")</span>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">監視状態</div>
+            <div class="ba-content" id="lab9-before">停止中</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">直近の変更</div>
+            <div class="ba-content" id="lab9-after">(未検知)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab9-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「①監視開始」「②子要素追加」「③属性変更」「監視停止」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">let</span> lab9Obs = <span class="kw">null</span>;
+
+<span class="cm">// 「①監視開始」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab9Start</span>() {
+  <span class="kw">const</span> target = document.<span class="fn">getElementById</span>(<span class="str">'lab9-target'</span>);
+  lab9Obs = <span class="kw">new</span> <span class="fn">MutationObserver</span>((mutations) =&gt; {
+    <span class="kw">for</span> (<span class="kw">const</span> m <span class="kw">of</span> mutations) {
+      <span class="kw">const</span> msg = <span class="str">`type=${m.type}`</span> +
+        (m.type === <span class="str">'attributes'</span> ? <span class="str">` attr=${m.attributeName}`</span> : <span class="str">''</span>) +
+        (m.addedNodes.length ? <span class="str">` +${m.addedNodes.length}件追加`</span> : <span class="str">''</span>) +
+        (m.removedNodes.length ? <span class="str">` -${m.removedNodes.length}件削除`</span> : <span class="str">''</span>);
+      document.<span class="fn">getElementById</span>(<span class="str">'lab9-after'</span>).textContent = msg;
+      console.<span class="fn">log</span>(<span class="str">`検知: ${msg}`</span>);
+    }
+  });
+  lab9Obs.<span class="fn">observe</span>(target, { childList: <span class="kw">true</span>, attributes: <span class="kw">true</span>, subtree: <span class="kw">true</span> });
+  document.<span class="fn">getElementById</span>(<span class="str">'lab9-before'</span>).textContent = <span class="str">'監視中'</span>;
+}
+
+<span class="cm">// 「②子要素追加」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab9AddChild</span>() {
+  <span class="kw">const</span> target = document.<span class="fn">getElementById</span>(<span class="str">'lab9-target'</span>);
+  <span class="kw">const</span> el = document.<span class="fn">createElement</span>(<span class="str">'div'</span>);
+  el.className = <span class="str">'dyn-item'</span>;
+  el.textContent = <span class="str">`Child @ ${new Date().toLocaleTimeString()}`</span>;
+  target.<span class="fn">appendChild</span>(el);
+}
+
+<span class="cm">// 「③属性変更」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab9ChangeAttr</span>() {
+  <span class="kw">const</span> target = document.<span class="fn">getElementById</span>(<span class="str">'lab9-target'</span>);
+  <span class="kw">const</span> next = target.dataset.status === <span class="str">'idle'</span> ? <span class="str">'busy'</span> : <span class="str">'idle'</span>;
+  target.dataset.status = next;
+}
+
+<span class="cm">// 「監視停止」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab9Stop</span>() {
+  <span class="kw">if</span> (lab9Obs) {
+    lab9Obs.<span class="fn">disconnect</span>();
+    lab9Obs = <span class="kw">null</span>;
+    document.<span class="fn">getElementById</span>(<span class="str">'lab9-before'</span>).textContent = <span class="str">'停止中'</span>;
+    console.<span class="fn">log</span>(<span class="str">'observer.disconnect()'</span>);
+  }
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 10: IntersectionObserver ========== -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>IntersectionObserver — 表示領域に入ったか監視</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      要素がビューポート(または親)に入った/出たを非同期で検知。<code>scroll</code>イベントでの位置計算より圧倒的に高速で、無限スクロール・遅延ロード・lazy画像の定番。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>SNSの無限スクロール: 末尾の「ロード用要素」が見えたら次ページfetch</li>
+        <li><code>img</code>がビューポートに入った瞬間に<code>src</code>を設定して遅延ロード</li>
+        <li>サイドバーのactive項目を、本文のスクロール位置と連動させる(本ファイルのサイドバーも同じ仕組み)</li>
+      </ol>
+    </div>
+    <pre class="ascii-art">▼ 仕組み
+
+ビューポート(画面)
+┌──────────────────┐
+│                  │
+│   ┌─ 要素A ─┐    │  ← isIntersecting: true
+│   │        │    │     intersectionRatio: 1.0
+│   └────────┘    │
+└──────────────────┘
+   ┌─ 要素B ─┐         ← まだ画面外
+   │        │            isIntersecting: false
+   └────────┘
+
+▼ コード
+const io = new IntersectionObserver((entries) =&gt; {
+  for (const e of entries) {
+    if (e.isIntersecting) {
+      // 要素 e.target が画面に入った
+    }
+  }
+}, { rootMargin: '0px', threshold: 0.5 });
+
+io.observe(targetEl);   ← 監視対象登録
+io.unobserve(targetEl); ← 個別解除
+io.disconnect();        ← 全解除
+
+▼ オプション
+threshold: 0      → 1pxでも入ったら発火
+threshold: 0.5    → 50%入ったら発火
+threshold: [0,0.5,1] → 複数しきい値
+rootMargin: '50px' → ビューポート外側50pxの仮想枠で判定</pre>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 下スクロールして要素が現れた瞬間にログ</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab10Start()">①監視開始</button>
+          <button class="demo-btn secondary" onclick="lab10Reset()">リセット</button>
+        </div>
+        <div class="scroll-track" id="lab10-track">
+          <div class="io-item" data-id="1">📦 ボックス 1</div>
+          <div class="io-item" data-id="2">📦 ボックス 2</div>
+          <div class="io-item" data-id="3">📦 ボックス 3</div>
+          <div class="io-item" data-id="4">📦 ボックス 4</div>
+          <div class="io-item" data-id="5">📦 ボックス 5</div>
+          <div class="io-item" data-id="6">📦 ボックス 6</div>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">監視状態</div>
+            <div class="ba-content" id="lab10-before">停止中</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">直近に進入したID</div>
+            <div class="ba-content" id="lab10-after">(未進入)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab10-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「①監視開始」「リセット」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">let</span> lab10Io = <span class="kw">null</span>;
+
+<span class="cm">// 「①監視開始」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab10Start</span>() {
+  <span class="kw">const</span> track = document.<span class="fn">getElementById</span>(<span class="str">'lab10-track'</span>);
+
+  lab10Io = <span class="kw">new</span> <span class="fn">IntersectionObserver</span>((entries) =&gt; {
+    <span class="kw">for</span> (<span class="kw">const</span> e <span class="kw">of</span> entries) {
+      <span class="kw">if</span> (e.isIntersecting) {
+        e.target.classList.<span class="fn">add</span>(<span class="str">'entered'</span>);
+        <span class="kw">const</span> id = e.target.dataset.id;
+        document.<span class="fn">getElementById</span>(<span class="str">'lab10-after'</span>).textContent = <span class="str">`ID=${id} 進入`</span>;
+        console.<span class="fn">log</span>(<span class="str">`★ ID=${id} ratio=${e.intersectionRatio.toFixed(2)}`</span>);
+      }
+    }
+  }, {
+    root: track,         <span class="cm">// 親要素を仮想ビューポート扱い</span>
+    threshold: <span class="num">0.5</span>       <span class="cm">// 50%見えたら発火</span>
+  });
+
+  track.<span class="fn">querySelectorAll</span>(<span class="str">'.io-item'</span>).<span class="fn">forEach</span>(el =&gt; lab10Io.<span class="fn">observe</span>(el));
+  document.<span class="fn">getElementById</span>(<span class="str">'lab10-before'</span>).textContent = <span class="str">'監視中(ボックス内をスクロール)'</span>;
+  console.<span class="fn">log</span>(<span class="str">'IntersectionObserver開始'</span>);
+}
+
+<span class="cm">// 「リセット」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab10Reset</span>() {
+  <span class="kw">if</span> (lab10Io) lab10Io.<span class="fn">disconnect</span>();
+  lab10Io = <span class="kw">null</span>;
+  document.<span class="fn">querySelectorAll</span>(<span class="str">'#lab10-track .io-item'</span>).<span class="fn">forEach</span>(el =&gt; el.classList.<span class="fn">remove</span>(<span class="str">'entered'</span>));
+  document.<span class="fn">getElementById</span>(<span class="str">'lab10-before'</span>).textContent = <span class="str">'停止中'</span>;
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 11: ResizeObserver ========== -->
+<div class="lab" id="lab11">
+  <div class="lab-header">
+    <div class="lab-num">11</div>
+    <h3>ResizeObserver — 要素のサイズ変化を監視</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      要素自身のサイズ変化を検知する。<code>window.resize</code>と違い「特定の要素」のサイズに反応するため、Wijmo FlexGridの親コンテナサイズが変わった時に再描画する用途などに最適。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>OutSystems Wijmo FlexGridの親<code>div</code>サイズ変化時に<code>grid.invalidate()</code>呼出</li>
+        <li>レスポンシブグラフライブラリ(Chart.js等)の再描画トリガ</li>
+        <li>テキストエリアの自動リサイズで、行数に応じて他要素の位置を調整</li>
+      </ol>
+    </div>
+    <pre class="ascii-art">▼ window.resize と ResizeObserver の違い
+
+window.addEventListener('resize', ...) → ウィンドウ全体の変化のみ
+                                          要素単位のサイズ変化は検知不能
+                                          (CSSによる変化、コンテナサイズ変化を見逃す)
+
+new ResizeObserver(...)                → 特定要素のサイズ変化を検知
+                                          ウィンドウ操作以外の原因も拾う
+                                          (flex/grid/JS書込み等すべて)
+
+▼ コード
+const ro = new ResizeObserver((entries) =&gt; {
+  for (const e of entries) {
+    e.contentRect.width   ← 内容領域の幅
+    e.contentRect.height  ← 内容領域の高さ
+    e.target              ← 監視対象要素
+  }
+});
+
+ro.observe(targetEl);
+ro.unobserve(targetEl);
+ro.disconnect();</pre>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 右下ハンドルでドラッグリサイズ</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab11Start()">①監視開始</button>
+          <button class="demo-btn secondary" onclick="lab11Stop()">監視停止</button>
+        </div>
+        <div id="lab11-target" class="resize-target">右下角をドラッグしてリサイズしてください</div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">監視状態</div>
+            <div class="ba-content" id="lab11-before">停止中</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">現在のサイズ</div>
+            <div class="ba-content" id="lab11-after">(未計測)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab11-log"></div>
+      </div>
+    </div>
+
+    <div class="info-box warn">
+      ⚠ <strong>iOS Safariでのリサイズ</strong><br>
+      <code>resize: both</code>のドラッグハンドルはiOS Safariでは効きづらい場合がある。その場合はDevToolsでウィンドウサイズを変えるか、<code>style.width</code>を直接JSで変えても検知される。
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「①監視開始」「監視停止」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">let</span> lab11Ro = <span class="kw">null</span>;
+
+<span class="cm">// 「①監視開始」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab11Start</span>() {
+  <span class="kw">const</span> target = document.<span class="fn">getElementById</span>(<span class="str">'lab11-target'</span>);
+
+  lab11Ro = <span class="kw">new</span> <span class="fn">ResizeObserver</span>((entries) =&gt; {
+    <span class="kw">for</span> (<span class="kw">const</span> e <span class="kw">of</span> entries) {
+      <span class="kw">const</span> { width, height } = e.contentRect;
+      <span class="kw">const</span> msg = <span class="str">`${Math.round(width)} x ${Math.round(height)} px`</span>;
+      document.<span class="fn">getElementById</span>(<span class="str">'lab11-after'</span>).textContent = msg;
+      console.<span class="fn">log</span>(<span class="str">`サイズ変化: ${msg}`</span>);
+    }
+  });
+
+  lab11Ro.<span class="fn">observe</span>(target);
+  document.<span class="fn">getElementById</span>(<span class="str">'lab11-before'</span>).textContent = <span class="str">'監視中'</span>;
+  console.<span class="fn">log</span>(<span class="str">'ResizeObserver開始'</span>);
+}
+
+<span class="cm">// 「監視停止」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab11Stop</span>() {
+  <span class="kw">if</span> (lab11Ro) {
+    lab11Ro.<span class="fn">disconnect</span>();
+    lab11Ro = <span class="kw">null</span>;
+    document.<span class="fn">getElementById</span>(<span class="str">'lab11-before'</span>).textContent = <span class="str">'停止中'</span>;
+    console.<span class="fn">log</span>(<span class="str">'observer.disconnect()'</span>);
+  }
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 12: HTML Templates ========== -->
+<div class="lab" id="lab12">
+  <div class="lab-header">
+    <div class="lab-num">12</div>
+    <h3>&lt;template&gt; / cloneNode — 雛形をコピーして大量生成</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>&lt;template&gt;</code>タグはHTML上では描画されない「雛形保管庫」。<code>template.content.cloneNode(true)</code>で複製し、データを差し込んで実DOMに挿入する。createElementを並べるより速くて読みやすい。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>商品カードの雛形を1個書いておき、APIレスポンス分だけ複製してリスト表示</li>
+        <li>OutSystemsのList Widget内で複雑な構造を毎行同じ形で展開する代替実装</li>
+        <li>Custom Element内のShadow DOM初期化用の雛形(Lab 14と組合せ)</li>
+      </ol>
+    </div>
+    <pre class="ascii-art">▼ HTML側
+&lt;template id="card-tmpl"&gt;
+  &lt;div class="card"&gt;
+    &lt;h4 class="title"&gt;&lt;/h4&gt;
+    &lt;p class="body"&gt;&lt;/p&gt;
+  &lt;/div&gt;
+&lt;/template&gt;
+
+▼ JS側
+const tmpl = document.getElementById('card-tmpl');
+data.forEach(item =&gt; {
+  const clone = tmpl.content.cloneNode(true);  ← 深いコピー
+  clone.querySelector('.title').textContent = item.title;
+  clone.querySelector('.body').textContent  = item.body;
+  parent.appendChild(clone);
+});
+
+▼ cloneNode(true) vs cloneNode(false)
+true  → 子孫含めて全部コピー (DocumentFragment)
+false → 自身のタグ・属性のみ (子は空)</pre>
+
+    <div class="info-box info">
+      📌 <strong>DocumentFragment とは?</strong><br>
+      <code>template.content</code>の正体は<code>DocumentFragment</code>=メモリ上の軽量DOM。<code>appendChild</code>すると中身だけがツリーに移される(包み紙は消える)。複数要素を1回のDOM挿入でまとめて入れられるので高速。
+    </div>
+
+    <template id="lab12-tmpl">
+      <div class="dyn-item" style="border-left-color:var(--accent3);">
+        <span class="tag-chip"></span>
+        <strong class="t-title"></strong>
+        <span class="t-body" style="color:var(--text-dim);"></span>
+      </div>
+    </template>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: テンプレを複製してリスト生成</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab12Render()">①テンプレ→3件生成</button>
+          <button class="demo-btn secondary" onclick="lab12Clear()">リセット</button>
+        </div>
+        <div class="dom-stage" id="lab12-stage">
+          <span style="color:var(--text-dim);font-size:.78rem;">(template から複製された要素がここに)</span>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">テンプレ</div>
+            <div class="ba-content" id="lab12-before">&lt;template&gt; 内に雛形(非表示)</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">複製数</div>
+            <div class="ba-content" id="lab12-after">0</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab12-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「①テンプレ→3件生成」「リセット」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「①テンプレ→3件生成」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab12Render</span>() {
+  <span class="kw">const</span> tmpl  = document.<span class="fn">getElementById</span>(<span class="str">'lab12-tmpl'</span>);
+  <span class="kw">const</span> stage = document.<span class="fn">getElementById</span>(<span class="str">'lab12-stage'</span>);
+  stage.innerHTML = <span class="str">''</span>;
+
+  <span class="kw">const</span> data = [
+    { tag: <span class="str">'PRJ'</span>, title: <span class="str">'OutSystems Lab'</span>, body: <span class="str">'#3 DOM/Event'</span> },
+    { tag: <span class="str">'STK'</span>, title: <span class="str">'VB.NET'</span>,        body: <span class="str">'バッチ共通基盤'</span> },
+    { tag: <span class="str">'GoF'</span>, title: <span class="str">'Strategy'</span>,      body: <span class="str">'弁別ドリル進行中'</span> }
+  ];
+
+  data.<span class="fn">forEach</span>(d =&gt; {
+    <span class="kw">const</span> clone = tmpl.content.<span class="fn">cloneNode</span>(<span class="kw">true</span>);   <span class="cm">// 深いコピー</span>
+    clone.<span class="fn">querySelector</span>(<span class="str">'.tag-chip'</span>).textContent = d.tag;
+    clone.<span class="fn">querySelector</span>(<span class="str">'.t-title'</span>).textContent  = d.title;
+    clone.<span class="fn">querySelector</span>(<span class="str">'.t-body'</span>).textContent   = <span class="str">' — '</span> + d.body;
+    stage.<span class="fn">appendChild</span>(clone);
+  });
+
+  document.<span class="fn">getElementById</span>(<span class="str">'lab12-after'</span>).textContent = <span class="str">`${data.length} 件複製完了`</span>;
+  console.<span class="fn">log</span>(<span class="str">`template.content.cloneNode(true) で ${data.length}件複製`</span>);
+}
+
+<span class="cm">// 「リセット」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab12Clear</span>() {
+  document.<span class="fn">getElementById</span>(<span class="str">'lab12-stage'</span>).innerHTML = <span class="str">''</span>;
+  document.<span class="fn">getElementById</span>(<span class="str">'lab12-after'</span>).textContent = <span class="str">'0'</span>;
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 13: Custom Elements ========== -->
+<div class="lab" id="lab13">
+  <div class="lab-header">
+    <div class="lab-num">13</div>
+    <h3>Custom Elements — 自作タグの定義</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>customElements.define('my-x', クラス)</code>で独自HTMLタグを定義できる。クラスには<code>connectedCallback</code>(挿入時)などのライフサイクルがある。OutSystemsの自作Web Block相当を、フレームワーク無しで作れる。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>社内ライブラリの<code>&lt;company-button&gt;</code>を定義し、HTMLで使い回す</li>
+        <li>OutSystemsで<code>&lt;wijmo-flex&gt;</code>のようなラッパー要素を作って使い方を統一</li>
+        <li>3rdパーティライブラリ(Lit/Stencil)が出力する Web Component を素のHTMLに埋め込む</li>
+      </ol>
+    </div>
+    <pre class="ascii-art">▼ ライフサイクル
+
+class MyCounter extends HTMLElement {
+  constructor() {                ← インスタンス化時(プロパティ初期化のみ)
+    super();
+    this.count = 0;
+  }
+  connectedCallback() {           ← DOMに繋がれた時 (≒ React mount)
+    this.render();
+    this.addEventListener('click', () =&gt; this.inc());
+  }
+  disconnectedCallback() {        ← DOMから外れた時 (≒ React unmount)
+    // クリーンアップ
+  }
+  attributeChangedCallback(name, oldVal, newVal) {  ← 属性変化時
+    if (name === 'label') this.render();
+  }
+  static get observedAttributes() { return ['label']; }  ← 監視対象属性
+
+  inc() { this.count++; this.render(); }
+  render() { this.textContent = `${this.getAttribute('label')}: ${this.count}`; }
+}
+
+customElements.define('my-counter', MyCounter);
+
+▼ HTMLでの使用
+&lt;my-counter label="クリック"&gt;&lt;/my-counter&gt;</pre>
+
+    <div class="info-box info">
+      📌 <strong>タグ名にはハイフン必須</strong><br>
+      Custom Element の名前は必ず <code>my-x</code> のようにハイフンを含む必要がある。これは将来HTML標準に追加される新タグと衝突しないため(<code>&lt;dialog&gt;</code>のような単一語は標準に予約)。
+    </div>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: その場で&lt;my-counter&gt;を定義して使う</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab13Define()">①タグ定義</button>
+          <button class="demo-btn" onclick="lab13Place()">②実体配置</button>
+          <button class="demo-btn secondary" onclick="lab13Remove()">削除</button>
+        </div>
+        <div class="dom-stage" id="lab13-stage" style="text-align:center;font-size:1rem;">
+          <span style="color:var(--text-dim);font-size:.78rem;">(ここに &lt;my-counter&gt; を配置)</span>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">定義状態</div>
+            <div class="ba-content" id="lab13-before">未定義</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">配置数</div>
+            <div class="ba-content" id="lab13-after">0</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab13-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「①タグ定義」「②実体配置」「削除」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">let</span> lab13Defined = <span class="kw">false</span>;
+
+<span class="cm">// 「①タグ定義」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab13Define</span>() {
+  <span class="kw">if</span> (lab13Defined) {
+    console.<span class="fn">log</span>(<span class="str">'既に定義済(再定義不可)'</span>);
+    <span class="kw">return</span>;
+  }
+
+  <span class="kw">class</span> MyCounter <span class="kw">extends</span> HTMLElement {
+    <span class="fn">constructor</span>() {
+      <span class="fn">super</span>();
+      <span class="kw">this</span>.count = <span class="num">0</span>;
+    }
+    <span class="fn">connectedCallback</span>() {
+      <span class="kw">this</span>.<span class="fn">render</span>();
+      <span class="kw">this</span>.<span class="fn">addEventListener</span>(<span class="str">'click'</span>, () =&gt; { <span class="kw">this</span>.count++; <span class="kw">this</span>.<span class="fn">render</span>(); });
+      <span class="kw">this</span>.style.cursor = <span class="str">'pointer'</span>;
+      <span class="kw">this</span>.style.padding = <span class="str">'10px 20px'</span>;
+      <span class="kw">this</span>.style.background = <span class="str">'#005cc5'</span>;
+      <span class="kw">this</span>.style.color = <span class="str">'#fff'</span>;
+      <span class="kw">this</span>.style.borderRadius = <span class="str">'6px'</span>;
+      <span class="kw">this</span>.style.display = <span class="str">'inline-block'</span>;
+      console.<span class="fn">log</span>(<span class="str">'connectedCallback() 発火'</span>);
+    }
+    <span class="fn">disconnectedCallback</span>() {
+      console.<span class="fn">log</span>(<span class="str">'disconnectedCallback() 発火'</span>);
+    }
+    <span class="fn">render</span>() {
+      <span class="kw">const</span> label = <span class="kw">this</span>.<span class="fn">getAttribute</span>(<span class="str">'label'</span>) || <span class="str">'count'</span>;
+      <span class="kw">this</span>.textContent = <span class="str">`${label}: ${this.count}`</span>;
+    }
+  }
+
+  customElements.<span class="fn">define</span>(<span class="str">'my-counter'</span>, MyCounter);
+  lab13Defined = <span class="kw">true</span>;
+  document.<span class="fn">getElementById</span>(<span class="str">'lab13-before'</span>).textContent = <span class="str">'&lt;my-counter&gt; 定義済'</span>;
+  console.<span class="fn">log</span>(<span class="str">'customElements.define("my-counter", MyCounter)'</span>);
+}
+
+<span class="cm">// 「②実体配置」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab13Place</span>() {
+  <span class="kw">const</span> stage = document.<span class="fn">getElementById</span>(<span class="str">'lab13-stage'</span>);
+  <span class="kw">const</span> el = document.<span class="fn">createElement</span>(<span class="str">'my-counter'</span>);
+  el.<span class="fn">setAttribute</span>(<span class="str">'label'</span>, <span class="str">'タップ'</span>);
+  el.style.margin = <span class="str">'4px'</span>;
+  stage.<span class="fn">appendChild</span>(el);
+  document.<span class="fn">getElementById</span>(<span class="str">'lab13-after'</span>).textContent =
+    String(stage.<span class="fn">querySelectorAll</span>(<span class="str">'my-counter'</span>).length);
+}
+
+<span class="cm">// 「削除」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab13Remove</span>() {
+  <span class="kw">const</span> stage = document.<span class="fn">getElementById</span>(<span class="str">'lab13-stage'</span>);
+  <span class="kw">const</span> last  = stage.<span class="fn">querySelector</span>(<span class="str">'my-counter:last-child'</span>);
+  <span class="kw">if</span> (last) last.<span class="fn">remove</span>();   <span class="cm">// → disconnectedCallback 発火</span>
+  document.<span class="fn">getElementById</span>(<span class="str">'lab13-after'</span>).textContent =
+    String(stage.<span class="fn">querySelectorAll</span>(<span class="str">'my-counter'</span>).length);
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Lab 14: Shadow DOM ========== -->
+<div class="lab" id="lab14">
+  <div class="lab-header">
+    <div class="lab-num">14</div>
+    <h3>Shadow DOM — スタイル/DOM のカプセル化</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>el.attachShadow({mode:'open'})</code>で要素内に「外と切り離されたDOM空間」を作る。中のCSSは外に漏れず、外のCSSも(原則)中に効かない。Custom Elementsと組合せてカプセル化されたUIコンポーネントを作る。
+    </p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>埋め込みウィジェットがホストページのCSSに干渉されないようにする</li>
+        <li>サードパーティ製Web Componentが提供する内部構造を隠蔽</li>
+        <li>OutSystems画面に外部UIライブラリを埋め込むときのスタイル衝突防止</li>
+      </ol>
+    </div>
+    <pre class="ascii-art">▼ Shadow DOM 概念
+
+通常のDOM(Light DOM)
+┌──────────────────────────┐
+│ &lt;style&gt; .x { color:red } &lt;/style&gt;   ← 外側のCSS
+│ &lt;div class="x"&gt;赤&lt;/div&gt;              ← 影響を受ける
+│
+│ &lt;my-widget&gt;
+│   ╔ Shadow Root (隔離空間) ╗
+│   ║ &lt;style&gt; .x{color:blue}&lt;/style&gt;║  ← 中だけ青
+│   ║ &lt;div class="x"&gt;青&lt;/div&gt;       ║  ← 外の.xは効かない
+│   ╚════════════════════════╝
+│ &lt;/my-widget&gt;
+└──────────────────────────┘
+
+▼ コード
+const host = document.querySelector('#host');
+const root = host.attachShadow({ mode: 'open' });
+root.innerHTML = `
+  &lt;style&gt; p { color: blue; } &lt;/style&gt;
+  &lt;p&gt;影の中の段落&lt;/p&gt;
+`;
+
+▼ open vs closed
+mode: 'open'   → host.shadowRoot からアクセス可能
+mode: 'closed' → 外部からアクセス不可(完全隠蔽)</pre>
+
+    <div class="info-box info">
+      📌 <strong>「外のCSSは効かない」例外</strong><br>
+      Shadow DOM内には<code>color</code>や<code>font</code>の <strong>継承</strong>は届く。CSS変数(<code>--xxx</code>)も親から引き継がれるため、テーマ色だけ親から渡してスタイルは中で完結、という構成にできる。
+    </div>
+
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 外のCSSが効かないことを確認</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab14Make()">①Shadow DOM生成</button>
+          <button class="demo-btn secondary" onclick="lab14Clear()">リセット</button>
+        </div>
+        <style>
+          /* ホストページ側のCSS — Shadow内には届かない */
+          #lab14-host p.demo-p { color:#cb2431; font-weight:700; }
+        </style>
+        <div class="shadow-host">
+          <p class="demo-p" style="margin:0;">▼ ホスト直下の段落(赤・太字: 外CSSが効く)</p>
+        </div>
+        <div id="lab14-host" class="shadow-host"></div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before">
+            <div class="ba-label">外CSS</div>
+            <div class="ba-content" id="lab14-before">.demo-p { color:red }</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">Shadow内の見た目</div>
+            <div class="ba-content" id="lab14-after">(未生成)</div>
+          </div>
+        </div>
+        <div class="log-area" id="lab14-log"></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — 「①Shadow DOM生成」「リセット」ボタンの中身</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 「①Shadow DOM生成」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab14Make</span>() {
+  <span class="kw">const</span> host = document.<span class="fn">getElementById</span>(<span class="str">'lab14-host'</span>);
+  <span class="kw">if</span> (host.shadowRoot) {
+    console.<span class="fn">log</span>(<span class="str">'既にShadow Root生成済'</span>);
+    <span class="kw">return</span>;
+  }
+
+  <span class="kw">const</span> root = host.<span class="fn">attachShadow</span>({ mode: <span class="str">'open'</span> });
+  root.innerHTML = `
+    &lt;style&gt;
+      p.demo-p {
+        color: #22863a;       /* 緑 */
+        font-style: italic;
+        background: #eef9f1;
+        padding: 8px 12px;
+        border-left: 3px solid #22863a;
+        margin: 0;
+      }
+    &lt;/style&gt;
+    &lt;p class="demo-p"&gt;▼ Shadow内の段落(緑・斜体: 外CSSは届かない)&lt;/p&gt;
+  `;
+
+  document.<span class="fn">getElementById</span>(<span class="str">'lab14-after'</span>).textContent =
+    <span class="str">'緑・斜体(外の赤太字は届かない)'</span>;
+  console.<span class="fn">log</span>(<span class="str">'attachShadow({mode:"open"}) で隔離空間を生成'</span>);
+  console.<span class="fn">log</span>(<span class="str">`host.shadowRoot: ${host.shadowRoot ? '取得可能' : 'null'}`</span>);
+}
+
+<span class="cm">// 「リセット」ボタン</span>
+<span class="kw">function</span> <span class="fn">lab14Clear</span>() {
+  <span class="cm">// shadowRootは1度生成すると外せない仕様なのでページリロード推奨</span>
+  console.<span class="fn">log</span>(<span class="str">'shadowRootは削除不可 — ページリロードで完全リセット'</span>);
+  document.<span class="fn">getElementById</span>(<span class="str">'lab14-after'</span>).textContent = <span class="str">'(リロードでクリア)'</span>;
+}</pre>
+    </div>
+  </div>
+</div>
+
+</div><!-- /.container -->
+
+<!-- 📑 フローティング「目次に戻る」ボタン -->
+<button id="back-to-toc" aria-label="目次に戻る">
+  <span class="arrow">▲</span>
+  <span class="label">目次</span>
+</button>
+
+<script>
+// ============= 共通ユーティリティ =============
+function copyCode(btn) {
+  const block = btn.closest('.code-block');
+  const pre = block.querySelector('pre');
+  if (!pre) return;
+  const text = pre.innerText;
+
+  const showSuccess = () => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  };
+  const showError = (msg) => {
+    btn.textContent = 'NG: ' + msg;
+    btn.style.borderColor = '#cb2431';
+    btn.style.color = '#cb2431';
+    setTimeout(() => {
+      btn.textContent = 'Copy';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+    }, 2500);
+  };
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text)
+      .then(showSuccess)
+      .catch(() => fallbackCopy(text, showSuccess, showError));
+  } else {
+    fallbackCopy(text, showSuccess, showError);
+  }
+}
+
+function fallbackCopy(text, onOk, onErr) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.top = '0';
+  ta.style.left = '0';
+  ta.style.opacity = '0';
+  ta.setAttribute('readonly', '');
+  document.body.appendChild(ta);
+  ta.select();
+  ta.setSelectionRange(0, text.length);
+  try {
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    if (ok) onOk();
+    else onErr('コピー不可');
+  } catch (e) {
+    document.body.removeChild(ta);
+    onErr(e.message.slice(0, 12));
+  }
+}
+function logTo(id, text, cls='') {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const line = document.createElement('div');
+  line.className = 'log-line ' + cls;
+  line.textContent = '> ' + text;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+function clearLog(id) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = '';
+}
+function setBA(labId, before, after) {
+  document.getElementById(labId+'-before').textContent = before;
+  document.getElementById(labId+'-after').textContent = after;
+}
+
+// ============= console.log を log-area へ転送 =============
+// 各ラボのconsole.logを画面に表示するため、ラボ内で console.log を呼ぶたびに
+// そのラボの log-area へ書き込む薄いプロキシをかける
+(function() {
+  const origLog = console.log.bind(console);
+  console.log = function(...args) {
+    origLog(...args);
+    // 直近にクリックされたボタンが属するラボのlog-areaに書き込む
+    const lab = window.__currentLab;
+    if (lab) {
+      const el = document.getElementById(lab + '-log');
+      if (el) {
+        const line = document.createElement('div');
+        line.className = 'log-line';
+        line.textContent = '> ' + args.map(a =>
+          typeof a === 'object' ? JSON.stringify(a) : String(a)
+        ).join(' ');
+        el.appendChild(line);
+        el.scrollTop = el.scrollHeight;
+      }
+    }
+  };
+
+  // ボタンクリック時に「現在のラボ」を識別 (data-target も除外)
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    if (btn.classList.contains('nav-item') || btn.classList.contains('toc-item')) return;
+    const lab = btn.closest('.lab');
+    if (lab) window.__currentLab = lab.id;
+  }, true);
+})();
+
+// ============= Lab 0: Document/Node 基本 =============
+function lab0Inspect() {
+  clearLog('lab0-log');
+  setBA('lab0', 'document object', `title: ${document.title.slice(0,40)}...\nURL末尾: ${document.URL.slice(-30)}\n要素総数: ${document.querySelectorAll('*').length}`);
+  console.log(`title: ${document.title.slice(0, 40)}...`);
+  console.log(`要素総数: ${document.querySelectorAll('*').length}`);
+}
+function lab0Tree() {
+  clearLog('lab0-log');
+  const lab = document.getElementById('lab0');
+  setBA('lab0', `lab0要素を取得`,
+    `tagName: ${lab.tagName}\nchildren数: ${lab.children.length}\nchildNodes数: ${lab.childNodes.length}\nfirstElementChild: ${lab.firstElementChild.tagName}.${lab.firstElementChild.className}`);
+  console.log(`children=${lab.children.length}, childNodes=${lab.childNodes.length} (差はテキストノード)`);
+}
+function lab0Sibling() {
+  clearLog('lab0-log');
+  let el = document.getElementById('lab0').firstElementChild;
+  const path = [];
+  while (el) {
+    path.push(el.tagName + '.' + (el.className || '(無)'));
+    el = el.nextElementSibling;
+  }
+  setBA('lab0', 'firstElementChildから', path.join('\n→ '));
+  console.log(`兄弟チェーン: ${path.length}個`);
+}
+
+// ============= Lab 1: createElement =============
+let lab1Counter = 0;
+function lab1Add() {
+  clearLog('lab1-log');
+  const stage = document.getElementById('lab1-stage');
+  // 初回のみplaceholder削除
+  if (stage.firstElementChild && stage.firstElementChild.tagName === 'SPAN') stage.innerHTML = '';
+  const before = stage.children.length;
+  const el = document.createElement('div');
+  el.className = 'dyn-item';
+  el.textContent = `Item #${++lab1Counter} @ ${new Date().toLocaleTimeString()}`;
+  stage.appendChild(el);
+  setBA('lab1', `children: ${before}件`, `children: ${stage.children.length}件 (末尾追加)`);
+  console.log(`createElement → appendChild: 末尾に追加`);
+}
+function lab1Prepend() {
+  clearLog('lab1-log');
+  const stage = document.getElementById('lab1-stage');
+  if (stage.firstElementChild && stage.firstElementChild.tagName === 'SPAN') stage.innerHTML = '';
+  const before = stage.children.length;
+  const el = document.createElement('div');
+  el.className = 'dyn-item';
+  el.style.borderLeftColor = 'var(--accent2)';
+  el.textContent = `★ Top #${++lab1Counter}`;
+  stage.prepend(el);
+  setBA('lab1', `children: ${before}件`, `children: ${stage.children.length}件 (先頭追加)`);
+  console.log(`prepend → 先頭に追加`);
+}
+function lab1Clear() {
+  clearLog('lab1-log');
+  const stage = document.getElementById('lab1-stage');
+  const before = stage.children.length;
+  Array.from(stage.children).forEach(c => c.remove());
+  setBA('lab1', `children: ${before}件`, `children: 0件`);
+  console.log(`${before}件すべて remove() で削除`);
+}
+
+// ============= Lab 2: classList =============
+function lab2Toggle(cls) {
+  clearLog('lab2-log');
+  const el = document.getElementById('lab2-target');
+  const before = el.className || '(空)';
+  const isOn = el.classList.toggle(cls);
+  setBA('lab2', `className: "${before}"`, `className: "${el.className || '(空)'}"\n.${cls}: ${isOn ? '付与' : '除去'}`);
+  console.log(`toggle('${cls}') → ${isOn ? '付与' : '除去'}`);
+}
+function lab2Reset() {
+  clearLog('lab2-log');
+  const el = document.getElementById('lab2-target');
+  const before = el.className || '(空)';
+  el.className = '';
+  setBA('lab2', `className: "${before}"`, `className: "(空)"`);
+  console.log(`全クラス除去`);
+}
+
+// ============= Lab 3: querySelector =============
+function lab3Find() {
+  clearLog('lab3-log');
+  const sel = document.getElementById('lab3-input').value;
+  try {
+    const first = document.querySelector(sel);
+    const all = document.querySelectorAll(sel);
+    setBA('lab3', `"${sel}"`,
+      `querySelector: ${first ? first.tagName : 'null'}\nquerySelectorAll: ${all.length}件`);
+    console.log(`セレクタ "${sel}" → ${all.length}件マッチ`);
+  } catch (e) {
+    setBA('lab3', `"${sel}"`, `構文エラー`);
+    console.log(`構文エラー: ${e.message}`);
+  }
+}
+function lab3Closest() {
+  clearLog('lab3-log');
+  const el = document.getElementById('lab3-input');
+  const ancestor = el.closest('.lab');
+  setBA('lab3', `input要素`, `closest('.lab') → id="${ancestor.id}"`);
+  console.log(`closest('.lab') = ${ancestor.tagName}#${ancestor.id}`);
+}
+
+// ============= Lab 4: attributes/dataset =============
+function lab4Read() {
+  clearLog('lab4-log');
+  const el = document.getElementById('lab4-target');
+  setBA('lab4', `data-user-id 属性 (HTML)`,
+    `dataset.userId: "${el.dataset.userId}"\ndataset.action: "${el.dataset.action}"`);
+  console.log(`dataset.userId="${el.dataset.userId}", dataset.action="${el.dataset.action}"`);
+}
+function lab4Write() {
+  clearLog('lab4-log');
+  const el = document.getElementById('lab4-target');
+  const before = `data-user-id="${el.dataset.userId}"`;
+  el.dataset.userId = String(Math.floor(Math.random() * 1000));
+  el.dataset.timestamp = String(Date.now());
+  el.textContent = `対象ボタン (data-user-id=${el.dataset.userId})`;
+  setBA('lab4', before,
+    `data-user-id="${el.dataset.userId}"\ndata-timestamp="${el.dataset.timestamp}"`);
+  console.log(`書込完了: userId=${el.dataset.userId}`);
+}
+function lab4Toggle() {
+  clearLog('lab4-log');
+  const el = document.getElementById('lab4-target');
+  if (el.hasAttribute('disabled')) {
+    el.removeAttribute('disabled');
+    setBA('lab4', 'disabled 有り', 'disabled 無し');
+    console.log('removeAttribute("disabled")');
+  } else {
+    el.setAttribute('disabled', '');
+    setBA('lab4', 'disabled 無し', 'disabled 有り');
+    console.log('setAttribute("disabled","")');
+  }
+}
+
+// ============= Lab 5: addEventListener =============
+let lab5Count = 0;
+const lab5Handler = () => {
+  lab5Count++;
+  document.getElementById('lab5-after').textContent = lab5Count;
+  console.log(`click! count=${lab5Count}`);
+};
+function lab5Add() {
+  clearLog('lab5-log');
+  const btn = document.getElementById('lab5-target');
+  btn.addEventListener('click', lab5Handler);
+  document.getElementById('lab5-before').textContent = '登録中(タップで反応)';
+  console.log('addEventListener 完了 - lab5Handler を click に登録');
+}
+function lab5Remove() {
+  clearLog('lab5-log');
+  const btn = document.getElementById('lab5-target');
+  btn.removeEventListener('click', lab5Handler);
+  document.getElementById('lab5-before').textContent = '解除済(タップしても反応なし)';
+  console.log('removeEventListener 完了 - 同じ関数参照で解除');
+}
+function lab5Once() {
+  clearLog('lab5-log');
+  const btn = document.getElementById('lab5-target');
+  btn.addEventListener('click', () => {
+    console.log('★ 1回だけ反応(自動解除)');
+  }, { once: true });
+  console.log('once: true で登録 - 初回後に自動remove');
+}
+
+// ============= Lab 6: CustomEvent =============
+function lab6Setup() {
+  clearLog('lab6-log');
+  const el = document.getElementById('lab6-input');
+  el.addEventListener('user:login', (e) => {
+    document.getElementById('lab6-after').textContent =
+      `name: ${e.detail.name}\nat: ${e.detail.at}`;
+    console.log(`受信: name=${e.detail.name}, at=${e.detail.at}`);
+  });
+  document.getElementById('lab6-before').textContent = 'リスナ登録済 user:login';
+  console.log('addEventListener("user:login", ...) 完了');
+}
+function lab6Fire() {
+  clearLog('lab6-log');
+  const el = document.getElementById('lab6-input');
+  const name = el.value || '(空)';
+  const ev = new CustomEvent('user:login', {
+    detail: { name: name, at: new Date().toLocaleTimeString() },
+    bubbles: true
+  });
+  el.dispatchEvent(ev);
+  console.log('dispatchEvent(user:login) 発火');
+}
+
+// ============= Lab 7: イベント伝搬 =============
+let lab7Order = [];
+let lab7StopAtMiddle = false;
+let lab7Initialized = false;
+function lab7Setup() {
+  clearLog('lab7-log');
+  if (lab7Initialized) {
+    console.log('既にリスナ登録済 - innerをタップしてください');
+    document.getElementById('lab7-before').textContent = '登録済(再タップでもOK)';
+    return;
+  }
+  const outer = document.getElementById('lab7-outer');
+  const middle = document.getElementById('lab7-middle');
+  const inner = document.getElementById('lab7-inner');
+
+  outer.addEventListener('click', () => lab7Order.push('outer:CAPTURE'), true);
+  middle.addEventListener('click', (e) => {
+    lab7Order.push('middle:CAPTURE');
+    if (lab7StopAtMiddle) e.stopPropagation();
+  }, true);
+  inner.addEventListener('click', () => lab7Order.push('inner:TARGET'));
+  middle.addEventListener('click', () => lab7Order.push('middle:BUBBLE'));
+  outer.addEventListener('click', () => {
+    lab7Order.push('outer:BUBBLE');
+    document.getElementById('lab7-after').textContent = lab7Order.join('\n→ ');
+    console.log('発火順: ' + lab7Order.join(' → '));
+    lab7Order = [];
+  });
+  lab7Initialized = true;
+  document.getElementById('lab7-before').textContent = '準備完了 (innerをタップ)';
+  console.log('全リスナ登録完了 - innerをタップしてください');
+}
+function lab7Stop() {
+  clearLog('lab7-log');
+  lab7StopAtMiddle = !lab7StopAtMiddle;
+  console.log(lab7StopAtMiddle
+    ? 'middle CAPTURE で stopPropagation する設定 ON'
+    : 'stopPropagation OFF (通常伝搬)');
+}
+function lab7Reset() {
+  clearLog('lab7-log');
+  lab7StopAtMiddle = false;
+  lab7Order = [];
+  document.getElementById('lab7-after').textContent = '(未実行)';
+  console.log('順序記録リセット - innerをタップしてください');
+}
+
+// ============= Lab 8: AbortController =============
+let lab8Ctrl = null;
+function lab8Setup() {
+  clearLog('lab8-log');
+  if (lab8Ctrl) {
+    console.log('既に登録中 - まず解除してください');
+    return;
+  }
+  lab8Ctrl = new AbortController();
+  const sig = lab8Ctrl.signal;
+  document.querySelectorAll('.lab8-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      document.getElementById('lab8-after').textContent = `${id} がクリックされた`;
+      console.log(`btn ${id} click`);
+    }, { signal: sig });
+  });
+  document.getElementById('lab8-before').textContent = '5個全て登録中';
+  console.log('5個のリスナ登録(全て同じsignal)');
+}
+function lab8Abort() {
+  clearLog('lab8-log');
+  if (!lab8Ctrl) {
+    console.log('まず①で登録してください');
+    return;
+  }
+  lab8Ctrl.abort();
+  lab8Ctrl = null;
+  document.getElementById('lab8-before').textContent = '全解除済(タップしても無反応)';
+  console.log('controller.abort() — 5個まとめて解除完了');
+}
+
+// ============= Lab 9: MutationObserver =============
+let lab9Obs = null;
+function lab9Start() {
+  clearLog('lab9-log');
+  if (lab9Obs) { console.log('既に監視中'); return; }
+  const target = document.getElementById('lab9-target');
+  lab9Obs = new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      const msg = `type=${m.type}` +
+        (m.type === 'attributes' ? ` attr=${m.attributeName}` : '') +
+        (m.addedNodes.length ? ` +${m.addedNodes.length}件追加` : '') +
+        (m.removedNodes.length ? ` -${m.removedNodes.length}件削除` : '');
+      document.getElementById('lab9-after').textContent = msg;
+      console.log(`検知: ${msg}`);
+    }
+  });
+  lab9Obs.observe(target, { childList: true, attributes: true, subtree: true });
+  document.getElementById('lab9-before').textContent = '監視中';
+  console.log('MutationObserver開始');
+}
+function lab9AddChild() {
+  clearLog('lab9-log');
+  const target = document.getElementById('lab9-target');
+  // placeholder除去
+  const ph = target.querySelector('span');
+  if (ph) ph.remove();
+  const el = document.createElement('div');
+  el.className = 'dyn-item';
+  el.textContent = `Child @ ${new Date().toLocaleTimeString()}`;
+  target.appendChild(el);
+}
+function lab9ChangeAttr() {
+  clearLog('lab9-log');
+  const target = document.getElementById('lab9-target');
+  const next = target.dataset.status === 'idle' ? 'busy' : 'idle';
+  target.dataset.status = next;
+}
+function lab9Stop() {
+  clearLog('lab9-log');
+  if (lab9Obs) {
+    lab9Obs.disconnect();
+    lab9Obs = null;
+    document.getElementById('lab9-before').textContent = '停止中';
+    console.log('observer.disconnect()');
+  }
+}
+
+// ============= Lab 10: IntersectionObserver =============
+let lab10Io = null;
+function lab10Start() {
+  clearLog('lab10-log');
+  if (lab10Io) { console.log('既に監視中'); return; }
+  const track = document.getElementById('lab10-track');
+  lab10Io = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (e.isIntersecting) {
+        e.target.classList.add('entered');
+        const id = e.target.dataset.id;
+        document.getElementById('lab10-after').textContent = `ID=${id} 進入 ratio=${e.intersectionRatio.toFixed(2)}`;
+        console.log(`★ ID=${id} ratio=${e.intersectionRatio.toFixed(2)}`);
+      }
+    }
+  }, { root: track, threshold: 0.5 });
+  track.querySelectorAll('.io-item').forEach(el => lab10Io.observe(el));
+  document.getElementById('lab10-before').textContent = '監視中(ボックス内をスクロール)';
+  console.log('IntersectionObserver開始 - スクロールしてください');
+}
+function lab10Reset() {
+  clearLog('lab10-log');
+  if (lab10Io) lab10Io.disconnect();
+  lab10Io = null;
+  document.querySelectorAll('#lab10-track .io-item').forEach(el => el.classList.remove('entered'));
+  document.getElementById('lab10-before').textContent = '停止中';
+  document.getElementById('lab10-after').textContent = '(未進入)';
+  console.log('リセット完了');
+}
+
+// ============= Lab 11: ResizeObserver =============
+let lab11Ro = null;
+function lab11Start() {
+  clearLog('lab11-log');
+  if (lab11Ro) { console.log('既に監視中'); return; }
+  const target = document.getElementById('lab11-target');
+  lab11Ro = new ResizeObserver((entries) => {
+    for (const e of entries) {
+      const { width, height } = e.contentRect;
+      const msg = `${Math.round(width)} x ${Math.round(height)} px`;
+      document.getElementById('lab11-after').textContent = msg;
+      console.log(`サイズ変化: ${msg}`);
+    }
+  });
+  lab11Ro.observe(target);
+  document.getElementById('lab11-before').textContent = '監視中(右下角ドラッグ)';
+  console.log('ResizeObserver開始');
+}
+function lab11Stop() {
+  clearLog('lab11-log');
+  if (lab11Ro) {
+    lab11Ro.disconnect();
+    lab11Ro = null;
+    document.getElementById('lab11-before').textContent = '停止中';
+    console.log('observer.disconnect()');
+  }
+}
+
+// ============= Lab 12: HTML Templates =============
+function lab12Render() {
+  clearLog('lab12-log');
+  const tmpl = document.getElementById('lab12-tmpl');
+  const stage = document.getElementById('lab12-stage');
+  stage.innerHTML = '';
+
+  const data = [
+    { tag: 'PRJ', title: 'OutSystems Lab', body: '#3 DOM/Event' },
+    { tag: 'STK', title: 'VB.NET',         body: 'バッチ共通基盤' },
+    { tag: 'GoF', title: 'Strategy',       body: '弁別ドリル進行中' }
+  ];
+  data.forEach(d => {
+    const clone = tmpl.content.cloneNode(true);
+    clone.querySelector('.tag-chip').textContent = d.tag;
+    clone.querySelector('.t-title').textContent = d.title;
+    clone.querySelector('.t-body').textContent = ' — ' + d.body;
+    stage.appendChild(clone);
+  });
+  document.getElementById('lab12-after').textContent = `${data.length} 件複製完了`;
+  console.log(`template.content.cloneNode(true) で ${data.length}件複製`);
+}
+function lab12Clear() {
+  clearLog('lab12-log');
+  document.getElementById('lab12-stage').innerHTML =
+    '<span style="color:var(--text-dim);font-size:.78rem;">(template から複製された要素がここに)</span>';
+  document.getElementById('lab12-after').textContent = '0';
+  console.log('リセット');
+}
+
+// ============= Lab 13: Custom Elements =============
+let lab13Defined = false;
+function lab13Define() {
+  clearLog('lab13-log');
+  if (lab13Defined) {
+    console.log('既に定義済(customElements は再定義不可)');
+    return;
+  }
+  class MyCounter extends HTMLElement {
+    constructor() {
+      super();
+      this.count = 0;
+    }
+    connectedCallback() {
+      this.render();
+      this.addEventListener('click', () => { this.count++; this.render(); });
+      this.style.cursor = 'pointer';
+      this.style.padding = '10px 20px';
+      this.style.background = 'var(--accent3)';
+      this.style.color = '#fff';
+      this.style.borderRadius = '6px';
+      this.style.display = 'inline-block';
+      this.style.userSelect = 'none';
+      console.log('connectedCallback() 発火');
+    }
+    disconnectedCallback() {
+      console.log('disconnectedCallback() 発火');
+    }
+    render() {
+      const label = this.getAttribute('label') || 'count';
+      this.textContent = `${label}: ${this.count}`;
+    }
+  }
+  customElements.define('my-counter', MyCounter);
+  lab13Defined = true;
+  document.getElementById('lab13-before').textContent = '<my-counter> 定義済';
+  console.log('customElements.define("my-counter", MyCounter) 完了');
+}
+function lab13Place() {
+  clearLog('lab13-log');
+  if (!lab13Defined) {
+    console.log('先に①でタグ定義してください');
+    return;
+  }
+  const stage = document.getElementById('lab13-stage');
+  // placeholder除去
+  if (stage.firstElementChild && stage.firstElementChild.tagName === 'SPAN') stage.innerHTML = '';
+  const el = document.createElement('my-counter');
+  el.setAttribute('label', 'タップ');
+  el.style.margin = '4px';
+  stage.appendChild(el);
+  document.getElementById('lab13-after').textContent =
+    String(stage.querySelectorAll('my-counter').length);
+  console.log('createElement("my-counter") → appendChild → connectedCallback発火');
+}
+function lab13Remove() {
+  clearLog('lab13-log');
+  const stage = document.getElementById('lab13-stage');
+  const all = stage.querySelectorAll('my-counter');
+  if (all.length === 0) {
+    console.log('削除対象なし');
+    return;
+  }
+  all[all.length - 1].remove();
+  document.getElementById('lab13-after').textContent =
+    String(stage.querySelectorAll('my-counter').length);
+}
+
+// ============= Lab 14: Shadow DOM =============
+function lab14Make() {
+  clearLog('lab14-log');
+  const host = document.getElementById('lab14-host');
+  if (host.shadowRoot) {
+    console.log('既にShadow Root生成済 - リロードでクリア可');
+    return;
+  }
+  const root = host.attachShadow({ mode: 'open' });
+  root.innerHTML = `
+    <style>
+      p.demo-p {
+        color: #22863a;
+        font-style: italic;
+        background: #eef9f1;
+        padding: 8px 12px;
+        border-left: 3px solid #22863a;
+        margin: 0;
+      }
+    </style>
+    <p class="demo-p">▼ Shadow内の段落(緑・斜体: 外CSSは届かない)</p>
+  `;
+  document.getElementById('lab14-after').textContent = '緑・斜体(外の赤太字は届かない)';
+  console.log('attachShadow({mode:"open"}) で隔離空間を生成');
+  console.log(`host.shadowRoot: ${host.shadowRoot ? '取得可能(open)' : 'null(closed)'}`);
+}
+function lab14Clear() {
+  clearLog('lab14-log');
+  console.log('shadowRootは生成後削除不可 - ページリロードで完全リセット');
+  document.getElementById('lab14-after').textContent = '(リロードでクリア)';
+}
+
+// ============= サイドバー: ボタンクリックでスクロール =============
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('[data-target]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.getAttribute('data-target');
+      const target = document.getElementById(targetId);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+
+  const navItems = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+  const targetMap = new Map();
+  navItems.forEach(btn => {
+    const id = btn.getAttribute('data-target');
+    const el = document.getElementById(id);
+    if (el) targetMap.set(el, btn);
+  });
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) {
+      const btn = targetMap.get(e.target);
+      if (btn) {
+        navItems.forEach(n => n.classList.remove('active'));
+        btn.classList.add('active');
+      }
+    }
+  }), { rootMargin: '-30% 0px -60% 0px' });
+  document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+  const backBtn = document.getElementById('back-to-toc');
+  const toc = document.getElementById('toc');
+  backBtn.addEventListener('click', () => {
+    if (toc) toc.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    else window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+  const toggleBackBtn = () => {
+    const threshold = window.innerHeight * 0.8;
+    if (window.scrollY > threshold) backBtn.classList.add('visible');
+    else backBtn.classList.remove('visible');
+  };
+  window.addEventListener('scroll', toggleBackBtn, { passive: true });
+  toggleBackBtn();
+});
+</script>
+
+</body>
+</html>

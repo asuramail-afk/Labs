@@ -1,0 +1,2227 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JavaScript標準API Lab #7 — Workers・Devices編</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  border-top:none; border-right:none; border-bottom:none;
+  background:transparent; width:100%; text-align:left; cursor:pointer;
+  font-family:inherit;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+#sidebar .file-nav { padding:8px 16px; margin:6px 0; background:var(--surface2);
+  border-top:1px solid var(--border); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.7rem; color:var(--text-dim); }
+#sidebar .file-nav a { display:block; padding:3px 0; color:var(--accent);
+  text-decoration:none; font-size:.72rem; }
+#sidebar .file-nav a.current { color:var(--text); font-weight:700; }
+
+.hero { padding:50px 30px 30px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:1.9rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:.95rem; margin-top:8px; }
+.hero .file-tag { display:inline-block; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; background:var(--accent); color:#fff;
+  margin-top:10px; }
+
+.toc { max-width:1100px; margin:24px auto; padding:0 20px; }
+.toc h2 { font-size:1rem; color:var(--accent); margin-bottom:10px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:8px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:9px 12px;
+  background:var(--surface); border:1px solid var(--border); border-radius:7px;
+  text-decoration:none; color:var(--text); font-size:.84rem;
+  font-family:inherit; cursor:pointer; text-align:left; width:100%;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.78rem; min-width:24px; }
+
+.container { max-width:1100px; margin:0 auto; padding:0 20px 60px; }
+.lab { margin-top:32px; border:1px solid var(--border); border-radius:10px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:10px; padding:14px 18px;
+  background:var(--surface2); border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:28px; height:28px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.78rem; }
+.lab-header h3 { font-size:1.05rem; font-weight:600; flex:1; min-width:140px; }
+.compat-badges { display:flex; gap:5px; flex-wrap:wrap; }
+.compat-badge { font-family:var(--mono); font-size:.65rem; padding:2px 7px;
+  border-radius:10px; border:1px solid; }
+.compat-yes { color:var(--success); border-color:var(--success);
+  background:rgba(34,134,58,.08); }
+.compat-no { color:var(--error); border-color:var(--error);
+  background:rgba(203,36,49,.08); }
+.compat-partial { color:var(--accent4); border-color:var(--accent4);
+  background:rgba(176,136,0,.08); }
+.lab-body { padding:18px; }
+.lab-desc { font-size:.9rem; color:var(--text-dim); margin-bottom:14px; line-height:1.75; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.82rem; color:var(--accent); }
+
+.scenes { background:rgba(0,92,197,.04); border:1px solid rgba(0,92,197,.2);
+  border-left:3px solid var(--accent); border-radius:6px;
+  padding:10px 14px; margin:12px 0; font-size:.85rem; line-height:1.75; }
+.scenes-title { font-family:var(--mono); font-size:.7rem; color:var(--accent);
+  font-weight:700; margin-bottom:5px; letter-spacing:.05em; }
+.scenes ol { margin-left:20px; margin-top:3px; }
+.scenes ol li { margin-bottom:3px; color:var(--text); }
+
+.ascii-art { font-family:var(--mono); font-size:.74rem;
+  line-height:1.45; background:var(--code-bg); padding:10px 12px;
+  border:1px solid var(--border); border-radius:6px;
+  margin:10px 0; color:var(--text); overflow-x:auto; white-space:pre; }
+
+.demo { border:1px solid var(--border); border-radius:8px; margin:14px 0;
+  overflow:hidden; background:var(--bg); }
+.demo-bar { padding:8px 12px; background:var(--surface2);
+  border-bottom:1px solid var(--border); font-family:var(--mono); font-size:.7rem;
+  color:var(--text-dim); letter-spacing:.05em; }
+.demo-body { padding:14px; }
+.demo-input { display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+.demo-input input, .demo-input textarea, .demo-input select {
+  font-family:var(--mono); font-size:.85rem; padding:7px 10px;
+  border:1px solid var(--border); border-radius:5px; background:#fff;
+  color:var(--text); flex:1; min-width:120px; }
+.demo-input textarea { min-height:55px; resize:vertical; flex-basis:100%; }
+.demo-btn { font-family:var(--mono); font-size:.82rem; padding:8px 16px;
+  border-radius:6px; border:1px solid var(--accent); background:var(--accent);
+  color:#fff; cursor:pointer; transition:all .15s; }
+.demo-btn:hover { opacity:.85; }
+.demo-btn.secondary { background:var(--surface); color:var(--accent); }
+.demo-btn:disabled { opacity:.5; cursor:not-allowed; }
+
+.ba-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0; }
+.ba-col { border-radius:6px; padding:10px 12px; font-size:.82rem;
+  line-height:1.6; border:1px solid; min-height:60px; }
+.ba-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.ba-after { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.ba-label { font-family:var(--mono); font-size:.62rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:4px; font-weight:700; opacity:.85; }
+.ba-before .ba-label { color:var(--error); }
+.ba-after .ba-label { color:var(--success); }
+.ba-content { font-family:var(--mono); font-size:.78rem; word-break:break-all;
+  white-space:pre-wrap; min-height:30px; }
+
+.log-area { background:#0d1117; color:#c9d1d9; font-family:var(--mono);
+  font-size:.78rem; padding:10px 12px; border-radius:6px;
+  max-height:200px; overflow-y:auto; margin:8px 0;
+  border:1px solid var(--border); white-space:pre-wrap; word-break:break-all;
+  line-height:1.5; }
+.log-area:empty::before { content:'(実行待ち...ボタンを押してください)';
+  color:#6e7681; font-style:italic; }
+.log-line { padding:1px 0; }
+.log-line.info { color:#79c0ff; }
+.log-line.ok { color:#7ee787; }
+.log-line.err { color:#ff7b72; }
+.log-line.dim { color:#6e7681; }
+
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:7px; margin:10px 0; overflow:hidden; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:7px 12px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.7rem; color:var(--text-dim); letter-spacing:.04em; }
+.code-block pre { padding:10px 14px 12px; overflow-x:auto;
+  font-family:var(--mono); font-size:.78rem; line-height:1.55;
+  color:var(--text); white-space:pre; tab-size:2; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.68rem;
+  padding:3px 9px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+
+.info-box { border-radius:7px; padding:10px 13px; font-size:.85rem;
+  line-height:1.7; margin:12px 0; border-left:3px solid; }
+.info-box.ok { border-color:var(--success); background:rgba(34,134,58,.08); color:#154f1e; }
+.info-box.info { border-color:var(--accent); background:rgba(0,92,197,.08); color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08); color:#7a5c00; }
+.info-box.err { border-color:var(--error); background:rgba(203,36,49,.08); color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 5px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .ba-grid { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.5rem; }
+  .toc-grid { grid-template-columns:1fr; }
+  .lab-body { padding:14px; }
+  .demo-input input, .demo-input textarea { min-width:100%; }
+}
+
+/* 📑 フローティング「目次に戻る」ボタン */
+#back-to-toc { position:fixed; bottom:20px; right:20px; z-index:100;
+  width:54px; height:54px; border-radius:50%; border:none;
+  background:var(--accent); color:#fff; cursor:pointer;
+  font-family:var(--mono); font-size:.7rem; font-weight:700;
+  box-shadow:0 4px 12px rgba(0,92,197,.35);
+  display:none; align-items:center; justify-content:center;
+  flex-direction:column; line-height:1.1;
+  transition:transform .15s,opacity .2s,background .15s; opacity:0; }
+#back-to-toc.visible { display:flex; opacity:1; }
+#back-to-toc:hover { background:#003d8f; transform:translateY(-2px); }
+#back-to-toc:active { transform:translateY(0); }
+#back-to-toc .arrow { font-size:1.1rem; line-height:1; margin-bottom:2px; }
+#back-to-toc .label { font-size:.6rem; letter-spacing:.05em; }
+
+/* === File 03 専用追加スタイル === */
+.dom-stage { border:1px dashed var(--border); border-radius:6px;
+  padding:10px; min-height:50px; background:#fff; margin:6px 0; }
+.dom-stage .dyn-item { padding:6px 10px; margin:3px 0; background:var(--surface2);
+  border-left:3px solid var(--accent); border-radius:4px; font-family:var(--mono);
+  font-size:.8rem; }
+.tag-chip { display:inline-block; padding:1px 7px; background:var(--accent);
+  color:#fff; border-radius:10px; font-family:var(--mono); font-size:.7rem;
+  margin-right:4px; }
+.scroll-track { height:200px; overflow-y:auto; border:1px solid var(--border);
+  border-radius:6px; background:var(--code-bg); padding:8px; margin:8px 0; }
+.scroll-track .io-item { padding:50px 12px; margin:12px 0;
+  background:#fff; border:2px solid var(--border); border-radius:6px;
+  text-align:center; font-family:var(--mono); font-size:.85rem;
+  transition:all .3s; }
+.scroll-track .io-item.entered { border-color:var(--success);
+  background:rgba(34,134,58,.08); transform:scale(1.02); }
+.resize-target { resize:both; overflow:auto;
+  width:200px; height:100px; padding:10px; background:#fff;
+  border:2px solid var(--accent); border-radius:6px; font-family:var(--mono);
+  font-size:.78rem; }
+.event-tree { padding:8px; border-radius:6px; }
+.event-tree .ev-outer { padding:18px; background:rgba(203,36,49,.06);
+  border:2px solid var(--error); border-radius:8px; cursor:pointer; }
+.event-tree .ev-middle { padding:14px; background:rgba(176,136,0,.08);
+  border:2px solid var(--accent4); border-radius:8px;
+  margin-top:8px; cursor:pointer; }
+.event-tree .ev-inner { padding:12px; background:rgba(34,134,58,.08);
+  border:2px solid var(--success); border-radius:8px;
+  margin-top:8px; cursor:pointer; text-align:center; font-weight:600; }
+.shadow-host { padding:8px 12px; background:var(--surface2);
+  border:1px solid var(--border); border-radius:6px; margin:6px 0; }
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// JS API Lab #7<br><span style="color:var(--text-dim);font-size:.7rem;">Workers・Devices編</span></div>
+  <div class="file-nav">
+    <div style="font-size:.7rem;color:var(--text-dim);padding:2px 0;">📘 全8ファイル中の #7</div>
+    <div style="font-size:.68rem;color:var(--text-dim);padding:2px 0;line-height:1.4;">並列処理・端末センサー・ユーザ操作系API</div>
+  </div>
+
+  <div class="nav-section">A. Workers</div>
+  <button class="nav-item" data-target="lab1"><span class="nav-num">01</span>Web Worker基礎</button>
+  <button class="nav-item" data-target="lab2"><span class="nav-num">02</span>Worker重い計算</button>
+  <button class="nav-item" data-target="lab3"><span class="nav-num">03</span>Service Worker基礎</button>
+  <button class="nav-item" data-target="lab4"><span class="nav-num">04</span>SW fetch傍受</button>
+  <button class="nav-item" data-target="lab5"><span class="nav-num">05</span>Cache API</button>
+
+  <div class="nav-section">B. Devices</div>
+  <button class="nav-item" data-target="lab6"><span class="nav-num">06</span>Geolocation</button>
+  <button class="nav-item" data-target="lab7"><span class="nav-num">07</span>DeviceOrientation</button>
+  <button class="nav-item" data-target="lab8"><span class="nav-num">08</span>DeviceMotion</button>
+  <button class="nav-item" data-target="lab9"><span class="nav-num">09</span>Vibration</button>
+  <button class="nav-item" data-target="lab10"><span class="nav-num">10</span>Network Info</button>
+
+  <div class="nav-section">C. UX系</div>
+  <button class="nav-item" data-target="lab11"><span class="nav-num">11</span>Clipboard</button>
+  <button class="nav-item" data-target="lab12"><span class="nav-num">12</span>Permissions</button>
+  <button class="nav-item" data-target="lab13"><span class="nav-num">13</span>Notifications</button>
+  <button class="nav-item" data-target="lab14"><span class="nav-num">14</span>Wake Lock</button>
+  <button class="nav-item" data-target="lab15"><span class="nav-num">15</span>Page Visibility</button>
+</nav>
+
+<div class="hero">
+  <h1>JavaScript標準API Lab</h1>
+  <p class="subtitle">Workers・Devices・UX系 — 並列処理と端末能力を引き出す</p>
+  <span class="file-tag">📘 File #7 / 8</span>
+</div>
+
+<div class="toc" id="toc">
+  <h2>// 目次(15ラボ)</h2>
+  <div class="toc-grid">
+    <button class="toc-item" data-target="lab1"><span class="toc-num">01</span>Web Worker — UIを止めない並列処理</button>
+    <button class="toc-item" data-target="lab2"><span class="toc-num">02</span>Worker重い計算 — 素数判定をオフロード</button>
+    <button class="toc-item" data-target="lab3"><span class="toc-num">03</span>Service Worker基礎 — Blob URLで登録</button>
+    <button class="toc-item" data-target="lab4"><span class="toc-num">04</span>SW fetch傍受 — ネットワーク代理</button>
+    <button class="toc-item" data-target="lab5"><span class="toc-num">05</span>Cache API — オフライン資源庫</button>
+    <button class="toc-item" data-target="lab6"><span class="toc-num">06</span>Geolocation — 位置情報の許可と取得</button>
+    <button class="toc-item" data-target="lab7"><span class="toc-num">07</span>DeviceOrientation — 端末の傾き</button>
+    <button class="toc-item" data-target="lab8"><span class="toc-num">08</span>DeviceMotion — 加速度センサー</button>
+    <button class="toc-item" data-target="lab9"><span class="toc-num">09</span>Vibration — バイブで触覚フィードバック</button>
+    <button class="toc-item" data-target="lab10"><span class="toc-num">10</span>Network Information — 回線種別検知</button>
+    <button class="toc-item" data-target="lab11"><span class="toc-num">11</span>Clipboard — コピペの近代化</button>
+    <button class="toc-item" data-target="lab12"><span class="toc-num">12</span>Permissions — 許可状態の事前確認</button>
+    <button class="toc-item" data-target="lab13"><span class="toc-num">13</span>Notifications — デスクトップ通知</button>
+    <button class="toc-item" data-target="lab14"><span class="toc-num">14</span>Wake Lock — 画面ロック防止</button>
+    <button class="toc-item" data-target="lab15"><span class="toc-num">15</span>Page Visibility — タブ表示状態</button>
+  </div>
+</div>
+
+<div class="container">
+
+
+<!-- ========== Lab 01: Web Worker 基礎 ========== -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>Web Worker — UIスレッドを止めない並列処理の入口</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why exists</b>: JavaScriptは元来シングルスレッド。重い計算をUIスレッドで回すと画面が固まり、Wijmo FlexGridのスクロールやボタン押下も全停止する。Web Workerは「別スレッドで動くJSサンドボックス」を <code>postMessage</code> 経由で扱える仕組みとして登場し、UI応答性を保護する第一の手段になった。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>大量データ(10万件)のクライアントサイド集計をWorkerに投げてグリッドの応答を保つ</li>
+        <li>CSV/JSONのパース・バリデーションをUIから分離</li>
+        <li>暗号化・ハッシュ計算など長時間CPUを使う処理の隔離</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  メインスレッド (UI)              Worker スレッド
+  ─────────────────              ─────────────────
+   ▼ ボタン押下
+   worker.postMessage(data) ───▶ onmessage(data)
+   ▼ (UIは止まらない)              ▼ 重い計算
+   onmessage(result) ◀────────── postMessage(result)
+   ▼ 画面更新
+
+  ❌ Workerからは DOM/window/document へアクセス不可
+  ✅ self / fetch / setTimeout / IndexedDB は使える
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: Wijmo FlexGridで<code>itemsSource</code>に大量配列をセットする前段で、フィルタリングや集計をWorkerに投げると、グリッドのレンダリング前にUIフリーズが起きない。VB.NETサーバー側のバッチ処理で<code>BackgroundWorker</code>クラスを使っていた感覚に近い ── が、Workerは <b>共有メモリではなく値コピー(structured clone)</b> で渡る点が違う。OutSystems の OnReady 内で <code>JavaScript</code> ノードから new Worker() を起こしてもよいが、Worker用の.jsファイルをResourceとして配置する必要があるため、Lab 03のBlob URL方式が実用的。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: Workerでフィボナッチ計算</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <input type="number" id="lab1-n" value="35" min="1" max="42">
+          <button class="demo-btn" onclick="lab1Run()">Workerで実行</button>
+          <button class="demo-btn secondary" onclick="lab1RunSync()">同期で実行(UI止まる)</button>
+          <button class="demo-btn secondary" onclick="lab1Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab1-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab1-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab1-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — Workerを Blob URL から起こす</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab1Run() {
+  const n = parseInt(document.getElementById('lab1-n').value, 10);
+  const workerCode = `
+    self.onmessage = (e) =&gt; {
+      const fib = (k) =&gt; k &lt; 2 ? k : fib(k-1) + fib(k-2);
+      const t0 = Date.now();
+      const result = fib(e.data);
+      self.postMessage({ result, ms: Date.now() - t0 });
+    };
+  `;
+  const blob = new Blob([workerCode], { type: 'application/javascript' });
+  const worker = new Worker(URL.createObjectURL(blob));
+  console.log('Worker起動 → fib(' + n + ')をpostMessage');
+  const t0 = Date.now();
+  worker.onmessage = (e) =&gt; {
+    console.log('Worker結果: ' + e.data.result + ' (Worker側 ' + e.data.ms + 'ms)');
+    setBA('lab1', 'UIフリーズなし', 'fib(' + n + ')=' + e.data.result + ' / 経過 ' + (Date.now()-t0) + 'ms');
+    worker.terminate();
+  };
+  worker.postMessage(n);
+}</pre>
+    </div>
+  </div>
+</div>
+
+
+<!-- ========== Lab 02: Worker重い計算 ========== -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>Worker重い計算 — 素数列挙でUI応答性を実証</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why care</b>: 「Workerに投げれば速くなる」のではなく <b>UIが止まらない</b> ことに価値がある。同じ計算でも、UIスレッドで回すとカウンタが止まる/Workerなら回り続ける、を並べて見ると効果が直感できる。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>クライアント側で大量レコードのフィルタリング・ソート</li>
+        <li>画像のピクセル単位処理(Lab 06のCanvas+Workerなど)</li>
+        <li>暗号化・電子署名の生成</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  シナリオ: 1秒ごとに数を上げるカウンタ + 重い素数列挙
+  ─────────────────────────────────────────────────
+   同期実行    : ▓▓▓▓▓▓▓▓▓▓▓▓▓ (固まる)→計算終わるまでカウンタ停止
+   Worker実行  : ▓░░░░░░░░░░ (UIは生きてる) カウンタ動き続ける
+
+  → 体感速度の違いが出るのは「並列で他の処理が回せる」点
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: ScreenでTimer Action(クライアント)が動く中で重い計算を走らせると、Timerが遅延する。Workerに逃がすとTimerは止まらない。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 100万までの素数を数える</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab2Run()">Worker実行 + UIカウンタ</button>
+          <button class="demo-btn secondary" onclick="lab2Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab2-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab2-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab2-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — UIカウンタを動かしながらWorkerで素数列挙</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab2Run() {
+  const code = `
+    self.onmessage = () =&gt; {
+      const isPrime = (n) =&gt; {
+        if (n &lt; 2) return false;
+        for (let i = 2; i * i &lt;= n; i++) if (n % i === 0) return false;
+        return true;
+      };
+      let count = 0;
+      for (let i = 2; i &lt;= 1000000; i++) if (isPrime(i)) count++;
+      self.postMessage(count);
+    };
+  `;
+  const w = new Worker(URL.createObjectURL(
+    new Blob([code], { type: 'application/javascript' })));
+  let tick = 0;
+  const timer = setInterval(() =&gt; {
+    tick++;
+    setBA('lab2', 'UIカウンタ稼働中: ' + tick + ' tick', '(計算中…)');
+  }, 100);
+  const t0 = Date.now();
+  w.onmessage = (e) =&gt; {
+    clearInterval(timer);
+    const ms = Date.now() - t0;
+    console.log('素数の個数: ' + e.data + ' / Worker処理時間: ' + ms + 'ms');
+    setBA('lab2', 'UIカウンタ ' + tick + ' 回稼働', '結果: ' + e.data + '個 / ' + ms + 'ms');
+    w.terminate();
+  };
+  w.postMessage(null);
+}</pre>
+    </div>
+  </div>
+</div>
+
+
+<!-- ========== Lab 03: Service Worker 基礎 ========== -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>Service Worker基礎 — install / activate を Blob URL で登録</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+      <span class="compat-badge compat-partial">⚠ HTTPS必須</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why this design</b>: Service Workerは Web Worker と違い <b>ページとは独立にバックグラウンドで生き続けるプロキシ</b>。fetchを傍受してオフライン化できる代わり、登録・install・activate という独特なライフサイクルを持ち、なおかつ <b>別ファイルのJSとしてHTTPSで配信される必要がある</b>。本ラボでは Blob URL で動的に SW スクリプトを生成して登録する手法を試す。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>PWA化してホーム画面追加・オフライン動作対応</li>
+        <li>プッシュ通知の受信エンドポイント</li>
+        <li>静的アセットの永続キャッシュ</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  Service Worker ライフサイクル
+  ─────────────────────────────────
+   register(swUrl)
+        │
+        ▼
+   ┌─────────┐    新バージョン検出時のみ
+   │ install │ ─► (古いSWが残っていれば waiting 状態)
+   └─────────┘
+        │
+        ▼
+   ┌──────────┐
+   │ activate │ ─► 古いSWを破棄、新SWが制御開始
+   └──────────┘
+        │
+        ▼
+   ┌────────────┐
+   │ fetch傍受  │ ◄─ ページからのリクエストを代理
+   └────────────┘
+
+  ❌ Workerと違い "そのページが閉じても生き残る"
+  ❌ HTTPS or localhost でしか動かない
+</pre>
+    <div class="info-box warn">📌 <b>注意</b>: <code>navigator.serviceWorker.register()</code> はSWスクリプトのURLを <b>同一オリジン</b> で要求する。Blob URLは生成元オリジンを継承するためGitHub Pagesでもこの方式は通る。<code>type: 'module'</code> を付ければESM版SWも書ける。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: SW登録 → install/activate を観察</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab3Run()">SW登録</button>
+          <button class="demo-btn secondary" onclick="lab3Unregister()">登録解除</button>
+          <button class="demo-btn secondary" onclick="lab3Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab3-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab3-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab3-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — Blob URLでSW登録</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>async function lab3Run() {
+  if (!('serviceWorker' in navigator)) {
+    console.log('このブラウザはSW非対応');
+    return;
+  }
+  const swCode = `
+    self.addEventListener('install', (e) =&gt; {
+      console.log('[SW] install');
+      self.skipWaiting();
+    });
+    self.addEventListener('activate', (e) =&gt; {
+      console.log('[SW] activate');
+      e.waitUntil(self.clients.claim());
+    });
+  `;
+  const url = URL.createObjectURL(
+    new Blob([swCode], { type: 'application/javascript' }));
+  try {
+    const reg = await navigator.serviceWorker.register(url);
+    console.log('登録成功 scope: ' + reg.scope);
+    setBA('lab3', '未登録', 'SW active state: ' +
+      (reg.active ? reg.active.state : reg.installing ? 'installing' : '?'));
+  } catch (e) {
+    console.log('登録失敗: ' + e.message);
+    setBA('lab3', '未登録', 'エラー: ' + e.message);
+  }
+}</pre>
+    </div>
+  </div>
+</div>
+
+
+<!-- ========== Lab 04: SW fetch傍受 ========== -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>SW fetch傍受 — ネットワークの間に入って応答を作る</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+      <span class="compat-badge compat-partial">⚠ HTTPS必須</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why this fails</b>: Service Workerはあくまで「サーバとブラウザの間に挟まるプロキシ」。ファイル直開き(<code>file://</code>)では動かず、なおかつ <b>register後すぐは fetch を傍受しない</b>(activeになるまで)。本ラボでは「fetchイベントで合成レスポンスを返す」最小サンプルを試す。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>オフライン時のフォールバックページ提供</li>
+        <li>APIレスポンスの統一的なエラー変換</li>
+        <li>テスト用にAPIをモック化</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  fetch 傍受の流れ
+  ────────────────────────────
+   page → fetch('/api/foo')
+            │
+            ▼
+        ┌─────────┐
+        │   SW    │ ◄── fetchイベント発火
+        │ fetch   │
+        │ handler │
+        └─────────┘
+            │
+       3つの選択肢:
+       ① e.respondWith(new Response('合成')) ←作って返す
+       ② e.respondWith(fetch(e.request))    ←そのまま通す
+       ③ 何もしない                          ←ブラウザが普通にネット
+</pre>
+    <div class="info-box warn">📌 <b>注意</b>: 本ラボはSWが activate して clients.claim() を呼ぶまで fetch傍受は始まらない。実機でクリック後に <code>/__sw_test__</code> をfetchして合成レスポンスが返るか確認する。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 仮想URLにfetchして合成レスポンスを受け取る</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab4Run()">SW登録 → fetch試行</button>
+          <button class="demo-btn secondary" onclick="lab4Unregister()">登録解除</button>
+          <button class="demo-btn secondary" onclick="lab4Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab4-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab4-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab4-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — fetchイベントで合成レスポンス</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>async function lab4Run() {
+  const swCode = `
+    self.addEventListener('install', () =&gt; self.skipWaiting());
+    self.addEventListener('activate', (e) =&gt; e.waitUntil(self.clients.claim()));
+    self.addEventListener('fetch', (e) =&gt; {
+      const url = new URL(e.request.url);
+      if (url.pathname.endsWith('/__sw_test__')) {
+        e.respondWith(new Response(
+          JSON.stringify({ from: 'service-worker', ts: Date.now() }),
+          { headers: { 'Content-Type': 'application/json' } }
+        ));
+      }
+    });
+  `;
+  const url = URL.createObjectURL(
+    new Blob([swCode], { type: 'application/javascript' }));
+  await navigator.serviceWorker.register(url);
+  await navigator.serviceWorker.ready;
+  console.log('SW ready, fetch試行中...');
+  // SWが clients.claim() するまで待つ
+  await new Promise(r =&gt; setTimeout(r, 500));
+  try {
+    const res = await fetch('/__sw_test__');
+    const json = await res.json();
+    console.log('合成レスポンス受信: ' + JSON.stringify(json));
+    setBA('lab4', '通常fetchならネット経由', 'SWが合成: ' + JSON.stringify(json));
+  } catch (e) {
+    console.log('fetch失敗(SWまだactive前かも): ' + e.message);
+    setBA('lab4', '?', 'エラー: ' + e.message + ' / 再度ボタン押下');
+  }
+}</pre>
+    </div>
+  </div>
+</div>
+
+
+<!-- ========== Lab 05: Cache API ========== -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>Cache API — オフライン資源庫(SWなしでも動く)</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+      <span class="compat-badge compat-partial">⚠ HTTPS必須</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why care</b>: Cache APIは <code>Request/Response</code> ペアの <b>名前付き永続ストア</b>。ServiceWorkerでオフライン化する際の必須路線だが、windowからも <code>caches</code> グローバルで触れる(SW登録不要)。Memory Cache, HTTP Cache, IndexedDB との立ち位置を整理しておく。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>静的アセット(CSS/JS/画像)の永続キャッシュ</li>
+        <li>APIレスポンスのスナップショット保存(Stale-While-Revalidate)</li>
+        <li>オフラインでも閲覧できるドキュメントの保持</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  ストレージ比較
+  ──────────────────────────────────────────
+   名称         | 単位          | 永続性 | 容量目安
+   ─────────────|───────────────|────────|─────────
+   Memory Cache | URL→Response | タブ寿命| RAM依存
+   HTTP Cache   | URL→Response | ブラウザ| 数百MB〜
+   Cache API    | Req↔Res ペア  | 永続    | quotaに従う
+   IndexedDB    | キー値オブジェクト| 永続  | quotaに従う
+   localStorage | 文字列キー値   | 永続    | 5MB前後
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: モバイルアプリで「ネットワーク不安定でも前回の参照データを表示」というUX要件があるとき、APIレスポンスを Cache API に入れて Stale-While-Revalidate を組むと簡潔。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: caches.open() → put → match</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab5Run()">put → match</button>
+          <button class="demo-btn secondary" onclick="lab5Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab5-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab5-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab5-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — Cache API で put/match</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>async function lab5Run() {
+  if (!('caches' in window)) {
+    console.log('Cache API非対応');
+    return;
+  }
+  const cache = await caches.open('lab5-demo');
+  const key = '/lab5-virtual';
+  const value = { user: 'tom', cached_at: new Date().toISOString() };
+  // put: Response を保存
+  await cache.put(key,
+    new Response(JSON.stringify(value),
+      { headers: { 'Content-Type': 'application/json' } }));
+  console.log('cache.put 完了 key=' + key);
+  // match: 取り出し
+  const cached = await cache.match(key);
+  if (cached) {
+    const json = await cached.json();
+    console.log('cache.match 取得: ' + JSON.stringify(json));
+    // 全キー一覧
+    const keys = await cache.keys();
+    console.log('cache内のkey数: ' + keys.length);
+    setBA('lab5', '通常はAPIへ毎回HTTP', 'cache hit: ' + JSON.stringify(json));
+  }
+}</pre>
+    </div>
+  </div>
+</div>
+
+
+<!-- ========== Lab 06: Geolocation ========== -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>Geolocation — 位置情報の許可と取得</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+      <span class="compat-badge compat-partial">⚠ HTTPS必須</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why this design</b>: Geolocationは「ユーザ許可」と「衛星捕捉の遅延」と「拒否される可能性」が絡む。同期APIでは表現できないため、<code>getCurrentPosition(success, error, options)</code> というコールバック式と、現代では <code>Promise</code> でラップする使い方が定石。<code>watchPosition</code> で継続監視も可能だがバッテリ消費に注意。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>現場系業務アプリで作業地点の自動記録(訪問・点検・配送)</li>
+        <li>近くの店舗・営業所を距離順で表示</li>
+        <li>地図と組み合わせた現在地ピン表示(MapsTraditional)</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  Geolocation 取得の3経路
+  ───────────────────────────────────────
+   ┌──────────────────────────────┐
+   │ navigator.geolocation         │
+   │   .getCurrentPosition(...)    │
+   └──────────┬───────────────────┘
+              │
+        ┌─────▼─────┐
+        │ 許可済み? │
+        └─┬───────┬─┘
+       Yes│       │No → 初回のみ許可ダイアログ
+          │       └────────────────────┐
+          ▼                            ▼
+   位置取得 (GPS or WiFi or IP)    Yes:取得 / No:errorコールバック
+       (10-30秒かかる場合あり)         code=1 (PERMISSION_DENIED)
+          │
+          ▼
+    success({coords: {lat, lng, accuracy}, timestamp})
+
+  options:
+    enableHighAccuracy: true  → GPSを使う(屋外向け、遅い)
+    timeout: 10000            → 10秒で諦める
+    maximumAge: 60000         → 60秒以内のキャッシュ位置を許容
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: Mobile Appで「現場に到着したら自動的に出勤打刻」のような要件は、OutSystemsのLocationプラグイン(Cordova/Capacitor)経由でも、Webブラウザ向けScreenでも標準のGeolocation APIで実装できる。<br>
+    OutSystemsのClient ActionからJavaScriptノードでこのAPIを呼び、結果をLocal EntityにInsertOrUpdateする流れが定番。<b>注意</b>: <code>watchPosition</code>を仕込んだままScreenを離れるとIDが残るので、OnDestroy相当のタイミングで <code>clearWatch(id)</code> する。Wijmo FlexGridで「現在地から近い順に並べ替え」を実装する際は、Geolocation取得後に <code>CollectionView.sortDescriptions</code> を再構築するパターンが扱いやすい。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 現在地を一回取得</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab6Run()">位置取得</button>
+          <button class="demo-btn secondary" onclick="lab6Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab6-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab6-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab6-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — Promise化したgetCurrentPosition</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab6Run() {
+  if (!navigator.geolocation) {
+    console.log('Geolocation非対応');
+    return;
+  }
+  console.log('位置情報取得中…(初回は許可ダイアログ)');
+  const opts = { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 };
+  const promisify = () =&gt; new Promise((resolve, reject) =&gt;
+    navigator.geolocation.getCurrentPosition(resolve, reject, opts));
+  promisify().then(pos =&gt; {
+    const c = pos.coords;
+    console.log('lat=' + c.latitude.toFixed(5) + ' lng=' + c.longitude.toFixed(5));
+    console.log('精度=' + Math.round(c.accuracy) + 'm');
+    setBA('lab6', '位置不明', '緯度: ' + c.latitude.toFixed(5)
+      + ' / 経度: ' + c.longitude.toFixed(5) + ' / 精度: ' + Math.round(c.accuracy) + 'm');
+  }).catch(err =&gt; {
+    const codes = ['', 'PERMISSION_DENIED', 'POSITION_UNAVAILABLE', 'TIMEOUT'];
+    console.log('エラー code=' + err.code + ' (' + codes[err.code] + ')');
+    setBA('lab6', '位置不明', 'エラー: ' + (codes[err.code] || err.message));
+  });
+}</pre>
+    </div>
+  </div>
+</div>
+
+
+<!-- ========== Lab 07: DeviceOrientation ========== -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>DeviceOrientation — 端末の傾き(iOSは許可必須)</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS 13+</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+      <span class="compat-badge compat-partial">⚠ HTTPS必須</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why this fails</b>: 「Androidでは動くのにiPhoneで動かない」と詰むAPIの代表。<b>iOS 13+ では <code>DeviceOrientationEvent.requestPermission()</code> をユーザジェスチャ(クリック等)起点で呼ばないとイベントが流れない</b>。さらに座標系も <code>alpha</code>(コンパス基準/絶対方位)が iOS と Android で扱いが微妙に違うため、傾き検知に使うなら <code>beta</code>/<code>gamma</code> を中心に設計する。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>水準器・傾き計測アプリ</li>
+        <li>ARっぽい視点切替(端末を傾けると画面が回る)</li>
+        <li>傾けて操作するゲーム的UI</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  DeviceOrientation の3角度
+  ───────────────────────────────
+       z (alpha)
+        ▲
+        │      x (gamma)
+        │     ╱
+        │    ╱
+        ●───────► y (beta)
+
+   alpha: 0..360 (コンパス方位、Z軸まわり)
+   beta : -180..180 (前後の傾き、X軸まわり)
+   gamma: -90..90 (左右の傾き、Y軸まわり)
+
+  iOSの初手シーケンス:
+   ① ユーザボタンクリック
+   ② DeviceOrientationEvent.requestPermission() を呼ぶ
+   ③ "granted" が返ってきたら addEventListener する
+</pre>
+    <div class="info-box warn">📌 <b>2段階UI必須</b>: iOSでは「許可リクエスト」「開始」を別ボタンに分けるのが安全。許可が取れていても、ページ読込み直後にいきなり addEventListener するとイベントが流れない。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: ① 許可 ② 開始 → 端末を傾ける</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab7Permission()">① 許可リクエスト(iOS)</button>
+          <button class="demo-btn" onclick="lab7Run()">② 計測開始</button>
+          <button class="demo-btn secondary" onclick="lab7Stop()">停止</button>
+          <button class="demo-btn secondary" onclick="lab7Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab7-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab7-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab7-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — iOS許可+傾き取得</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>// ① 許可リクエスト(必ずユーザクリック起点で)
+async function lab7Permission() {
+  if (typeof DeviceOrientationEvent !== 'undefined' &amp;&amp;
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    try {
+      const r = await DeviceOrientationEvent.requestPermission();
+      console.log('iOS許可結果: ' + r);
+      setBA('lab7', '未許可', 'iOS許可: ' + r);
+    } catch (e) {
+      console.log('許可リクエスト失敗: ' + e.message);
+    }
+  } else {
+    console.log('iOS許可APIなし(Android等は不要)');
+    setBA('lab7', '?', 'iOS許可不要(Android想定)');
+  }
+}
+// ② 計測開始
+const lab7Handler = (e) =&gt; {
+  const a = e.alpha == null ? '-' : e.alpha.toFixed(1);
+  const b = e.beta == null ? '-' : e.beta.toFixed(1);
+  const g = e.gamma == null ? '-' : e.gamma.toFixed(1);
+  setBA('lab7', '計測中…', 'α=' + a + ' β=' + b + ' γ=' + g);
+};
+function lab7Run() {
+  window.addEventListener('deviceorientation', lab7Handler);
+  console.log('listener登録 → 端末を傾けてください');
+}</pre>
+    </div>
+  </div>
+</div>
+
+
+<!-- ========== Lab 08: DeviceMotion ========== -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>DeviceMotion — 加速度センサー(振動検知)</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS 13+</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+      <span class="compat-badge compat-partial">⚠ HTTPS必須</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why care</b>: 加速度から「歩いた」「振った」「落下した」を検知できる。Lab 07 と同じく iOS では <code>DeviceMotionEvent.requestPermission()</code> が必要。本ラボでは「シェイク」を簡易的に検知する。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>シェイクで取消・アンドゥ(モバイルアプリで定番)</li>
+        <li>歩数計・万歩計</li>
+        <li>落下検知(端末を落としたら警告音)</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  DeviceMotion の主なフィールド
+  ───────────────────────────────
+   acceleration             : 重力を除いた加速度 {x,y,z} m/s²
+   accelerationIncludingGravity : 重力込み {x,y,z}
+   rotationRate             : 角速度 {alpha,beta,gamma} deg/s
+   interval                 : サンプリング間隔 ms
+
+  シェイク検知の素朴な実装:
+   |a.x| + |a.y| + |a.z| が しきい値 を超えたらシェイク
+   (連続発火防止に200ms以上のクールダウンを置く)
+</pre>
+    <div class="info-box warn">📌 <b>注意</b>: <code>acceleration</code> はiOSとAndroidで取れる値の精度が違う。シェイク検知は <code>accelerationIncludingGravity</code> を使う方が確実なケースも。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: ① 許可 ② 開始 → 端末を振る</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab8Permission()">① 許可リクエスト(iOS)</button>
+          <button class="demo-btn" onclick="lab8Run()">② シェイク検知開始</button>
+          <button class="demo-btn secondary" onclick="lab8Stop()">停止</button>
+          <button class="demo-btn secondary" onclick="lab8Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab8-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab8-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab8-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — iOS許可+シェイク検知</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>async function lab8Permission() {
+  if (typeof DeviceMotionEvent !== 'undefined' &amp;&amp;
+      typeof DeviceMotionEvent.requestPermission === 'function') {
+    const r = await DeviceMotionEvent.requestPermission();
+    console.log('iOS許可結果: ' + r);
+    setBA('lab8', '未許可', 'iOS許可: ' + r);
+  } else {
+    console.log('iOS許可APIなし');
+  }
+}
+const lab8State = { lastShake: 0, count: 0 };
+const lab8Handler = (e) =&gt; {
+  const a = e.accelerationIncludingGravity;
+  if (!a) return;
+  const mag = Math.abs(a.x) + Math.abs(a.y) + Math.abs(a.z);
+  const now = Date.now();
+  if (mag &gt; 30 &amp;&amp; now - lab8State.lastShake &gt; 300) {
+    lab8State.lastShake = now;
+    lab8State.count++;
+    console.log('シェイク検知 #' + lab8State.count + ' mag=' + mag.toFixed(1));
+    setBA('lab8', '通常時 mag&lt;15', 'シェイク ' + lab8State.count + '回 / mag=' + mag.toFixed(1));
+  }
+};
+function lab8Run() {
+  window.addEventListener('devicemotion', lab8Handler);
+  console.log('シェイク検知開始(端末を振ってください)');
+}</pre>
+    </div>
+  </div>
+</div>
+
+
+<!-- ========== Lab 09: Vibration ========== -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>Vibration — バイブで触覚フィードバック</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-no">✗ iOS Safari</span>
+      <span class="compat-badge compat-yes">✓ Android Chrome</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why exists</b>: ネイティブアプリのバイブを Web からも鳴らせるよう Vibration API が登場した。ただし <b>iOS Safariは未だに非対応</b>(2026年時点)。Androidでは <code>navigator.vibrate(ms)</code> または <code>vibrate([on,off,on,...])</code> でパターン振動できる。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>エラー入力時の警告フィードバック(Androidのみ)</li>
+        <li>タイマー終了の通知</li>
+        <li>ゲームアプリでのアクション応答</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  Vibration API
+  ──────────────────────────
+   navigator.vibrate(200)
+       └─ 200ms振動して終了
+
+   navigator.vibrate([100, 50, 100, 50, 200])
+       └─ 100振動 → 50休 → 100振動 → 50休 → 200振動
+
+   navigator.vibrate(0)
+       └─ 進行中の振動をキャンセル
+
+  対応:
+   Android Chrome  ✓
+   iOS Safari      ✗ (2026年時点も未対応)
+   Desktop         APIはあるが多くは何も起きない
+</pre>
+    <div class="info-box warn">📌 <b>iOSでは何も起きない</b>: APIは呼べるが効果なし(エラーも出ない)。「フィードバックが必須」ならネイティブアプリを推奨、Webならアニメーション+音で代替する設計に。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 単発 / パターン振動</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab9Single()">単発(200ms)</button>
+          <button class="demo-btn" onclick="lab9Pattern()">パターン</button>
+          <button class="demo-btn secondary" onclick="lab9Stop()">停止</button>
+          <button class="demo-btn secondary" onclick="lab9Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab9-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab9-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab9-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — vibrate呼び出し</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab9Single() {
+  if (!('vibrate' in navigator)) {
+    console.log('Vibration API非対応');
+    setBA('lab9', '?', 'API非対応 (iOS Safari等)');
+    return;
+  }
+  const ok = navigator.vibrate(200);
+  console.log('vibrate(200) 戻り値: ' + ok);
+  console.log('  ↑ trueでもiOSは無音失敗します');
+  setBA('lab9', '静か', '200ms振動 (Androidのみ実体感あり)');
+}
+function lab9Pattern() {
+  if (!('vibrate' in navigator)) {
+    console.log('Vibration API非対応');
+    return;
+  }
+  const ok = navigator.vibrate([100, 50, 100, 50, 200]);
+  console.log('パターン振動 戻り値: ' + ok);
+  setBA('lab9', '静か', 'パターン: 100-50-100-50-200ms');
+}</pre>
+    </div>
+  </div>
+</div>
+
+
+<!-- ========== Lab 10: Network Information ========== -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>Network Information — 回線種別・速度を知る</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-no">✗ iOS Safari</span>
+      <span class="compat-badge compat-yes">✓ Android Chrome</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why care</b>: 「3G/4Gか高速WiFiか」「Save-Data モードか」を知れば、画像品質を落とす・動画再生を抑える等の判断ができる。<code>navigator.connection</code> がエントリーポイント。<b>iOS Safari非対応</b>のため、判定が undefined になることに備えた設計が必要。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>低速回線時に画像のサムネイル版を読み込む</li>
+        <li>Save-Data モードの尊重(動画自動再生を止める)</li>
+        <li>大きなアップロードを 4G/WiFi に限定</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  navigator.connection の主なプロパティ
+  ───────────────────────────────────────────
+   effectiveType : 'slow-2g' | '2g' | '3g' | '4g'
+   type          : 'wifi' | 'cellular' | 'ethernet' | 'none'
+   downlink      : 推定下り帯域 Mbps
+   rtt           : 推定往復時間 ms
+   saveData      : true なら省データモード
+
+  イベント:
+   connection.addEventListener('change', () =&gt; {...})
+   → 回線が切り替わったときに発火
+</pre>
+    <div class="info-box warn">📌 <b>iOSでは undefined</b>: <code>navigator.connection</code> 自体が無いので、必ず <code>if ('connection' in navigator)</code> で防御してから読む。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 現在の接続情報を表示</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab10Run()">情報取得</button>
+          <button class="demo-btn secondary" onclick="lab10Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab10-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab10-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab10-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — connection情報の取得</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>function lab10Run() {
+  const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  if (!c) {
+    console.log('Network Information API 非対応 (iOS Safari等)');
+    setBA('lab10', '?', '非対応: navigator.connection 不在');
+    return;
+  }
+  console.log('effectiveType: ' + c.effectiveType);
+  console.log('type: ' + (c.type || '(未公開)'));
+  console.log('downlink: ' + c.downlink + ' Mbps');
+  console.log('rtt: ' + c.rtt + ' ms');
+  console.log('saveData: ' + c.saveData);
+  setBA('lab10', '情報なし',
+    c.effectiveType + ' / down=' + c.downlink + 'Mbps / rtt=' + c.rtt + 'ms');
+}</pre>
+    </div>
+  </div>
+</div>
+
+
+<!-- ========== Lab 11: Clipboard ========== -->
+<div class="lab" id="lab11">
+  <div class="lab-header">
+    <div class="lab-num">11</div>
+    <h3>Clipboard — コピペの近代化(execCommandとの断絶)</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+      <span class="compat-badge compat-partial">⚠ HTTPS必須(write)</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why exists</b>: 旧 <code>document.execCommand('copy')</code> は同期APIでDOM選択範囲のみ扱える窮屈な仕組み。新Clipboard APIは <code>navigator.clipboard.writeText/readText</code> でPromise化され、<b>任意のテキスト</b>と<b>画像/HTML(ClipboardItem)</b>も扱える。代わりにユーザジェスチャ起点が必須で、HTTPSが必要(read)。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>Wijmo FlexGridで「選択行をTSVでクリップボードへ」</li>
+        <li>「リンクをコピー」ボタン(SNSシェア導線の前段)</li>
+        <li>OTPコードのワンタップコピー</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  旧APIと新API
+  ──────────────────────────────────────────────
+   execCommand                 navigator.clipboard
+   ─────────                   ────────────────────
+   同期戻り値(true/false)       Promise
+   選択範囲のテキストのみ        任意のテキスト/画像/HTML
+   readはほぼ不可                writeText/readText 両対応
+   廃止予定だが互換のため残存     現代の標準
+
+  本Lab内 _common_js.js も execCommandへフォールバック。
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈での旨味</b>: Wijmo FlexGridの<code>selectedRows</code>を取り出してTSV化→Clipboardへ書き込む処理は、ユーザがExcelに貼り付けて加工する業務フローで重宝する。<br>
+    実装ポイント: ① <code>flex.selectedRows.map(r =&gt; r.dataItem)</code> で行データを取り出し、② カラム順に <code>'\t'</code> 区切りで join、③ 行間を <code>'\n'</code> で連結、④ <code>navigator.clipboard.writeText(tsv)</code>。<br>
+    OutSystemsの<code>JavaScript</code>ノードからこのまま呼べる。GridAPIの専用クライアントAPIは提供されていないので、Wijmoを直接叩く方が確実。なお、Webブラウザの「読み取り権限」はユーザに毎回確認されるため、<b>writeはユーザクリック後すぐに行うこと</b>(間に await が挟まると拒否される場合あり)。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: テキスト書込み + 読込み</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <input type="text" id="lab11-text" value="Tomさんおはようございます ☕">
+          <button class="demo-btn" onclick="lab11Write()">writeText</button>
+          <button class="demo-btn" onclick="lab11Read()">readText</button>
+          <button class="demo-btn secondary" onclick="lab11Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab11-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab11-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab11-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — writeText/readText</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>async function lab11Write() {
+  const text = document.getElementById('lab11-text').value;
+  try {
+    await navigator.clipboard.writeText(text);
+    console.log('writeText OK: ' + text);
+    setBA('lab11', 'クリップボードに古い内容', '書込み完了: ' + text);
+  } catch (e) {
+    console.log('writeText 失敗: ' + e.message);
+  }
+}
+async function lab11Read() {
+  try {
+    const text = await navigator.clipboard.readText();
+    console.log('readText: ' + text);
+    setBA('lab11', '?', '読込み: ' + text);
+  } catch (e) {
+    console.log('readText 失敗(権限拒否?): ' + e.message);
+  }
+}</pre>
+    </div>
+  </div>
+</div>
+
+
+<!-- ========== Lab 12: Permissions ========== -->
+<div class="lab" id="lab12">
+  <div class="lab-header">
+    <div class="lab-num">12</div>
+    <h3>Permissions — 許可状態の事前確認</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS 16+</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why this design</b>: 通知やGeolocationなどの許可が「未確認 / 許可済 / 拒否済」のどれかを <b>実際にAPIを呼ぶ前に</b> 知りたいケース用。<code>navigator.permissions.query({name: 'geolocation'})</code> で <code>PermissionStatus</code> オブジェクトが返り、<code>state</code> プロパティを読む。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>「位置情報を有効にしてください」ガイドの出し分け</li>
+        <li>許可済ならボタンを「次へ」に変え、未許可なら「許可する」に</li>
+        <li>許可状態の変化を監視してUI更新</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  PermissionStatus.state の3値
+  ──────────────────────────────
+   'granted' : 許可済 → APIをそのまま呼べる
+   'prompt'  : 未確認 → 呼ぶとダイアログ出る
+   'denied'  : 拒否済 → 呼んでも蹴られる
+
+  クエリ可能なname例:
+   geolocation, notifications, camera, microphone,
+   clipboard-read, clipboard-write, persistent-storage 等
+   (ブラウザによって実装範囲が違うので try-catchで包む)
+</pre>
+    <div class="info-box warn">📌 <b>注意</b>: name のサポート範囲はブラウザ依存。Safariは長く未対応だったが iOS 16+ から実装が増えた。クエリそのものが TypeError を投げる場合があるので必ず try-catch。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 各種APIの許可状態を一覧</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab12Run()">許可状態を一覧</button>
+          <button class="demo-btn secondary" onclick="lab12Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab12-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab12-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab12-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — Permissions.query 一括</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>async function lab12Run() {
+  if (!navigator.permissions) {
+    console.log('Permissions API非対応');
+    return;
+  }
+  const names = ['geolocation', 'notifications', 'camera',
+                 'microphone', 'clipboard-read', 'clipboard-write'];
+  const results = [];
+  for (const name of names) {
+    try {
+      const s = await navigator.permissions.query({ name });
+      console.log(name + ': ' + s.state);
+      results.push(name + '=' + s.state);
+    } catch (e) {
+      console.log(name + ': クエリ不可 (' + e.message.slice(0, 30) + ')');
+      results.push(name + '=?');
+    }
+  }
+  setBA('lab12', '状態不明', results.join(' / '));
+}</pre>
+    </div>
+  </div>
+</div>
+
+
+<!-- ========== Lab 13: Notifications ========== -->
+<div class="lab" id="lab13">
+  <div class="lab-header">
+    <div class="lab-num">13</div>
+    <h3>Notifications — デスクトップ通知</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ Android</span>
+      <span class="compat-badge compat-partial">⚠ iOS 16.4+ホーム画面追加時のみ</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why this fails</b>: <code>new Notification(title, opts)</code> はデスクトップ・Androidでは素朴に動くが、<b>iOS Safari は 16.4+ で「ホーム画面追加されたPWA」のみ Web Push に対応</b>という独自仕様。通常のブラウザタブでは依然として通知は出ない。<code>Notification.requestPermission()</code> はユーザジェスチャ起点必須。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>長時間処理の完了をブラウザがバックグラウンドでも知らせる</li>
+        <li>チャットアプリの新着通知</li>
+        <li>SLA超過のアラート</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  通知のフロー
+  ─────────────────────────────────
+   ① Notification.requestPermission()
+        └─ 'granted' / 'denied' / 'default'
+
+   ② 'granted' なら:
+        new Notification('タイトル', {
+          body: '本文',
+          icon: '/icon.png'
+        });
+
+   iOSの罠:
+   - Safariタブ : ❌ 何も起きない
+   - PWA(ホーム画面追加): ✓ 動く (16.4+)
+</pre>
+    <div class="info-box err">📌 <b>iOS Safariタブでは動かない</b>: テストで iPhone Safari を開いても通知は出ない。これを「バグ」と思う前に「ホーム画面追加して PWA として開く」「Androidで試す」を試してほしい。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 許可リクエスト → 通知発火</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab13Permission()">① 許可リクエスト</button>
+          <button class="demo-btn" onclick="lab13Run()">② 通知を出す</button>
+          <button class="demo-btn secondary" onclick="lab13Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab13-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab13-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab13-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — Notification基礎</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>async function lab13Permission() {
+  if (!('Notification' in window)) {
+    console.log('Notification非対応');
+    return;
+  }
+  const r = await Notification.requestPermission();
+  console.log('許可結果: ' + r);
+  setBA('lab13', '未確認', '許可状態: ' + r);
+}
+function lab13Run() {
+  if (!('Notification' in window)) {
+    console.log('Notification非対応');
+    return;
+  }
+  if (Notification.permission !== 'granted') {
+    console.log('まだ許可されていません(① を先に)');
+    return;
+  }
+  const n = new Notification('Lab #13 通知テスト', {
+    body: '実機がデスクトップ/Androidなら通知が出るはず',
+    tag: 'lab13'
+  });
+  n.onclick = () =&gt; { console.log('通知がクリックされた'); n.close(); };
+  console.log('通知発火');
+  setBA('lab13', '通知なし', '発火完了 (iOS Safariタブでは何も起きない)');
+}</pre>
+    </div>
+  </div>
+</div>
+
+
+<!-- ========== Lab 14: Wake Lock ========== -->
+<div class="lab" id="lab14">
+  <div class="lab-header">
+    <div class="lab-num">14</div>
+    <h3>Wake Lock — 画面ロック防止</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS 16.4+</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+      <span class="compat-badge compat-partial">⚠ HTTPS必須</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why exists</b>: 「料理レシピを見ながら作業」「現場での点検中」「プレゼン中」など、画面が勝手にスリープに入ってほしくないケースのため。以前は動画再生で誤魔化す等の裏技だったが、<code>navigator.wakeLock.request('screen')</code> で正規に画面起こしっぱなしにできる。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>レシピ・取扱説明書アプリ</li>
+        <li>現場点検アプリ(両手は塞がっている)</li>
+        <li>長時間タイマー・ストップウォッチ</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  WakeLockSentinel のライフサイクル
+  ────────────────────────────────────
+   request('screen') ─► sentinel取得
+        │
+        ▼ release()するか
+        ▼ ページが visibility hidden になる
+        ▼ 自動で解放される
+   sentinel.released = true
+        │
+        ▼ 再度欲しければ visibilitychange で再取得
+
+  release イベント:
+   sentinel.addEventListener('release', () =&gt; {...})
+</pre>
+    <div class="info-box warn">📌 <b>visibility に弱い</b>: タブを別アプリに切り替えて戻ると勝手に解放されているので、<code>visibilitychange</code> で「visibleに戻ったら再取得」を組む。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: 画面ロック防止のON/OFF</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab14Run()">取得</button>
+          <button class="demo-btn secondary" onclick="lab14Release()">解放</button>
+          <button class="demo-btn secondary" onclick="lab14Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab14-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab14-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab14-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — Wake Lock取得・解放</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>let lab14Sentinel = null;
+async function lab14Run() {
+  if (!('wakeLock' in navigator)) {
+    console.log('Wake Lock API非対応');
+    setBA('lab14', '?', '非対応');
+    return;
+  }
+  try {
+    lab14Sentinel = await navigator.wakeLock.request('screen');
+    console.log('Wake Lock取得');
+    lab14Sentinel.addEventListener('release', () =&gt; {
+      console.log('(自動解放されました)');
+    });
+    setBA('lab14', '通常はスリープに入る', '画面ロック防止ON');
+  } catch (e) {
+    console.log('取得失敗: ' + e.message);
+  }
+}
+async function lab14Release() {
+  if (lab14Sentinel) {
+    await lab14Sentinel.release();
+    lab14Sentinel = null;
+    console.log('手動解放完了');
+    setBA('lab14', '画面ロック防止ON', 'OFF');
+  }
+}</pre>
+    </div>
+  </div>
+</div>
+
+
+<!-- ========== Lab 15: Page Visibility ========== -->
+<div class="lab" id="lab15">
+  <div class="lab-header">
+    <div class="lab-num">15</div>
+    <h3>Page Visibility — タブの表示状態を知る</h3>
+    <div class="compat-badges">
+      <span class="compat-badge compat-yes">✓ iOS</span>
+      <span class="compat-badge compat-yes">✓ Android</span>
+    </div>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc"><b>Why care</b>: タブが裏に回っているときに、Worker・タイマー・動画再生・APIポーリングを止めればバッテリーと帯域を節約できる。<code>document.visibilityState</code> は <code>'visible'</code> か <code>'hidden'</code>、変化時に <code>visibilitychange</code> イベントが出る。Lab 14 の Wake Lock とも連動しやすい。</p>
+    <div class="scenes">
+      <div class="scenes-title">💡 利用シーン</div>
+      <ol>
+        <li>動画・音声の自動一時停止</li>
+        <li>定期APIポーリングの停止/再開</li>
+        <li>ゲームのポーズ</li>
+      </ol>
+    </div>
+<pre class="ascii-art">
+  Page Visibility 状態遷移
+  ──────────────────────────────────
+   タブ前面    タブ裏      別アプリ      復帰
+   visible → hidden  →  hidden  →  visible
+              │
+              ▼ visibilitychange 発火
+              ▼ document.visibilityState = 'hidden'
+
+  visible→hidden で止めたいもの:
+   - Worker側のループ
+   - setInterval によるAPIポーリング
+   - canvasアニメーション(requestAnimationFrameは自動停止される)
+
+  hidden→visible で再開:
+   - 上記を再開
+   - 必要なら最新データを再取得
+</pre>
+    <div class="info-box info">📌 <b>OutSystems文脈の旨味</b>: クライアントTimerでAPIポーリングしているScreenでは、<code>visibilitychange</code> でTimer.Stop/Startすれば、ユーザがタブを別に切り替えている間の無駄なAPI呼び出しを防げる。</div>
+    <div class="demo">
+      <div class="demo-bar">▶ 実機で動かす: visibilitychange を監視</div>
+      <div class="demo-body">
+        <div class="demo-input">
+          <button class="demo-btn" onclick="lab15Run()">監視開始</button>
+          <button class="demo-btn secondary" onclick="lab15Stop()">監視停止</button>
+          <button class="demo-btn secondary" onclick="lab15Clear()">クリア</button>
+        </div>
+        <div class="ba-grid">
+          <div class="ba-col ba-before"><div class="ba-label">Before</div><div class="ba-content" id="lab15-before">(未実行)</div></div>
+          <div class="ba-col ba-after"><div class="ba-label">After</div><div class="ba-content" id="lab15-after">(未実行)</div></div>
+        </div>
+        <div class="log-area" id="lab15-log"></div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>JS — visibilitychange を監視</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>const lab15Handler = () =&gt; {
+  const s = document.visibilityState;
+  console.log('visibilityState → ' + s + ' (at ' + new Date().toLocaleTimeString() + ')');
+  setBA('lab15', '?', '現在: ' + s);
+};
+function lab15Run() {
+  document.addEventListener('visibilitychange', lab15Handler);
+  console.log('監視開始 → タブを別ウィンドウに切り替えてみてください');
+  console.log('現在のstate: ' + document.visibilityState);
+  setBA('lab15', '?', '現在: ' + document.visibilityState + ' (切替で変化)');
+}
+function lab15Stop() {
+  document.removeEventListener('visibilitychange', lab15Handler);
+  console.log('監視停止');
+}</pre>
+    </div>
+  </div>
+</div>
+
+</div><!-- /.container -->
+
+<!-- 📑 フローティング「目次に戻る」ボタン -->
+<button id="back-to-toc" aria-label="目次に戻る">
+  <span class="arrow">▲</span>
+  <span class="label">目次</span>
+</button>
+<script>
+// ============= 共通ユーティリティ =============
+function copyCode(btn) {
+  const block = btn.closest('.code-block');
+  const pre = block.querySelector('pre');
+  if (!pre) return;
+  const text = pre.innerText;
+
+  const showSuccess = () => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  };
+  const showError = (msg) => {
+    btn.textContent = 'NG: ' + msg;
+    btn.style.borderColor = '#cb2431';
+    btn.style.color = '#cb2431';
+    setTimeout(() => {
+      btn.textContent = 'Copy';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+    }, 2500);
+  };
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text)
+      .then(showSuccess)
+      .catch(() => fallbackCopy(text, showSuccess, showError));
+  } else {
+    fallbackCopy(text, showSuccess, showError);
+  }
+}
+
+function fallbackCopy(text, onOk, onErr) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.top = '0';
+  ta.style.left = '0';
+  ta.style.opacity = '0';
+  ta.setAttribute('readonly', '');
+  document.body.appendChild(ta);
+  ta.select();
+  ta.setSelectionRange(0, text.length);
+  try {
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    if (ok) onOk();
+    else onErr('コピー不可');
+  } catch (e) {
+    document.body.removeChild(ta);
+    onErr(e.message.slice(0, 12));
+  }
+}
+function logTo(id, text, cls='') {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const line = document.createElement('div');
+  line.className = 'log-line ' + cls;
+  line.textContent = '> ' + text;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+function clearLog(id) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = '';
+}
+function setBA(labId, before, after) {
+  document.getElementById(labId+'-before').textContent = before;
+  document.getElementById(labId+'-after').textContent = after;
+}
+
+// ============= console.log を log-area へ転送 =============
+// 各ラボのconsole.logを画面に表示するため、ラボ内で console.log を呼ぶたびに
+// そのラボの log-area へ書き込む薄いプロキシをかける
+(function() {
+  const origLog = console.log.bind(console);
+  console.log = function(...args) {
+    origLog(...args);
+    // 直近にクリックされたボタンが属するラボのlog-areaに書き込む
+    const lab = window.__currentLab;
+    if (lab) {
+      const el = document.getElementById(lab + '-log');
+      if (el) {
+        const line = document.createElement('div');
+        line.className = 'log-line';
+        line.textContent = '> ' + args.map(a =>
+          typeof a === 'object' ? JSON.stringify(a) : String(a)
+        ).join(' ');
+        el.appendChild(line);
+        el.scrollTop = el.scrollHeight;
+      }
+    }
+  };
+
+  // ボタンクリック時に「現在のラボ」を識別 (data-target も除外)
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    if (btn.classList.contains('nav-item') || btn.classList.contains('toc-item')) return;
+    const lab = btn.closest('.lab');
+    if (lab) window.__currentLab = lab.id;
+  }, true);
+})();
+
+// ============= Lab 01: Web Worker 基礎 =============
+function lab1Run() {
+  clearLog('lab1-log');
+  const n = parseInt(document.getElementById('lab1-n').value, 10) || 35;
+  const workerCode = `
+    self.onmessage = (e) => {
+      const fib = (k) => k < 2 ? k : fib(k-1) + fib(k-2);
+      const t0 = Date.now();
+      const result = fib(e.data);
+      self.postMessage({ result, ms: Date.now() - t0 });
+    };
+  `;
+  const blob = new Blob([workerCode], { type: 'application/javascript' });
+  const worker = new Worker(URL.createObjectURL(blob));
+  console.log('Worker起動 → fib(' + n + ')をpostMessage');
+  const t0 = Date.now();
+  worker.onmessage = (e) => {
+    console.log('Worker結果: ' + e.data.result + ' (Worker側 ' + e.data.ms + 'ms)');
+    setBA('lab1', 'UIフリーズなし', 'fib(' + n + ')=' + e.data.result + ' / 経過 ' + (Date.now()-t0) + 'ms');
+    worker.terminate();
+  };
+  worker.postMessage(n);
+}
+function lab1RunSync() {
+  clearLog('lab1-log');
+  const n = parseInt(document.getElementById('lab1-n').value, 10) || 35;
+  console.log('UIスレッドで同期実行(画面が固まります)…');
+  const fib = (k) => k < 2 ? k : fib(k-1) + fib(k-2);
+  const t0 = Date.now();
+  const result = fib(n);
+  const ms = Date.now() - t0;
+  console.log('結果: ' + result + ' / ' + ms + 'ms (UIフリーズ済)');
+  setBA('lab1', 'UIスレッドで実行→固まった', 'fib(' + n + ')=' + result + ' / ' + ms + 'ms');
+}
+function lab1Clear() { clearLog('lab1-log'); setBA('lab1', '(未実行)', '(未実行)'); }
+
+
+// ============= Lab 02: Worker重い計算 =============
+function lab2Run() {
+  clearLog('lab2-log');
+  const code = `
+    self.onmessage = () => {
+      const isPrime = (n) => {
+        if (n < 2) return false;
+        for (let i = 2; i * i <= n; i++) if (n % i === 0) return false;
+        return true;
+      };
+      let count = 0;
+      for (let i = 2; i <= 1000000; i++) if (isPrime(i)) count++;
+      self.postMessage(count);
+    };
+  `;
+  const w = new Worker(URL.createObjectURL(
+    new Blob([code], { type: 'application/javascript' })));
+  let tick = 0;
+  const timer = setInterval(() => {
+    tick++;
+    setBA('lab2', 'UIカウンタ稼働中: ' + tick + ' tick', '(計算中…)');
+  }, 100);
+  const t0 = Date.now();
+  w.onmessage = (e) => {
+    clearInterval(timer);
+    const ms = Date.now() - t0;
+    console.log('素数の個数: ' + e.data + ' / Worker処理時間: ' + ms + 'ms');
+    console.log('UIカウンタは ' + tick + ' 回 (100ms毎) 動き続けた');
+    setBA('lab2', 'UIカウンタ ' + tick + ' 回稼働', '結果: ' + e.data + '個 / ' + ms + 'ms');
+    w.terminate();
+  };
+  w.postMessage(null);
+}
+function lab2Clear() { clearLog('lab2-log'); setBA('lab2', '(未実行)', '(未実行)'); }
+
+
+// ============= Lab 03: Service Worker 基礎 =============
+async function lab3Run() {
+  clearLog('lab3-log');
+  if (!('serviceWorker' in navigator)) {
+    console.log('このブラウザはSW非対応');
+    setBA('lab3', '?', 'SW非対応');
+    return;
+  }
+  if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+    console.log('警告: HTTPS or localhost 必須(現在: ' + location.protocol + ')');
+  }
+  const swCode = `
+    self.addEventListener('install', (e) => {
+      self.skipWaiting();
+    });
+    self.addEventListener('activate', (e) => {
+      e.waitUntil(self.clients.claim());
+    });
+  `;
+  const url = URL.createObjectURL(
+    new Blob([swCode], { type: 'application/javascript' }));
+  try {
+    const reg = await navigator.serviceWorker.register(url);
+    console.log('登録成功');
+    console.log('scope: ' + reg.scope);
+    const state = reg.active ? reg.active.state
+      : reg.installing ? 'installing'
+      : reg.waiting ? 'waiting' : '?';
+    console.log('SW state: ' + state);
+    setBA('lab3', '未登録', 'SW state: ' + state + ' / scope: ' + reg.scope);
+  } catch (e) {
+    console.log('登録失敗: ' + e.message);
+    setBA('lab3', '未登録', 'エラー: ' + e.message);
+  }
+}
+async function lab3Unregister() {
+  if (!('serviceWorker' in navigator)) return;
+  const regs = await navigator.serviceWorker.getRegistrations();
+  for (const r of regs) await r.unregister();
+  console.log('登録解除: ' + regs.length + '件');
+  setBA('lab3', '登録あり', '解除完了');
+}
+function lab3Clear() { clearLog('lab3-log'); setBA('lab3', '(未実行)', '(未実行)'); }
+
+
+// ============= Lab 04: SW fetch傍受 =============
+async function lab4Run() {
+  clearLog('lab4-log');
+  if (!('serviceWorker' in navigator)) {
+    console.log('SW非対応');
+    return;
+  }
+  const swCode = `
+    self.addEventListener('install', () => self.skipWaiting());
+    self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+    self.addEventListener('fetch', (e) => {
+      const url = new URL(e.request.url);
+      if (url.pathname.endsWith('/__sw_test__')) {
+        e.respondWith(new Response(
+          JSON.stringify({ from: 'service-worker', ts: Date.now() }),
+          { headers: { 'Content-Type': 'application/json' } }
+        ));
+      }
+    });
+  `;
+  const url = URL.createObjectURL(
+    new Blob([swCode], { type: 'application/javascript' }));
+  try {
+    await navigator.serviceWorker.register(url);
+    await navigator.serviceWorker.ready;
+    console.log('SW ready, 500ms待機後に fetch試行…');
+    await new Promise(r => setTimeout(r, 500));
+    const res = await fetch('/__sw_test__');
+    const json = await res.json();
+    console.log('合成レスポンス受信:');
+    console.log('  ' + JSON.stringify(json));
+    setBA('lab4', '通常fetchならネット経由', 'SWが合成: ' + json.from);
+  } catch (e) {
+    console.log('失敗: ' + e.message);
+    console.log('  → SWがactiveでない可能性、もう一度ボタン押下');
+    setBA('lab4', '?', 'エラー / 再試行を');
+  }
+}
+async function lab4Unregister() {
+  if (!('serviceWorker' in navigator)) return;
+  const regs = await navigator.serviceWorker.getRegistrations();
+  for (const r of regs) await r.unregister();
+  console.log('登録解除: ' + regs.length + '件');
+  setBA('lab4', '?', '解除完了');
+}
+function lab4Clear() { clearLog('lab4-log'); setBA('lab4', '(未実行)', '(未実行)'); }
+
+
+// ============= Lab 05: Cache API =============
+async function lab5Run() {
+  clearLog('lab5-log');
+  if (!('caches' in window)) {
+    console.log('Cache API非対応');
+    setBA('lab5', '?', '非対応');
+    return;
+  }
+  try {
+    const cache = await caches.open('lab5-demo');
+    const key = '/lab5-virtual';
+    const value = { user: 'tom', cached_at: new Date().toISOString() };
+    await cache.put(key,
+      new Response(JSON.stringify(value),
+        { headers: { 'Content-Type': 'application/json' } }));
+    console.log('cache.put 完了 key=' + key);
+    const cached = await cache.match(key);
+    if (cached) {
+      const json = await cached.json();
+      console.log('cache.match 取得: ' + JSON.stringify(json));
+      const keys = await cache.keys();
+      console.log('cache内のkey数: ' + keys.length);
+      setBA('lab5', '通常はAPIへ毎回HTTP', 'cache hit: ' + json.user + ' / ' + json.cached_at);
+    }
+  } catch (e) {
+    console.log('失敗: ' + e.message);
+    setBA('lab5', '?', 'エラー: ' + e.message);
+  }
+}
+function lab5Clear() { clearLog('lab5-log'); setBA('lab5', '(未実行)', '(未実行)'); }
+
+
+// ============= Lab 06: Geolocation =============
+function lab6Run() {
+  clearLog('lab6-log');
+  if (!navigator.geolocation) {
+    console.log('Geolocation非対応');
+    setBA('lab6', '?', '非対応');
+    return;
+  }
+  console.log('位置情報取得中…(初回は許可ダイアログ)');
+  const opts = { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 };
+  const promisify = () => new Promise((resolve, reject) =>
+    navigator.geolocation.getCurrentPosition(resolve, reject, opts));
+  promisify().then(pos => {
+    const c = pos.coords;
+    console.log('lat=' + c.latitude.toFixed(5) + ' lng=' + c.longitude.toFixed(5));
+    console.log('精度=' + Math.round(c.accuracy) + 'm');
+    if (c.altitude != null) console.log('高度=' + c.altitude.toFixed(1) + 'm');
+    setBA('lab6', '位置不明', '緯度: ' + c.latitude.toFixed(5)
+      + ' / 経度: ' + c.longitude.toFixed(5) + ' / 精度: ' + Math.round(c.accuracy) + 'm');
+  }).catch(err => {
+    const codes = ['', 'PERMISSION_DENIED', 'POSITION_UNAVAILABLE', 'TIMEOUT'];
+    console.log('エラー code=' + err.code + ' (' + (codes[err.code] || '?') + ')');
+    console.log('  ' + err.message);
+    setBA('lab6', '位置不明', 'エラー: ' + (codes[err.code] || err.message));
+  });
+}
+function lab6Clear() { clearLog('lab6-log'); setBA('lab6', '(未実行)', '(未実行)'); }
+
+
+// ============= Lab 07: DeviceOrientation =============
+// ヘルパは const+arrow (v5知見: lab数字英字 形式の function 定義は build_lab.sh [2] で誤検出される)
+const lab7Handler = (e) => {
+  const a = e.alpha == null ? '-' : e.alpha.toFixed(1);
+  const b = e.beta == null ? '-' : e.beta.toFixed(1);
+  const g = e.gamma == null ? '-' : e.gamma.toFixed(1);
+  setBA('lab7', '計測中…', 'α(方位)=' + a + '° β(前後)=' + b + '° γ(左右)=' + g + '°');
+};
+async function lab7Permission() {
+  clearLog('lab7-log');
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    try {
+      const r = await DeviceOrientationEvent.requestPermission();
+      console.log('iOS許可結果: ' + r);
+      setBA('lab7', '未許可', 'iOS許可: ' + r);
+    } catch (e) {
+      console.log('許可リクエスト失敗: ' + e.message);
+      console.log('  → ボタンクリック起点でないと iOS は拒否します');
+    }
+  } else {
+    console.log('iOS許可APIなし(Android等は不要、直接 ② を押してOK)');
+    setBA('lab7', '?', 'iOS許可不要(Android想定)');
+  }
+}
+function lab7Run() {
+  window.addEventListener('deviceorientation', lab7Handler);
+  console.log('listener登録 → 端末を傾けてください(Beforeに表示更新)');
+}
+function lab7Stop() {
+  window.removeEventListener('deviceorientation', lab7Handler);
+  console.log('listener解除');
+}
+function lab7Clear() {
+  clearLog('lab7-log');
+  window.removeEventListener('deviceorientation', lab7Handler);
+  setBA('lab7', '(未実行)', '(未実行)');
+}
+
+
+// ============= Lab 08: DeviceMotion =============
+const lab8State = { lastShake: 0, count: 0 };
+const lab8Handler = (e) => {
+  const a = e.accelerationIncludingGravity;
+  if (!a || a.x == null) return;
+  const mag = Math.abs(a.x) + Math.abs(a.y) + Math.abs(a.z);
+  const now = Date.now();
+  if (mag > 30 && now - lab8State.lastShake > 300) {
+    lab8State.lastShake = now;
+    lab8State.count++;
+    console.log('シェイク検知 #' + lab8State.count + ' mag=' + mag.toFixed(1));
+    setBA('lab8', '通常時 mag<15', 'シェイク ' + lab8State.count + '回 / mag=' + mag.toFixed(1));
+  }
+};
+async function lab8Permission() {
+  clearLog('lab8-log');
+  if (typeof DeviceMotionEvent !== 'undefined' &&
+      typeof DeviceMotionEvent.requestPermission === 'function') {
+    try {
+      const r = await DeviceMotionEvent.requestPermission();
+      console.log('iOS許可結果: ' + r);
+      setBA('lab8', '未許可', 'iOS許可: ' + r);
+    } catch (e) {
+      console.log('許可リクエスト失敗: ' + e.message);
+    }
+  } else {
+    console.log('iOS許可APIなし(Android等は不要)');
+    setBA('lab8', '?', 'iOS許可不要');
+  }
+}
+function lab8Run() {
+  lab8State.count = 0;
+  window.addEventListener('devicemotion', lab8Handler);
+  console.log('シェイク検知開始(端末を強く振ってください)');
+}
+function lab8Stop() {
+  window.removeEventListener('devicemotion', lab8Handler);
+  console.log('検知停止');
+}
+function lab8Clear() {
+  clearLog('lab8-log');
+  window.removeEventListener('devicemotion', lab8Handler);
+  lab8State.count = 0;
+  setBA('lab8', '(未実行)', '(未実行)');
+}
+
+// ============= Lab 09: Vibration =============
+function lab9Single() {
+  clearLog('lab9-log');
+  if (!('vibrate' in navigator)) {
+    console.log('Vibration API非対応');
+    setBA('lab9', '?', 'API非対応 (iOS Safari等)');
+    return;
+  }
+  const ok = navigator.vibrate(200);
+  console.log('vibrate(200) 戻り値: ' + ok);
+  console.log('  ↑ trueでもiOSは無音失敗(警告は出ない)');
+  setBA('lab9', '静か', '200ms振動 (Androidのみ実体感あり)');
+}
+function lab9Pattern() {
+  clearLog('lab9-log');
+  if (!('vibrate' in navigator)) {
+    console.log('Vibration API非対応');
+    return;
+  }
+  const ok = navigator.vibrate([100, 50, 100, 50, 200]);
+  console.log('パターン振動 戻り値: ' + ok);
+  console.log('100振動→50休→100振動→50休→200振動');
+  setBA('lab9', '静か', 'パターン: 100-50-100-50-200ms');
+}
+function lab9Stop() {
+  if ('vibrate' in navigator) {
+    navigator.vibrate(0);
+    console.log('vibrate(0) で進行中の振動キャンセル');
+  }
+}
+function lab9Clear() { clearLog('lab9-log'); setBA('lab9', '(未実行)', '(未実行)'); }
+
+
+// ============= Lab 10: Network Information =============
+function lab10Run() {
+  clearLog('lab10-log');
+  const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  if (!c) {
+    console.log('Network Information API 非対応 (iOS Safari等)');
+    console.log('  → navigator.connection が undefined');
+    setBA('lab10', '?', '非対応: navigator.connection 不在');
+    return;
+  }
+  console.log('effectiveType: ' + c.effectiveType);
+  console.log('type: ' + (c.type || '(未公開)'));
+  console.log('downlink: ' + c.downlink + ' Mbps (推定下り)');
+  console.log('rtt: ' + c.rtt + ' ms (推定往復時間)');
+  console.log('saveData: ' + c.saveData);
+  setBA('lab10', '情報なし',
+    c.effectiveType + ' / down=' + c.downlink + 'Mbps / rtt=' + c.rtt + 'ms / saveData=' + c.saveData);
+}
+function lab10Clear() { clearLog('lab10-log'); setBA('lab10', '(未実行)', '(未実行)'); }
+
+
+// ============= Lab 11: Clipboard =============
+async function lab11Write() {
+  clearLog('lab11-log');
+  const text = document.getElementById('lab11-text').value;
+  if (!navigator.clipboard) {
+    console.log('Clipboard API非対応 → execCommandフォールバック必要');
+    setBA('lab11', '?', '非対応');
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    console.log('writeText OK: ' + text);
+    console.log('  → 別アプリにペーストして確認できる');
+    setBA('lab11', 'クリップボードに古い内容', '書込み完了: ' + text);
+  } catch (e) {
+    console.log('writeText 失敗: ' + e.message);
+    console.log('  → ユーザジェスチャ起点で呼ぶ必要あり');
+  }
+}
+async function lab11Read() {
+  clearLog('lab11-log');
+  if (!navigator.clipboard || !navigator.clipboard.readText) {
+    console.log('readText 非対応');
+    return;
+  }
+  try {
+    const text = await navigator.clipboard.readText();
+    console.log('readText: ' + text);
+    setBA('lab11', '?', '読込み: ' + text.slice(0, 60));
+  } catch (e) {
+    console.log('readText 失敗: ' + e.message);
+    console.log('  → ブラウザが「読み取り権限」ダイアログを出した可能性');
+  }
+}
+function lab11Clear() { clearLog('lab11-log'); setBA('lab11', '(未実行)', '(未実行)'); }
+
+
+// ============= Lab 12: Permissions =============
+async function lab12Run() {
+  clearLog('lab12-log');
+  if (!navigator.permissions) {
+    console.log('Permissions API非対応');
+    setBA('lab12', '?', '非対応');
+    return;
+  }
+  const names = ['geolocation', 'notifications', 'camera',
+                 'microphone', 'clipboard-read', 'clipboard-write'];
+  const results = [];
+  for (const name of names) {
+    try {
+      const s = await navigator.permissions.query({ name });
+      console.log(name + ': ' + s.state);
+      results.push(name + '=' + s.state);
+    } catch (e) {
+      const reason = e.message.length > 30 ? e.message.slice(0, 30) + '…' : e.message;
+      console.log(name + ': クエリ不可 (' + reason + ')');
+      results.push(name + '=?');
+    }
+  }
+  setBA('lab12', '状態不明', results.slice(0, 3).join(' / '));
+}
+function lab12Clear() { clearLog('lab12-log'); setBA('lab12', '(未実行)', '(未実行)'); }
+
+
+// ============= Lab 13: Notifications =============
+async function lab13Permission() {
+  clearLog('lab13-log');
+  if (!('Notification' in window)) {
+    console.log('Notification非対応');
+    setBA('lab13', '?', '非対応');
+    return;
+  }
+  const r = await Notification.requestPermission();
+  console.log('許可結果: ' + r);
+  if (r === 'granted') console.log('  → ② で実際に通知が出ます');
+  else if (r === 'denied') console.log('  → ブラウザ設定から再許可が必要');
+  setBA('lab13', '未確認', '許可状態: ' + r);
+}
+function lab13Run() {
+  if (!('Notification' in window)) {
+    console.log('Notification非対応');
+    return;
+  }
+  if (Notification.permission !== 'granted') {
+    console.log('まだ許可されていません(① を先に押してください)');
+    return;
+  }
+  try {
+    const n = new Notification('Lab #13 通知テスト', {
+      body: '実機がデスクトップ/Androidなら通知が出ます',
+      tag: 'lab13'
+    });
+    n.onclick = () => { console.log('通知がクリックされた'); n.close(); };
+    console.log('通知発火');
+    console.log('  ※ iOS Safariタブでは何も起きません(Androidなら出る)');
+    setBA('lab13', '通知なし', '発火完了 (iOS Safariタブでは効果なし)');
+  } catch (e) {
+    console.log('通知発火失敗: ' + e.message);
+  }
+}
+function lab13Clear() { clearLog('lab13-log'); setBA('lab13', '(未実行)', '(未実行)'); }
+
+
+// ============= Lab 14: Wake Lock =============
+let lab14Sentinel = null;
+const lab14ReleaseHandler = () => {
+  console.log('(自動解放されました — タブが裏に回ったか?)');
+  setBA('lab14', '画面ロック防止ON', '自動解放 → 再取得が必要');
+};
+async function lab14Run() {
+  clearLog('lab14-log');
+  if (!('wakeLock' in navigator)) {
+    console.log('Wake Lock API非対応');
+    setBA('lab14', '?', '非対応');
+    return;
+  }
+  try {
+    lab14Sentinel = await navigator.wakeLock.request('screen');
+    console.log('Wake Lock取得');
+    console.log('  → このタブが visible である限り画面はスリープしない');
+    lab14Sentinel.addEventListener('release', lab14ReleaseHandler);
+    setBA('lab14', '通常はスリープに入る', '画面ロック防止ON');
+  } catch (e) {
+    console.log('取得失敗: ' + e.message);
+    console.log('  → HTTPS必須 / ユーザジェスチャ起点必須');
+  }
+}
+async function lab14Release() {
+  if (lab14Sentinel) {
+    await lab14Sentinel.release();
+    lab14Sentinel = null;
+    console.log('手動解放完了');
+    setBA('lab14', '画面ロック防止ON', 'OFF');
+  } else {
+    console.log('既に解放済み');
+  }
+}
+function lab14Clear() { clearLog('lab14-log'); setBA('lab14', '(未実行)', '(未実行)'); }
+
+
+// ============= Lab 15: Page Visibility =============
+const lab15Handler = () => {
+  const s = document.visibilityState;
+  const t = new Date().toLocaleTimeString();
+  console.log('visibilityState → ' + s + ' (at ' + t + ')');
+  setBA('lab15', '?', '現在: ' + s + ' (' + t + ')');
+};
+function lab15Run() {
+  clearLog('lab15-log');
+  document.addEventListener('visibilitychange', lab15Handler);
+  console.log('監視開始 → タブを別ウィンドウに切り替えてみてください');
+  console.log('現在のstate: ' + document.visibilityState);
+  setBA('lab15', '?', '現在: ' + document.visibilityState + ' (切替で変化)');
+}
+function lab15Stop() {
+  document.removeEventListener('visibilitychange', lab15Handler);
+  console.log('監視停止');
+}
+function lab15Clear() {
+  clearLog('lab15-log');
+  document.removeEventListener('visibilitychange', lab15Handler);
+  setBA('lab15', '(未実行)', '(未実行)');
+}
+// ============= サイドバー: ボタンクリックでスクロール =============
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('[data-target]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.getAttribute('data-target');
+      const target = document.getElementById(targetId);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+
+  const navItems = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+  const targetMap = new Map();
+  navItems.forEach(btn => {
+    const id = btn.getAttribute('data-target');
+    const el = document.getElementById(id);
+    if (el) targetMap.set(el, btn);
+  });
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) {
+      const btn = targetMap.get(e.target);
+      if (btn) {
+        navItems.forEach(n => n.classList.remove('active'));
+        btn.classList.add('active');
+      }
+    }
+  }), { rootMargin: '-30% 0px -60% 0px' });
+  document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+  const backBtn = document.getElementById('back-to-toc');
+  const toc = document.getElementById('toc');
+  backBtn.addEventListener('click', () => {
+    if (toc) toc.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    else window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+  const toggleBackBtn = () => {
+    const threshold = window.innerHeight * 0.8;
+    if (window.scrollY > threshold) backBtn.classList.add('visible');
+    else backBtn.classList.remove('visible');
+  };
+  window.addEventListener('scroll', toggleBackBtn, { passive: true });
+  toggleBackBtn();
+});
+
+
+</script>
+
+</body>
+</html>
