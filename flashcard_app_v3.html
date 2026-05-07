@@ -302,9 +302,11 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
   #sidebar .level-tabs{display:none}
   #deck-list-nav{display:none}
   #sidebar .drive-status{display:none}
-  #sidebar .nav-item{display:none}
+  #sidebar .nav-item:not(.view-tab):not(#nav-sync):not(#nav-reload){display:none}
   #sidebar .view-tab{display:inline-block;padding:6px 10px;font-size:.8rem;
     border-left:none;white-space:nowrap}
+  #nav-sync,#nav-reload{display:inline-block !important;padding:6px 10px;font-size:.78rem;
+    border-left:none;white-space:nowrap;flex-shrink:0}
   .study-filters{display:flex}
   .container{padding:16px 14px 60px}
   .hero{padding:24px 16px 18px}
@@ -808,18 +810,12 @@ function getDecks(){
 function getCardsForStudy(){
   let pool = filterByLevel(state.cards);
   if(state.currentDeck){ pool = pool.filter(c => c.deck === state.currentDeck); }
-  // 期限到来済みを優先 → 残りはランダム
+  // 期限到来済みを優先、その後未到来分を続けて全カードを返す
   const due = pool.filter(c => c.due <= nowMs());
   const notDue = pool.filter(c => c.due > nowMs());
-  // 期限到来順にソート(古い=より過ぎているものが先)
   due.sort((a,b) => a.due - b.due);
-  // 期限到来分が少なすぎる場合は notDue も少し混ぜる(全体の最大20枚)
-  const queue = [...due];
-  if(queue.length < 5){
-    const shuffled = notDue.sort(() => Math.random() - 0.5);
-    queue.push(...shuffled.slice(0, 10 - queue.length));
-  }
-  return queue;
+  notDue.sort(() => Math.random() - 0.5);
+  return [...due, ...notDue];
 }
 
 // ============================================================
@@ -1028,7 +1024,7 @@ function evalCard(quality){
 function forceStudyAll(){
   let pool = filterByLevel(state.cards);
   if(state.currentDeck){ pool = pool.filter(c => c.deck === state.currentDeck); }
-  state.studyQueue = pool.slice().sort(() => Math.random() - 0.5).slice(0, 20);
+  state.studyQueue = pool.slice().sort(() => Math.random() - 0.5);
   state.studyIndex = 0;
   state.studyShowing = 'front';
   renderStudy();
