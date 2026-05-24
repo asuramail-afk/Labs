@@ -240,6 +240,8 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); line-he
   <a class="nav-item" href="#lab10"><span class="nav-num">10</span>POST /login/callback</a>
   <a class="nav-item" href="#lab11"><span class="nav-num">11</span>検証5項目の深掘り</a>
   <a class="nav-item" href="#lab12"><span class="nav-num">12</span>セッション確立と完了</a>
+  <div class="nav-section">実ログ全文</div>
+  <a class="nav-item" href="#lab13"><span class="nav-num">13</span>all.log ウォークスルー</a>
 </nav>
 
 <!-- ======== Hero ======== -->
@@ -265,6 +267,7 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); line-he
     <a class="toc-item" href="#lab10"><span class="toc-num">10</span>POST /login/callback — なぜPOST・なぜブラウザ経由</a>
     <a class="toc-item" href="#lab11"><span class="toc-num">11</span>検証5項目 — なぜ各検証が必要か</a>
     <a class="toc-item" href="#lab12"><span class="toc-num">12</span>セッション確立 — XML→Profileの変換</a>
+    <a class="toc-item" href="#lab13"><span class="toc-num">13</span>all.log ウォークスルー — 実ログ全文解読</a>
   </div>
 </div>
 
@@ -1753,7 +1756,399 @@ app.<span class="fn">get</span>(<span class="str">"/profile"</span>, (req, res) 
         <li>XML の <code>&lt;saml:NameID&gt;</code> が Profile の <code>nameID</code> に、<code>&lt;saml:Attribute Name="groups"&gt;</code> が <code>groups</code> 配列になっていることを対応付けられるか</li>
         <li><code>serializeUser</code> → セッション保存 → <code>deserializeUser</code> → <code>req.user</code> 復元の流れを説明できるか</li>
         <li>2回目以降のリクエストでは SAML認証は起きず、セッションCookieだけで <code>req.user</code> が復元される理由を説明できるか</li>
-        <li>全Lab（00〜10）を通して、1つのリクエストIDが <code>_4d7b3f3d...606bdfe5</code> として一貫して追跡できることを確認</li>
+        <li>全Lab（00〜12）を通して、1つのリクエストIDが一貫して追跡できることを確認（Lab 13で実ログ全文を見る）</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ======== Lab 13 ======== -->
+<div class="lab" id="lab13">
+  <div class="lab-header">
+    <div class="lab-num">13</div>
+    <h3>all.log ウォークスルー — 実ログ全文解読</h3>
+    <span class="lab-tag tag-advanced">実データ</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      SP（<code>app.js</code>）が実際に記録した <code>logs/all.log</code> の全文を、
+      リクエスト#1〜#4の時系列で追いながら、各ログ行が<strong>なぜ</strong>そうなっているかを注釈付きで解読する。
+      Lab 01〜12 で学んだ全知識がこの1つのログに凝縮されている。
+    </p>
+
+    <div class="info-box info">
+      <strong>ログの構造</strong>: 各ブロックは <code>======</code> のセパレータで区切られ、
+      <code>[タイムスタンプ] #番号 種別 メソッド URL</code> の形式。
+      リクエスト#1〜#4 = SAML認証フロー1回分の全通信。
+    </div>
+
+    <!-- ===== #1 GET / ===== -->
+    <h4 style="margin:24px 0 10px; font-size:1rem; color:var(--accent);">#1 GET / — トップページ取得</h4>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>all.log — #1 REQUEST + RESPONSE</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">======================================================================</span>
+[2026-05-24T07:38:02.663Z] <span class="fn">#1 REQUEST  GET /</span>
+<span class="cm">======================================================================</span>
+  Remote: ::1                                    <span class="cm">← localhost (IPv6表記)</span>
+  Headers: {
+    "host": "localhost:3000",
+    "upgrade-insecure-requests": "1",            <span class="cm">← ブラウザがHTTPS優先を宣言</span>
+    "user-agent": "...Chrome/148.0.0.0...Edg/148.0.0.0",  <span class="cm">← Edge ブラウザ</span>
+    "accept": "text/html,...",                    <span class="cm">← HTMLを要求</span>
+    "cookie": "connect.sid=s%3A7hK1esq8..."      <span class="cm">← 既存セッションCookie（前回分）</span>
+    "if-none-match": "W/\"637-19e58cb3582\"",    <span class="cm">← キャッシュ条件付きリクエスト</span>
+    "if-modified-since": "Sun, 24 May 2026..."   <span class="cm">← 変更なければ 304 を期待</span>
+  }
+
+<span class="cm">======================================================================</span>
+[2026-05-24T07:38:02.687Z] <span class="fn">#1 RESPONSE GET / → 200</span> (24ms)
+<span class="cm">======================================================================</span>
+  Status: 200
+  Headers: {
+    "content-type": "text/html; charset=UTF-8",  <span class="cm">← index.html を返却</span>
+    "etag": "W/\"767-19e585cfe81\"",             <span class="cm">← ETag（次回キャッシュ判定用）</span>
+    "content-length": 1895                       <span class="cm">← index.html のサイズ</span>
+  }</pre>
+    </div>
+
+    <div class="info-box ok">
+      <strong>なぜ 200 で返ったか</strong>: <code>if-none-match</code> の ETag <code>"637-..."</code> と、
+      現在のファイルの ETag <code>"767-..."</code> が不一致（ファイルが更新された）ため、304 ではなく 200 で全文返却された。
+    </div>
+
+    <!-- ===== #2 GET /login ===== -->
+    <h4 style="margin:24px 0 10px; font-size:1rem; color:var(--accent);">#2 GET /login — SAML認証開始（AuthnRequest生成 + リダイレクト）</h4>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>all.log — #2 REQUEST</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">======================================================================</span>
+[2026-05-24T07:38:30.388Z] <span class="fn">#2 REQUEST  GET /login</span>
+<span class="cm">======================================================================</span>
+  Remote: ::1
+  Headers: {
+    "referer": "http://localhost:3000/",          <span class="cm">← トップページのリンクから遷移</span>
+    "sec-fetch-site": "same-origin",              <span class="cm">← 同一オリジン内の遷移</span>
+    "sec-fetch-mode": "navigate",                 <span class="cm">← ページ遷移（XHRではない）</span>
+    "cookie": "connect.sid=s%3A7hK1esq8..."       <span class="cm">← セッションCookie送信</span>
+  }</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>all.log — #2 RESPONSE（302リダイレクト）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">======================================================================</span>
+[2026-05-24T07:38:30.423Z] <span class="fn">#2 RESPONSE GET /login → 302</span> (35ms)
+<span class="cm">======================================================================</span>
+  Status: 302
+  Headers: {
+    "location": "http://localhost:7000/saml/sso?SAMLRequest=nVPBjpswEP0V5Hv..."
+    <span class="cm">↑ IdPのSSOエンドポイント + Base64+Deflate されたAuthnRequest</span>
+    "content-length": "0"                         <span class="cm">← ボディなし（リダイレクトのみ）</span>
+  }</pre>
+    </div>
+
+    <div class="why-box">
+      <div class="why-title">なぜ 302 で body が空なのか</div>
+      302 リダイレクトはブラウザに「このURLへ移動しなさい」と指示するだけ。
+      コンテンツ本体は不要で、<code>Location</code> ヘッダーに遷移先を指定する。
+      ブラウザは自動的に <code>Location</code> の URL へ GET リクエストを発行する。
+      この <code>Location</code> に SAMLRequest が埋め込まれている = <strong>HTTP-Redirect Binding</strong>。
+    </div>
+
+    <div class="info-box info">
+      <strong>時系列に注目</strong>: #1（07:38:02）→ #2（07:38:30）= <strong>約28秒</strong>。
+      これはユーザーがトップページを眺めてから「SAMLログイン」ボタンを押すまでの間隔。
+      #2 の処理自体は 35ms で完了している。
+    </div>
+
+    <!-- ===== #3 POST /login/callback ===== -->
+    <h4 style="margin:24px 0 10px; font-size:1rem; color:var(--accent);">#3 POST /login/callback — SAMLResponse受信 + 検証 + セッション確立</h4>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>all.log — #3 REQUEST ヘッダー</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">======================================================================</span>
+[2026-05-24T07:39:06.170Z] <span class="fn">#3 REQUEST  POST /login/callback</span>
+<span class="cm">======================================================================</span>
+  Remote: ::1
+  Headers: {
+    "content-length": "9931",                     <span class="cm">← POSTボディのサイズ（約10KB）</span>
+    "content-type": "application/x-www-form-urlencoded", <span class="cm">← HTMLフォームのPOST</span>
+    "origin": "<span class="str">http://localhost:7000</span>",             <span class="cm">← ★ IdP(:7000)からの送信</span>
+    "referer": "<span class="str">http://localhost:7000/</span>",            <span class="cm">← ★ IdPのページから遷移</span>
+    "sec-fetch-site": "<span class="str">same-site</span>",                  <span class="cm">← localhostの別ポート=same-site</span>
+    "cookie": "connect.sid=...;  <span class="cm">← SPのセッション</span>
+              idp_sid=..."       <span class="cm">← IdPのセッション（両方送信される）</span>
+  }</pre>
+    </div>
+
+    <div class="security-box">
+      <div class="security-title">origin: localhost:7000 の意味</div>
+      このリクエストの <code>origin</code> が <code>http://localhost:7000</code>（IdP）になっている。
+      これはIdPが返した自動送信HTMLフォーム（Lab 10参照）が、ブラウザ上で自動 <code>submit()</code> された結果。
+      ブラウザがIdPのページ上からSPへPOSTしている — <strong>SPとIdPが直接通信しないことの証拠</strong>。
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>all.log — #3 POST BODY（SAMLResponse Base64 先頭）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">======================================================================</span>
+[2026-05-24T07:39:06.208Z] <span class="fn">#3 POST BODY</span>
+<span class="cm">======================================================================</span>
+  SAMLResponse (Base64): PHNhbWxwOlJlc3BvbnNlIHhtbG5zOnNhbWxwPSJ1cm46b2F...
+  <span class="cm">↑ この文字列を Base64 デコードすると下の XML になる</span>
+  RelayState: (none)     <span class="cm">← SP が認証前のページURLを渡していた場合ここに入る</span></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>all.log — #3 SAMLResponse DECODED XML（実データ・整形済み）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>&lt;<span class="tag">samlp:Response</span>
+    <span class="attr">ID</span>=<span class="val">"_53c3bb2dfcb87dbf2f35"</span>
+    <span class="attr">InResponseTo</span>=<span class="val">"_80658eb06560d8561fe871b565e609909185b31d"</span>
+    <span class="attr">Destination</span>=<span class="val">"http://localhost:3000/login/callback"</span>&gt;
+
+  &lt;<span class="tag">saml:Issuer</span>&gt;<span class="str">urn:example:idp</span>&lt;/<span class="tag">saml:Issuer</span>&gt;
+
+  &lt;<span class="tag">Signature</span>&gt;
+    &lt;<span class="tag">SignatureMethod</span> <span class="attr">Algorithm</span>=<span class="val">"rsa-sha256"</span>/&gt;
+    &lt;<span class="tag">DigestValue</span>&gt;<span class="str">cn02lahDFO8vzREqn4RYVyW69Q59kfe9jwTXtCvEiQc=</span>&lt;/...&gt;
+    &lt;<span class="tag">SignatureValue</span>&gt;<span class="str">nYTn8QOw7RNJ7YVVc8ugSoLtMW5p8bY9WxID75/9Y6g...</span>&lt;/...&gt;
+    &lt;<span class="tag">X509Certificate</span>&gt;<span class="str">MIIC+DCCAeC...</span>&lt;/...&gt;
+  &lt;/<span class="tag">Signature</span>&gt;
+
+  &lt;<span class="tag">samlp:Status</span>&gt;&lt;<span class="tag">samlp:StatusCode</span> <span class="attr">Value</span>=<span class="val">"Success"</span>/&gt;&lt;/...&gt;
+
+  &lt;<span class="tag">saml:Assertion</span> <span class="attr">ID</span>=<span class="val">"_DWgV3LYwe58sINe25Un5J5tgq40rd24J"</span>&gt;
+    &lt;<span class="tag">saml:Issuer</span>&gt;<span class="str">urn:example:idp</span>&lt;/...&gt;
+    &lt;<span class="tag">Signature</span>&gt;...(Assertion個別の署名)...&lt;/...&gt;
+
+    &lt;<span class="tag">saml:Subject</span>&gt;
+      &lt;<span class="tag">saml:NameID</span>&gt;<span class="str">saml.jackson@example.com</span>&lt;/...&gt;
+      &lt;<span class="tag">saml:SubjectConfirmationData</span>
+          <span class="attr">NotOnOrAfter</span>=<span class="val">"2026-05-24T08:39:05"</span>
+          <span class="attr">Recipient</span>=<span class="val">"http://localhost:3000/login/callback"</span>
+          <span class="attr">InResponseTo</span>=<span class="val">"_80658eb06560d8561fe871b565e609909185b31d"</span>/&gt;
+    &lt;/...&gt;
+
+    &lt;<span class="tag">saml:Conditions</span> <span class="attr">NotBefore</span>=<span class="val">"...T07:39:05"</span> <span class="attr">NotOnOrAfter</span>=<span class="val">"...T08:39:05"</span>&gt;
+      &lt;<span class="tag">saml:Audience</span>&gt;<span class="str">http://localhost:3000</span>&lt;/...&gt;
+    &lt;/...&gt;
+
+    &lt;<span class="tag">saml:AuthnStatement</span> <span class="attr">SessionIndex</span>=<span class="val">"1579796076"</span>&gt;
+      &lt;<span class="tag">saml:AuthnContextClassRef</span>&gt;<span class="str">PasswordProtectedTransport</span>&lt;/...&gt;
+    &lt;/...&gt;
+
+    &lt;<span class="tag">saml:AttributeStatement</span>&gt;
+      firstName=<span class="str">Saml</span>  lastName=<span class="str">Jackson</span>  email=<span class="str">saml.jackson@example.com</span>
+      groups=[<span class="str">Simple IdP Users</span>, <span class="str">West Coast Users</span>, <span class="str">Cloud Users</span>]
+      userType=<span class="str">Admin</span>
+    &lt;/...&gt;
+  &lt;/<span class="tag">saml:Assertion</span>&gt;
+&lt;/<span class="tag">samlp:Response</span>&gt;</pre>
+    </div>
+
+    <div class="info-box warn">
+      <strong>#2 → #3 の間隔に注目</strong>: #2（07:38:30）→ #3（07:39:06）= <strong>約36秒</strong>。
+      この間にブラウザは IdP(:7000) へリダイレクトされ、ログイン画面を表示し、
+      ユーザーが「Sign in」を押し、IdPがSAMLResponseを生成し、自動POSTでSPに戻ってきた。
+      SPのログには<strong>IdP側の通信は一切記録されない</strong>（SPとIdPは直接通信しないため）。
+    </div>
+
+    <!-- SAML Verify + Session -->
+    <h4 style="margin:24px 0 10px; font-size:1rem; color:var(--accent2);">検証成功 → セッション確立</h4>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>all.log — SAML VERIFY CALLBACK</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">======================================================================</span>
+[2026-05-24T07:39:06.357Z] <span class="fn">SAML VERIFY CALLBACK — 認証成功</span>
+<span class="cm">======================================================================</span>
+  Profile: {
+    "<span class="prop">issuer</span>":        "<span class="str">urn:example:idp</span>",
+    "<span class="prop">inResponseTo</span>":  "<span class="str">_80658eb06560d8561fe871b565e609909185b31d</span>",
+    "<span class="prop">sessionIndex</span>":  "<span class="str">1579796076</span>",
+    "<span class="prop">nameID</span>":        "<span class="str">saml.jackson@example.com</span>",
+    "<span class="prop">nameIDFormat</span>":  "<span class="str">urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</span>",
+    "<span class="prop">firstName</span>":     "<span class="str">Saml</span>",
+    "<span class="prop">lastName</span>":      "<span class="str">Jackson</span>",
+    "<span class="prop">displayName</span>":   "<span class="str">saml jackson</span>",
+    "<span class="prop">email</span>":         "<span class="str">saml.jackson@example.com</span>",
+    "<span class="prop">mobilePhone</span>":   "<span class="str">+1-415-555-5141</span>",
+    "<span class="prop">groups</span>":        ["<span class="str">Simple IdP Users</span>", "<span class="str"> West Coast Users</span>", "<span class="str"> Cloud Users</span>"],
+    "<span class="prop">userType</span>":      "<span class="str">Admin</span>"
+  }</pre>
+    </div>
+
+    <div class="info-box info">
+      <strong>処理時間に注目</strong>: POST受信(07:39:06.<strong>170</strong>) → 検証成功(07:39:06.<strong>357</strong>) = <strong>187ms</strong>。
+      この187msの間に passport-saml は Base64デコード → XML解析 → 署名検証 → 5項目チェック → Profile抽出を全て完了している。
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>all.log — SESSION serializeUser</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">======================================================================</span>
+[2026-05-24T07:39:06.362Z] <span class="fn">SESSION serializeUser</span>
+<span class="cm">======================================================================</span>
+  Saving to session: {
+    <span class="cm">// ← Profile全体がそのままセッションに保存される</span>
+    "<span class="prop">nameID</span>": "<span class="str">saml.jackson@example.com</span>",
+    "<span class="prop">groups</span>": ["<span class="str">Simple IdP Users</span>", ...],
+    "<span class="prop">userType</span>": "<span class="str">Admin</span>",
+    ...
+  }</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>all.log — #3 RESPONSE（302 → /profile + 新セッションCookie発行）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">======================================================================</span>
+[2026-05-24T07:39:06.365Z] <span class="fn">#3 REDIRECT 302 → /profile</span>
+<span class="cm">======================================================================</span>
+
+<span class="cm">======================================================================</span>
+[2026-05-24T07:39:06.373Z] <span class="fn">#3 RESPONSE POST /login/callback → 302</span> (203ms)
+<span class="cm">======================================================================</span>
+  Status: 302
+  Headers: {
+    "location": "/profile",                          <span class="cm">← プロフィールページへリダイレクト</span>
+    "set-cookie": [
+      "connect.sid=s%3A<span class="str">uXL16mZZP_S8j_PXrYigWR1ihIzWDL6x</span>...; Path=/; HttpOnly"
+    ]   <span class="cm">↑ ★ 新しいセッションCookieを発行（認証済みセッション）</span>
+  }</pre>
+    </div>
+
+    <div class="why-box">
+      <div class="why-title">なぜ Set-Cookie で新しいセッションIDを発行するのか</div>
+      認証前のセッションID（<code>7hK1esq8...</code>）と認証後のセッションID（<code>uXL16mZZ...</code>）は<strong>異なる値</strong>。
+      これは <strong>セッション固定攻撃（Session Fixation）</strong> を防ぐため。
+      もし同じセッションIDを使い続けると、攻撃者が事前にセッションIDを注入して認証後に乗っ取れてしまう。
+      認証成功時に新しいIDを発行することで、この攻撃を防ぐ。
+    </div>
+
+    <!-- ===== #4 GET /profile ===== -->
+    <h4 style="margin:24px 0 10px; font-size:1rem; color:var(--accent);">#4 GET /profile — 認証済みページ表示（セッションCookieのみで認証）</h4>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>all.log — #4 REQUEST + deserializeUser + RESPONSE</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">======================================================================</span>
+[2026-05-24T07:39:06.383Z] <span class="fn">#4 REQUEST  GET /profile</span>
+<span class="cm">======================================================================</span>
+  Remote: ::1
+  Headers: {
+    "referer": "<span class="str">http://localhost:7000/</span>",          <span class="cm">← まだIdPからの遷移チェーン上</span>
+    "cookie": "idp_sid=...;                       <span class="cm">← IdPのセッション（SPは無視）</span>
+              connect.sid=s%3A<span class="str">uXL16mZZ</span>..."          <span class="cm">← ★ 新しいセッションCookie</span>
+  }
+  [deserializeUser]: nameID=<span class="str">saml.jackson@example.com</span>
+  <span class="cm">↑ セッションCookieからユーザー情報を復元（SAML認証は発生しない）</span>
+
+<span class="cm">======================================================================</span>
+[2026-05-24T07:39:06.395Z] <span class="fn">#4 RESPONSE GET /profile → 200</span> (12ms)
+<span class="cm">======================================================================</span>
+  Status: 200
+  Headers: {
+    "content-type": "text/html; charset=utf-8",
+    "content-length": "1664"                       <span class="cm">← プロフィールHTML</span>
+  }
+  Body preview:
+    &lt;!DOCTYPE html&gt; ... &lt;h1&gt;SAML認証成功!&lt;/h1&gt;
+    &lt;p&gt;ようこそ、&lt;strong&gt;saml.jackson@example.com&lt;/strong&gt; さん&lt;/p&gt;
+    ...</pre>
+    </div>
+
+    <div class="info-box ok">
+      <strong>ここがSAMLの終着点</strong>: #4 では SAML は一切登場しない。
+      <code>connect.sid</code> Cookie → サーバー側セッション → <code>deserializeUser</code> → <code>req.user</code> 復元。
+      以降のリクエストは全てこのパターンで認証状態を維持する。
+    </div>
+
+    <!-- ===== タイムライン全体 ===== -->
+    <h4 style="margin:24px 0 10px; font-size:1rem; color:var(--accent3);">タイムライン全体まとめ</h4>
+
+    <table class="compare-table">
+      <tr>
+        <th>#</th>
+        <th>時刻</th>
+        <th>種別</th>
+        <th>処理時間</th>
+        <th>対応Lab</th>
+        <th>なぜ</th>
+      </tr>
+      <tr>
+        <td>#1</td>
+        <td><code>07:38:02</code></td>
+        <td>GET / → 200</td>
+        <td>24ms</td>
+        <td>-</td>
+        <td>index.html（ログインボタン）を配信</td>
+      </tr>
+      <tr>
+        <td></td>
+        <td colspan="5" style="color:var(--text-dim); font-style:italic;">← ユーザーが28秒間ページを閲覧 →</td>
+      </tr>
+      <tr>
+        <td>#2</td>
+        <td><code>07:38:30</code></td>
+        <td>GET /login → 302</td>
+        <td>35ms</td>
+        <td>Lab 05</td>
+        <td>AuthnRequest生成 + IdPへリダイレクト</td>
+      </tr>
+      <tr>
+        <td></td>
+        <td colspan="5" style="color:var(--text-dim); font-style:italic;">← IdP側: ログイン画面表示 → ユーザーSign in → SAMLResponse生成（36秒） →</td>
+      </tr>
+      <tr>
+        <td>#3</td>
+        <td><code>07:39:06</code></td>
+        <td>POST /login/callback → 302</td>
+        <td>203ms</td>
+        <td>Lab 10-12</td>
+        <td>SAMLResponse受信 → 検証 → セッション確立 → /profile へ</td>
+      </tr>
+      <tr>
+        <td>#4</td>
+        <td><code>07:39:06</code></td>
+        <td>GET /profile → 200</td>
+        <td>12ms</td>
+        <td>Lab 12</td>
+        <td>セッションCookieのみで認証済みページ表示</td>
+      </tr>
+    </table>
+
+    <div class="beginner-box">
+      <div class="beginner-title">リクエストID 追跡 — ログから一貫性を確認</div>
+      <pre class="ascii-art">
+  #2 GET /login
+    passport-saml が AuthnRequest を生成
+    → id: _80658eb06560d8561fe871b565e609909185b31d
+    → 302 Location に SAMLRequest として埋め込み
+
+       (IdP側: 受信 → ログイン → SAMLResponse生成)
+
+  #3 POST /login/callback
+    SAMLResponse XML 内:
+      InResponseTo="_80658eb06560d8561fe871b565e609909185b31d"  ← 一致!
+      SubjectConfirmationData
+        InResponseTo="_80658eb06560d8561fe871b565e609909185b31d"  ← 一致!
+
+    → passport-saml が照合 → 自分が出したリクエストへの応答と確認
+    → 検証パス → Profile 抽出 → セッション保存</pre>
+    </div>
+
+    <div class="security-box">
+      <div class="security-title">Cookie の変遷 — セッション固定攻撃防止の証拠</div>
+      <strong>#1, #2</strong>: <code>connect.sid = 7hK1esq8...</code>（認証前のセッションID）<br>
+      <strong>#3 Response</strong>: <code>Set-Cookie: connect.sid = uXL16mZZ...</code>（<strong>新しいID発行</strong>）<br>
+      <strong>#4</strong>: <code>connect.sid = uXL16mZZ...</code>（新しいIDで認証済みページにアクセス）<br>
+      → 認証前後でセッションIDが変わっている = セッション固定攻撃への対策
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">確認ポイント</div>
+      <ol>
+        <li>#2 と #3 の間（36秒）にSPのログが<strong>空白</strong>であることを確認 — IdP側の処理はSPからは見えない</li>
+        <li><code>InResponseTo</code> の値 <code>_80658eb0...</code> が #2 で生成され #3 で照合されていることを追跡できるか</li>
+        <li><code>connect.sid</code> が #3 の Response で新しい値に切り替わっていることを確認</li>
+        <li>#3 の <code>origin: localhost:7000</code> が「ブラウザがIdPのページからSPへPOSTした」証拠であることを説明できるか</li>
+        <li>#4 で SAML 関連のデータが一切登場せず、Cookie だけで認証が完了していることを確認</li>
+        <li>全体の処理時間: SP側の実処理は #2(35ms) + #3(203ms) + #4(12ms) = <strong>250ms</strong>。大半の待ち時間はユーザー操作</li>
       </ol>
     </div>
   </div>
