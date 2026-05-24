@@ -1,0 +1,1447 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OIDC 認証認可 実機確認 Lab — Keycloak + Node.js Express</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+/* Sidebar */
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+/* Hero */
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+/* TOC */
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+/* Container & Lab cards */
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+/* Code block */
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+/* Syntax */
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+
+/* info-box */
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+/* verify */
+.verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+  line-height:1.7; border:1px solid; }
+.verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+.verify-before .verify-label { color:var(--error); }
+.verify-after  .verify-label { color:var(--success); }
+
+/* check-steps */
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+/* compare-table */
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+
+/* beginner-box */
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+/* usecase-box */
+.usecase-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:6px; }
+.usecase-list { margin-left:20px; margin-bottom:10px; }
+.usecase-list li { margin-bottom:4px; }
+
+/* sequence-diagram (custom) */
+.sequence-block { background:var(--code-bg); border:1px solid var(--border); border-radius:8px;
+  padding:16px; margin:14px 0; overflow-x:auto; }
+.sequence-block pre { font-family:var(--mono); font-size:.78rem; line-height:1.5; color:var(--text); white-space:pre; }
+
+/* log-output */
+.log-output { background:#1e1e2e; border:1px solid #3a3a4a; border-radius:8px;
+  padding:14px 16px; margin:12px 0; overflow-x:auto; }
+.log-output pre { font-family:var(--mono); font-size:.78rem; line-height:1.55; color:#cdd6f4; white-space:pre; }
+.log-output .log-sep { color:#585b70; }
+.log-output .log-label { color:#89b4fa; font-weight:700; }
+.log-output .log-key { color:#a6e3a1; }
+.log-output .log-val { color:#f9e2af; }
+.log-output .log-str { color:#f38ba8; }
+.log-output .log-dim { color:#6c7086; }
+
+/* Responsive */
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .verify { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ========== Sidebar ========== -->
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// OIDC Lab <span>Keycloak</span></div>
+  <div class="nav-section">なぜ OIDC か</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>OIDCが解決する問題</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>全体アーキテクチャ</a>
+  <div class="nav-section">環境構築</div>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>Keycloak起動</a>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>Realm・Client・User設定</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>Node.jsアプリ作成</a>
+  <div class="nav-section">フロー詳細</div>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>Discovery（自動検出）</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>認可リクエスト</a>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>ユーザー認証と認可コード</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>トークン交換</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>IDトークンのクレーム</a>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>Access Tokenの利用</a>
+  <a class="nav-item" href="#lab11"><span class="nav-num">11</span>ログアウト</a>
+  <div class="nav-section">まとめ</div>
+  <a class="nav-item" href="#lab12"><span class="nav-num">12</span>通信一覧と全体復習</a>
+</nav>
+
+<!-- ========== Hero ========== -->
+<div class="hero">
+  <h1>OIDC 認証認可 実機確認 Lab</h1>
+  <p class="subtitle">Keycloak + Node.js Express — Authorization Code Flow + PKCE をローカルで完全再現</p>
+</div>
+
+<!-- ========== TOC ========== -->
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>OIDCが解決する問題</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>全体アーキテクチャ</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>Keycloak起動</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>Realm・Client・User設定</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>Node.jsアプリ作成</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>Discovery（自動検出）</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>認可リクエスト</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>ユーザー認証と認可コード</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>トークン交換</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>IDトークンのクレーム</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">10</span>Access Tokenの利用</a>
+    <a class="toc-item" href="#lab11"><span class="toc-num">11</span>ログアウト</a>
+    <a class="toc-item" href="#lab12"><span class="toc-num">12</span>通信一覧と全体復習</a>
+  </div>
+</div>
+
+<!-- ========== Labs ========== -->
+<div class="container">
+
+<!-- ==================== Lab 00 ==================== -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>OIDCが解決する問題</h3>
+    <span class="lab-tag tag-basic">概念</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      なぜ OIDC が生まれたのか。「自前でログイン機能を作る」方式と比較して、何が問題で、OIDCがどう解決するかを理解します。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">BEFORE OIDC — 自前ログインの世界</div>
+      各アプリが自分でユーザーテーブル・パスワードハッシュ・セッション管理を実装する。<br>
+      問題は3つ:<br>
+      <strong>① パスワードの散在</strong>: ユーザーはサービスごとに別のパスワードを管理（or 使い回す）<br>
+      <strong>② 実装ミスのリスク</strong>: パスワードの保存方法、ブルートフォース対策、MFAなどを各開発者が正しく実装する保証がない<br>
+      <strong>③ 統合不可能</strong>: 社内で複数アプリを使うとき、ログインが別々で統合管理（SSO）ができない
+    </div>
+
+    <div class="info-box info">
+      <strong>OIDC の発想</strong>: 「認証は専門のサーバー（IdP）に任せ、アプリはその結果だけを受け取る」。<br>
+      アプリはパスワードを一切扱わず、IdPが発行した<strong>IDトークン</strong>（「この人は確かに tom です」という証明書）を受け取るだけ。
+    </div>
+
+    <table class="compare-table">
+      <tr><th>観点</th><th>自前ログイン</th><th>OIDC</th></tr>
+      <tr><td>パスワード保管</td><td>各アプリが保管 → 漏洩リスクが分散</td><td>IdP だけが保管 → 1箇所で厳重管理</td></tr>
+      <tr><td>MFA 対応</td><td>各アプリで個別実装</td><td>IdP で一元設定、全アプリに適用</td></tr>
+      <tr><td>SSO</td><td>不可能（アプリ間でセッション共有できない）</td><td>IdP のセッションで複数アプリにログイン</td></tr>
+      <tr><td>アプリ開発者の負担</td><td>認証ロジック全て自前</td><td>リダイレクト + トークン検証のみ</td></tr>
+      <tr><td>ユーザー体験</td><td>サービスごとに登録・ログイン</td><td>1回のログインで複数サービス利用</td></tr>
+    </table>
+
+    <div class="info-box warn">
+      <strong>なぜ OAuth 2.0 だけでは不十分か</strong>: OAuth 2.0 は「認可」（APIアクセス権の委譲）の仕様。「この人は誰か」（認証）を安全に伝える仕組みがなかった。OIDC は OAuth 2.0 の上に<strong>IDトークン</strong>という「認証の証明書」を追加した拡張仕様。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">POINT — ここを押さえる</div>
+      <ol>
+        <li><strong>OIDC = OAuth 2.0 + IDトークン（認証レイヤー）</strong>。OAuth 2.0 が「鍵の貸し借り」なら、OIDCは「身分証明書の発行」を追加したもの</li>
+        <li>アプリ（RP = Relying Party）は<strong>パスワードを一切知らない</strong>。IdPにリダイレクトして、結果のトークンだけ受け取る</li>
+        <li>IdP を差し替え可能（Keycloak → Auth0 → Entra ID）にする標準プロトコル。ベンダーロックインを避けられる</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== Lab 01 ==================== -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>全体アーキテクチャ</h3>
+    <span class="lab-tag tag-basic">概念</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      今回構築するシステムの登場人物と、なぜこの構成にするのかを図で確認します。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">登場人物（3者）</div>
+      <strong>① ブラウザ（エンドユーザー）</strong>: ログインしたい人。パスワードを入力する先は IdP の画面だけ。<br>
+      <strong>② Node.js アプリ（RP: Relying Party）</strong>: 認証を IdP に「頼む」側。トークンを受け取ってセッションを作る。<br>
+      <strong>③ Keycloak（IdP: Identity Provider）</strong>: 認証を「引き受ける」側。ユーザーDBを持ち、トークンを発行する。
+      <pre class="ascii-art">
+┌─────────────────────────────────────────────────┐
+│  Windows ノートPC (localhost のみ)                │
+│                                                  │
+│  ┌──────────┐                ┌────────────────┐ │
+│  │ Browser   │  ──Cookie──►  │ Node.js App    │ │
+│  │           │               │ (Express)      │ │
+│  │           │               │ :3000          │ │
+│  │           │               │                │ │
+│  │           │  ◄─redirect─  │   ──HTTP──►    │ │
+│  │           │               │            ┌───┴──────────┐
+│  │           │  ──ID/PW──►   │            │ Keycloak     │
+│  │           │               │            │ (IdP)        │
+│  │           │               │            │ :8080        │
+│  └──────────┘               └────────────┴──────────────┘
+│                                                  │
+│  全通信が localhost 内で完結 → 機密データが外に出ない   │
+└─────────────────────────────────────────────────┘</pre>
+    </div>
+
+    <div class="info-box info">
+      <strong>なぜ Keycloak か</strong>: 完全にローカルで動く OSS の IdP。Docker 1コマンドで起動でき、本番レベルの機能（Realm, Client, MFA, SSO）を無償で試せる。データが外部に出ないため、客先の機密環境でも安心して検証できる。
+    </div>
+
+    <div class="info-box info">
+      <strong>なぜ Node.js + Express か</strong>: <code>openid-client</code> ライブラリが OIDC の全手順（Discovery, 認可URL生成, トークン交換, ID トークン検証）を隠蔽せずに使えるため、各ステップで「今何のHTTP通信が起きているか」を観測しやすい。
+    </div>
+
+    <table class="compare-table">
+      <tr><th>構成要素</th><th>ポート</th><th>役割</th><th>なぜ必要か</th></tr>
+      <tr><td>Keycloak</td><td>:8080</td><td>IdP（認証サーバー）</td><td>ユーザーDB + ログイン画面 + トークン発行</td></tr>
+      <tr><td>Express</td><td>:3000</td><td>RP（Webアプリ）</td><td>ログイン/コールバック/セッション管理</td></tr>
+      <tr><td>ブラウザ</td><td>—</td><td>エンドユーザー</td><td>リダイレクトの起点と終点</td></tr>
+    </table>
+
+    <div class="check-steps">
+      <div class="check-steps-title">POINT — この構成のメリット</div>
+      <ol>
+        <li><strong>¥0</strong>: 全て OSS / 無償。Docker Engine（WSL2）なら商用ライセンスも不要</li>
+        <li><strong>外部通信なし</strong>: localhost で完結するため、VPN 不要・機密環境OK</li>
+        <li><strong>本番に近い</strong>: Keycloak は Red Hat SSO のアップストリーム。本番で使われる IdP そのもの</li>
+        <li><strong>差し替え容易</strong>: <code>.env</code> の Issuer URL と Client 情報を変えるだけで Auth0 / Entra ID に切り替え可能</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== Lab 02 ==================== -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>Keycloak 起動</h3>
+    <span class="lab-tag tag-basic">環境構築</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      IdP（認証サーバー）を1コマンドで起動します。<strong>なぜ開発モードか</strong>: 本番ではHTTPS必須・DB設定必須ですが、学習目的では HTTP + 組み込みDB で十分。<code>start-dev</code> はその簡易起動フラグです。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>Docker（WSL2 Ubuntu 上で実行）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre>docker run -p 8080:8080 \
+  -e KC_BOOTSTRAP_ADMIN_USERNAME=admin \
+  -e KC_BOOTSTRAP_ADMIN_PASSWORD=admin \
+  quay.io/keycloak/keycloak:26.0 start-dev</pre>
+    </div>
+
+    <table class="compare-table">
+      <tr><th>パラメータ</th><th>値</th><th>なぜ必要か</th></tr>
+      <tr><td>-p 8080:8080</td><td>ポートマッピング</td><td>Windows のブラウザから <code>localhost:8080</code> でアクセスするため</td></tr>
+      <tr><td>KC_BOOTSTRAP_ADMIN_USERNAME</td><td>admin</td><td>管理コンソールの初期管理者。未設定だとログインできない</td></tr>
+      <tr><td>KC_BOOTSTRAP_ADMIN_PASSWORD</td><td>admin</td><td>同上のパスワード。学習用なので簡易値でOK</td></tr>
+      <tr><td>start-dev</td><td>開発モード</td><td>HTTP許可 + 組み込みH2 DB。本番では <code>start</code> + DB設定 + HTTPS</td></tr>
+    </table>
+
+    <div class="info-box warn">
+      <strong>Docker Desktop vs Docker Engine</strong>: Docker Desktop は従業員250人以上 or 年商$10M以上の企業では有償ライセンスが必要。WSL2 + Docker Engine（CLI版）なら完全無償・商用利用OK。
+    </div>
+
+    <div class="info-box info">
+      <strong>Docker が使えない場合</strong>: Keycloak ZIP版 + JDK 17（Temurin等、無償）で代替可能。<br>
+      <code>keycloak-26.x/bin/kc.bat start-dev</code> で同じように起動する。Node.js アプリ側は一切変更不要。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">実機確認</div>
+      <ol>
+        <li>コンソールに <code>Keycloak 26.0 ... started</code> と表示されることを確認</li>
+        <li>ブラウザで <code>http://localhost:8080</code> を開き、Keycloak のウェルカムページが表示されることを確認</li>
+        <li><code>admin / admin</code> で管理コンソールにログインできることを確認</li>
+        <li>ログイン後、左上に「master」というRealm名が表示されていることを確認（これがデフォルトRealm）</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== Lab 03 ==================== -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>Realm・Client・User 設定</h3>
+    <span class="lab-tag tag-basic">環境構築</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Keycloak 管理コンソールで「誰が」「どのアプリに」「どうやって」ログインするかを登録します。各設定項目の<strong>なぜ</strong>を理解することが重要です。
+    </p>
+
+    <h4 style="margin:16px 0 8px; font-size:.95rem;">Step 1: Realm 作成</h4>
+    <div class="info-box info">
+      <strong>なぜ Realm を分けるか</strong>: Realm は「テナント」に相当する隔離単位。master Realm は Keycloak 自体の管理用なので、アプリ用には専用 Realm を作る。ユーザー・Client・設定が Realm ごとに完全に分離される。
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>Keycloak 管理コンソール操作</span></div>
+      <pre>左上のドロップダウン（「master」と表示）→ Create realm
+  Realm name: testrealm
+  → Create</pre>
+    </div>
+
+    <h4 style="margin:16px 0 8px; font-size:.95rem;">Step 2: Client 作成</h4>
+    <div class="info-box info">
+      <strong>なぜ Client を登録するか</strong>: IdP は「どのアプリからのリクエストか」を識別する必要がある。未登録のアプリからの認証リクエストは拒否される。Client ID と Client Secret がアプリの「身分証明」になる。
+    </div>
+
+    <table class="compare-table">
+      <tr><th>設定項目</th><th>値</th><th>なぜこの値か</th></tr>
+      <tr><td>Client type</td><td>OpenID Connect</td><td>OIDC プロトコルを使うため（SAML も選べるが今回は不要）</td></tr>
+      <tr><td>Client ID</td><td>test-app</td><td>認可リクエストの <code>client_id</code> パラメータに使われる識別子</td></tr>
+      <tr><td>Client authentication</td><td>ON</td><td>Confidential Client（サーバーサイドアプリ）として Client Secret を発行。OFF だと Public Client（SPAなど）</td></tr>
+      <tr><td>Standard flow</td><td>ON</td><td>Authorization Code Flow を許可。最も安全なフロー</td></tr>
+      <tr><td>Valid redirect URIs</td><td>http://localhost:3000/callback</td><td>認可コード送信先を限定。<strong>これがないと攻撃者が自分のサーバーにコードを送れてしまう</strong></td></tr>
+      <tr><td>Web origins</td><td>http://localhost:3000</td><td>CORS 許可。ブラウザからの直接API呼び出し時に必要</td></tr>
+    </table>
+
+    <div class="info-box err">
+      <strong>redirect URI の制限はセキュリティの要</strong>: もし <code>*</code>（ワイルドカード）にすると、攻撃者が <code>redirect_uri=https://evil.com/steal</code> で認可コードを奪取できる。本番では完全一致で登録すること。
+    </div>
+
+    <h4 style="margin:16px 0 8px; font-size:.95rem;">Step 3: Client Secret をコピー</h4>
+    <div class="code-block">
+      <div class="code-block-header"><span>Keycloak 管理コンソール操作</span></div>
+      <pre>作成した test-app → Credentials タブ → Client secret をコピー
+→ .env ファイルの OIDC_CLIENT_SECRET= に貼り付け</pre>
+    </div>
+    <div class="info-box info">
+      <strong>なぜ Client Secret が必要か</strong>: トークン交換（後述 Lab 08）で、「このリクエストは正規のアプリから来た」ことを証明するため。ブラウザには渡さず、サーバー間通信でのみ使う。
+    </div>
+
+    <h4 style="margin:16px 0 8px; font-size:.95rem;">Step 4: テストユーザー作成</h4>
+    <div class="code-block">
+      <div class="code-block-header"><span>Keycloak 管理コンソール操作</span></div>
+      <pre>Users → Create user → Username: tom
+作成後 → Credentials タブ → Set password
+  Password: 任意
+  Temporary: OFF（OFFにしないと初回ログイン時にパスワード変更を強制される）</pre>
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">実機確認</div>
+      <ol>
+        <li>左上のドロップダウンに <code>testrealm</code> が表示され、選択されていることを確認</li>
+        <li>Clients 一覧に <code>test-app</code> が存在し、Credentials タブに Client Secret が表示されていることを確認</li>
+        <li>Users 一覧に <code>tom</code> が存在することを確認</li>
+        <li><code>.env</code> ファイルの <code>OIDC_CLIENT_SECRET</code> に正しい値が入っていることを確認</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== Lab 04 ==================== -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>Node.js アプリ作成</h3>
+    <span class="lab-tag tag-basic">環境構築</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      RP（Relying Party）側のアプリを作ります。各ファイル・各依存パッケージの<strong>役割</strong>を理解してから構築します。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>プロジェクト初期化（Windows ターミナル）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre>mkdir oidc-test && cd oidc-test
+npm init -y
+npm install express express-session openid-client@5 dotenv</pre>
+    </div>
+
+    <table class="compare-table">
+      <tr><th>パッケージ</th><th>役割</th><th>なぜ必要か</th></tr>
+      <tr><td>express</td><td>Webフレームワーク</td><td>ルーティング（/login, /callback, /logout）を簡潔に書くため</td></tr>
+      <tr><td>express-session</td><td>セッション管理</td><td>ログイン状態を Cookie（connect.sid）で管理。トークンはサーバー側に保存</td></tr>
+      <tr><td>openid-client@5</td><td>OIDCクライアント</td><td>Discovery, 認可URL生成, トークン交換, IDトークン検証を実装済み。v5は情報が豊富</td></tr>
+      <tr><td>dotenv</td><td>環境変数読み込み</td><td>Client Secret 等を .env ファイルから安全に読み込む（コードにハードコードしない）</td></tr>
+    </table>
+
+    <h4 style="margin:16px 0 8px; font-size:.95rem;">ファイル構成と役割</h4>
+    <div class="code-block">
+      <div class="code-block-header"><span>ファイル構成</span></div>
+      <pre>oidc-test/
+├── .env            ← IdP接続情報（秘密値含む。git管理しない）
+├── server.js       ← OIDC の全フロー実装（5つのルート）
+└── public/
+    └── index.html  ← ログイン/ログアウト UI</pre>
+    </div>
+
+    <h4 style="margin:16px 0 8px; font-size:.95rem;">.env — なぜ環境変数に分離するか</h4>
+    <div class="info-box info">
+      <strong>理由</strong>: Client Secret はパスワードと同等の機密値。コードに直書きすると Git にコミットされ漏洩する。<code>.env</code> に分離し <code>.gitignore</code> に追加するのがベストプラクティス。
+    </div>
+    <div class="code-block">
+      <div class="code-block-header"><span>.env</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre>OIDC_ISSUER=http://localhost:8080/realms/testrealm
+OIDC_CLIENT_ID=test-app
+OIDC_CLIENT_SECRET=（Keycloak Credentials タブの値）
+APP_BASE_URL=http://localhost:3000
+SESSION_SECRET=any-random-string</pre>
+    </div>
+
+    <table class="compare-table">
+      <tr><th>変数</th><th>なぜ必要か</th></tr>
+      <tr><td>OIDC_ISSUER</td><td>Discovery の起点URL。ここから全エンドポイントを自動取得する</td></tr>
+      <tr><td>OIDC_CLIENT_ID</td><td>Keycloak に登録した Client の識別子。認可リクエストに含める</td></tr>
+      <tr><td>OIDC_CLIENT_SECRET</td><td>トークン交換時にアプリが正規であることを証明する秘密鍵</td></tr>
+      <tr><td>APP_BASE_URL</td><td>redirect_uri の構築に使用</td></tr>
+      <tr><td>SESSION_SECRET</td><td>Express セッション Cookie の署名鍵。改竄防止</td></tr>
+    </table>
+
+    <h4 style="margin:16px 0 8px; font-size:.95rem;">server.js — 5つのルートの役割</h4>
+    <div class="info-box info">
+      <strong>なぜこの5ルートか</strong>: OIDC の Authorization Code Flow を最小限で実装するために必要な経路。各ルートが通信シーケンスの1ステップに対応する。
+    </div>
+    <table class="compare-table">
+      <tr><th>ルート</th><th>対応するOIDCステップ</th><th>やること</th></tr>
+      <tr><td>GET /login</td><td>① 認可リクエスト生成</td><td>PKCE生成 → Keycloak の認可エンドポイントへリダイレクト</td></tr>
+      <tr><td>GET /callback</td><td>③④⑤ コード受取→トークン交換</td><td>認可コードを受け取り、Keycloak にトークン交換を要求</td></tr>
+      <tr><td>GET /api/me</td><td>— セッション確認</td><td>ログイン状態とユーザー情報をJSONで返す</td></tr>
+      <tr><td>GET /api/userinfo</td><td>⑥ Access Token 利用</td><td>Access Token で Keycloak UserInfo エンドポイントを呼ぶ</td></tr>
+      <tr><td>GET /logout</td><td>⑦ ログアウト</td><td>セッション破棄 → Keycloak の end_session エンドポイントへリダイレクト</td></tr>
+    </table>
+
+    <div class="check-steps">
+      <div class="check-steps-title">実機確認</div>
+      <ol>
+        <li><code>node server.js</code> を実行し、コンソールに <code>OIDC client ready</code> と <code>http://localhost:3000</code> が表示されることを確認</li>
+        <li>ブラウザで <code>http://localhost:3000</code> を開き、「OIDC 認証テスト」画面と「ログイン」リンクが表示されることを確認</li>
+        <li>この時点では「未ログイン」と表示される（まだ認証していないため）</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== Lab 05 ==================== -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>Discovery（自動検出）</h3>
+    <span class="lab-tag tag-intermediate">フロー</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>node server.js</code> 起動時に最初に起きる通信。<strong>なぜ Discovery があるか</strong>: IdP のエンドポイント URL をアプリにハードコードしなくて済むようにするため。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">Discovery の仕組み</div>
+      OIDC の仕様で、全ての IdP は <code>/.well-known/openid-configuration</code> というURLに自分の情報を公開することが決められている。<br>
+      アプリは Issuer URL（<code>http://localhost:8080/realms/testrealm</code>）さえ知っていれば、そこに <code>/.well-known/openid-configuration</code> を付けて GET するだけで、認可エンドポイント・トークンエンドポイント・署名鍵の場所など全てが分かる。
+      <pre class="ascii-art">
+アプリ起動時:
+  Issuer URL を知っている
+       │
+       ▼
+  GET /.well-known/openid-configuration
+       │
+       ▼
+  JSON で全エンドポイントが返る
+  ┌─ authorization_endpoint  ← ログイン画面はここ
+  ├─ token_endpoint          ← トークン交換はここ
+  ├─ userinfo_endpoint       ← ユーザー情報はここ
+  ├─ end_session_endpoint    ← ログアウトはここ
+  └─ jwks_uri                ← IDトークンの署名検証鍵はここ</pre>
+    </div>
+
+    <h4 style="margin:16px 0 8px; font-size:.95rem;">対応するコード</h4>
+    <div class="code-block">
+      <div class="code-block-header"><span>server.js — initOidc()</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="kw">const</span> issuer = <span class="kw">await</span> Issuer.<span class="fn">discover</span>(process.env.<span class="prop">OIDC_ISSUER</span>);
+<span class="cm">// 内部で GET http://localhost:8080/realms/testrealm/.well-known/openid-configuration</span>
+<span class="cm">// → JSON レスポンスからエンドポイントURLを自動取得</span></pre>
+    </div>
+
+    <h4 style="margin:16px 0 8px; font-size:.95rem;">実際のログ出力</h4>
+    <div class="log-output">
+      <pre><span class="log-sep">============================================================</span>
+<span class="log-label">[Discovery]</span> 16:05:22
+<span class="log-sep">------------------------------------------------------------</span>
+{
+  <span class="log-key">"issuer"</span>: <span class="log-val">"http://localhost:8080/realms/testrealm"</span>,
+  <span class="log-key">"authorization_endpoint"</span>: <span class="log-val">"http://localhost:8080/realms/testrealm/protocol/openid-connect/auth"</span>,
+  <span class="log-key">"token_endpoint"</span>: <span class="log-val">"http://localhost:8080/realms/testrealm/protocol/openid-connect/token"</span>,
+  <span class="log-key">"userinfo_endpoint"</span>: <span class="log-val">"http://localhost:8080/realms/testrealm/protocol/openid-connect/userinfo"</span>,
+  <span class="log-key">"end_session_endpoint"</span>: <span class="log-val">"http://localhost:8080/realms/testrealm/protocol/openid-connect/logout"</span>,
+  <span class="log-key">"jwks_uri"</span>: <span class="log-val">"http://localhost:8080/realms/testrealm/protocol/openid-connect/certs"</span>
+}
+<span class="log-sep">============================================================</span></pre>
+    </div>
+
+    <div class="info-box ok">
+      <strong>Discovery の恩恵</strong>: IdP を Keycloak → Auth0 に差し替えるとき、<code>.env</code> の <code>OIDC_ISSUER</code> を <code>https://tenant.us.auth0.com/</code> に変えるだけ。コード内のエンドポイントURLを一切書き換える必要がない。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">なぜこれが重要か — 実務での意味</div>
+      <ul class="usecase-list">
+        <li>開発環境（Keycloak localhost）→ ステージング（社内IdP）→ 本番（Entra ID）と環境ごとに IdP が変わるのは日常</li>
+        <li>Discovery があるから <code>OIDC_ISSUER</code> 1つの差し替えで全エンドポイントが追従する</li>
+        <li>Discovery がなかったら: authorize URL, token URL, userinfo URL, logout URL, JWKS URL を全て個別に設定ファイルに書く必要がある</li>
+      </ul>
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">実機確認</div>
+      <ol>
+        <li><code>node server.js</code> 起動直後のコンソールに Discovery ログが出ていることを確認</li>
+        <li>ブラウザで <code>http://localhost:8080/realms/testrealm/.well-known/openid-configuration</code> を直接開き、JSON が返ることを確認</li>
+        <li>JSON 内の <code>authorization_endpoint</code> <code>token_endpoint</code> <code>userinfo_endpoint</code> のURLを目視で確認。これらが後続の全通信で使われる</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== Lab 06 ==================== -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>認可リクエスト（① /login）</h3>
+    <span class="lab-tag tag-intermediate">フロー</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      「ログイン」リンクをクリックした瞬間に何が起きるか。ブラウザが Keycloak にリダイレクトされるまでの通信を分解します。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">このステップで起きること</div>
+      <pre class="ascii-art">
+ブラウザ              Node.js(:3000)              Keycloak(:8080)
+  │                       │                          │
+  │  GET /login           │                          │
+  ├──────────────────────►│                          │
+  │                       │ PKCE 生成                │
+  │                       │ state 生成               │
+  │                       │ セッションに保存          │
+  │  302 Location:        │                          │
+  │  keycloak/auth?...    │                          │
+  │◄──────────────────────┤                          │
+  │                                                  │
+  │  GET /auth?client_id=...&code_challenge=...      │
+  ├─────────────────────────────────────────────────►│
+  │                                                  │
+  │  ◄── Keycloak ログイン画面 HTML ──               │
+  │◄─────────────────────────────────────────────────┤</pre>
+    </div>
+
+    <h4 style="margin:16px 0 8px; font-size:.95rem;">対応するコード</h4>
+    <div class="code-block">
+      <div class="code-block-header"><span>server.js — GET /login</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre>app.<span class="fn">get</span>(<span class="str">'/login'</span>, (req, res) =&gt; {
+  <span class="cm">// ① PKCE: code_verifier（ランダム文字列）を生成</span>
+  <span class="kw">const</span> code_verifier = generators.<span class="fn">codeVerifier</span>();
+  <span class="cm">// ② code_verifier の SHA-256 ハッシュ = code_challenge</span>
+  <span class="kw">const</span> code_challenge = generators.<span class="fn">codeChallenge</span>(code_verifier);
+  <span class="cm">// ③ CSRF対策: state（ランダム文字列）を生成</span>
+  <span class="kw">const</span> state = generators.<span class="fn">state</span>();
+
+  <span class="cm">// ④ セッションに保存（コールバック時に照合するため）</span>
+  req.session.code_verifier = code_verifier;
+  req.session.state = state;
+
+  <span class="cm">// ⑤ 認可URLを組み立ててリダイレクト</span>
+  <span class="kw">const</span> url = client.<span class="fn">authorizationUrl</span>({
+    scope: <span class="str">'openid profile email'</span>,
+    code_challenge,
+    code_challenge_method: <span class="str">'S256'</span>,
+    state,
+  });
+  res.<span class="fn">redirect</span>(url);
+});</pre>
+    </div>
+
+    <h4 style="margin:16px 0 8px; font-size:.95rem;">各パラメータの「なぜ」</h4>
+    <table class="compare-table">
+      <tr><th>パラメータ</th><th>値（例）</th><th>なぜ必要か</th></tr>
+      <tr><td>client_id</td><td>test-app</td><td>Keycloak が「どのアプリからのリクエストか」を識別</td></tr>
+      <tr><td>response_type</td><td>code</td><td>Authorization Code Flow を使うことを宣言。トークンを直接返さず「認可コード」を返す</td></tr>
+      <tr><td>scope</td><td>openid profile email</td><td><code>openid</code>: OIDC であることを示す必須値。<code>profile</code>: 名前等。<code>email</code>: メールアドレス</td></tr>
+      <tr><td>redirect_uri</td><td>http://localhost:3000/callback</td><td>認可コードの送り先。Keycloak に登録済みの URI と完全一致しないと拒否される</td></tr>
+      <tr><td>state</td><td>6f4KKvPH...</td><td><strong>CSRF 対策</strong>: コールバック時にセッションの値と照合。不一致なら攻撃と判断して拒否</td></tr>
+      <tr><td>code_challenge</td><td>0VH23JUQ...</td><td><strong>PKCE</strong>: code_verifier の SHA-256 ハッシュ。認可コード横取り攻撃を防ぐ</td></tr>
+      <tr><td>code_challenge_method</td><td>S256</td><td>ハッシュアルゴリズムの指定（SHA-256）</td></tr>
+    </table>
+
+    <div class="info-box warn">
+      <strong>なぜ PKCE が必要か</strong>: 認可コードがネットワーク上で傍受された場合、攻撃者がそのコードでトークンを取得できてしまう。PKCE があると、トークン交換時に <code>code_verifier</code>（元のランダム文字列）が必要になるため、コードだけ盗んでもトークンは取れない。<br>
+      <strong>仕組み</strong>: 認可リクエストでは「ハッシュ値（code_challenge）」だけを送り、トークン交換では「元の値（code_verifier）」を送る。Keycloak 側でハッシュを再計算して一致を検証する。
+    </div>
+
+    <div class="info-box warn">
+      <strong>なぜ state が必要か</strong>: 攻撃者が自分のアカウントの認可コードを被害者のブラウザに送り込む「CSRF攻撃」を防ぐ。state はセッションに紐づいたランダム値なので、攻撃者は正しい state を知ることができない。
+    </div>
+
+    <h4 style="margin:16px 0 8px; font-size:.95rem;">実際のログ出力</h4>
+    <div class="log-output">
+      <pre><span class="log-sep">============================================================</span>
+<span class="log-label">[① 認可リクエスト (GET /login → 302)]</span> 16:05:36
+<span class="log-sep">------------------------------------------------------------</span>
+{
+  <span class="log-key">"redirect_to"</span>: <span class="log-val">"http://localhost:8080/realms/testrealm/protocol/openid-connect/auth
+    ?client_id=test-app
+    &scope=openid%20profile%20email
+    &response_type=code
+    &redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fcallback
+    &code_challenge=0VH23JUQYaJQRnyOVfc0Pnh2M4OGGG0FXuGhz_AHh-g
+    &code_challenge_method=S256
+    &state=6f4KKvPHdrh6qz_hIzxlCRPNm8N-LyD86rWZvACrERk"</span>,
+  <span class="log-key">"code_verifier_saved"</span>: <span class="log-val">"ZeHNbruR-iVB13EoceDJbwE26ZNO2HmlTIooRw3DD88"</span>
+}
+<span class="log-sep">============================================================</span></pre>
+    </div>
+
+    <div class="info-box info">
+      <strong>ログの読み方</strong>: <code>code_challenge</code>（ハッシュ値）は Keycloak に送られ、<code>code_verifier</code>（元の値）はセッションに保存されている。この2つは後の Lab 08 で対になって使われる。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">実機確認</div>
+      <ol>
+        <li>「ログイン」をクリックし、ブラウザのアドレスバーが <code>localhost:8080/realms/testrealm/protocol/openid-connect/auth?...</code> に変わることを確認</li>
+        <li>アドレスバーのURLに <code>client_id=test-app</code> <code>response_type=code</code> <code>code_challenge=...</code> <code>state=...</code> が含まれていることを目視確認</li>
+        <li>Node.js のコンソールに「① 認可リクエスト」ログが出ていることを確認</li>
+        <li>Keycloak のログイン画面（ユーザー名/パスワード入力フォーム）が表示されることを確認 → ここまでが Lab 06 の範囲</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== Lab 07 ==================== -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>ユーザー認証と認可コード（②③）</h3>
+    <span class="lab-tag tag-intermediate">フロー</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Keycloak のログイン画面でパスワードを入力してから、アプリに認可コードが届くまで。<strong>ここでアプリはパスワードに一切触れない</strong>ことが OIDC の核心です。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">このステップで起きること</div>
+      <pre class="ascii-art">
+ブラウザ                              Keycloak(:8080)
+  │                                       │
+  │  ② POST /login-actions/authenticate   │
+  │     username=tom, password=***         │
+  ├──────────────────────────────────────►│
+  │                                       │ ユーザーDB照合
+  │                                       │ → 認証OK
+  │                                       │
+  │  ③ 302 Location:                      │
+  │     localhost:3000/callback            │
+  │     ?code=a66fcd16-...                 │
+  │     &state=6f4KKvPH...                │
+  │◄──────────────────────────────────────┤
+  │                                       │
+  │  GET /callback?code=...&state=...     │
+  ├──────► Node.js(:3000)                 │</pre>
+    </div>
+
+    <div class="info-box ok">
+      <strong>セキュリティ上の核心</strong>: パスワードは「ブラウザ → Keycloak」の直接通信でのみ送られる。Node.js アプリはパスワードを中継しない・保存しない・見ることすらできない。アプリが受け取るのは「認可コード」という一時的な引換券だけ。
+    </div>
+
+    <div class="info-box info">
+      <strong>なぜ「認可コード」という間接方式か</strong>: トークンをブラウザに直接返すと、ブラウザの履歴やリファラーヘッダーからトークンが漏洩するリスクがある。認可コードは<strong>1回限り・短寿命（数秒〜数分）</strong>の引換券で、これ自体では何もできない。サーバー間通信でトークンに交換して初めて意味を持つ。
+    </div>
+
+    <h4 style="margin:16px 0 8px; font-size:.95rem;">認可コードの特性</h4>
+    <table class="compare-table">
+      <tr><th>特性</th><th>値</th><th>なぜそうなっているか</th></tr>
+      <tr><td>有効回数</td><td>1回限り</td><td>使用済みコードでの再トークン交換を防ぐ</td></tr>
+      <tr><td>有効期限</td><td>数十秒〜数分</td><td>傍受されても時間切れで使えなくなる</td></tr>
+      <tr><td>送信経路</td><td>URL の query パラメータ</td><td>ブラウザのリダイレクトで受け渡すため</td></tr>
+      <tr><td>単体での価値</td><td>なし</td><td>トークン交換には client_secret + code_verifier が別途必要</td></tr>
+    </table>
+
+    <h4 style="margin:16px 0 8px; font-size:.95rem;">実際のログ出力</h4>
+    <div class="log-output">
+      <pre><span class="log-sep">============================================================</span>
+<span class="log-label">[③ 認可コード受信 (GET /callback)]</span> 16:05:36
+<span class="log-sep">------------------------------------------------------------</span>
+{
+  <span class="log-key">"code"</span>: <span class="log-val">"a66fcd16-f8f3-4443-9693-3e4f22736b1d.2077076e-5447-493f-a606-daf36de201e8.ef47b996-3248-40c6-95ec-8dcfb512732e"</span>,
+  <span class="log-key">"state"</span>: <span class="log-val">"6f4KKvPHdrh6qz_hIzxlCRPNm8N-LyD86rWZvACrERk"</span>,
+  <span class="log-key">"session_state"</span>: <span class="log-val">"2077076e-5447-493f-a606-daf36de201e8"</span>,
+  <span class="log-key">"iss"</span>: <span class="log-val">"http://localhost:8080/realms/testrealm"</span>
+}
+<span class="log-sep">============================================================</span></pre>
+    </div>
+
+    <div class="info-box info">
+      <strong>ログの読み方</strong>:<br>
+      ・<code>code</code>: 認可コード本体。この一時的な引換券を次の Lab 08 でトークンに交換する<br>
+      ・<code>state</code>: Lab 06 で送った値と同じ。一致を検証して CSRF でないことを確認<br>
+      ・<code>iss</code>: 発行者。想定した IdP からの応答であることを確認（IdP混同攻撃の防止）
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">実機確認</div>
+      <ol>
+        <li>Keycloak ログイン画面で <code>tom</code> + パスワードを入力して送信</li>
+        <li>ブラウザのアドレスバーが一瞬 <code>localhost:3000/callback?code=...&state=...</code> になることを確認（すぐにリダイレクトされるので素早く見る）</li>
+        <li>Node.js コンソールに「③ 認可コード受信」ログが出て、<code>code</code> と <code>state</code> が表示されていることを確認</li>
+        <li><code>state</code> の値が Lab 06 のログと同じであることを確認 → CSRF検証が成立していることの証拠</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== Lab 08 ==================== -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>トークン交換（④⑤）</h3>
+    <span class="lab-tag tag-advanced">フロー</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      認可コードをトークンに交換するサーバー間通信。<strong>ブラウザを経由しない</strong>ため、DevTools には映らない最も重要なステップです。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">このステップで起きること</div>
+      <pre class="ascii-art">
+Node.js(:3000)                           Keycloak(:8080)
+  │                                          │
+  │  ④ POST /token                           │
+  │     grant_type=authorization_code        │
+  │     code=a66fcd16-...                    │
+  │     redirect_uri=.../callback            │
+  │     client_id=test-app                   │
+  │     client_secret=7PvAjm...              │
+  │     code_verifier=ZeHNbr...              │
+  ├─────────────────────────────────────────►│
+  │                                          │ 検証:
+  │                                          │  code 有効？ ✓
+  │                                          │  client_secret 正しい？ ✓
+  │                                          │  code_verifier → SHA256
+  │                                          │    = code_challenge？ ✓
+  │                                          │  redirect_uri 一致？ ✓
+  │                                          │
+  │  ⑤ 200 OK                               │
+  │     { id_token, access_token,            │
+  │       refresh_token, expires_in }        │
+  │◄─────────────────────────────────────────┤</pre>
+    </div>
+
+    <div class="info-box info">
+      <strong>なぜサーバー間通信か</strong>: <code>client_secret</code> をブラウザに渡すと、ユーザーが DevTools で読めてしまう。秘密値はサーバー間でのみやり取りするのが鉄則。
+    </div>
+
+    <h4 style="margin:16px 0 8px; font-size:.95rem;">対応するコード</h4>
+    <div class="code-block">
+      <div class="code-block-header"><span>server.js — GET /callback（トークン交換部分）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre><span class="kw">const</span> params = client.<span class="fn">callbackParams</span>(req);
+<span class="cm">// ↑ URL の query から code, state を抽出</span>
+
+<span class="kw">const</span> tokenSet = <span class="kw">await</span> client.<span class="fn">callback</span>(
+  <span class="str">`${process.env.APP_BASE_URL}/callback`</span>,
+  params,
+  { code_verifier: req.session.code_verifier, state: req.session.state }
+);
+<span class="cm">// ↑ 内部で POST /token を実行し、以下を検証:</span>
+<span class="cm">//   1. state の一致（CSRF防止）</span>
+<span class="cm">//   2. id_token の署名検証（JWKS で取得した公開鍵で）</span>
+<span class="cm">//   3. id_token の iss, aud, exp 等のクレーム検証</span></pre>
+    </div>
+
+    <h4 style="margin:16px 0 8px; font-size:.95rem;">Keycloak が検証する4つの条件</h4>
+    <table class="compare-table">
+      <tr><th>検証項目</th><th>何を確認しているか</th><th>失敗するとどうなるか</th></tr>
+      <tr><td>code</td><td>発行済みで未使用か</td><td><code>invalid_grant</code> エラー</td></tr>
+      <tr><td>client_secret</td><td>登録された Client の秘密鍵と一致するか</td><td><code>unauthorized_client</code> エラー</td></tr>
+      <tr><td>code_verifier</td><td>SHA-256 → 認可リクエスト時の code_challenge と一致するか</td><td><code>invalid_grant</code> エラー（PKCE検証失敗）</td></tr>
+      <tr><td>redirect_uri</td><td>認可リクエスト時と同じ URI か</td><td><code>invalid_grant</code> エラー</td></tr>
+    </table>
+
+    <h4 style="margin:16px 0 8px; font-size:.95rem;">実際のログ出力</h4>
+    <div class="log-output">
+      <pre><span class="log-sep">============================================================</span>
+<span class="log-label">[④ トークン交換リクエスト (POST /token)]</span> 16:05:36
+<span class="log-sep">------------------------------------------------------------</span>
+{
+  <span class="log-key">"to"</span>: <span class="log-val">"http://localhost:8080/realms/testrealm/protocol/openid-connect/token"</span>,
+  <span class="log-key">"method"</span>: <span class="log-val">"POST"</span>,
+  <span class="log-key">"body"</span>: {
+    <span class="log-key">"grant_type"</span>: <span class="log-val">"authorization_code"</span>,
+    <span class="log-key">"code"</span>: <span class="log-val">"a66fcd16-f8f3-4443-...(③で受け取った認可コード)"</span>,
+    <span class="log-key">"redirect_uri"</span>: <span class="log-val">"http://localhost:3000/callback"</span>,
+    <span class="log-key">"client_id"</span>: <span class="log-val">"test-app"</span>,
+    <span class="log-key">"client_secret"</span>: <span class="log-str">"****（秘匿）"</span>,
+    <span class="log-key">"code_verifier"</span>: <span class="log-val">"ZeHNbruR-iVB13EoceDJbwE26ZNO2HmlTIooRw3DD88"</span>
+  }
+}
+<span class="log-sep">============================================================</span>
+
+<span class="log-sep">============================================================</span>
+<span class="log-label">[⑤ トークン受信]</span> 16:05:36
+<span class="log-sep">------------------------------------------------------------</span>
+{
+  <span class="log-key">"id_token"</span>: <span class="log-val">"eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6IC..."</span>,
+  <span class="log-key">"access_token"</span>: <span class="log-val">"eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6IC..."</span>,
+  <span class="log-key">"refresh_token"</span>: <span class="log-val">"eyJhbGciOiJIUzUxMiIsInR5cCIgOiAiSldUIiwia2lkIiA6IC..."</span>,
+  <span class="log-key">"token_type"</span>: <span class="log-val">"Bearer"</span>,
+  <span class="log-key">"expires_in"</span>: <span class="log-val">300</span>,
+  <span class="log-key">"scope"</span>: <span class="log-val">"openid email profile"</span>
+}
+<span class="log-sep">============================================================</span></pre>
+    </div>
+
+    <h4 style="margin:16px 0 8px; font-size:.95rem;">3つのトークンの役割</h4>
+    <table class="compare-table">
+      <tr><th>トークン</th><th>形式</th><th>用途</th><th>有効期限</th></tr>
+      <tr><td>id_token</td><td>JWT（署名付き）</td><td>「この人は誰か」の証明書。クレーム（sub, name, email等）を含む</td><td>短い（数分）</td></tr>
+      <tr><td>access_token</td><td>JWT</td><td>API呼び出しの認可。<code>Authorization: Bearer</code> ヘッダーに付けて使う</td><td>短い（300秒 = 5分）</td></tr>
+      <tr><td>refresh_token</td><td>不透明文字列</td><td>access_token の期限切れ時に、再ログインなしで新しいトークンを取得</td><td>長い（日〜週単位）</td></tr>
+    </table>
+
+    <div class="info-box warn">
+      <strong>PKCE の照合がここで完結する</strong>:<br>
+      Lab 06: <code>code_verifier</code> → SHA-256 → <code>code_challenge</code> を Keycloak に送付<br>
+      Lab 08: <code>code_verifier</code>（元の値）を Keycloak に送付 → Keycloak が SHA-256 して <code>code_challenge</code> と一致するか検証<br>
+      → 一致 = 認可リクエストを送った人とトークン交換をする人が同一と証明される
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">実機確認</div>
+      <ol>
+        <li>Node.js コンソールに「④ トークン交換リクエスト」と「⑤ トークン受信」のログが出ていることを確認</li>
+        <li><code>code_verifier</code> の値が Lab 06 のログと同じであることを確認 → セッションから正しく復元されている</li>
+        <li><code>id_token</code> <code>access_token</code> が <code>eyJ...</code> で始まることを確認 → JWT（Base64エンコード）の証拠</li>
+        <li><code>expires_in: 300</code> → access_token の有効期限が5分であることを確認</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== Lab 09 ==================== -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>IDトークンのクレーム</h3>
+    <span class="lab-tag tag-intermediate">フロー</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ID トークン（JWT）をデコードして中身を見ます。<strong>クレーム</strong>（claim = 主張）とは「IdP がこのユーザーについて主張する事実」です。
+    </p>
+
+    <div class="info-box info">
+      <strong>なぜ JWT か</strong>: JSON に電子署名を付けた形式。受け取った側が IdP の公開鍵で署名を検証すれば、内容が改竄されていないことを確認できる。IdP に問い合わせることなく、オフラインで検証可能。
+    </div>
+
+    <h4 style="margin:16px 0 8px; font-size:.95rem;">対応するコード</h4>
+    <div class="code-block">
+      <div class="code-block-header"><span>server.js — クレーム取得</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre>req.session.user = tokenSet.<span class="fn">claims</span>();
+<span class="cm">// JWT の payload 部分をデコードしてオブジェクトで返す</span>
+<span class="cm">// openid-client は内部で署名検証済み → 信頼できるデータ</span></pre>
+    </div>
+
+    <h4 style="margin:16px 0 8px; font-size:.95rem;">実際のログ出力</h4>
+    <div class="log-output">
+      <pre><span class="log-sep">============================================================</span>
+<span class="log-label">[⑤ IDトークンのクレーム（デコード済み）]</span> 16:05:36
+<span class="log-sep">------------------------------------------------------------</span>
+{
+  <span class="log-key">"exp"</span>: <span class="log-val">1779606636</span>,
+  <span class="log-key">"iat"</span>: <span class="log-val">1779606336</span>,
+  <span class="log-key">"auth_time"</span>: <span class="log-val">1779605710</span>,
+  <span class="log-key">"jti"</span>: <span class="log-val">"ed0f3427-6492-4ba2-b970-274b803a0d78"</span>,
+  <span class="log-key">"iss"</span>: <span class="log-val">"http://localhost:8080/realms/testrealm"</span>,
+  <span class="log-key">"aud"</span>: <span class="log-val">"test-app"</span>,
+  <span class="log-key">"sub"</span>: <span class="log-val">"11cc1c33-4e40-4522-a8a2-84dc8ac9e358"</span>,
+  <span class="log-key">"typ"</span>: <span class="log-val">"ID"</span>,
+  <span class="log-key">"azp"</span>: <span class="log-val">"test-app"</span>,
+  <span class="log-key">"sid"</span>: <span class="log-val">"2077076e-5447-493f-a606-daf36de201e8"</span>,
+  <span class="log-key">"at_hash"</span>: <span class="log-val">"7w1bnuf54_fULdN_QM55Gg"</span>,
+  <span class="log-key">"acr"</span>: <span class="log-val">"0"</span>,
+  <span class="log-key">"email_verified"</span>: <span class="log-str">false</span>,
+  <span class="log-key">"name"</span>: <span class="log-val">"Tom Test"</span>,
+  <span class="log-key">"preferred_username"</span>: <span class="log-val">"tom"</span>,
+  <span class="log-key">"given_name"</span>: <span class="log-val">"Tom"</span>,
+  <span class="log-key">"family_name"</span>: <span class="log-val">"Test"</span>,
+  <span class="log-key">"email"</span>: <span class="log-val">"tom@example.com"</span>
+}
+<span class="log-sep">============================================================</span></pre>
+    </div>
+
+    <h4 style="margin:16px 0 8px; font-size:.95rem;">各クレームの意味</h4>
+    <table class="compare-table">
+      <tr><th>クレーム</th><th>値の例</th><th>意味・なぜ含まれるか</th></tr>
+      <tr><td>iss</td><td>http://localhost:8080/realms/testrealm</td><td><strong>発行者</strong>。トークンがどの IdP から来たか。偽装防止</td></tr>
+      <tr><td>sub</td><td>11cc1c33-...</td><td><strong>ユーザー識別子</strong>。IdP 内で一意の ID。ユーザー名ではなくこれでユーザーを識別する</td></tr>
+      <tr><td>aud</td><td>test-app</td><td><strong>対象者</strong>。このトークンが誰向けかを示す。自分の client_id と一致しなければ拒否</td></tr>
+      <tr><td>exp</td><td>1779606636</td><td><strong>有効期限</strong>（Unix時間）。この時刻を過ぎたトークンは無効</td></tr>
+      <tr><td>iat</td><td>1779606336</td><td><strong>発行時刻</strong>（Unix時間）。exp - iat = トークンの寿命</td></tr>
+      <tr><td>preferred_username</td><td>tom</td><td>表示用ユーザー名。scope に <code>profile</code> を指定したため含まれる</td></tr>
+      <tr><td>email</td><td>tom@example.com</td><td>メールアドレス。scope に <code>email</code> を指定したため含まれる</td></tr>
+      <tr><td>name</td><td>Tom Test</td><td>フルネーム。scope に <code>profile</code> を指定したため含まれる</td></tr>
+      <tr><td>at_hash</td><td>7w1bnuf54_...</td><td>access_token のハッシュ。ID トークンと access_token が対応していることを検証するため</td></tr>
+      <tr><td>sid</td><td>2077076e-...</td><td>Keycloak 側のセッション ID。ログアウト連携（Back-Channel Logout）で使われる</td></tr>
+    </table>
+
+    <div class="info-box warn">
+      <strong>sub を使う理由</strong>: <code>preferred_username</code> はユーザーが変更可能。DB にユーザーを紐づけるキーには <code>sub</code>（変更不可の一意ID）を使うのが正しい。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">実機確認</div>
+      <ol>
+        <li>ブラウザの <code>http://localhost:3000</code> に「ログイン中: tom」と表示されていることを確認</li>
+        <li>画面に JSON で表示されたクレームの <code>iss</code> が <code>http://localhost:8080/realms/testrealm</code> であることを確認</li>
+        <li><code>aud</code> が <code>test-app</code>（自分の Client ID）であることを確認</li>
+        <li><code>email</code> <code>name</code> が Keycloak で設定した値と一致することを確認</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== Lab 10 ==================== -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>Access Token の利用（⑥ UserInfo）</h3>
+    <span class="lab-tag tag-advanced">フロー</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ここまで access_token は「取得しただけ」でした。このLabで初めて <code>Authorization: Bearer</code> ヘッダーに付けて API を呼びます。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">id_token vs access_token — 何が違うのか</div>
+      <strong>id_token</strong>: 「この人は誰か」の証明書。<strong>アプリが読むためのもの</strong>。API に送るものではない。<br>
+      <strong>access_token</strong>: 「この人は何ができるか」の許可証。<strong>API サーバーに提示するためのもの</strong>。<br><br>
+      今回は access_token を Keycloak の UserInfo エンドポイントに提示して、ユーザー情報を取得する。実務では自社の API サーバーに提示してリソースにアクセスする。
+      <pre class="ascii-art">
+id_token の使い方:
+  アプリ内で tokenSet.claims() → ユーザー表示に使う
+  → 外部には送らない
+
+access_token の使い方:
+  GET /api/resource
+  Authorization: Bearer eyJhbG...
+  → API サーバーがトークンを検証してリソースを返す</pre>
+    </div>
+
+    <h4 style="margin:16px 0 8px; font-size:.95rem;">対応するコード</h4>
+    <div class="code-block">
+      <div class="code-block-header"><span>server.js — GET /api/userinfo</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre>app.<span class="fn">get</span>(<span class="str">'/api/userinfo'</span>, <span class="kw">async</span> (req, res) =&gt; {
+  <span class="kw">const</span> token = req.session.tokens?.access_token;
+
+  <span class="cm">// Discovery で取得済みの UserInfo エンドポイント URL</span>
+  <span class="kw">const</span> userinfoUrl = client.issuer.metadata.userinfo_endpoint;
+
+  <span class="cm">// access_token を Authorization ヘッダーに付けて GET</span>
+  <span class="kw">const</span> response = <span class="kw">await</span> <span class="fn">fetch</span>(userinfoUrl, {
+    headers: { <span class="prop">Authorization</span>: <span class="str">`Bearer ${token}`</span> },
+  });
+
+  <span class="kw">const</span> userinfo = <span class="kw">await</span> response.<span class="fn">json</span>();
+  res.<span class="fn">json</span>({ userinfo });
+});</pre>
+    </div>
+
+    <div class="info-box info">
+      <strong>なぜ Cookie ではなく Authorization ヘッダーか</strong>: Cookie はブラウザ ↔ 同一ドメインのサーバー間でしか使えない。API サーバーが別ドメイン（マイクロサービス構成等）の場合、Cookie は送れない。<code>Authorization: Bearer</code> ヘッダーならどのドメインの API にも送れる。これが OAuth 2.0 / OIDC が Bearer トークン方式を採用した理由。
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">通信の流れ</div>
+      <pre class="ascii-art">
+ブラウザ              Node.js(:3000)              Keycloak(:8080)
+  │                       │                          │
+  │ ボタンクリック         │                          │
+  │ GET /api/userinfo     │                          │
+  ├──────────────────────►│                          │
+  │  (Cookie: connect.sid)│                          │
+  │                       │ GET /userinfo             │
+  │                       │ Authorization: Bearer eyJ.│
+  │                       ├─────────────────────────►│
+  │                       │                          │ access_token 検証
+  │                       │  200 { sub, name, ... }  │
+  │                       │◄─────────────────────────┤
+  │  200 { userinfo }     │                          │
+  │◄──────────────────────┤                          │</pre>
+    </div>
+
+    <h4 style="margin:16px 0 8px; font-size:.95rem;">実際のログ出力</h4>
+    <div class="log-output">
+      <pre><span class="log-sep">============================================================</span>
+<span class="log-label">[⑥ UserInfo リクエスト]</span> 16:06:59
+<span class="log-sep">------------------------------------------------------------</span>
+{
+  <span class="log-key">"to"</span>: <span class="log-val">"http://localhost:8080/realms/testrealm/protocol/openid-connect/userinfo"</span>,
+  <span class="log-key">"method"</span>: <span class="log-val">"GET"</span>,
+  <span class="log-key">"headers"</span>: {
+    <span class="log-key">"Authorization"</span>: <span class="log-val">"Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6IC..."</span>
+  }
+}
+<span class="log-sep">============================================================</span>
+
+<span class="log-sep">============================================================</span>
+<span class="log-label">[⑥ UserInfo レスポンス]</span> 16:06:59
+<span class="log-sep">------------------------------------------------------------</span>
+{
+  <span class="log-key">"sub"</span>: <span class="log-val">"11cc1c33-4e40-4522-a8a2-84dc8ac9e358"</span>,
+  <span class="log-key">"email_verified"</span>: <span class="log-str">false</span>,
+  <span class="log-key">"name"</span>: <span class="log-val">"Tom Test"</span>,
+  <span class="log-key">"preferred_username"</span>: <span class="log-val">"tom"</span>,
+  <span class="log-key">"given_name"</span>: <span class="log-val">"Tom"</span>,
+  <span class="log-key">"family_name"</span>: <span class="log-val">"Test"</span>,
+  <span class="log-key">"email"</span>: <span class="log-val">"tom@example.com"</span>
+}
+<span class="log-sep">============================================================</span></pre>
+    </div>
+
+    <div class="info-box ok">
+      <strong>ここで Authorization ヘッダーが登場した</strong>。Cookie ベースの Web アプリでは「ブラウザ → Node.js」の通信に Authorization ヘッダーは出ない（Cookie で認証される）。Authorization ヘッダーが使われるのは「Node.js → API サーバー（今回は Keycloak）」のサーバー間通信。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">実機確認</div>
+      <ol>
+        <li>ログイン状態で「UserInfo を取得（access_token を使用）」ボタンをクリック</li>
+        <li>画面に「UserInfo エンドポイントの応答」として JSON が表示されることを確認</li>
+        <li>Node.js コンソールに「⑥ UserInfo リクエスト」ログが出て、<code>Authorization: Bearer eyJ...</code> が含まれていることを確認</li>
+        <li>「⑥ UserInfo レスポンス」のデータが IDトークンのクレーム（Lab 09）とほぼ同じ内容であることを確認（取得元は異なるが、同じユーザーの情報）</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== Lab 11 ==================== -->
+<div class="lab" id="lab11">
+  <div class="lab-header">
+    <div class="lab-num">11</div>
+    <h3>ログアウト（⑦ RP-Initiated Logout）</h3>
+    <span class="lab-tag tag-intermediate">フロー</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ログアウトは「アプリのセッション破棄」だけでは不十分です。<strong>なぜか</strong>: Keycloak 側のセッションが残っていると、再度 /login にアクセスした瞬間にパスワード入力なしでログインされてしまうから。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">2つのセッションを両方破棄する必要がある</div>
+      <pre class="ascii-art">
+アプリのセッション破棄だけの場合:
+  ブラウザ → /login → Keycloak（セッション残存）→ 自動ログイン → /callback
+  → ユーザーから見ると「ログアウトしたのにすぐログインされる」
+
+両方破棄した場合:
+  ブラウザ → /login → Keycloak（セッションなし）→ ログイン画面表示
+  → 正しいログアウト挙動</pre>
+    </div>
+
+    <h4 style="margin:16px 0 8px; font-size:.95rem;">対応するコード</h4>
+    <div class="code-block">
+      <div class="code-block-header"><span>server.js — GET /logout</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre>app.<span class="fn">get</span>(<span class="str">'/logout'</span>, (req, res) =&gt; {
+  <span class="kw">const</span> id_token = req.session.tokens?.id_token;
+
+  <span class="cm">// ① アプリ側のセッションを破棄</span>
+  req.session.<span class="fn">destroy</span>(() =&gt; {
+
+    <span class="cm">// ② Keycloak の end_session エンドポイントにリダイレクト</span>
+    <span class="kw">const</span> url = client.<span class="fn">endSessionUrl</span>({
+      id_token_hint: id_token,
+      <span class="cm">// ↑ 「どのユーザーのセッションを終了するか」を特定するため</span>
+      post_logout_redirect_uri: process.env.APP_BASE_URL,
+      <span class="cm">// ↑ ログアウト後にリダイレクトされる先</span>
+    });
+    res.<span class="fn">redirect</span>(url);
+  });
+});</pre>
+    </div>
+
+    <table class="compare-table">
+      <tr><th>パラメータ</th><th>なぜ必要か</th></tr>
+      <tr><td>id_token_hint</td><td>Keycloak が「どのユーザーのセッションを終了するか」を特定するため。これがないとKeycloakはログアウト確認画面を表示する</td></tr>
+      <tr><td>post_logout_redirect_uri</td><td>ログアウト後の戻り先URL。Keycloak に事前登録が必要（未登録だとリダイレクトされない）</td></tr>
+    </table>
+
+    <h4 style="margin:16px 0 8px; font-size:.95rem;">実際のログ出力</h4>
+    <div class="log-output">
+      <pre><span class="log-sep">============================================================</span>
+<span class="log-label">[⑦ ログアウト]</span> 16:08:15
+<span class="log-sep">------------------------------------------------------------</span>
+{
+  <span class="log-key">"redirect_to"</span>: <span class="log-val">"http://localhost:8080/realms/testrealm/protocol/openid-connect/logout
+    ?id_token_hint=eyJhbG...
+    &post_logout_redirect_uri=http%3A%2F%2Flocalhost%3A3000"</span>,
+  <span class="log-key">"id_token_hint"</span>: <span class="log-val">"eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6IC..."</span>
+}
+<span class="log-sep">============================================================</span></pre>
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">実機確認</div>
+      <ol>
+        <li>「ログアウト」をクリック</li>
+        <li>一瞬 Keycloak のドメイン（<code>localhost:8080</code>）にリダイレクトされ、すぐに <code>localhost:3000</code> に戻ることを確認</li>
+        <li>アプリ画面が「未ログイン」に戻っていることを確認</li>
+        <li>再度「ログイン」をクリックしたとき、Keycloak のログイン画面（パスワード入力）が<strong>表示される</strong>ことを確認 → Keycloak 側のセッションも破棄されている証拠</li>
+        <li>Node.js コンソールに「⑦ ログアウト」ログが出ていることを確認</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== Lab 12 ==================== -->
+<div class="lab" id="lab12">
+  <div class="lab-header">
+    <div class="lab-num">12</div>
+    <h3>通信一覧と全体復習</h3>
+    <span class="lab-tag tag-basic">まとめ</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      全ステップの通信を時系列で俯瞰し、各通信の From/To/URL/パラメータと「なぜその通信が必要か」を一覧にします。
+    </p>
+
+    <div class="sequence-block">
+      <pre>
+ブラウザ            Node.js(:3000)             Keycloak(:8080)
+  │                     │                          │
+  │  GET /login         │                          │
+  ├────────────────────►│ PKCE + state 生成        │
+  │  302 → auth?...     │                          │
+  │◄────────────────────┤                          │
+  │                                                │
+  │  GET /auth?code_challenge=...&state=...  ─────►│ ① 認可リクエスト
+  │                                                │
+  │  ◄───────── ログイン画面 HTML ─────────────────┤
+  │  ──────── username + password ─────────────────►│ ② ユーザー認証
+  │                                                │
+  │  302 → /callback?code=xxx&state=yyy            │
+  │◄───────────────────────────────────────────────┤ ③ 認可コード発行
+  │                     │                          │
+  │  GET /callback?code=│                          │
+  ├────────────────────►│                          │
+  │                     │  POST /token             │
+  │                     │  (code + verifier + secret)│
+  │                     ├─────────────────────────►│ ④ トークン交換
+  │                     │◄─────────────────────────┤ ⑤ トークン発行
+  │                     │  claims() でデコード      │
+  │  302 → /            │                          │
+  │◄────────────────────┤                          │
+  │                     │                          │
+  │  GET /api/userinfo  │                          │
+  ├────────────────────►│  GET /userinfo           │
+  │  (Cookie)           │  Authorization: Bearer   │
+  │                     ├─────────────────────────►│ ⑥ UserInfo
+  │                     │◄─────────────────────────┤
+  │  200 JSON           │                          │
+  │◄────────────────────┤                          │
+  │                     │                          │
+  │  GET /logout        │                          │
+  ├────────────────────►│  session.destroy()       │
+  │  302 → end_session  │                          │
+  │◄────────────────────┤                          │
+  │  GET /logout?id_token_hint=... ────────────────►│ ⑦ ログアウト
+  │  302 → /            │                          │
+  │◄───────────────────────────────────────────────┤</pre>
+    </div>
+
+    <h4 style="margin:16px 0 8px; font-size:.95rem;">全通信一覧（From / To / URL / パラメータ / なぜ）</h4>
+    <table class="compare-table">
+      <tr><th>#</th><th>From → To</th><th>Method / Endpoint</th><th>主なパラメータ</th><th>なぜこの通信が必要か</th></tr>
+      <tr>
+        <td>—</td><td>Node.js → Keycloak</td>
+        <td>GET <code>/.well-known/openid-configuration</code></td>
+        <td>なし</td>
+        <td>エンドポイントURLの自動検出。ハードコード不要にする</td>
+      </tr>
+      <tr>
+        <td>①</td><td>ブラウザ → Keycloak</td>
+        <td>GET <code>/auth</code></td>
+        <td><code>client_id</code>, <code>redirect_uri</code>, <code>response_type=code</code>, <code>scope</code>, <code>state</code>, <code>code_challenge</code>, <code>code_challenge_method</code></td>
+        <td>認証フローの開始。IdP に「このアプリのユーザーを認証してほしい」と依頼</td>
+      </tr>
+      <tr>
+        <td>②</td><td>ブラウザ → Keycloak</td>
+        <td>POST <code>/login-actions/authenticate</code></td>
+        <td><code>username</code>, <code>password</code></td>
+        <td>ユーザー認証。パスワードはブラウザ↔IdP間のみで流れる</td>
+      </tr>
+      <tr>
+        <td>③</td><td>Keycloak → ブラウザ</td>
+        <td>302 → <code>/callback</code></td>
+        <td><code>code</code>, <code>state</code>, <code>iss</code></td>
+        <td>認可コード（一時引換券）をアプリに渡す。トークンを直接返さないことでセキュリティ確保</td>
+      </tr>
+      <tr>
+        <td>④</td><td>Node.js → Keycloak</td>
+        <td>POST <code>/token</code></td>
+        <td><code>grant_type=authorization_code</code>, <code>code</code>, <code>redirect_uri</code>, <code>client_id</code>, <code>client_secret</code>, <code>code_verifier</code></td>
+        <td>認可コードをトークンに交換。client_secret + code_verifier で正規アプリを証明</td>
+      </tr>
+      <tr>
+        <td>⑤</td><td>Keycloak → Node.js</td>
+        <td>200（④の応答）</td>
+        <td><code>id_token</code>(JWT), <code>access_token</code>, <code>refresh_token</code>, <code>expires_in</code>, <code>token_type=Bearer</code></td>
+        <td>認証結果（id_token）と API アクセス権（access_token）の発行</td>
+      </tr>
+      <tr>
+        <td>⑥</td><td>Node.js → Keycloak</td>
+        <td>GET <code>/userinfo</code></td>
+        <td>Header: <code>Authorization: Bearer {access_token}</code></td>
+        <td>access_token を使って API を呼ぶ実例。Bearer トークン方式の実践</td>
+      </tr>
+      <tr>
+        <td>⑦</td><td>ブラウザ → Keycloak</td>
+        <td>GET <code>/logout</code></td>
+        <td><code>id_token_hint</code>, <code>post_logout_redirect_uri</code></td>
+        <td>IdP 側のセッションも破棄。アプリだけのログアウトでは不十分なため</td>
+      </tr>
+    </table>
+
+    <h4 style="margin:16px 0 8px; font-size:.95rem;">ブラウザ ↔ Node.js の認証は Cookie</h4>
+    <div class="info-box info">
+      <strong>全体像の整理</strong>:<br>
+      ・ブラウザ ↔ Node.js: <strong>Cookie</strong>（<code>connect.sid</code>）でセッション管理 → Authorization ヘッダーは出ない<br>
+      ・Node.js ↔ Keycloak: <strong>Authorization: Bearer</strong> ヘッダー（⑥ UserInfo 取得時）<br>
+      ・トークン交換（④）: <strong>client_secret</strong> を POST ボディに含めて送信（サーバー間通信）<br><br>
+      「Authorization ヘッダーが見当たらない」のは正常。セッションベースの Web アプリでは Cookie が主軸で、Bearer トークンはサーバー間通信で使われる。
+    </div>
+
+    <h4 style="margin:16px 0 8px; font-size:.95rem;">セキュリティ対策の総まとめ</h4>
+    <table class="compare-table">
+      <tr><th>攻撃</th><th>対策</th><th>どのステップで機能するか</th></tr>
+      <tr><td>認可コード横取り</td><td>PKCE（code_verifier / code_challenge）</td><td>① で challenge 送信、④ で verifier 送信して照合</td></tr>
+      <tr><td>CSRF（リクエスト偽造）</td><td>state パラメータ</td><td>① で state 送信・セッション保存、③ で照合</td></tr>
+      <tr><td>トークン偽造</td><td>JWT 署名検証（RS256 + JWKS）</td><td>⑤ で受信後、openid-client が自動検証</td></tr>
+      <tr><td>リダイレクト先偽装</td><td>redirect_uri の事前登録 + 完全一致検証</td><td>① と ④ で Keycloak が検証</td></tr>
+      <tr><td>Client 偽装</td><td>client_secret（Confidential Client）</td><td>④ でサーバー間通信のみで送信</td></tr>
+      <tr><td>IdP 偽装</td><td>iss クレーム検証</td><td>⑤ で openid-client が iss と Discovery の issuer を照合</td></tr>
+    </table>
+
+    <div class="info-box ok">
+      <strong>達成したこと</strong>:<br>
+      ・¥0・localhost 完結で OIDC Authorization Code Flow + PKCE の全ステップを実機で観測<br>
+      ・Discovery → 認可リクエスト → 認証 → 認可コード → トークン交換 → クレーム確認 → Access Token 利用 → ログアウト を一気通貫で体験<br>
+      ・各ステップの「なぜそうなっているか」（セキュリティ上の理由）を理解<br>
+      ・IdP を差し替える際は <code>.env</code> の3値（ISSUER, CLIENT_ID, CLIENT_SECRET）を変えるだけ
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">最終確認 — 一連のフローを通しで実行</div>
+      <ol>
+        <li>一度ログアウトした状態から開始</li>
+        <li>「ログイン」→ Keycloak でパスワード入力 → アプリに戻る → クレーム表示を確認</li>
+        <li>「UserInfo を取得」ボタン → Authorization: Bearer でのAPI呼び出しを確認</li>
+        <li>「ログアウト」→ 「未ログイン」表示 → 再度「ログイン」でパスワード入力画面が出ることを確認</li>
+        <li>Node.js コンソールのログを上から順に読み、Discovery → ① → ③ → ④ → ⑤ → ⑥ → ⑦ の順で出ていることを確認</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<!-- ========== Script ========== -->
+<script>
+  function copyCode(btn) {
+    const block = btn.closest('.code-block') || btn.parentElement;
+    const pre = block.querySelector('pre');
+    if (!pre) return;
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // Sidebar active highlight
+    const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+    const map = new Map();
+    links.forEach(a => {
+      const el = document.getElementById(a.getAttribute('href').slice(1));
+      if (el) map.set(el, a);
+    });
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting) {
+        const l = map.get(e.target);
+        if (l) { links.forEach(n => n.classList.remove('active')); l.classList.add('active'); }
+      }
+    }), { rootMargin: '-30% 0px -60% 0px' });
+    document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+    // Auto-add Copy button to code blocks without one
+    document.querySelectorAll('.code-block').forEach((cb) => {
+      if (cb.querySelector('.copy-btn')) return;
+      if (cb.querySelector('.code-block-header')) return;
+      const header = document.createElement('div');
+      header.className = 'code-block-header';
+      header.innerHTML = '<span>Code</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>';
+      cb.insertBefore(header, cb.firstChild);
+    });
+  });
+</script>
+</body>
+</html>
