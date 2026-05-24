@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>fetch / Response / Streams API Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+/* Sidebar */
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+/* Hero */
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+/* TOC */
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+/* Container & Lab cards */
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+.lab-body h4 { font-size:.95rem; color:var(--accent); margin:18px 0 6px;
+  font-family:var(--mono); }
+
+/* Code block */
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+/* Syntax token colors (GitHub light) */
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+
+/* info-box */
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+/* verify Before / After */
+.verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+  line-height:1.7; border:1px solid; }
+.verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+.verify-before .verify-label { color:var(--error); }
+.verify-after  .verify-label { color:var(--success); }
+
+/* check-steps */
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+/* compare-table */
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); white-space:nowrap; }
+.compare-table .yes { color:var(--success); } .compare-table .no { color:var(--error); }
+
+/* beginner-box */
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+/* usecase-box */
+.usecase-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:6px; }
+.usecase-list { margin-left:20px; margin-bottom:10px; }
+.usecase-list li { margin-bottom:4px; }
+.usecase-trigger { background:rgba(0,92,197,.05); border-left:3px solid var(--accent);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#003d8f; margin-top:8px; }
+.usecase-trigger ul { margin:4px 0 0 20px; }
+
+/* delta-box (Before/After/Δ) */
+.delta-box { background:rgba(0,92,197,.05); border:1px solid rgba(0,92,197,.25);
+  border-left:3px solid var(--accent); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.85rem; line-height:1.75; color:#003d8f; }
+.delta-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent); font-weight:700; margin-bottom:6px; }
+.delta-box .drow { display:flex; gap:8px; margin-bottom:3px; }
+.delta-box .dkey { font-family:var(--mono); font-weight:700; min-width:62px; flex-shrink:0; }
+
+/* ascii diagram block */
+pre.diagram { font-family:var(--mono); font-size:.78rem; line-height:1.5;
+  background:var(--code-bg); border:1px solid var(--border); border-radius:7px;
+  padding:14px 16px; margin:12px 0; color:var(--text); overflow-x:auto; }
+
+/* livedemo */
+.livedemo { margin:14px 0; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+.livedemo-bar { display:flex; align-items:center; gap:12px; padding:8px 12px;
+  background:var(--surface2); border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.toggle-btn { font-family:var(--mono); font-size:.78rem; padding:5px 14px;
+  border-radius:6px; border:1px solid var(--accent); background:var(--accent);
+  color:#fff; cursor:pointer; transition:all .15s; }
+.toggle-btn:hover { opacity:.85; }
+.toggle-btn.is-before { background:var(--error); border-color:var(--error); }
+.toggle-label { font-family:var(--mono); font-size:.78rem; color:var(--text-dim); }
+.livedemo-stage { padding:16px; background:var(--bg); }
+.livedemo-stage.is-before { outline:2px dashed var(--error); outline-offset:-8px; }
+.livedemo-stage .ld-before { display:none; }
+.livedemo-stage.is-before .ld-before { display:block; }
+.livedemo-stage.is-before .ld-after { display:none; }
+.ld-panel { padding:12px; border-radius:6px; font-family:var(--mono); font-size:11px; line-height:1.6; }
+.ld-panel.bad { background:#fee2e2; border:1px solid #cb2431; color:#6b1a22; }
+.ld-panel.good { background:#dcfce7; border:1px solid #22863a; color:#166534; }
+
+/* runnable demo (interactive) */
+.run-demo { margin:14px 0; border:1px solid var(--accent); border-radius:8px; overflow:hidden; }
+.run-demo-bar { display:flex; align-items:center; gap:10px; padding:8px 12px;
+  background:rgba(0,92,197,.08); border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.run-btn { font-family:var(--mono); font-size:.78rem; padding:5px 16px;
+  border-radius:6px; border:1px solid var(--accent2); background:var(--accent2);
+  color:#fff; cursor:pointer; transition:all .15s; }
+.run-btn:hover { opacity:.85; }
+.run-btn:disabled { opacity:.4; cursor:not-allowed; }
+.run-demo-label { font-family:var(--mono); font-size:.74rem; color:var(--text-dim); }
+.run-out { padding:12px 14px; background:#1a1a2e; color:#d4d8e0;
+  font-family:var(--mono); font-size:.76rem; line-height:1.6;
+  min-height:54px; max-height:260px; overflow-y:auto; white-space:pre-wrap; }
+.run-out .ln-info { color:#79b8ff; }
+.run-out .ln-ok { color:#85e89d; }
+.run-out .ln-warn { color:#ffd479; }
+.run-out .ln-err { color:#f97583; }
+.run-out .ln-dim { color:#6a737d; }
+.progress-wrap { height:14px; background:var(--surface2); border-radius:7px;
+  overflow:hidden; margin:8px 0; border:1px solid var(--border); }
+.progress-bar { height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--accent2));
+  transition:width .15s; }
+
+/* try-box */
+.try-box { background:rgba(34,134,58,.06); border:1px solid rgba(34,134,58,.30);
+  border-left:3px solid var(--success); border-radius:7px;
+  padding:12px 14px; margin:14px 0; font-size:.86rem; line-height:1.8; color:#154f1e; }
+.try-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--success); font-weight:700; margin-bottom:6px; }
+.try-box ol { margin-left:20px; margin-top:4px; }
+.try-box ol li { margin-bottom:4px; }
+.try-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--success); }
+.try-tip { background:rgba(176,136,0,.06); border-left:3px solid var(--accent4);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#5c4400; margin-top:8px; }
+.try-tip strong { color:var(--accent4); }
+.try-skeleton { background:#f0f4f8; border:1px solid var(--border); border-radius:5px;
+  padding:10px 12px; margin-top:8px; font-family:var(--mono); font-size:.78rem;
+  color:var(--text); white-space:pre; overflow-x:auto; line-height:1.5; }
+
+/* Responsive */
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .verify { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// fetch / Response / Streams <span>Lab</span></div>
+  <div class="nav-section">基礎</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>2段階パイプライン</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>body は ReadableStream</a>
+  <div class="nav-section">Response 全解剖</div>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>メタデータ系プロパティ</a>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>body 消費メソッド</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>clone と一度きり制約</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>静的メソッドと生成</a>
+  <div class="nav-section">Streams API</div>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>Stream 3種類の整理</a>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>reader / writer / ロック</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>つなぐ 3メソッド</a>
+  <div class="nav-section">統合</div>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>Response × Stream 接点</a>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>進捗付きダウンロード</a>
+</nav>
+
+<div class="hero">
+  <h1>fetch / Response / Streams API Lab</h1>
+  <p class="subtitle">「なぜそう設計されたか」起点で受信パイプラインを解剖する実機確認Lab</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>fetch は2段階パイプライン</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>Response.body は ReadableStream</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>メタデータ系プロパティ全解説</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>body 消費メソッド全解説</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>clone と「一度きり」制約</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>静的メソッドと Response 生成</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>Stream は3種類しかない</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>reader / writer とロック</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>pipeThrough / pipeTo / tee</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>Response × Stream の接点</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">10</span>進捗付きダウンロード実装</a>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ===================== LAB 0 ===================== -->
+  <div class="lab" id="lab0">
+    <div class="lab-header">
+      <div class="lab-num">00</div>
+      <h3>fetch は「即座にbody全部」を返さない — 2段階パイプライン</h3>
+      <span class="lab-tag tag-basic">基本</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>fetch()</code> が返す Promise は「全レスポンス受信」ではなく
+        <strong>レスポンスヘッダを受信した時点</strong>で resolve する。body はまだネットワーク上を流れている最中かもしれない。
+        だから <code>.json()</code> や <code>.text()</code> も Promise を返す ―― 残りのストリームを読み切る非同期処理だから。
+      </p>
+
+      <pre class="diagram">fetch(url)
+   │
+   ▼
+[Promise&lt;Response&gt;]  ← ★ヘッダ受信時点で resolve（body は未受信）
+   │
+   ▼
+Response オブジェクト
+   ├─ status / headers / ok ...  ← 即利用可能（メタデータ・同期）
+   └─ body                       ← ReadableStream（中身はまだ流れ得る）
+        │
+        ▼
+   .json() / .text() / .blob() / .getReader()
+        │
+        ▼
+   ここで初めて body 全体 or チャンクを消費（非同期）</pre>
+
+      <div class="code-block">
+        <div class="code-block-header"><span>JS — ヘッダ受信と body 消費は別ステップ</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'/api/data'</span>);  <span class="cm">// ← ヘッダ受信でここに到達</span>
+<span class="fn">console</span>.<span class="fn">log</span>(res.status, res.ok);          <span class="cm">// ← 同期で即読める</span>
+<span class="kw">const</span> data = <span class="kw">await</span> res.<span class="fn">json</span>();          <span class="cm">// ← body を最後まで読み切る（別の待ち）</span></pre>
+      </div>
+
+      <div class="delta-box">
+        <div class="delta-title">▲ Before / After / Δ</div>
+        <div class="drow"><span class="dkey">Before</span><span>fetch =「リクエスト→完全なレスポンス」のブラックボックス</span></div>
+        <div class="drow"><span class="dkey">After</span><span>fetch =「ヘッダ受信」と「body消費」が分離された2段階パイプライン</span></div>
+        <div class="drow"><span class="dkey">Δ</span><span>最初のバイト到達時点で処理開始可（TTFB活用）／巨大bodyを全展開せず逐次処理／進捗・中断・逐次パースが可能に</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== LAB 1 ===================== -->
+  <div class="lab" id="lab1">
+    <div class="lab-header">
+      <div class="lab-num">01</div>
+      <h3>Response.body は ReadableStream — Streams API への入口</h3>
+      <span class="lab-tag tag-basic">基本</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>Response.body</code> の型は <code>ReadableStream&lt;Uint8Array&gt;</code>。
+        これが Response と Streams API をつなぐ唯一の接続点。<code>getReader()</code> で reader を取り出し、
+        <code>read()</code> を <code>{ done, value }</code> が返るまでループして1チャンクずつ受け取る。
+      </p>
+
+      <div class="code-block">
+        <div class="code-block-header"><span>JS — getReader でチャンクを逐次受信</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'/large-data'</span>);
+<span class="kw">const</span> reader = res.body.<span class="fn">getReader</span>();   <span class="cm">// ReadableStream → reader</span>
+
+<span class="kw">while</span> (<span class="kw">true</span>) {
+  <span class="kw">const</span> { done, value } = <span class="kw">await</span> reader.<span class="fn">read</span>();
+  <span class="kw">if</span> (done) <span class="kw">break</span>;
+  <span class="cm">// value は Uint8Array（このチャンク分のバイト列）</span>
+  <span class="fn">console</span>.<span class="fn">log</span>(<span class="str">'受信チャンク:'</span>, value.length, <span class="str">'bytes'</span>);
+}</pre>
+      </div>
+
+      <div class="info-box warn">
+        ⚠ HTTP の chunked transfer encoding のチャンク境界と、JS の <code>read()</code> が返すチャンク境界は
+        <strong>1:1 対応しない</strong>。データが「ある程度」溜まったら流れてくる、という挙動。
+      </div>
+
+      <div class="run-demo">
+        <div class="run-demo-bar">
+          <button class="run-btn" data-demo="reader">▶ getReader ループを実行</button>
+          <span class="run-demo-label">擬似ストリームを read() ループで消費</span>
+        </div>
+        <div class="run-out" id="out-reader"><span class="ln-dim">「実行」を押すと read() ループのログが出ます</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== LAB 2 ===================== -->
+  <div class="lab" id="lab2">
+    <div class="lab-header">
+      <div class="lab-num">02</div>
+      <h3>メタデータ系プロパティ全解説 — なぜ同期で即読めるのか</h3>
+      <span class="lab-tag tag-intermediate">中級</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        HTTP レスポンスは「ステータスライン＋ヘッダ」と「body」の2部構成で、<strong>ヘッダが先に届く</strong>。
+        Response はこの物理順序をAPIに反映した ―― だからメタデータ系は全部<strong>同期・即時・読み取り専用</strong>。
+      </p>
+
+      <table class="compare-table">
+        <thead><tr><th>プロパティ</th><th>型</th><th>なぜ存在するか / 利用シーン</th></tr></thead>
+        <tbody>
+          <tr><td>status</td><td>number</td><td>HTTP意味論の中核。fetchは4xx/5xxでrejectしないので、これを見ないと失敗を検知できない</td></tr>
+          <tr><td>ok</td><td>boolean</td><td>200〜299か。<code>status&gt;=200&amp;&amp;status&lt;300</code>を毎回書く冗長さの除去。fetchの「エラーでrejectしない」設計の埋め合わせ</td></tr>
+          <tr><td>statusText</td><td>string</td><td>理由フレーズ。HTTP/2では事実上廃止＝空文字になりがち。ログ表示以外で依存しない</td></tr>
+          <tr><td>headers</td><td>Headers</td><td>ヘッダ名は大小無視・同名複数値あり。素のObjectでは表現不可なので専用クラス</td></tr>
+          <tr><td>type</td><td>string</td><td>CORS境界の可視化。<code>opaque</code>ならstatus=0・body読めず・headers空</td></tr>
+          <tr><td>url</td><td>string</td><td>リダイレクト追跡<strong>後</strong>の最終URL。実際にどこから来た応答かを知る唯一の手段</td></tr>
+          <tr><td>redirected</td><td>boolean</td><td>リダイレクトを経たか。改ざん検知などセキュリティ判断に</td></tr>
+          <tr><td>bodyUsed</td><td>boolean</td><td>body消費済みか。「一度しか読めない」制約を消費前にガードするフラグ</td></tr>
+          <tr><td>body</td><td>ReadableStream｜null</td><td>未受信かもしれないbodyをStreamで公開。HEAD/204等ではnull</td></tr>
+        </tbody>
+      </table>
+
+      <h4>// type 値の意味</h4>
+      <pre class="diagram">type === "basic"          → 同一オリジン、全部読める
+type === "cors"           → 別オリジンだがCORS許可あり、中身読める
+type === "opaque"         → 別オリジン no-cors取得、status=0/body空（キャッシュ目的等）
+type === "opaqueredirect" → redirect:'manual' のリダイレクト応答
+type === "error"          → ネットワークエラー（Response.error()由来）</pre>
+
+      <div class="info-box info">
+        📘 <strong>headers が Headers 型である理由</strong>: <code>Content-Type</code> と <code>content-type</code> は
+        HTTP仕様上同一。素の Object はこの大小無視を表現できない。さらに <code>Set-Cookie</code> のような同名複数値もある。
+        Headers クラスはこの仕様を正しくカプセル化する。
+      </div>
+
+      <div class="run-demo">
+        <div class="run-demo-bar">
+          <button class="run-btn" data-demo="meta">▶ 実 fetch でメタデータを読む</button>
+          <span class="run-demo-label">httpbin.org に投げて status/ok/type/url 等を表示</span>
+        </div>
+        <div class="run-out" id="out-meta"><span class="ln-dim">ネットワーク接続が必要です。押すと実レスポンスのメタデータが出ます</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== LAB 3 ===================== -->
+  <div class="lab" id="lab3">
+    <div class="lab-header">
+      <div class="lab-num">03</div>
+      <h3>body 消費メソッド全解説 — なぜ5つ以上あり、全部 Promise なのか</h3>
+      <span class="lab-tag tag-intermediate">中級</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        body はネットワーク上では<strong>ただのバイト列</strong>。それを「何として解釈するか」はアプリしか知らない。
+        だから解釈方法ごとにメソッドを分けた。全部 Promise なのは「body最後の1バイトが届くまで結果が確定しない」から。
+      </p>
+
+      <table class="compare-table">
+        <thead><tr><th>メソッド</th><th>戻り値</th><th>なぜ使う / 利用シーン</th></tr></thead>
+        <tbody>
+          <tr><td>.json()</td><td>object</td><td>API応答。内部でUTF-8デコード＋<code>JSON.parse</code>。最頻出</td></tr>
+          <tr><td>.text()</td><td>string</td><td>HTML/プレーンテキスト/自前パースしたいJSON</td></tr>
+          <tr><td>.blob()</td><td>Blob</td><td>画像・PDF等のバイナリ。<code>URL.createObjectURL</code>で表示/DL</td></tr>
+          <tr><td>.arrayBuffer()</td><td>ArrayBuffer</td><td>バイナリを自前解析（バイト操作・WebAssembly・Audio）</td></tr>
+          <tr><td>.formData()</td><td>FormData</td><td><code>multipart/form-data</code>応答の構造化取得</td></tr>
+          <tr><td>.bytes()</td><td>Uint8Array</td><td>新しめ。arrayBufferより直接バイト配列が欲しいとき</td></tr>
+        </tbody>
+      </table>
+
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 なぜ「1つの汎用メソッド＋引数」にしなかったか</div>
+        メソッドを分けることで戻り値の型が静的に確定し、内部で最適な変換経路を取れる。
+        <code>fetch(...).then(r =&gt; r.json())</code> の <code>.json()</code> が string ではなく object を返すと
+        型推論が効くのはこのため。
+        <pre class="ascii-art">body（バイト列 Uint8Array）
+   │
+   ├─ .text()        → UTF-8デコード        → string
+   ├─ .json()        → UTF-8デコード+parse  → object
+   ├─ .blob()        → そのまま包む          → Blob
+   ├─ .arrayBuffer() → 生バッファ            → ArrayBuffer
+   └─ .formData()    → multipart解析         → FormData
+        ↑ どれも「body を最後まで読み切る」点は共通（だから全部Promise・一度きり）</pre>
+      </div>
+
+      <div class="info-box err">
+        ❌ <code>.json()</code> 等を呼ぶと body Stream は消費し尽くされる。2回目は
+        <code>TypeError: body stream already read</code> になる。Lab 04 の <code>clone()</code> で回避する。
+      </div>
+
+      <div class="run-demo">
+        <div class="run-demo-bar">
+          <button class="run-btn" data-demo="consume">▶ 二重 .json() を実行（失敗を観察）</button>
+          <span class="run-demo-label">同じ body を2回読もうとして TypeError を出す</span>
+        </div>
+        <div class="run-out" id="out-consume"><span class="ln-dim">押すと「一度きり」制約が TypeError として出ます</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== LAB 4 ===================== -->
+  <div class="lab" id="lab4">
+    <div class="lab-header">
+      <div class="lab-num">04</div>
+      <h3>clone() と「一度きり」制約 — なぜ複製が必要なのか</h3>
+      <span class="lab-tag tag-intermediate">中級</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        body は ReadableStream で、Stream は消費されると枯れる。<code>clone()</code> は body消費<strong>前</strong>に呼ぶと
+        Stream を内部で <strong>tee（分岐）</strong> し、同じデータを2系統で読めるようにする。
+      </p>
+
+      <pre class="diagram">         res.body (ReadableStream)
+               │  clone() = 内部で tee()
+         ┌─────┴─────┐
+         ▼           ▼
+    Cache保存用   ブラウザ返却用
+  （Service Worker での典型シーン）</pre>
+
+      <div class="code-block">
+        <div class="code-block-header"><span>JS — clone は body 消費の前に</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><span class="kw">const</span> res  = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'/data'</span>);
+<span class="kw">const</span> res2 = res.<span class="fn">clone</span>();        <span class="cm">// ★ どちらかを消費する前に</span>
+<span class="kw">const</span> a = <span class="kw">await</span> res.<span class="fn">json</span>();
+<span class="kw">const</span> b = <span class="kw">await</span> res2.<span class="fn">text</span>();   <span class="cm">// res2 は独立した系統なので読める</span></pre>
+      </div>
+
+      <div class="livedemo">
+        <div class="livedemo-bar">
+          <button class="toggle-btn" data-target="ld-clone">Before を見る</button>
+          <span class="toggle-label" id="ld-clone-label">現在: After（clone あり）</span>
+        </div>
+        <div class="livedemo-stage" id="ld-clone">
+          <div class="ld-panel good ld-after">✓ After: clone() してから消費 → 2系統とも成功。SWで「片方Cache保存・片方ブラウザ返却」が成立</div>
+          <div class="ld-panel bad ld-before">✗ Before: clone なしで2回 .json() → TypeError: body stream already read。Streamは枯れて再読不可</div>
+        </div>
+      </div>
+
+      <div class="info-box warn">
+        ⚠ clone 後は両系統がメモリにバッファされ得る。巨大 body で消費が偏ると（片方だけ速く進む等）
+        その差分がメモリに溜まり圧迫する。巨大データでは clone より「1回だけ getReader で読む」を検討。
+      </div>
+
+      <div class="run-demo">
+        <div class="run-demo-bar">
+          <button class="run-btn" data-demo="clone">▶ clone あり/なしを両方実行</button>
+          <span class="run-demo-label">clone なし＝失敗 / clone あり＝両方成功 を並べて表示</span>
+        </div>
+        <div class="run-out" id="out-clone"><span class="ln-dim">押すと clone の有無で結果が変わる様子が出ます</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== LAB 5 ===================== -->
+  <div class="lab" id="lab5">
+    <div class="lab-header">
+      <div class="lab-num">05</div>
+      <h3>静的メソッドと Response 生成 — なぜ自分で Response を作れる必要があるのか</h3>
+      <span class="lab-tag tag-advanced">応用</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        Response は「受け取る」だけでなく「生産する」側にも回れる。
+        <strong>Service Worker / エッジ関数</strong>でネットワークを介さず応答を組み立てる ―― これが静的メソッドの存在意義。
+      </p>
+
+      <table class="compare-table">
+        <thead><tr><th>API</th><th>なぜ存在するか</th></tr></thead>
+        <tbody>
+          <tr><td>new Response(body, init)</td><td>SWでネットワークを介さず応答を自作。オフライン対応・モックの入口。bodyにReadableStreamも渡せる</td></tr>
+          <tr><td>Response.json(data, init)</td><td><code>new Response(JSON.stringify(d),{headers:{'Content-Type':...}})</code>の定型句が長すぎた＋Content-Type付与忘れ多発。それを1行に</td></tr>
+          <tr><td>Response.redirect(url, status)</td><td>SW/エッジでリダイレクト応答を返す定型。<code>Location</code>ヘッダ手書き回避</td></tr>
+          <tr><td>Response.error()</td><td>SWがネットワークエラーを意図的に表現。主にAPI対称性のため</td></tr>
+        </tbody>
+      </table>
+
+      <div class="code-block">
+        <div class="code-block-header"><span>JS — Service Worker で応答を生産する</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><span class="cm">// 旧: 長い定型句</span>
+<span class="kw">new</span> <span class="fn">Response</span>(<span class="fn">JSON</span>.<span class="fn">stringify</span>({ ok:<span class="kw">true</span> }), {
+  headers: { <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> }
+});
+
+<span class="cm">// 新: ショートカット（Content-Type 自動付与）</span>
+<span class="fn">Response</span>.<span class="fn">json</span>({ ok: <span class="kw">true</span> });
+
+<span class="cm">// 受信Streamを変換して新しいResponseとして返す（SWの定番）</span>
+<span class="kw">const</span> transformed = res.body.<span class="fn">pipeThrough</span>(<span class="kw">new</span> <span class="fn">TextDecoderStream</span>());
+<span class="kw">return</span> <span class="kw">new</span> <span class="fn">Response</span>(transformed);</pre>
+      </div>
+
+      <div class="run-demo">
+        <div class="run-demo-bar">
+          <button class="run-btn" data-demo="make">▶ Response を自作して中身を読む</button>
+          <span class="run-demo-label">new Response / Response.json をその場で生成・消費</span>
+        </div>
+        <div class="run-out" id="out-make"><span class="ln-dim">押すと自作 Response の status/headers/body が出ます</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== LAB 6 ===================== -->
+  <div class="lab" id="lab6">
+    <div class="lab-header">
+      <div class="lab-num">06</div>
+      <h3>Stream は3種類しかない — 3レイヤで整理する</h3>
+      <span class="lab-tag tag-intermediate">中級</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        Streams API の名前が多く見えるのは、<strong>Stream本体</strong>と<strong>操作する道具</strong>と
+        <strong>具体的な変換器の実装</strong>が混在して目に入るから。レイヤを分ければ本体は3つだけ。
+      </p>
+
+      <pre class="diagram">レイヤ1：Stream本体（これだけが「種類」）
+   ReadableStream  … データの「出口」（読む対象） ← Response.body はこれ
+   WritableStream  … データの「入口」（書く対象）
+   TransformStream … 入口＋出口を持つ「変換器」
+
+レイヤ2：Streamを操作する道具
+   ReadableStreamDefaultReader / WritableStreamDefaultWriter
+   ReadableStreamDefaultController など
+
+レイヤ3：TransformStreamの「具体実装」
+   TextDecoderStream / TextEncoderStream
+   CompressionStream / DecompressionStream</pre>
+
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 TransformStream の正体</div>
+        TransformStream は「writable プロパティ（入口）」と「readable プロパティ（出口）」を持つだけの箱。
+        書き込むと変換されて読み出せる。<code>TextDecoderStream</code> は新種ではなく「TransformStream に
+        バイト→文字列の変換ロジックを実装したもの」。
+        <pre class="ascii-art">            ┌─────── TransformStream ───────┐
+write() ──▶ │ writable    [変換]    readable │ ──▶ read()
+            └────────────────────────────────┘
+   ＝ { writable: WritableStream, readable: ReadableStream }</pre>
+      </div>
+
+      <table class="compare-table">
+        <thead><tr><th>3種の本体</th><th>役割</th><th>身近な例</th></tr></thead>
+        <tbody>
+          <tr><td>ReadableStream</td><td>読み出せる（出口）</td><td><code>Response.body</code></td></tr>
+          <tr><td>WritableStream</td><td>書き込める（入口）</td><td>File System Access の書き込み先</td></tr>
+          <tr><td>TransformStream</td><td>変換（入口＋出口）</td><td><code>TextDecoderStream</code></td></tr>
+        </tbody>
+      </table>
+
+      <div class="info-box info">
+        📘 新しい <code>XxxStream</code> という名前を見たら「レイヤ1〜3のどこか」で即分類できる。
+        <code>TextDecoderStream</code> → レイヤ3（TransformStream実装）、
+        <code>ReadableStreamDefaultReader</code> → レイヤ2（道具）。
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== LAB 7 ===================== -->
+  <div class="lab" id="lab7">
+    <div class="lab-header">
+      <div class="lab-num">07</div>
+      <h3>reader / writer とロック — なぜ Stream を直接 read() できないのか</h3>
+      <span class="lab-tag tag-advanced">応用</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        ReadableStream に <code>read()</code> メソッドは無い。<code>getReader()</code> で reader を取得してから読む。
+        この間接化の理由は<strong>排他ロック</strong> ―― getReader するとStreamはロックされ、他の誰も読めなくなる。
+        「2か所から同時に読んで順序がぐちゃぐちゃ」を防ぐ。
+      </p>
+
+      <pre class="diagram">ReadableStream
+   │ getReader()  ← ここで Stream がロックされる
+   ▼
+ReadableStreamDefaultReader  ← read() はこちらが持つ
+   │
+   ▼
+{ done, value } を done:true まで繰り返し取得</pre>
+
+      <table class="compare-table">
+        <thead><tr><th>道具</th><th>取得元</th><th>役割</th></tr></thead>
+        <tbody>
+          <tr><td>ReadableStreamDefaultReader</td><td>getReader()</td><td><code>read()</code>でチャンク取得（使う側）</td></tr>
+          <tr><td>ReadableStreamBYOBReader</td><td>getReader({mode:'byob'})</td><td>自前バッファに直接読む省コピー（高度）</td></tr>
+          <tr><td>WritableStreamDefaultWriter</td><td>getWriter()</td><td><code>write()</code> <code>close()</code>（使う側）</td></tr>
+          <tr><td>ReadableStreamDefaultController</td><td>new ReadableStream(...) 内</td><td><code>enqueue()</code>でデータ供給（作る側）</td></tr>
+        </tbody>
+      </table>
+
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 reader/writer は「使う側」、controller は「作る側」</div>
+        reader・writer は既存のStreamを<strong>使う</strong>道具。controller は <code>new ReadableStream</code> で
+        Stream を<strong>作る</strong>ときに「データを流し込む」道具。役割が反対側。
+        <pre class="ascii-art">作る側： new ReadableStream({ start(controller){
+            controller.enqueue(chunk);  ← データ供給
+            controller.close();        ← 終端
+         }})
+                    │
+                    ▼
+使う側： stream.getReader() → reader.read()  ← データ消費</pre>
+      </div>
+
+      <div class="info-box warn">
+        ⚠ getReader 後の Stream はロック中。<code>releaseLock()</code> を呼ぶまで <code>pipeThrough</code> や
+        2つ目の getReader はできない（<code>TypeError: locked</code>）。
+      </div>
+
+      <div class="run-demo">
+        <div class="run-demo-bar">
+          <button class="run-btn" data-demo="lock">▶ ロック衝突を実行（2回 getReader）</button>
+          <span class="run-demo-label">getReader 済み Stream にもう一度 getReader → 失敗</span>
+        </div>
+        <div class="run-out" id="out-lock"><span class="ln-dim">押すとロック衝突の TypeError が観察できます</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== LAB 8 ===================== -->
+  <div class="lab" id="lab8">
+    <div class="lab-header">
+      <div class="lab-num">08</div>
+      <h3>Stream をつなぐ3メソッド — pipeThrough / pipeTo / tee</h3>
+      <span class="lab-tag tag-advanced">応用</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        Stream は「つなげる」のが本質。接続メソッドは3つだけ。
+        <code>pipeThrough</code> は中継（出口がまた ReadableStream）、<code>pipeTo</code> は終端、
+        <code>tee</code> は分岐。
+      </p>
+
+      <table class="compare-table">
+        <thead><tr><th>メソッド</th><th>つなぎ方</th><th>戻り値 / 性質</th></tr></thead>
+        <tbody>
+          <tr><td>pipeThrough(T)</td><td>Readable に TransformStream を噛ます</td><td>新しい ReadableStream（数珠つなぎ可）</td></tr>
+          <tr><td>pipeTo(W)</td><td>Readable を WritableStream に注ぐ</td><td>Promise（流し終わると解決＝終端）</td></tr>
+          <tr><td>tee()</td><td>Readable を2本に分岐</td><td><code>[streamA, streamB]</code>（clone の正体）</td></tr>
+        </tbody>
+      </table>
+
+      <pre class="diagram">pipeThrough … 中継：出口がまた ReadableStream → さらにつなげる
+   res.body
+     .pipeThrough(new DecompressionStream('gzip'))
+     .pipeThrough(new TextDecoderStream())   ← 数珠つなぎ
+
+pipeTo … 終端：出口は WritableStream → ここで完結
+   res.body.pipeTo(someWritableStream)  // → Promise
+
+tee … 分岐：1本を2本に
+   const [a, b] = res.body.tee();</pre>
+
+      <div class="code-block">
+        <div class="code-block-header"><span>JS — pipeThrough で逐次テキスト処理</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'/stream-endpoint'</span>);
+
+<span class="cm">// バイト列Stream → 文字列Stream に変換</span>
+<span class="kw">const</span> textStream = res.body.<span class="fn">pipeThrough</span>(<span class="kw">new</span> <span class="fn">TextDecoderStream</span>());
+
+<span class="cm">// ReadableStream は asyncIterable なので for await で回せる</span>
+<span class="kw">for</span> <span class="kw">await</span> (<span class="kw">const</span> chunk <span class="kw">of</span> textStream) {
+  <span class="fn">console</span>.<span class="fn">log</span>(<span class="str">'文字列チャンク:'</span>, chunk);
+}</pre>
+      </div>
+
+      <div class="info-box warn">
+        ⚠ マルチバイト文字（日本語等）はチャンク境界で分断され得る。<code>TextDecoderStream</code> は
+        これを正しく結合してくれる。自前の <code>TextDecoder</code> を使う場合は <code>decode(buf,{stream:true})</code> の
+        <code>{stream:true}</code> を忘れると文字化けする。
+      </div>
+
+      <div class="run-demo">
+        <div class="run-demo-bar">
+          <button class="run-btn" data-demo="pipe">▶ pipeThrough チェーンを実行</button>
+          <span class="run-demo-label">バイト列 → TextDecoderStream → 文字列チャンクを表示</span>
+        </div>
+        <div class="run-out" id="out-pipe"><span class="ln-dim">押すと pipeThrough を通った文字列チャンクが出ます</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== LAB 9 ===================== -->
+  <div class="lab" id="lab9">
+    <div class="lab-header">
+      <div class="lab-num">09</div>
+      <h3>Response × Stream の接点 — すべて res.body に集約される</h3>
+      <span class="lab-tag tag-advanced">応用</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        Response と Streams API の関係は<strong>1点</strong>に集約される ―― <code>Response.body</code> が
+        <code>ReadableStream</code> である、という事実。status/headers 等はStreamと無縁。
+      </p>
+
+      <pre class="diagram">Response オブジェクト
+   ├─ status / headers / ok ...  ← Stream と無関係（メタデータ）
+   └─ body : ReadableStream&lt;Uint8Array&gt;  ★ここが Streams API の入口</pre>
+
+      <table class="compare-table">
+        <thead><tr><th>Response の操作</th><th>内部の Stream 操作</th><th>結果</th></tr></thead>
+        <tbody>
+          <tr><td>.json() / .text() / .blob()</td><td>res.body を read() ループで読み切る</td><td>bodyUsed=true</td></tr>
+          <tr><td>res.body.getReader()</td><td>Streamをロックして自前read()</td><td>bodyUsed=true・進捗取得可</td></tr>
+          <tr><td>res.body.pipeThrough(...)</td><td>Streamを変換器に接続</td><td>変換後Streamを取得</td></tr>
+          <tr><td>res.clone()</td><td>res.body を内部で tee()</td><td>2系統に分岐・両方読める</td></tr>
+          <tr><td>new Response(readableStream)</td><td>ReadableStreamをbodyとして渡す</td><td>自前Streamから応答生成</td></tr>
+        </tbody>
+      </table>
+
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 .json() は「Streamを読み切る糖衣」</div>
+        <code>.json()</code> の中身は実質「res.body を最後まで read() ループ → 全バイト結合 → デコード → JSON.parse」。
+        だから <code>.json()</code> でも <code>getReader()</code> でも<strong>同じ1本のStreamを取り合う</strong>。片方を使うと
+        もう片方は使えない。これが Lab 03/04 の制約の正体。
+        <pre class="ascii-art">res.json()  ≒  res.body を read() ループ → 結合 → decode → JSON.parse
+res.text()  ≒  res.body を read() ループ → 結合 → decode
+                          ↑ 同じ Stream。先に使った方が枯らす</pre>
+      </div>
+
+      <div class="info-box ok">
+        ✓ <code>new Response(stream)</code> で「作る側」にも接続あり。
+        受信Streamを <code>pipeThrough</code> で変換 → <code>new Response</code> で返す、が
+        Service Worker の定番。Response と Stream は読む側・作る側の双方向でつながっている。
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== LAB 10 ===================== -->
+  <div class="lab" id="lab10">
+    <div class="lab-header">
+      <div class="lab-num">10</div>
+      <h3>進捗付きダウンロード実装 — Stream の威力が出る典型例</h3>
+      <span class="lab-tag tag-advanced">応用</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>.blob()</code> 一発では進捗が取れない。<code>getReader()</code> で自前ループするから途中経過が見える。
+        <code>Content-Length</code> ヘッダ（メタデータ）と <code>read()</code> ループ（Stream）の組み合わせ。
+      </p>
+
+      <div class="code-block">
+        <div class="code-block-header"><span>JS — 進捗バー付きダウンロード</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'/big-file.zip'</span>);
+<span class="kw">const</span> total = +res.headers.<span class="fn">get</span>(<span class="str">'Content-Length'</span>);  <span class="cm">// メタデータ</span>
+<span class="kw">const</span> reader = res.body.<span class="fn">getReader</span>();                  <span class="cm">// Stream</span>
+
+<span class="kw">let</span> received = <span class="num">0</span>;
+<span class="kw">const</span> chunks = [];
+<span class="kw">while</span> (<span class="kw">true</span>) {
+  <span class="kw">const</span> { done, value } = <span class="kw">await</span> reader.<span class="fn">read</span>();
+  <span class="kw">if</span> (done) <span class="kw">break</span>;
+  chunks.<span class="fn">push</span>(value);
+  received += value.length;
+  <span class="fn">updateBar</span>(received / total);              <span class="cm">// ← 途中経過が取れる</span>
+}
+<span class="kw">const</span> blob = <span class="kw">new</span> <span class="fn">Blob</span>(chunks);</pre>
+      </div>
+
+      <div class="verify">
+        <div class="verify-col verify-before">
+          <div class="verify-label">Before ▶︎ .blob() 一発</div>
+          受信完了まで何も分からない。ユーザーは「固まった?」と感じる。中断もできない。
+        </div>
+        <div class="verify-col verify-after">
+          <div class="verify-label">After ▶︎ getReader ループ</div>
+          チャンク到達ごとに % 更新。進捗バー表示・AbortController での中断・逐次パースが可能。
+        </div>
+      </div>
+
+      <div class="run-demo">
+        <div class="run-demo-bar">
+          <button class="run-btn" data-demo="progress">▶ 進捗ダウンロードを実行</button>
+          <span class="run-demo-label">擬似的なチャンク受信を進捗バーで可視化</span>
+        </div>
+        <div class="progress-wrap"><div class="progress-bar" id="bar-progress"></div></div>
+        <div class="run-out" id="out-progress"><span class="ln-dim">押すと read() ループで進捗が更新される様子が出ます</span></div>
+      </div>
+
+      <div class="info-box info">
+        📘 この構造はそのまま <strong>SSE / LLMストリーミング</strong>応答の土台。OpenAI/Anthropic API の
+        <code>text/event-stream</code> も <code>getReader()</code> ループ＋<code>TextDecoderStream</code> で
+        1トークンずつ受け取っている。
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function copyCode(btn) {
+    const block = btn.closest('.code-block') || btn.parentElement;
+    const pre = block.querySelector('pre');
+    if (!pre) return;
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    });
+  }
+
+  // ---- LAB_META: info / usecase / try / check 自動注入 ----
+  const LAB_META = {
+    lab0: {
+      info: { type:'ok', html:'✅ <strong>覚え方</strong>: 「fetch の Promise = ヘッダ便」「.json() の Promise = body便」。便が2つあると考えると同期/非同期の境界が腑に落ちる。' },
+      usecase: {
+        list:['APIの遅延を計測したいとき：ヘッダ到達(=fetch解決)とbody完了(.json()解決)を別々に計測','大きなJSONを受け取りつつ早期にステータスだけで分岐したいとき','レスポンスヘッダのServer-Timingだけ先に読んでログ出力したいとき','タイムアウト制御で「ヘッダは来たがbodyが遅い」を区別したいとき'],
+        trigger:['<code>await fetch()</code> の直後で <code>res.status</code> を使っているコードを見たら、2段階の前半を使っている','<code>.then(r =&gt; r.json())</code> の二段 then を見たら、後半の body 便']
+      },
+      check:['①このページを開き、ネットワークがある状態で Lab02 の「実 fetch」ボタンを押す','②ボタン押下からメタデータ表示までの体感速度を覚えておく','③Lab10 の進捗デモを実行し、ヘッダ取得後に body が「徐々に」来る様子と比較する','④2つの待ち（ヘッダ便・body便）が別物だと体感で確認する']
+    },
+    lab1: {
+      info: { type:'info', html:'📘 <code>Response.body</code> は <code>ReadableStream&lt;Uint8Array&gt;</code>。HEAD応答や204では <code>null</code> になる点に注意。' },
+      usecase: {
+        list:['ダウンロード進捗を出したいとき(getReaderで自前ループ)','巨大レスポンスをメモリに全展開せず逐次処理したいとき','SSE/LLMストリーミング応答を1チャンクずつ処理したいとき','受信途中でAbortControllerでキャンセルしたいとき'],
+        trigger:['<code>res.body.getReader()</code> を見たら、Streamを生で読んでいる','<code>{ done, value }</code> の分割代入ループを見たら read() ループ']
+      },
+      try:'Lab1の実行ボタンは擬似ストリーム。実物で試すなら大きめのJSONや画像URLを fetch して getReader ループで value.length をログすると、複数チャンクに分かれて届くのが分かる。',
+      check:['①このラボの「getReader ループを実行」ボタンを押す','②ログに複数の「受信チャンク」行が順に出ることを確認する','③最後に done=true でループが終わる行が出ることを確認する','④1回のread()が全データではなく一部だけ返す＝逐次性を体感する']
+    },
+    lab2: {
+      info: { type:'warn', html:'⚠ <code>statusText</code> は HTTP/2 で事実上廃止。空文字になりがちなので分岐に使わず <code>status</code> の数値で判定すること。' },
+      usecase: {
+        list:['<code>if(!res.ok) throw</code> でHTTPエラーを例外化するとき','<code>res.headers.get(\'ETag\')</code> でキャッシュ検証用の値を取るとき','<code>res.url</code> でリダイレクト後の最終URLを知りたいとき','<code>res.type===\'opaque\'</code> でCORSで中身が読めない応答を判定するとき'],
+        trigger:['<code>res.status &gt;= 200 &amp;&amp; res.status &lt; 300</code> という式を見たら <code>res.ok</code> で置換できる','body が空なのにエラーも出ない応答を見たら <code>res.type</code> が opaque を疑う']
+      },
+      check:['①ネットワークがある状態でこのラボの「実 fetch でメタデータを読む」を押す','②表示された status / ok / type / url / redirected を表と照合する','③type が "cors" または "basic" になっていることを確認する','④headers から取得したいくつかのヘッダ名が出ていることを確認する']
+    },
+    lab3: {
+      info: { type:'err', html:'❌ body消費メソッドは<strong>一度きり</strong>。<code>.json()</code> 後にもう一度 <code>.json()</code> は <code>TypeError</code>。複数回使うなら Lab04 の <code>clone()</code>。' },
+      usecase: {
+        list:['REST APIのJSON応答を受け取る(.json())','HTMLや自前パースしたいテキストを受け取る(.text())','画像/PDF/ZIPを受け取り表示やDLする(.blob())','WebAssemblyやAudioにバイナリを渡す(.arrayBuffer())'],
+        trigger:['<code>.then(r =&gt; r.json())</code> を見たら body便メソッド','同じ res に対し2回 body消費しているコードを見たらバグ候補']
+      },
+      try:'Lab3の実行ボタンは Response.json() で作った自作Responseに対し意図的に2回 .json() を呼ぶ。実コードでこのエラーが出たら「どこかで既に body を消費済み」のサイン。',
+      check:['①このラボの「二重 .json() を実行」ボタンを押す','②1回目の .json() は成功してオブジェクトが出ることを確認する','③2回目で TypeError(body stream already read)が出ることを確認する','④bodyUsed が true になっている旨のログを確認する']
+    },
+    lab4: {
+      info: { type:'info', html:'📘 <code>clone()</code> は <strong>body消費前</strong>に呼ぶこと。消費後にcloneしても枯れたStreamの複製になる。' },
+      usecase: {
+        list:['Service Workerで「Cacheに保存」と「ブラウザに返却」を両立するとき','レスポンスをログ用に1回・処理用に1回、計2回読みたいとき','元のResponseを温存しつつ別形式(.text()と.json())で読みたいとき','リトライ判定のために本文を覗いてから再利用したいとき'],
+        trigger:['SWの fetch イベントで <code>cache.put</code> と <code>respondWith</code> の両方に同じResponseが要るとき','同じResponseを2系統で読みたいと感じたら clone() の出番']
+      },
+      try:'Before/Afterトグルで「cloneなし=失敗」「cloneあり=両方成功」を見比べる。実行ボタンは両パターンを連続実行してログで対比する。',
+      check:['①Before/Afterトグルを切り替え、説明文が変わることを確認する','②「clone あり/なしを両方実行」ボタンを押す','③cloneなしパターンで2回目の読み取りが TypeError になることを確認する','④cloneありパターンで2系統とも成功し中身が出ることを確認する']
+    },
+    lab5: {
+      info: { type:'ok', html:'✅ <code>Response.json(data)</code> は <code>Content-Type: application/json</code> を自動付与。手書きの付与忘れバグを防ぐ。' },
+      usecase: {
+        list:['Service Workerでオフライン用のフォールバック応答を自作するとき','エッジ関数(Cloudflare Workers等)でJSON応答を返すとき','テストでネットワークを介さずResponseをモックするとき','受信Streamを変換して新しいResponseとして下流に返すとき'],
+        trigger:['<code>new Response(...)</code> を見たら「応答を生産している」側','<code>Response.json(...)</code> はエッジ/SWでのJSON返却の定番']
+      },
+      try:'Lab5の実行ボタンは new Response と Response.json をその場で生成し、生成したResponseを通常のResponseと同じく .json()/.text() で読む様子を出す。受け取り側と作り側が対称なことを確認できる。',
+      check:['①このラボの「Response を自作して中身を読む」を押す','②new Response で作ったオブジェクトの status が表示されることを確認する','③Response.json で作った方の Content-Type が application/json になっていることを確認する','④自作Responseでも .json()/.text() が普通に使えることを確認する']
+    },
+    lab6: {
+      info: { type:'info', html:'📘 本体は <strong>3種類</strong>(Readable/Writable/Transform)。reader等は「道具(レイヤ2)」、TextDecoderStream等は「TransformStream実装(レイヤ3)」。' },
+      usecase: {
+        list:['新しい XxxStream の名前を見て3レイヤのどこか即分類するとき','TransformStreamを自作して独自変換を挟みたいとき','CompressionStreamでアップロード前にgzip圧縮するとき','TextDecoderStreamでバイト列を文字列ストリームに変換するとき'],
+        trigger:['末尾が <code>Stream</code> の見慣れない型を見たら、まずレイヤ1〜3に分類','<code>{ writable, readable }</code> を持つオブジェクトを見たらTransformStream']
+      },
+      check:['①レイヤ図を見て ReadableStream/WritableStream/TransformStream の3つを指させるか確認する','②TextDecoderStream が「レイヤ3=TransformStreamの実装」だと言えるか確認する','③ReadableStreamDefaultReader が「レイヤ2=道具」だと言えるか確認する','④Response.body がどのレイヤのどれか(レイヤ1 ReadableStream)を確認する']
+    },
+    lab7: {
+      info: { type:'warn', html:'⚠ <code>getReader()</code> するとStreamはロックされる。<code>releaseLock()</code> までは pipeThrough も 2つ目の getReader も不可。' },
+      usecase: {
+        list:['1本のStreamを確実に1箇所だけで読む保証が欲しいとき','new ReadableStreamでSSE風の自前ストリームを作るとき(controller)','WritableStreamにwriterで書き込むとき','BYOBReaderで省コピーなバイナリ読み取りをするとき(高度)'],
+        trigger:['<code>TypeError: ...is locked</code> を見たら getReader/pipe の競合','<code>controller.enqueue</code> を見たらStreamを作っている側のコード']
+      },
+      try:'Lab7の実行ボタンは1本のReadableStreamに getReader を2回呼んでロック衝突を起こす。実コードで locked エラーが出たら「既にどこかで読み始めている」サイン。',
+      check:['①このラボの「ロック衝突を実行」ボタンを押す','②1回目の getReader は成功する旨のログを確認する','③2回目の getReader で locked 系の TypeError が出ることを確認する','④releaseLock 後なら再取得できる旨のログを確認する']
+    },
+    lab8: {
+      info: { type:'ok', html:'✅ <code>pipeThrough</code>=中継(また ReadableStream)、<code>pipeTo</code>=終端(Promise)、<code>tee</code>=分岐。clone()の正体は tee()。' },
+      usecase: {
+        list:['受信バイト列をTextDecoderStreamで文字列化するとき(pipeThrough)','gzip応答をDecompressionStreamで展開するとき(pipeThrough)','StreamをファイルやWritableに流し込んで完了を待つとき(pipeTo)','同じStreamを2箇所に流したいとき(tee)'],
+        trigger:['<code>.pipeThrough(...).pipeThrough(...)</code> の連鎖を見たら変換チェーン','<code>const [a,b] = stream.tee()</code> を見たら分岐']
+      },
+      try:'Lab8の実行ボタンはバイト列のReadableStreamを TextDecoderStream に pipeThrough し、出てきた文字列チャンクを for await で表示する。',
+      check:['①このラボの「pipeThrough チェーンを実行」ボタンを押す','②バイト列が文字列チャンクに変換されて順に出ることを確認する','③pipeThrough の戻り値がまた ReadableStream なので for await できる点を確認する','④日本語が途中で文字化けせず正しく結合されることを確認する']
+    },
+    lab9: {
+      info: { type:'info', html:'📘 Response と Stream の接点は <code>res.body</code> ただ1つ。.json()等はそれを読み切る糖衣、clone()はそれを tee() するもの。' },
+      usecase: {
+        list:['「なぜ.json()は一度きりか」を後輩に説明するとき','SWで受信Streamを変換して新Responseで返す実装をするとき','進捗取得のため.blob()をやめてgetReaderに切り替えるとき','clone()のメモリ挙動を見積もるとき'],
+        trigger:['body関連の不可解な挙動(一度きり/bodyUsed)を見たら「Streamの占有」が原因','<code>new Response(res.body.pipeThrough(...))</code> はSWの変換パターン']
+      },
+      check:['①対応表を見て .json() が内部で何をしているか(read()ループ)を言えるか確認する','②clone() の内部実装が tee() であると言えるか確認する','③.json() と getReader() が同じStreamを取り合うと理解できているか確認する','④new Response(stream) で「作る側」にも接続があると確認する']
+    },
+    lab10: {
+      info: { type:'ok', html:'✅ Content-Length(メタデータ)＋ getReader ループ(Stream)＝進捗バー。.blob()一発では絶対に取れない情報。' },
+      usecase: {
+        list:['大きなファイルのDLで進捗バーを出すとき','LLMのストリーミング応答を1トークンずつ表示するとき','SSEで逐次イベントを受け取り画面更新するとき','受信途中でAbortControllerでキャンセルできるようにするとき'],
+        trigger:['進捗バーUIの要件を見たら getReader ループ必須','LLM/SSEのストリーミングは getReader + TextDecoderStream が定番形']
+      },
+      try:'Lab10の実行ボタンは擬似チャンクを順に「受信」して進捗バーを更新する。実物は大きめファイルのURLを fetch + Content-Length + getReader ループに置き換える。',
+      check:['①このラボの「進捗ダウンロードを実行」ボタンを押す','②進捗バーが0%から100%へ段階的に伸びることを確認する','③ログに各チャンクの累積受信バイトと%が出ることを確認する','④完了時に「ダウンロード完了」が出てバーが100%になることを確認する']
+    }
+  };
+
+  function infoHTML(m){ return m && m.info ? '<div class="info-box '+(m.info.type||'info')+'">'+m.info.html+'</div>' : ''; }
+  function usecaseHTML(m){
+    if (!m || !m.usecase) return '';
+    var u = m.usecase;
+    var list = (u.list||[]).map(function(x){return '<li>'+x+'</li>';}).join('');
+    var trig = (u.trigger||[]).map(function(x){return '<li>'+x+'</li>';}).join('');
+    return '<div class="usecase-box"><div class="usecase-title">💡 利用シーン</div>'+
+      '<ul class="usecase-list">'+list+'</ul>'+
+      (trig ? '<div class="usecase-trigger">こう見えたら使える候補:<ul>'+trig+'</ul></div>' : '')+
+      '</div>';
+  }
+  function tryHTML(m){
+    var tip = (m && m.try) ? '<div class="try-tip"><strong>💡 このラボのコツ:</strong> '+m.try+'</div>' : '';
+    return '<div class="try-box"><div class="try-title">💻 コード例を試す手順（コピペで動かす）</div>'+
+      '<ol>'+
+      '<li>上のコードブロックの <strong>Copy</strong> ボタンを押してクリップボードにコピー</li>'+
+      '<li>テキストエディタで <code>試行.html</code> を新規作成し、下のHTML雛形の <code>&lt;!-- ここに貼る --&gt;</code> 部分にペースト（JSは <code>&lt;script&gt;</code> 内に async 即時関数で包む）</li>'+
+      '<li>保存してファイルをブラウザにドラッグ＆ドロップで開く</li>'+
+      '<li>このラボ右上の「▶ 実行」ボタンや下の実機チェック項目を順に試す</li>'+
+      '</ol>'+ tip +
+      '<pre class="try-skeleton">&lt;!DOCTYPE html&gt;\n&lt;html lang="ja"&gt;\n&lt;head&gt;&lt;meta charset="UTF-8"&gt;&lt;title&gt;試行&lt;/title&gt;&lt;/head&gt;\n&lt;body&gt;\n&lt;script&gt;\n(async () =&gt; {\n  // ここに貼る\n})();\n&lt;/script&gt;\n&lt;/body&gt;\n&lt;/html&gt;</pre>'+
+      '</div>';
+  }
+  function checkHTML(m){
+    if (!m || !m.check || !m.check.length) return '';
+    return '<div class="check-steps"><div class="check-steps-title">🔍 ブラウザ実機チェック</div>'+
+      '<ol>'+m.check.map(function(s){return '<li>'+s+'</li>';}).join('')+'</ol></div>';
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    // (1) 各ラボに info → usecase → try → check を自動注入
+    document.querySelectorAll('.lab').forEach(function (lab) {
+      var meta = LAB_META[lab.id];
+      var body = lab.querySelector('.lab-body');
+      if (!body || !meta) return;
+      var frag = document.createElement('div');
+      frag.innerHTML = infoHTML(meta) + usecaseHTML(meta) + tryHTML(meta) + checkHTML(meta);
+      while (frag.firstChild) body.appendChild(frag.firstChild);
+    });
+
+    // (2) サイドバー active ハイライト
+    var links = Array.prototype.slice.call(document.querySelectorAll('#sidebar .nav-item'));
+    var map = new Map();
+    links.forEach(function (a) {
+      var el = document.getElementById(a.getAttribute('href').slice(1));
+      if (el) map.set(el, a);
+    });
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        if (e.isIntersecting) {
+          var l = map.get(e.target);
+          if (l) { links.forEach(function (n) { n.classList.remove('active'); }); l.classList.add('active'); }
+        }
+      });
+    }, { rootMargin: '-30% 0px -60% 0px' });
+    document.querySelectorAll('.lab[id]').forEach(function (lab) { io.observe(lab); });
+
+    // (3) 既存 .code-block に header + Copy 自動付与（既にあればスキップ）
+    document.querySelectorAll('.code-block').forEach(function (cb, i) {
+      if (cb.querySelector('.code-block-header')) return;
+      var header = document.createElement('div');
+      header.className = 'code-block-header';
+      header.innerHTML = '<span>Code #' + (i + 1) + '</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>';
+      cb.insertBefore(header, cb.firstChild);
+    });
+  });
+
+  // (4) Livedemo トグル
+  document.addEventListener('click', function (e) {
+    if (!e.target.matches('.toggle-btn')) return;
+    var btn = e.target;
+    var stage = document.getElementById(btn.dataset.target);
+    if (!stage) return;
+    var isBefore = stage.classList.toggle('is-before');
+    btn.classList.toggle('is-before', isBefore);
+    var label = document.getElementById(btn.dataset.target + '-label');
+    if (label) label.textContent = isBefore ? '現在: Before（clone なし／失敗）' : '現在: After（clone あり）';
+  });
+
+  // ---- (5) インタラクティブ実行デモ ----
+  var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+
+  function out(id) {
+    var el = document.getElementById(id);
+    el.innerHTML = '';
+    return function (cls, msg) {
+      var span = document.createElement('div');
+      span.className = 'ln-' + cls;
+      span.textContent = msg;
+      el.appendChild(span);
+      el.scrollTop = el.scrollHeight;
+    };
+  }
+
+  // 擬似 ReadableStream を作るヘルパ（controller でチャンク供給）
+  function makeFakeStream(chunks, delay) {
+    var i = 0;
+    return new ReadableStream({
+      pull: function (controller) {
+        return sleep(delay).then(function () {
+          if (i < chunks.length) { controller.enqueue(chunks[i++]); }
+          else { controller.close(); }
+        });
+      }
+    });
+  }
+
+  var DEMOS = {
+    // Lab1: getReader ループ
+    reader: function (log) {
+      var enc = new TextEncoder();
+      var parts = ['{"name":"', 'Tom","role":', '"engineer",', '"score":98}'];
+      var stream = makeFakeStream(parts.map(function (p) { return enc.encode(p); }), 280);
+      var reader = stream.getReader();
+      log('info', '▶ res.body.getReader() でreaderを取得');
+      var total = 0;
+      function step() {
+        return reader.read().then(function (r) {
+          if (r.done) {
+            log('ok', '✓ done=true — ループ終了。累計 ' + total + ' bytes');
+            return;
+          }
+          total += r.value.length;
+          log('dim', '  受信チャンク: ' + r.value.length + ' bytes（累計 ' + total + '）');
+          return step();
+        });
+      }
+      return step();
+    },
+
+    // Lab2: 実 fetch でメタデータ
+    meta: function (log) {
+      log('info', '▶ fetch("https://httpbin.org/get") を実行...');
+      return fetch('https://httpbin.org/get').then(function (res) {
+        log('ok', '✓ ヘッダ受信（fetch の Promise が resolve）');
+        log('dim', '  status      = ' + res.status);
+        log('dim', '  ok          = ' + res.ok);
+        log('dim', '  statusText  = "' + res.statusText + '"');
+        log('dim', '  type        = ' + res.type);
+        log('dim', '  url         = ' + res.url);
+        log('dim', '  redirected  = ' + res.redirected);
+        log('dim', '  bodyUsed    = ' + res.bodyUsed + '（まだbody未消費）');
+        var ct = res.headers.get('content-type');
+        log('dim', '  Content-Type= ' + ct);
+        return res.json().then(function () {
+          log('ok', '✓ body消費後 bodyUsed = ' + res.bodyUsed);
+        });
+      }).catch(function (e) {
+        log('err', '✗ ネットワークエラー: ' + e.message + '（オフライン環境では失敗します）');
+      });
+    },
+
+    // Lab3: 二重 .json()
+    consume: function (log) {
+      var res = Response.json({ id: 1, msg: 'hello' });
+      log('info', '▶ Response.json({id:1,msg:"hello"}) を作成');
+      return res.json().then(function (d) {
+        log('ok', '✓ 1回目 .json() 成功: ' + JSON.stringify(d));
+        log('dim', '  bodyUsed = ' + res.bodyUsed + '（消費済みに）');
+        return res.json();
+      }).then(function () {
+        log('err', '✗ 2回目も成功してしまった（想定外）');
+      }).catch(function (e) {
+        log('err', '✗ 2回目 .json() 失敗: ' + e.name + ' — ' + e.message);
+        log('ok', '✓ これが「body は一度きり」制約。複数回読むなら clone() が必要');
+      });
+    },
+
+    // Lab4: clone あり/なし
+    clone: function (log) {
+      log('warn', '── パターンA: clone なし ──');
+      var a = Response.json({ v: 'A' });
+      return a.json().then(function () {
+        log('dim', '  1回目 .json() 成功');
+        return a.text();
+      }).then(function () {
+        log('err', '  2回目 成功（想定外）');
+      }).catch(function (e) {
+        log('err', '  ✗ 2回目 失敗: ' + e.name + '（Streamが枯れた）');
+      }).then(function () {
+        log('ok', '── パターンB: clone あり ──');
+        var b = Response.json({ v: 'B' });
+        var b2 = b.clone();
+        log('dim', '  body消費前に clone() 済み');
+        return Promise.all([b.json(), b2.text()]);
+      }).then(function (rs) {
+        log('ok', '  ✓ res.json()  → ' + JSON.stringify(rs[0]));
+        log('ok', '  ✓ res2.text() → ' + rs[1]);
+        log('ok', '✓ clone は内部で tee() ＝2系統に分岐するので両方読めた');
+      });
+    },
+
+    // Lab5: Response 自作
+    make: function (log) {
+      log('info', '▶ new Response("plain text", {status:201}) を作成');
+      var r1 = new Response('plain text body', {
+        status: 201,
+        headers: { 'X-Custom': 'demo' }
+      });
+      log('dim', '  status = ' + r1.status + ' / X-Custom = ' + r1.headers.get('x-custom'));
+      return r1.text().then(function (t) {
+        log('ok', '  ✓ .text() → "' + t + '"');
+        log('info', '▶ Response.json({ok:true}) を作成');
+        var r2 = Response.json({ ok: true });
+        log('dim', '  Content-Type = ' + r2.headers.get('content-type') + '（自動付与）');
+        return r2.json();
+      }).then(function (d) {
+        log('ok', '  ✓ .json() → ' + JSON.stringify(d));
+        log('ok', '✓ 自作Responseも受信Responseと同じAPIで読める（対称設計）');
+      });
+    },
+
+    // Lab7: ロック衝突
+    lock: function (log) {
+      var stream = makeFakeStream([new Uint8Array([1, 2, 3])], 100);
+      log('info', '▶ ReadableStream を1本用意');
+      var r1 = stream.getReader();
+      log('ok', '✓ 1回目 getReader() 成功 — Streamはロックされた');
+      try {
+        stream.getReader();
+        log('err', '✗ 2回目も成功（想定外）');
+      } catch (e) {
+        log('err', '✗ 2回目 getReader() 失敗: ' + e.name);
+        log('dim', '  ' + e.message);
+      }
+      r1.releaseLock();
+      log('dim', '  releaseLock() でロック解放');
+      try {
+        stream.getReader();
+        log('ok', '✓ 解放後は再度 getReader() 成功');
+      } catch (e) {
+        log('warn', '  解放後も失敗: ' + e.message);
+      }
+      return Promise.resolve();
+    },
+
+    // Lab8: pipeThrough チェーン
+    pipe: function (log) {
+      var enc = new TextEncoder();
+      var parts = ['Streams ', 'APIは ', '日本語チャンク', 'も正しく結合'];
+      var stream = makeFakeStream(parts.map(function (p) { return enc.encode(p); }), 240);
+      log('info', '▶ バイト列Stream を .pipeThrough(new TextDecoderStream())');
+      var textStream = stream.pipeThrough(new TextDecoderStream());
+      log('dim', '  戻り値はまた ReadableStream → reader で読める');
+      var reader = textStream.getReader();
+      function step() {
+        return reader.read().then(function (r) {
+          if (r.done) {
+            log('ok', '✓ done — バイト列が文字列チャンクに変換された');
+            return;
+          }
+          log('dim', '  文字列チャンク: "' + r.value + '"');
+          return step();
+        });
+      }
+      return step();
+    },
+
+    // Lab10: 進捗ダウンロード
+    progress: function (log) {
+      var bar = document.getElementById('bar-progress');
+      bar.style.width = '0%';
+      var total = 12;
+      var enc = new TextEncoder();
+      var chunks = [];
+      for (var k = 0; k < total; k++) { chunks.push(enc.encode('chunk-' + k + ';')); }
+      var stream = makeFakeStream(chunks, 200);
+      var reader = stream.getReader();
+      log('info', '▶ Content-Length=' + total + ' chunks。getReader ループ開始');
+      var received = 0;
+      function step() {
+        return reader.read().then(function (r) {
+          if (r.done) {
+            bar.style.width = '100%';
+            log('ok', '✓ ダウンロード完了（100%）');
+            return;
+          }
+          received++;
+          var pct = Math.round(received / total * 100);
+          bar.style.width = pct + '%';
+          log('dim', '  受信 ' + received + '/' + total + ' chunk … ' + pct + '%');
+          return step();
+        });
+      }
+      return step();
+    }
+  };
+
+  document.addEventListener('click', function (e) {
+    if (!e.target.matches('.run-btn')) return;
+    var btn = e.target;
+    var key = btn.dataset.demo;
+    var fn = DEMOS[key];
+    if (!fn) return;
+    var outId = 'out-' + key;
+    var log = out(outId);
+    btn.disabled = true;
+    var original = btn.textContent;
+    btn.textContent = '実行中...';
+    Promise.resolve()
+      .then(function () { return fn(log); })
+      .catch(function (err) { log('err', '✗ 予期せぬエラー: ' + (err && err.message)); })
+      .then(function () { btn.disabled = false; btn.textContent = original; });
+  });
+</script>
+
+</body>
+</html>

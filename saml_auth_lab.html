@@ -1,0 +1,1804 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAML認証「なぜ」Lab — フロー×コード×データ推移</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+/* Sidebar */
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+/* Hero */
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+/* TOC */
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+/* Container & Lab cards */
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+/* Code block */
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+/* Syntax tokens */
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+
+/* info-box */
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+/* verify */
+.verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+  line-height:1.7; border:1px solid; }
+.verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+.verify-before .verify-label { color:var(--error); }
+.verify-after  .verify-label { color:var(--success); }
+
+/* check-steps */
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+/* compare-table */
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+
+/* beginner-box */
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+/* usecase-box */
+.usecase-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:6px; }
+.usecase-list { margin-left:20px; margin-bottom:10px; }
+.usecase-list li { margin-bottom:4px; }
+
+/* flow-diagram */
+.flow-diagram { background:var(--code-bg); border:1px solid var(--border); border-radius:8px;
+  padding:16px; margin:14px 0; overflow-x:auto; }
+.flow-diagram pre { font-family:var(--mono); font-size:.78rem; line-height:1.5; color:var(--text); }
+.flow-diagram .flow-label { font-family:var(--mono); font-size:.66rem; letter-spacing:.1em;
+  text-transform:uppercase; font-weight:700; color:var(--accent); margin-bottom:8px; }
+
+/* data-transition */
+.data-transition { margin:14px 0; }
+.data-step { display:flex; align-items:flex-start; gap:12px; margin-bottom:12px; }
+.data-step-num { font-family:var(--mono); font-weight:700; color:#fff;
+  background:var(--accent3); min-width:24px; height:24px; display:flex;
+  align-items:center; justify-content:center; border-radius:50%; font-size:.72rem; flex-shrink:0; margin-top:2px; }
+.data-step-content { flex:1; }
+.data-step-label { font-family:var(--mono); font-size:.76rem; font-weight:600; color:var(--accent); margin-bottom:4px; }
+.data-step-desc { font-size:.84rem; color:var(--text-dim); margin-bottom:6px; }
+.data-arrow { text-align:center; color:var(--accent3); font-size:1.2rem; margin:4px 0; }
+
+/* why-box — この Lab 独自 */
+.why-box { background:rgba(203,36,49,.04); border:1px solid rgba(203,36,49,.20);
+  border-left:3px solid var(--error); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#6b1a22; }
+.why-box .why-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--error); font-weight:700; margin-bottom:5px; }
+.why-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; }
+
+/* security-box — セキュリティ深掘り */
+.security-box { background:rgba(0,92,197,.04); border:1px solid rgba(0,92,197,.20);
+  border-left:3px solid var(--accent); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#003d8f; }
+.security-box .security-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent); font-weight:700; margin-bottom:5px; }
+.security-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; }
+
+/* Responsive */
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .verify { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ======== Sidebar ======== -->
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// SAML Auth <span>Lab</span></div>
+  <div class="nav-section">課題と全体像</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>なぜSAMLが必要か</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>全体フロー俯瞰図</a>
+  <div class="nav-section">プロジェクト構成</div>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>ファイル構成と役割</a>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>package.json 全解説</a>
+  <div class="nav-section">SP-Initiated フロー</div>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>SP起動時の設定</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>GET /login の裏側</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>AuthnRequest の構造</a>
+  <div class="nav-section">IdP 側の処理</div>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>IdPでの認証判断</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>SAMLResponse の構造</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>XML署名のなぜ</a>
+  <div class="nav-section">SP 側の検証</div>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>POST /login/callback</a>
+  <a class="nav-item" href="#lab11"><span class="nav-num">11</span>検証5項目の深掘り</a>
+  <a class="nav-item" href="#lab12"><span class="nav-num">12</span>セッション確立と完了</a>
+</nav>
+
+<!-- ======== Hero ======== -->
+<div class="hero">
+  <h1>SAML認証「なぜ」Lab</h1>
+  <p class="subtitle">フロー × コード × データ推移 — 論理の飛躍なしで追う SP-Initiated SSO</p>
+</div>
+
+<!-- ======== TOC ======== -->
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>なぜSAMLが必要か — 課題の提示</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>全体フロー俯瞰図</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>ファイル構成と各ファイルの役割</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>package.json — 依存とスクリプト全解説</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>SP起動時の設定 — なぜこの設定が必要か</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>GET /login — なぜリダイレクトするのか</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>AuthnRequest — なぜこのデータ構造か</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>IdPでの認証 — なぜIdPが判断するのか</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>SAMLResponse — なぜ各フィールドがあるか</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>XML署名 — なぜ署名するのか</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">10</span>POST /login/callback — なぜPOST・なぜブラウザ経由</a>
+    <a class="toc-item" href="#lab11"><span class="toc-num">11</span>検証5項目 — なぜ各検証が必要か</a>
+    <a class="toc-item" href="#lab12"><span class="toc-num">12</span>セッション確立 — XML→Profileの変換</a>
+  </div>
+</div>
+
+<!-- ======== Labs ======== -->
+<div class="container">
+
+<!-- ======== Lab 00 ======== -->
+<div class="lab" id="lab0">
+  <div class="lab-header">
+    <div class="lab-num">00</div>
+    <h3>なぜSAMLが必要か — 課題の提示</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      SAMLの仕組みを理解する前に、まず「SAMLがなかったら何が困るのか」を明確にする。
+      課題が見えなければ、解決策の設計意図は理解できない。
+    </p>
+
+    <div class="why-box">
+      <div class="why-title">なぜ「各アプリに個別ログイン」ではダメなのか</div>
+      <strong>課題1: パスワードの増殖</strong> — 社内にアプリが10個あれば、ユーザーは10個のID/パスワードを管理。
+      使い回し→漏洩リスク、個別管理→忘却コスト。<br>
+      <strong>課題2: 退職者のアカウント停止</strong> — 10個のアプリそれぞれで手動無効化。1つ漏れれば情報漏洩。<br>
+      <strong>課題3: ログイン体験</strong> — アプリ切替のたびにログイン画面。生産性低下。
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">SAML が解決すること</div>
+      「認証（この人は誰か？）」を<strong>1箇所（IdP）に集約</strong>する。
+      各アプリ（SP）はIdPの「この人は認証済みです」という証明書を受け取るだけ。
+      <pre class="ascii-art">
+  【SAMLなし】                       【SAMLあり】
+  ┌──────┐  ID/PW  ┌─────┐        ┌──────┐        ┌─────┐
+  │ユーザー├───────→│App A│        │ユーザー├──┐     │App A│←─証明書─┐
+  │      ├───────→│App B│        │      │  │     │App B│←─証明書─┤
+  │      ├───────→│App C│        │      │  ▼     │App C│←─証明書─┤
+  └──────┘ 3つのPW └─────┘        └──────┘ 1回   └─────┘        │
+                                         のログイン          ┌──┴──┐
+                                              └──────→│ IdP │
+                                                       └─────┘</pre>
+    </div>
+
+    <div class="info-box info">
+      <strong>用語整理</strong><br>
+      <code>IdP</code>（Identity Provider）= 認証を担当するサーバー。今回は <code>localhost:7000</code>（saml-idp）。<br>
+      <code>SP</code>（Service Provider）= サービスを提供するアプリ。今回は <code>localhost:3000</code>（Express）。<br>
+      <code>Assertion</code> = IdPが発行する「この人は認証済み」という証明データ（XML）。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">SAML が使われる現場</div>
+      <ul class="usecase-list">
+        <li>社内ポータルから Salesforce / Google Workspace / AWS Console へのSSO</li>
+        <li>Azure AD (Entra ID) をIdPとして、社内Webアプリ群にシングルサインオン</li>
+        <li>大学のLMSから外部教材サービスへの認証連携</li>
+        <li>B2Bサービスが顧客企業のIdPと連携して「自社ログイン画面なし」を実現</li>
+      </ul>
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">確認ポイント</div>
+      <ol>
+        <li>SAMLがない世界の課題を3つ挙げられるか（パスワード増殖、退職者管理、ログイン体験）</li>
+        <li>IdP・SP・Assertionの3用語を自分の言葉で説明できるか</li>
+        <li>「認証を集約する」とはどういう意味か — IdPが認証、SPは証明書を受け取るだけ</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ======== Lab 01 ======== -->
+<div class="lab" id="lab1">
+  <div class="lab-header">
+    <div class="lab-num">01</div>
+    <h3>全体フロー俯瞰図 — SP-Initiated SSO</h3>
+    <span class="lab-tag tag-basic">基本</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      Lab 04以降で各ステップを深掘りする前に、全体の流れを先に頭に入れる。
+      今回のテスト環境で実際に起きた通信を、時系列で1枚の図にまとめた。
+    </p>
+
+    <div class="flow-diagram">
+      <div class="flow-label">SP-Initiated SSO フロー（実データ付き）</div>
+<pre>
+  ブラウザ              SP (:3000)                    IdP (:7000)
+    │                     │                              │
+    │── GET /login ──────→│                              │
+    │                     │ AuthnRequest 生成             │
+    │                     │  id: _4d7b3f3d...            │
+    │                     │  issuer: localhost:3000       │
+    │←── 302 Redirect ────│                              │
+    │        Location: localhost:7000/saml/sso            │
+    │        ?SAMLRequest=nVPBjtow... (Base64+Deflate)    │
+    │                     │                              │
+    │── GET /saml/sso?SAMLRequest=... ──────────────────→│
+    │                     │                              │ AuthnRequest 解析
+    │←──────────────── ログイン画面 HTML ─────────────────│
+    │                     │                              │
+    │── POST (Sign in) ─────────────────────────────────→│
+    │                     │                              │ ユーザー認証OK
+    │                     │                              │ SAMLResponse 生成
+    │                     │                              │  ID: _3d7d3106...
+    │                     │                              │  署名: RSA-SHA256
+    │←──── 自動POST用 HTML (SAMLResponse埋込) ───────────│
+    │                     │                              │
+    │── POST /login/callback ─→│                         │
+    │   Body: SAMLResponse=... │                         │
+    │                     │ Base64デコード                │
+    │                     │ XML署名検証                   │
+    │                     │ 5項目チェック                  │
+    │                     │ Profile抽出                   │
+    │                     │ セッション確立                 │
+    │←── 302 /profile ────│                              │
+    │                     │                              │
+    │── GET /profile ────→│                              │
+    │←── 認証済みページ ──│                              │
+</pre>
+    </div>
+
+    <div class="why-box">
+      <div class="why-title">なぜ「SP-Initiated」と呼ぶのか</div>
+      ユーザーが最初にアクセスするのがSP（<code>localhost:3000/login</code>）だから。
+      SPが「この人を認証してください」とIdPにリクエストを<strong>開始（Initiate）</strong>する。<br>
+      逆に「IdP-Initiated」はIdP側のポータル画面からSPを選んでアクセスするパターン。
+    </div>
+
+    <div class="info-box warn">
+      <strong>重要な設計特徴</strong>: SPとIdPは<strong>直接通信しない</strong>。
+      全てのデータはブラウザを経由する（リダイレクト or 自動POST）。
+      だからこそ「途中で改ざんされない」保証 = <strong>XML署名</strong>が必須になる（Lab 09で深掘り）。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">確認ポイント</div>
+      <ol>
+        <li>全体で何回のHTTPリクエストが発生するか数えてみる（6回: GET /login → 302 → GET /saml/sso → POST Sign in → POST /login/callback → GET /profile）</li>
+        <li>SPとIdPが直接通信する矢印が<strong>1本もない</strong>ことを図で確認する</li>
+        <li>データの形式変換を追う: AuthnRequest(XML) → Base64+Deflate → URLパラメータ → IdPがデコード</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ======== Lab 02 ======== -->
+<div class="lab" id="lab2">
+  <div class="lab-header">
+    <div class="lab-num">02</div>
+    <h3>ファイル構成と各ファイルの役割</h3>
+    <span class="lab-tag tag-basic">構成</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>C:\Users\user\ClaudeCode\SAML</code> ディレクトリにある全ファイルを一覧し、
+      各ファイルが SAML認証のどのステップで・なぜ必要かを整理する。
+    </p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">ディレクトリ全体像</div>
+      <pre class="ascii-art">
+  C:\Users\user\ClaudeCode\SAML\
+  │
+  ├── package.json          ← 依存管理 + 起動スクリプト定義（Lab 03で深掘り）
+  ├── package-lock.json     ← 依存の厳密バージョン固定（自動生成）
+  ├── node_modules\         ← npm install で取得したライブラリ群（自動生成）
+  │
+  ├── generate-certs.js     ← 証明書生成スクリプト（1回だけ実行）
+  ├── idp-cert.pem          ← IdP の公開鍵証明書（generate-certs.js が出力）
+  ├── idp-key.pem           ← IdP の秘密鍵（generate-certs.js が出力）
+  │
+  ├── app.js                ← ★ SP本体（Express + passport-saml）
+  └── index.html            ← トップページ（ログインボタン）</pre>
+    </div>
+
+    <table class="compare-table">
+      <tr>
+        <th>ファイル</th>
+        <th>役割</th>
+        <th>なぜ必要か</th>
+        <th>作成タイミング</th>
+      </tr>
+      <tr>
+        <td>package.json</td>
+        <td>プロジェクト定義・依存・スクリプト</td>
+        <td>6つの依存パッケージの宣言と、IdP/SP起動コマンドの定義。これがないと <code>npm install</code> も <code>npm run idp</code> もできない。</td>
+        <td>手動作成（最初の1回）</td>
+      </tr>
+      <tr>
+        <td>package-lock.json</td>
+        <td>依存バージョンの厳密固定</td>
+        <td><code>npm install</code> 時に自動生成。チーム開発で「自分のPCでは動くのに他の人では動かない」を防ぐ。全員同じバージョンを使える。</td>
+        <td><code>npm install</code> 時に自動</td>
+      </tr>
+      <tr>
+        <td>generate-certs.js</td>
+        <td>自己署名証明書の生成</td>
+        <td>IdPがSAMLResponseに署名するための秘密鍵と、SPが署名を検証するための公開鍵証明書を生成。<strong>SAML認証は署名がなければ成立しない</strong>ため必須。</td>
+        <td>手動作成 → <code>npm run generate-certs</code> で1回実行</td>
+      </tr>
+      <tr>
+        <td>idp-cert.pem</td>
+        <td>IdP の公開鍵証明書</td>
+        <td>SPが <code>idpCert</code> として読み込み、SAMLResponseの署名を検証する。「この応答は本当にIdPが発行したか？」の判断材料。</td>
+        <td><code>generate-certs.js</code> が自動出力</td>
+      </tr>
+      <tr>
+        <td>idp-key.pem</td>
+        <td>IdP の秘密鍵</td>
+        <td>IdPがSAMLResponseに署名する際に使用。<strong>絶対に外部に漏らしてはならない</strong>。この鍵を持つ者は誰でもIdPになりすませる。</td>
+        <td><code>generate-certs.js</code> が自動出力</td>
+      </tr>
+      <tr>
+        <td>app.js</td>
+        <td>SP（Service Provider）本体</td>
+        <td>Express Webサーバー + passport-saml によるSAML認証。ルーティング、セッション管理、SAML設定の全てを含む。Lab 04〜12で詳述。</td>
+        <td>手動作成</td>
+      </tr>
+      <tr>
+        <td>index.html</td>
+        <td>トップページUI</td>
+        <td>「SAMLログイン」ボタンを表示。<code>app.js</code> の <code>GET /</code> で配信される。ボタンのリンク先 <code>/login</code> が SAML認証フローの起点。</td>
+        <td>手動作成</td>
+      </tr>
+    </table>
+
+    <div class="why-box">
+      <div class="why-title">なぜ証明書を「自分で生成」するのか</div>
+      本番環境では認証局（CA）が発行した正式な証明書を使う。
+      しかしこのテスト環境は<strong>全てlocalhost</strong>で完結するため、正式な証明書は不要（取得もできない）。
+      <code>selfsigned</code> パッケージで自己署名証明書を生成し、IdPとSPが同じ証明書を参照することで「信頼関係」を構築している。
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>generate-certs.js — 証明書生成スクリプト全文</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// IdP用の自己署名証明書を生成するスクリプト</span>
+<span class="kw">const</span> selfsigned = <span class="fn">require</span>(<span class="str">"selfsigned"</span>);
+<span class="kw">const</span> fs = <span class="fn">require</span>(<span class="str">"fs"</span>);
+
+<span class="kw">const</span> attrs = [{ <span class="prop">name</span>: <span class="str">"commonName"</span>, <span class="prop">value</span>: <span class="str">"localhost-idp"</span> }];
+<span class="kw">const</span> pems = selfsigned.<span class="fn">generate</span>(attrs, {
+  <span class="prop">days</span>: <span class="num">365</span>,      <span class="cm">// 有効期限: 1年間</span>
+  <span class="prop">keySize</span>: <span class="num">2048</span>,  <span class="cm">// RSA鍵長: 2048ビット（現在の推奨最低値）</span>
+});
+
+fs.<span class="fn">writeFileSync</span>(<span class="str">"idp-cert.pem"</span>, pems.cert);     <span class="cm">// 公開鍵証明書 → SP が読み込む</span>
+fs.<span class="fn">writeFileSync</span>(<span class="str">"idp-key.pem"</span>, pems.private);    <span class="cm">// 秘密鍵 → IdP が署名に使う</span>
+
+console.<span class="fn">log</span>(<span class="str">"証明書を生成しました: idp-cert.pem, idp-key.pem"</span>);</pre>
+    </div>
+
+    <div class="security-box">
+      <div class="security-title">秘密鍵 (idp-key.pem) の扱いに注意</div>
+      <code>idp-key.pem</code> はIdPの秘密鍵。この鍵があれば誰でもSAMLResponseに正当な署名ができる = <strong>IdPになりすませる</strong>。
+      本番環境では厳重に保管し、Git にコミットしない（<code>.gitignore</code> に追加すべき）。
+      今回はテスト用なのでディレクトリに平文で置いているが、実運用では絶対にやらない。
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>index.html — トップページ全文</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">&lt;!-- SAMLフローの起点となるシンプルなUI --&gt;</span>
+&lt;<span class="tag">div</span> <span class="attr">class</span>=<span class="val">"card"</span>&gt;
+  &lt;<span class="tag">h1</span>&gt;SAML認証テストアプリ&lt;/<span class="tag">h1</span>&gt;
+  &lt;<span class="tag">p</span> <span class="attr">class</span>=<span class="val">"subtitle"</span>&gt;ローカルIdP + SP でSAMLフローを体験&lt;/<span class="tag">p</span>&gt;
+
+  &lt;<span class="tag">a</span> <span class="attr">href</span>=<span class="val">"/login"</span> <span class="attr">class</span>=<span class="val">"btn"</span>&gt;SAMLログイン&lt;/<span class="tag">a</span>&gt;
+  <span class="cm">&lt;!-- ↑ このリンクが SAML認証フローの起点 --&gt;</span>
+  <span class="cm">&lt;!-- /login → passport.authenticate("saml") → IdPへリダイレクト --&gt;</span>
+
+  &lt;<span class="tag">div</span> <span class="attr">class</span>=<span class="val">"diagram"</span>&gt;
+    <span class="cm">&lt;!-- 認証フローの簡易図 --&gt;</span>
+    ブラウザ → SP :3000 → IdP :7000
+    → ユーザー認証 → SAMLレスポンス →
+    SP :3000/login/callback → プロフィール表示
+  &lt;/<span class="tag">div</span>&gt;
+&lt;/<span class="tag">div</span>&gt;</pre>
+    </div>
+
+    <div class="info-box info">
+      <strong>index.html と app.js の関係</strong><br>
+      <code>index.html</code> は静的ファイルとして <code>app.js</code> から配信される:
+      <code>app.get("/", (req, res) =&gt; res.sendFile(path.join(__dirname, "index.html")))</code><br>
+      ユーザーが <code>http://localhost:3000</code> にアクセスすると、この HTML が表示される。
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">ファイルの依存関係マップ</div>
+      <pre class="ascii-art">
+  package.json
+    │ npm install
+    ▼
+  node_modules/ ← 6パッケージ + その依存
+    │
+    │ npm run generate-certs
+    ▼
+  generate-certs.js ──→ idp-cert.pem  ──→  app.js (SP)  が読み込む
+                    └──→ idp-key.pem  ──→  npm run idp   が参照する
+                                           (saml-idp 起動時)
+  app.js ──→ index.html を GET / で配信
+        ──→ idp-cert.pem を読み込んで署名検証に使用</pre>
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">確認ポイント</div>
+      <ol>
+        <li>8ファイルそれぞれの役割を説明できるか（手動作成4つ + 自動生成4つ）</li>
+        <li><code>idp-cert.pem</code> が2箇所で参照されていることを確認（app.jsの<code>idpCert</code> と IdP起動の <code>--cert</code>）</li>
+        <li><code>idp-key.pem</code> はIdP起動時にのみ使われ、SPは秘密鍵を<strong>一切触らない</strong>ことを確認</li>
+        <li>なぜ公開鍵と秘密鍵の2ファイルが必要か — 「署名する側」と「検証する側」の役割分離を説明できるか</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ======== Lab 03 ======== -->
+<div class="lab" id="lab3">
+  <div class="lab-header">
+    <div class="lab-num">03</div>
+    <h3>package.json — 依存とスクリプト全解説</h3>
+    <span class="lab-tag tag-basic">構成</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      <code>package.json</code> はNode.jsプロジェクトの設計図。
+      どのパッケージを使い、どのコマンドでアプリを起動するかを定義している。
+      各行が<strong>なぜ</strong>存在するかを1つずつ解説する。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>package.json — 全文（注釈付き）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>{
+  <span class="prop">"name"</span>: <span class="str">"saml-local-test"</span>,       <span class="cm">// プロジェクト名（npm 内部管理用）</span>
+  <span class="prop">"version"</span>: <span class="str">"1.0.0"</span>,              <span class="cm">// バージョン番号</span>
+  <span class="prop">"private"</span>: <span class="kw">true</span>,                  <span class="cm">// ← ①</span>
+
+  <span class="prop">"scripts"</span>: {                        <span class="cm">// ← ② npm run で実行するコマンド</span>
+    <span class="prop">"generate-certs"</span>: <span class="str">"node generate-certs.js"</span>,           <span class="cm">// ← ②-A</span>
+    <span class="prop">"idp"</span>: <span class="str">"saml-idp --acsUrl http://localhost:3000/login/callback --audience http://localhost:3000 --cert idp-cert.pem --key idp-key.pem --port 7000"</span>,  <span class="cm">// ← ②-B</span>
+    <span class="prop">"sp"</span>: <span class="str">"node app.js"</span>,                                    <span class="cm">// ← ②-C</span>
+    <span class="prop">"start"</span>: <span class="str">"echo \"Terminal 1: npm run idp\" &amp;&amp; echo \"Terminal 2: npm run sp\""</span>  <span class="cm">// ← ②-D</span>
+  },
+
+  <span class="prop">"dependencies"</span>: {                   <span class="cm">// ← ③ npm install で取得するパッケージ</span>
+    <span class="prop">"@node-saml/passport-saml"</span>: <span class="str">"^5.0.0"</span>,  <span class="cm">// ← ③-A</span>
+    <span class="prop">"express"</span>: <span class="str">"^4.21.0"</span>,                 <span class="cm">// ← ③-B</span>
+    <span class="prop">"express-session"</span>: <span class="str">"^1.18.0"</span>,         <span class="cm">// ← ③-C</span>
+    <span class="prop">"passport"</span>: <span class="str">"^0.7.0"</span>,                <span class="cm">// ← ③-D</span>
+    <span class="prop">"saml-idp"</span>: <span class="str">"^1.2.1"</span>,                <span class="cm">// ← ③-E</span>
+    <span class="prop">"selfsigned"</span>: <span class="str">"^2.4.1"</span>               <span class="cm">// ← ③-F</span>
+  }
+}</pre>
+    </div>
+
+    <h4 style="margin:18px 0 10px; font-size:.95rem; color:var(--accent);">① private: true</h4>
+    <div class="info-box warn">
+      <code>"private": true</code> は「このパッケージをnpmレジストリに公開しない」宣言。
+      テスト用プロジェクトを誤って <code>npm publish</code> してしまう事故を防ぐ安全装置。
+    </div>
+
+    <h4 style="margin:18px 0 10px; font-size:.95rem; color:var(--accent);">② scripts — 起動コマンド</h4>
+    <table class="compare-table">
+      <tr>
+        <th>スクリプト名</th>
+        <th>実行コマンド</th>
+        <th>なぜ必要か</th>
+        <th>実行タイミング</th>
+      </tr>
+      <tr>
+        <td>②-A generate-certs</td>
+        <td><code>node generate-certs.js</code></td>
+        <td>IdP用の自己署名証明書ペア（公開鍵+秘密鍵）を生成。SAML認証の署名・検証に必須。<strong>最初の1回だけ</strong>実行すればよい。</td>
+        <td>セットアップ時に1回</td>
+      </tr>
+      <tr>
+        <td>②-B idp</td>
+        <td><code>saml-idp --acsUrl ... --port 7000</code></td>
+        <td>テスト用IdPサーバーを起動。4つのオプションでSPとの信頼関係を設定する（下記で深掘り）。</td>
+        <td>テスト時にターミナル1で常駐</td>
+      </tr>
+      <tr>
+        <td>②-C sp</td>
+        <td><code>node app.js</code></td>
+        <td>SP（Express アプリ）をポート3000で起動。</td>
+        <td>テスト時にターミナル2で常駐</td>
+      </tr>
+      <tr>
+        <td>②-D start</td>
+        <td><code>echo ...</code></td>
+        <td>起動手順のヘルプ表示。IdPとSPは別プロセスで起動する必要があるため、案内だけ出力。</td>
+        <td>参考用</td>
+      </tr>
+    </table>
+
+    <div class="why-box">
+      <div class="why-title">なぜ idp スクリプトに4つのオプションがあるのか</div>
+      <code>saml-idp</code> コマンドの各オプションは、IdPとSPの信頼関係を定義している:
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>npm run idp のコマンド分解</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>saml-idp \
+  --acsUrl  http://localhost:3000/login/callback \  <span class="cm">← SPのコールバックURL（認証結果の送信先）</span>
+  --audience http://localhost:3000 \                <span class="cm">← SPの識別子（Assertion の Audience に埋め込む）</span>
+  --cert    idp-cert.pem \                          <span class="cm">← 署名に使う公開鍵証明書</span>
+  --key     idp-key.pem \                           <span class="cm">← 署名に使う秘密鍵</span>
+  --port    7000                                    <span class="cm">← IdPの待ち受けポート</span></pre>
+    </div>
+
+    <div class="info-box info">
+      <strong>app.js の設定との対応関係</strong><br>
+      <code>--acsUrl</code> ↔ <code>callbackUrl</code> — 必ず一致すること<br>
+      <code>--audience</code> ↔ <code>issuer</code> — 必ず一致すること<br>
+      <code>--cert</code> ↔ <code>idpCert</code> — 同じファイルを参照すること<br>
+      → この3つの対応が崩れると SAML認証は失敗する（Lab 04 で詳述）
+
+    </div>
+
+    <h4 style="margin:18px 0 10px; font-size:.95rem; color:var(--accent);">③ dependencies — 6つのパッケージ</h4>
+    <table class="compare-table">
+      <tr>
+        <th>パッケージ</th>
+        <th>役割</th>
+        <th>なぜ必要か</th>
+        <th>使われるファイル</th>
+      </tr>
+      <tr>
+        <td>③-A @node-saml/passport-saml</td>
+        <td>SAML認証のPassport戦略</td>
+        <td>SAMLプロトコルの全処理を担当: AuthnRequest生成、SAMLResponseのBase64デコード・XML解析・署名検証・Profile抽出。<strong>このパッケージが SAML の核心</strong>。</td>
+        <td>app.js</td>
+      </tr>
+      <tr>
+        <td>③-B express</td>
+        <td>Webフレームワーク</td>
+        <td>HTTPリクエストのルーティング（<code>GET /login</code>、<code>POST /login/callback</code> など）とレスポンス生成。Node.js標準の <code>http</code> モジュールだけでは煩雑すぎるため。</td>
+        <td>app.js</td>
+      </tr>
+      <tr>
+        <td>③-C express-session</td>
+        <td>セッション管理</td>
+        <td>SAML認証成功後、ユーザー情報をサーバー側セッションに保存。2回目以降のリクエストでは SAML認証なしでセッションCookieだけで認証状態を維持。</td>
+        <td>app.js</td>
+      </tr>
+      <tr>
+        <td>③-D passport</td>
+        <td>認証ミドルウェアの基盤</td>
+        <td>認証戦略（Strategy）パターンの共通フレームワーク。<code>serialize/deserialize</code> でセッションとユーザー情報を橋渡しする。SAML以外（OAuth, Local等）にも同じ仕組みで対応可能。</td>
+        <td>app.js</td>
+      </tr>
+      <tr>
+        <td>③-E saml-idp</td>
+        <td>テスト用IdPシミュレータ</td>
+        <td>ローカルで動くIdPサーバー。CLIコマンド1つでSAML IdPを起動でき、ログイン画面・SAMLResponse生成・署名を全て行う。<strong>本番環境では不要</strong>（Azure AD、Okta等を使う）。</td>
+        <td>npm run idp（CLI）</td>
+      </tr>
+      <tr>
+        <td>③-F selfsigned</td>
+        <td>自己署名証明書生成</td>
+        <td>X.509証明書と秘密鍵のペアをプログラムから生成。OpenSSLコマンドを手動で実行する代わりに、Node.jsスクリプト1つで完結。</td>
+        <td>generate-certs.js</td>
+      </tr>
+    </table>
+
+    <div class="beginner-box">
+      <div class="beginner-title">パッケージの役割分担マップ</div>
+      <pre class="ascii-art">
+  ┌─────────────────── app.js (SP) ───────────────────┐
+  │                                                    │
+  │  express ─── ルーティング・HTTP処理                  │
+  │    │                                               │
+  │  express-session ─── セッション管理（Cookie）        │
+  │    │                                               │
+  │  passport ─── 認証の共通フレームワーク               │
+  │    │                                               │
+  │  @node-saml/passport-saml ─── SAML固有の処理       │
+  │    ├─ AuthnRequest 生成                            │
+  │    ├─ SAMLResponse 検証                            │
+  │    └─ Profile 抽出                                 │
+  └────────────────────────────────────────────────────┘
+
+  ┌─ generate-certs.js ─┐      ┌─ npm run idp ────────┐
+  │ selfsigned           │ ──→  │ saml-idp              │
+  │ (証明書ペア生成)      │      │ (テスト用IdPサーバー)   │
+  └──────────────────────┘      └───────────────────────┘</pre>
+    </div>
+
+    <div class="why-box">
+      <div class="why-title">なぜ passport と passport-saml が分離しているのか</div>
+      <strong>passport</strong> = 認証の「枠組み」（serialize/deserialize、セッション連携）。<br>
+      <strong>passport-saml</strong> = SAMLという「方式」の具体的な実装。<br>
+      分離する理由: 将来、同じアプリにGoogle OAuth (<code>passport-google-oauth20</code>) を追加する場合、
+      <code>passport</code> 部分はそのまま使い回し、Strategy だけ追加すればよい。<strong>認証方式に依存しない設計</strong>。
+    </div>
+
+    <div class="info-box warn">
+      <strong>バージョン指定の <code>^</code> の意味</strong><br>
+      <code>"express": "^4.21.0"</code> の <code>^</code> は「メジャーバージョン4の範囲で最新を許容」。
+      <code>4.21.0</code> 以上 <code>5.0.0</code> 未満を自動取得する。
+      厳密な再現性が必要な場合は <code>package-lock.json</code> がバージョンを固定する。
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">セットアップ手順の全体フロー</div>
+      <ul class="usecase-list">
+        <li><strong>Step 1:</strong> <code>npm install</code> — package.json の dependencies を全て取得 → node_modules/ 生成</li>
+        <li><strong>Step 2:</strong> <code>npm run generate-certs</code> — 証明書ペア生成 → idp-cert.pem, idp-key.pem 生成</li>
+        <li><strong>Step 3:</strong> ターミナル1で <code>npm run idp</code> — IdPサーバー起動 (localhost:7000)</li>
+        <li><strong>Step 4:</strong> ターミナル2で <code>npm run sp</code> — SPサーバー起動 (localhost:3000)</li>
+        <li><strong>Step 5:</strong> ブラウザで <code>http://localhost:3000</code> → 「SAMLログイン」クリック</li>
+      </ul>
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">確認ポイント</div>
+      <ol>
+        <li>6つの依存パッケージそれぞれの役割を一言で説明できるか</li>
+        <li><code>npm run idp</code> のオプションと <code>app.js</code> の設定が対応していることを確認できるか</li>
+        <li><code>passport</code> と <code>passport-saml</code> が分離されている理由を説明できるか</li>
+        <li><code>"private": true</code> がなかったら何が起きるか想像できるか（誤って npm publish してしまうリスク）</li>
+        <li>セットアップ手順を1〜5の順で正しく説明できるか（順番が重要 — 証明書生成はインストール後・起動前）</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ======== Lab 04 ======== -->
+<div class="lab" id="lab4">
+  <div class="lab-header">
+    <div class="lab-num">04</div>
+    <h3>SP起動時の設定 — なぜこの設定が必要か</h3>
+    <span class="lab-tag tag-intermediate">設定</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      SPが起動する時点で、IdPとの「信頼関係」を事前設定している。
+      各設定項目が<strong>なぜ</strong>必要なのかを1つずつ紐解く。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>app.js — SamlStrategy 設定</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">const</span> samlStrategy = <span class="kw">new</span> <span class="fn">SamlStrategy</span>({
+  <span class="prop">callbackUrl</span>: <span class="str">"http://localhost:3000/login/callback"</span>,  <span class="cm">// ← ①</span>
+  <span class="prop">issuer</span>:      <span class="str">"http://localhost:3000"</span>,               <span class="cm">// ← ②</span>
+  <span class="prop">entryPoint</span>:  <span class="str">"http://localhost:7000/saml/sso"</span>,       <span class="cm">// ← ③</span>
+  <span class="prop">idpCert</span>:     idpCert,                                <span class="cm">// ← ④</span>
+  <span class="prop">wantAuthnResponseSigned</span>: <span class="kw">false</span>,                     <span class="cm">// ← ⑤</span>
+  <span class="prop">wantAssertionsSigned</span>:    <span class="kw">false</span>,                     <span class="cm">// ← ⑤</span>
+}, ...)</pre>
+    </div>
+
+    <table class="compare-table">
+      <tr>
+        <th>設定項目</th>
+        <th>値（実データ）</th>
+        <th>なぜ必要か</th>
+      </tr>
+      <tr>
+        <td>① callbackUrl</td>
+        <td><code>http://localhost:3000/login/callback</code></td>
+        <td>IdPが認証結果をどこにPOSTするかをSPが宣言。IdPはこのURLを <code>Recipient</code> / <code>Destination</code> に埋め込み、SP側で一致確認する。不一致なら「別のSP宛の応答が横取りされた」と判断して拒否。</td>
+      </tr>
+      <tr>
+        <td>② issuer</td>
+        <td><code>http://localhost:3000</code></td>
+        <td>SPの識別子。AuthnRequestに含まれ、IdPは「このSPからのリクエストか」を確認。複数SPがある環境で、どのSP向けの応答かを区別するために必須。</td>
+      </tr>
+      <tr>
+        <td>③ entryPoint</td>
+        <td><code>http://localhost:7000/saml/sso</code></td>
+        <td>IdPのSSOエンドポイントURL。SPは「ここにリダイレクトすれば認証してもらえる」と知っている必要がある。これがないとSPはIdPの場所がわからない。</td>
+      </tr>
+      <tr>
+        <td>④ idpCert</td>
+        <td><code>idp-cert.pem</code> の中身</td>
+        <td>IdPの公開鍵証明書。SAMLResponseの署名を検証するために使う。これがないと「本当にそのIdPが発行したか」を確認できず、偽の応答を受け入れてしまう。</td>
+      </tr>
+      <tr>
+        <td>⑤ wantSigned</td>
+        <td><code>false</code></td>
+        <td>テスト用の緩和設定。本番では <code>true</code> にして署名必須にする。</td>
+      </tr>
+    </table>
+
+    <div class="why-box">
+      <div class="why-title">なぜ「事前に」設定が必要なのか</div>
+      SAMLはSPとIdPが<strong>直接通信しない</strong>プロトコル。だからこそ、お互いの情報（URL、証明書、識別子）を事前に交換しておく必要がある。
+      これを<strong>メタデータ交換</strong>と呼ぶ。実運用では <code>/metadata</code> エンドポイントのXMLを互いに読み込んで自動設定する。
+    </div>
+
+    <div class="info-box info">
+      <strong>IdP側の対応する設定</strong>（起動コマンド）<br>
+      <code>--acsUrl http://localhost:3000/login/callback</code> ← SPの①と一致<br>
+      <code>--audience http://localhost:3000</code> ← SPの②と一致<br>
+      <code>--cert idp-cert.pem --key idp-key.pem</code> ← SPの④と同じ証明書<br>
+      → SP側の設定とIdP側の設定が<strong>対になっている</strong>ことが信頼関係の本質。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">確認ポイント</div>
+      <ol>
+        <li><code>callbackUrl</code> と IdP起動時の <code>--acsUrl</code> が完全一致していることを確認する</li>
+        <li><code>issuer</code> と <code>--audience</code> が一致していることを確認する</li>
+        <li><code>idpCert</code> の読み込みで使っている <code>idp-cert.pem</code> が、IdP起動の <code>--cert</code> と同じファイルか確認する</li>
+        <li>もし <code>callbackUrl</code> を間違えたら何が起きるか想像する（IdPが別のURLにPOST → SPで受信できないか、Recipient不一致で拒否）</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ======== Lab 05 ======== -->
+<div class="lab" id="lab5">
+  <div class="lab-header">
+    <div class="lab-num">05</div>
+    <h3>GET /login — なぜリダイレクトするのか</h3>
+    <span class="lab-tag tag-intermediate">フロー</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      ユーザーがブラウザで <code>http://localhost:3000/login</code> にアクセスした瞬間、
+      SPは何をして、なぜブラウザをIdPへリダイレクトするのか。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>app.js — ログインルート</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// ユーザーがこのURLにアクセスすると...</span>
+app.<span class="fn">get</span>(<span class="str">"/login"</span>, passport.<span class="fn">authenticate</span>(<span class="str">"saml"</span>));
+<span class="cm">// passport-saml が内部で以下を実行:</span>
+<span class="cm">// 1. AuthnRequest XML を生成</span>
+<span class="cm">// 2. Deflate 圧縮 → Base64 エンコード</span>
+<span class="cm">// 3. res.redirect(entryPoint + "?SAMLRequest=" + encoded)</span></pre>
+    </div>
+
+    <div class="why-box">
+      <div class="why-title">なぜSPが自分で認証しないのか</div>
+      SPは「サービス提供」が仕事であり、ユーザーのID/パスワードを<strong>持っていない</strong>。
+      パスワードを管理するのはIdPの責務。だからSPは「認証してください」とIdPにお願いするしかない。
+      その「お願い」がリダイレクトによるAuthnRequestの送信。
+    </div>
+
+    <div class="why-box">
+      <div class="why-title">なぜ「リダイレクト」なのか（SPがIdPにAPIコールしない理由）</div>
+      ユーザーがIdPのログイン画面で<strong>自分のパスワードを入力する</strong>必要があるから。
+      SPがバックエンドでIdPにAPI呼び出しすると、ユーザーはIdPの画面を見られない。
+      ブラウザのアドレスバーが <code>localhost:7000</code> になることで、
+      ユーザーは「自分が信頼するIdPにパスワードを渡している」と視覚的に確認できる。
+    </div>
+
+    <div class="data-transition">
+      <div class="data-step">
+        <div class="data-step-num">1</div>
+        <div class="data-step-content">
+          <div class="data-step-label">passport-saml が AuthnRequest XML を生成</div>
+          <div class="data-step-desc">Lab 06 で詳しく見る XML 文書を内部生成する</div>
+        </div>
+      </div>
+      <div class="data-arrow">↓</div>
+      <div class="data-step">
+        <div class="data-step-num">2</div>
+        <div class="data-step-content">
+          <div class="data-step-label">Deflate 圧縮 → Base64 エンコード → URL エンコード</div>
+          <div class="data-step-desc">XMLはそのままURLに入れるには大きいので、圧縮してからBase64でテキスト化し、URLパラメータとして安全に送れる形にする</div>
+        </div>
+      </div>
+      <div class="data-arrow">↓</div>
+      <div class="data-step">
+        <div class="data-step-num">3</div>
+        <div class="data-step-content">
+          <div class="data-step-label">HTTP 302 レスポンス</div>
+          <div class="data-step-desc">ブラウザに「このURLへ移動しなさい」と指示する</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>実際の 302 レスポンス（ブラウザのネットワークタブで見える）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>HTTP/1.1 302 Found
+Location: http://localhost:7000/saml/sso
+  ?SAMLRequest=nVPBjtowEP2VyHcSEyBpLcIqBVVF2rYRpHvYS%2BXYk8Wq...
+  <span class="cm">         ↑ Deflate+Base64+URLエンコードされたAuthnRequest XML</span></pre>
+    </div>
+
+    <div class="info-box info">
+      <strong>HTTP-Redirect Binding</strong>: SAMLRequestをURLのクエリパラメータに乗せて302リダイレクトで送る方式。
+      GETリクエストなのでURLの長さ制限（約2000文字）に注意。AuthnRequestは小さいので問題ないが、
+      SAMLResponse（大きい）はこの方式では送れない → だからSAMLResponseはPOSTで送る（Lab 10）。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">確認ポイント</div>
+      <ol>
+        <li>ブラウザで <code>http://localhost:3000/login</code> にアクセスし、アドレスバーが <code>localhost:7000</code> に変わることを確認</li>
+        <li>「なぜリダイレクトか」を2つの理由で説明できるか（SPにパスワードがない / ユーザーがIdPの画面を見る必要がある）</li>
+        <li>データの変換を追える: XML → Deflate圧縮 → Base64 → URLエンコード</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ======== Lab 06 ======== -->
+<div class="lab" id="lab6">
+  <div class="lab-header">
+    <div class="lab-num">06</div>
+    <h3>AuthnRequest — なぜこのデータ構造か</h3>
+    <span class="lab-tag tag-intermediate">データ</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      IdPが受信したAuthnRequestの実データを見ながら、各フィールドが<strong>なぜ</strong>存在するのかを1つずつ確認する。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>IdPログ — 受信した AuthnRequest（デコード後）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>Received AuthnRequest =&gt;
+  <span class="prop">id</span>:          <span class="str">'_4d7b3f3d3ca7701577c8fabb0df2f227606bdfe5'</span>
+  <span class="prop">issuer</span>:      <span class="str">'http://localhost:3000'</span>
+  <span class="prop">destination</span>: <span class="str">'http://localhost:7000/saml/sso'</span>
+  <span class="prop">acsUrl</span>:      <span class="str">'http://localhost:3000/login/callback'</span>
+  <span class="prop">forceAuthn</span>:  <span class="kw">false</span></pre>
+    </div>
+
+    <table class="compare-table">
+      <tr>
+        <th>フィールド</th>
+        <th>実データ</th>
+        <th>なぜ必要か（もしなかったら何が起きるか）</th>
+      </tr>
+      <tr>
+        <td>id</td>
+        <td><code>_4d7b3f3d...606bdfe5</code></td>
+        <td>このリクエスト固有のID。IdPが応答する際に <code>InResponseTo</code> にこのIDをコピーする。SPは「自分が送ったリクエストへの応答か」を照合できる。<strong>もしなかったら</strong>: 攻撃者が別の正当な応答を横流しする「リプレイ攻撃」を防げない。</td>
+      </tr>
+      <tr>
+        <td>issuer</td>
+        <td><code>http://localhost:3000</code></td>
+        <td>「私はこのSPです」という自己申告。IdPは登録済みSPか確認する。<strong>もしなかったら</strong>: 未登録の不正SPからのリクエストを受け付けてしまう。</td>
+      </tr>
+      <tr>
+        <td>destination</td>
+        <td><code>http://localhost:7000/saml/sso</code></td>
+        <td>「このIdPに送っています」という宛先宣言。別のIdPに誤送信されても、宛先不一致で拒否できる。</td>
+      </tr>
+      <tr>
+        <td>acsUrl</td>
+        <td><code>localhost:3000/login/callback</code></td>
+        <td>Assertion Consumer Service URL。「認証結果はここに返してください」というSPの指定。IdPはここにSAMLResponseをPOSTする。</td>
+      </tr>
+      <tr>
+        <td>forceAuthn</td>
+        <td><code>false</code></td>
+        <td>IdPに既存セッションがあれば再ログイン不要。<code>true</code>にすると毎回パスワード入力を強制（金融系など高セキュリティ用途）。</td>
+      </tr>
+    </table>
+
+    <div class="security-box">
+      <div class="security-title">セキュリティ視点: id フィールドの重要性</div>
+      <code>id: _4d7b3f3d...606bdfe5</code> はランダム生成された一意な値。<br>
+      IdPの応答 <code>InResponseTo: _4d7b3f3d...606bdfe5</code> がこれと一致することで、SPは以下を保証する:<br>
+      <strong>(1)</strong> この応答は自分が出したリクエストに対するものである（他SPの応答を流用されていない）<br>
+      <strong>(2)</strong> 過去の応答が再利用されていない（リプレイ攻撃防止）
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">データ変換の全体像</div>
+      AuthnRequest は以下の変換を経てIdPに届く:
+      <pre class="ascii-art">
+  passport-saml 内部         ブラウザ              IdP
+  ┌─────────────────┐
+  │ AuthnRequest XML │
+  │ &lt;samlp:AuthnReq  │
+  │   ID="_4d7b..."   │
+  │   Issuer="..."    │
+  │   ...&gt;            │
+  └───────┬─────────┘
+          ▼ Deflate圧縮
+  ┌─────────────────┐
+  │ バイナリデータ     │  (XMLより小さくなる)
+  └───────┬─────────┘
+          ▼ Base64エンコード
+  ┌─────────────────┐
+  │ nVPBjtowEP2V... │  (テキスト文字列になる)
+  └───────┬─────────┘
+          ▼ URLエンコード
+  ┌─────────────────┐
+  │ nVPBjtowEP2V    │  302 Location ヘッダに付与
+  │ %2BXYk8Wq...    │ ──────────────→ GET で受信
+  └─────────────────┘              ──→ 逆変換でXML復元</pre>
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">確認ポイント</div>
+      <ol>
+        <li>5つのフィールドそれぞれについて「もしなかったら何が困るか」を説明できるか</li>
+        <li><code>id</code> がランダムであることの意味 — 予測可能だったらどうなるか考える</li>
+        <li>IdPログの <code>acsUrl</code> と、SPの設定 <code>callbackUrl</code> が一致していることを確認</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ======== Lab 07 ======== -->
+<div class="lab" id="lab7">
+  <div class="lab-header">
+    <div class="lab-num">07</div>
+    <h3>IdPでの認証 — なぜIdPが判断するのか</h3>
+    <span class="lab-tag tag-intermediate">フロー</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      IdPがAuthnRequestを受信してからSAMLResponseを返すまでに何が起きるか。
+      テスト用IdP（saml-idp）のログイン画面で「Sign in」を押した瞬間に何が決まるか。
+    </p>
+
+    <div class="flow-diagram">
+      <div class="flow-label">IdP 内部の処理フロー</div>
+<pre>
+  ブラウザ                          IdP (:7000)
+    │                                 │
+    │── GET /saml/sso?SAMLRequest ───→│
+    │                                 │ ① AuthnRequestをデコード
+    │                                 │    - issuer確認 (登録済みSP?)
+    │                                 │    - acsUrl確認 (登録済みURL?)
+    │                                 │
+    │←──── ログインフォーム HTML ──────│ ② ユーザーにログイン画面を表示
+    │                                 │
+    │── POST /signin ────────────────→│ ③ ユーザーの認証情報を受信
+    │   (username, password)          │    - ID/パスワード検証
+    │                                 │    - 認証成功を確認
+    │                                 │
+    │                                 │ ④ SAMLResponse XML 生成
+    │                                 │    - Assertion (証明書) 作成
+    │                                 │    - 秘密鍵で署名
+    │                                 │    - ユーザー属性を埋め込み
+    │                                 │
+    │←── 自動送信HTMLフォーム ─────────│ ⑤ ブラウザ経由でSPへ返送
+    │   &lt;form action="SP/callback"&gt;   │
+    │     &lt;input name="SAMLResponse"  │
+    │            value="Base64..."&gt;   │
+    │   自動 submit                   │
+</pre>
+    </div>
+
+    <div class="why-box">
+      <div class="why-title">なぜIdPだけが認証を判断できるのか</div>
+      IdPはユーザーの<strong>認証情報（ID/パスワード、証明書、生体認証など）を保管</strong>している唯一の存在だから。
+      SPはパスワードを持っていない。持つべきでもない（漏洩リスクの分散を避ける）。<br>
+      IdPが認証した結果を<strong>秘密鍵で署名して</strong>SPに渡す。SPはIdPの公開鍵で署名を検証するだけ。
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>IdPログ — 認証後のユーザー情報</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>User =&gt;
+  <span class="prop">userName</span>:      <span class="str">saml.jackson@example.com</span>
+  <span class="prop">nameIdFormat</span>:  <span class="str">urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</span>
+  <span class="prop">firstName</span>:     <span class="str">Saml</span>
+  <span class="prop">lastName</span>:      <span class="str">Jackson</span>
+  <span class="prop">email</span>:         <span class="str">saml.jackson@example.com</span>
+  <span class="prop">groups</span>:        <span class="str">Simple IdP Users, West Coast Users, Cloud Users</span>
+  <span class="prop">userType</span>:      <span class="str">Admin</span></pre>
+    </div>
+
+    <div class="info-box info">
+      <strong>テスト用IdP (saml-idp) の仕組み</strong><br>
+      saml-idpはログイン画面で入力された値をそのまま使う（パスワード検証なし）。
+      デフォルトのダミーユーザー <code>saml.jackson@example.com</code> が事前設定されている。
+      実際のIdP（Azure AD、Okta等）ではここでLDAPやDBへのパスワード照合が行われる。
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>IdPログ — SAMLP Options（SAMLResponse生成パラメータ）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>SAMLP Options =&gt;
+  <span class="prop">issuer</span>:              <span class="str">urn:example:idp</span>           <span class="cm">← IdP自身の識別子</span>
+  <span class="prop">audience</span>:             <span class="str">http://localhost:3000</span>      <span class="cm">← このSP向けですよ</span>
+  <span class="prop">recipient</span>:            <span class="str">http://localhost:3000/login/callback</span> <span class="cm">← ここにPOST</span>
+  <span class="prop">destination</span>:          <span class="str">http://localhost:3000/login/callback</span> <span class="cm">← 同上</span>
+  <span class="prop">signatureAlgorithm</span>:   <span class="str">rsa-sha256</span>                <span class="cm">← 署名アルゴリズム</span>
+  <span class="prop">signResponse</span>:         <span class="kw">true</span>                      <span class="cm">← レスポンスに署名する</span>
+  <span class="prop">lifetimeInSeconds</span>:    <span class="num">3600</span>                      <span class="cm">← 有効期限: 1時間</span>
+  <span class="prop">inResponseTo</span>:         <span class="str">_4d7b3f3d...606bdfe5</span>      <span class="cm">← SPのリクエストIDをコピー</span></pre>
+    </div>
+
+    <div class="security-box">
+      <div class="security-title">inResponseTo の照合</div>
+      IdPは受信した AuthnRequest の <code>id: _4d7b3f3d...606bdfe5</code> を、
+      SAMLResponseの <code>inResponseTo</code> にそのままコピーしている。
+      SPはこの値が自分が発行したIDと一致するか確認する。<strong>一致しなければ拒否</strong>。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">確認ポイント</div>
+      <ol>
+        <li>IdPログの <code>inResponseTo</code> と Lab 06 の <code>id</code> が同じ値 <code>_4d7b3f3d...606bdfe5</code> であることを確認</li>
+        <li><code>audience: http://localhost:3000</code> が SPの <code>issuer</code> と一致していることを確認</li>
+        <li><code>lifetimeInSeconds: 3600</code> が意味するもの — 1時間後にこのAssertionは無効になる理由を考える</li>
+        <li>IdPのログイン画面でアドレスバーが <code>localhost:7000</code> であることの安全上の意味を説明できるか</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ======== Lab 08 ======== -->
+<div class="lab" id="lab8">
+  <div class="lab-header">
+    <div class="lab-num">08</div>
+    <h3>SAMLResponse — なぜ各フィールドがあるか</h3>
+    <span class="lab-tag tag-advanced">データ</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      IdPが生成したSAMLResponse XMLの全構造を展開し、各要素が<strong>なぜ</strong>存在するかを解説する。
+      これはSAMLの核心部分。
+    </p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>SAMLResponse XML — 全構造（実データ）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">&lt;!-- 最外殻: Response --&gt;</span>
+&lt;<span class="tag">samlp:Response</span>
+  <span class="attr">ID</span>=<span class="val">"_3d7d310638bcabbbba53"</span>                     <span class="cm">&lt;!-- A: Response自体のID --&gt;</span>
+  <span class="attr">InResponseTo</span>=<span class="val">"_4d7b3f3d...606bdfe5"</span>             <span class="cm">&lt;!-- B: SPのリクエストIDの転記 --&gt;</span>
+  <span class="attr">Destination</span>=<span class="val">"http://localhost:3000/login/callback"</span> <span class="cm">&lt;!-- C: 宛先SP --&gt;</span>&gt;
+
+  &lt;<span class="tag">saml:Issuer</span>&gt;<span class="str">urn:example:idp</span>&lt;/<span class="tag">saml:Issuer</span>&gt;     <span class="cm">&lt;!-- D: 発行者 --&gt;</span>
+
+  &lt;<span class="tag">Signature</span>&gt;...&lt;/<span class="tag">Signature</span>&gt;                       <span class="cm">&lt;!-- E: Response全体の署名 --&gt;</span>
+
+  &lt;<span class="tag">samlp:Status</span>&gt;
+    &lt;<span class="tag">samlp:StatusCode</span> <span class="attr">Value</span>=<span class="val">"Success"</span>/&gt;           <span class="cm">&lt;!-- F: 認証結果 --&gt;</span>
+  &lt;/<span class="tag">samlp:Status</span>&gt;
+
+  <span class="cm">&lt;!-- ★ 核心: Assertion（認証証明書） --&gt;</span>
+  &lt;<span class="tag">saml:Assertion</span> <span class="attr">ID</span>=<span class="val">"_wWAYVr0CJMi8..."</span>&gt;
+
+    &lt;<span class="tag">saml:Issuer</span>&gt;<span class="str">urn:example:idp</span>&lt;/<span class="tag">saml:Issuer</span>&gt;   <span class="cm">&lt;!-- G: Assertionの発行者 --&gt;</span>
+    &lt;<span class="tag">Signature</span>&gt;...&lt;/<span class="tag">Signature</span>&gt;                     <span class="cm">&lt;!-- H: Assertion単体の署名 --&gt;</span>
+
+    <span class="cm">&lt;!-- 誰について言っているか --&gt;</span>
+    &lt;<span class="tag">saml:Subject</span>&gt;
+      &lt;<span class="tag">saml:NameID</span> <span class="attr">Format</span>=<span class="val">"emailAddress"</span>&gt;
+        <span class="str">saml.jackson@example.com</span>                    <span class="cm">&lt;!-- I: ユーザー識別子 --&gt;</span>
+      &lt;/<span class="tag">saml:NameID</span>&gt;
+      &lt;<span class="tag">saml:SubjectConfirmation</span> <span class="attr">Method</span>=<span class="val">"bearer"</span>&gt;
+        &lt;<span class="tag">saml:SubjectConfirmationData</span>
+          <span class="attr">NotOnOrAfter</span>=<span class="val">"2026-05-24T06:08:09"</span>         <span class="cm">&lt;!-- J: 有効期限 --&gt;</span>
+          <span class="attr">Recipient</span>=<span class="val">"http://localhost:3000/login/callback"</span> <span class="cm">&lt;!-- K --&gt;</span>
+          <span class="attr">InResponseTo</span>=<span class="val">"_4d7b3f3d...606bdfe5"</span>/&gt;     <span class="cm">&lt;!-- L: 再びリクエストID --&gt;</span>
+      &lt;/<span class="tag">saml:SubjectConfirmation</span>&gt;
+    &lt;/<span class="tag">saml:Subject</span>&gt;
+
+    <span class="cm">&lt;!-- いつまで・誰向けに有効か --&gt;</span>
+    &lt;<span class="tag">saml:Conditions</span>
+      <span class="attr">NotBefore</span>=<span class="val">"2026-05-24T05:08:09"</span>
+      <span class="attr">NotOnOrAfter</span>=<span class="val">"2026-05-24T06:08:09"</span>&gt;           <span class="cm">&lt;!-- M: 有効期間 --&gt;</span>
+      &lt;<span class="tag">saml:AudienceRestriction</span>&gt;
+        &lt;<span class="tag">saml:Audience</span>&gt;<span class="str">http://localhost:3000</span>&lt;/<span class="tag">saml:Audience</span>&gt; <span class="cm">&lt;!-- N --&gt;</span>
+      &lt;/<span class="tag">saml:AudienceRestriction</span>&gt;
+    &lt;/<span class="tag">saml:Conditions</span>&gt;
+
+    <span class="cm">&lt;!-- どうやって認証したか --&gt;</span>
+    &lt;<span class="tag">saml:AuthnStatement</span> <span class="attr">SessionIndex</span>=<span class="val">"1578761197"</span>&gt;  <span class="cm">&lt;!-- O --&gt;</span>
+      &lt;<span class="tag">saml:AuthnContextClassRef</span>&gt;
+        <span class="str">PasswordProtectedTransport</span>                  <span class="cm">&lt;!-- P: 認証方法 --&gt;</span>
+      &lt;/<span class="tag">saml:AuthnContextClassRef</span>&gt;
+    &lt;/<span class="tag">saml:AuthnStatement</span>&gt;
+
+    <span class="cm">&lt;!-- ユーザーの属性情報 --&gt;</span>
+    &lt;<span class="tag">saml:AttributeStatement</span>&gt;
+      &lt;<span class="tag">saml:Attribute</span> <span class="attr">Name</span>=<span class="val">"email"</span>&gt;
+        &lt;<span class="tag">saml:AttributeValue</span>&gt;<span class="str">saml.jackson@example.com</span>&lt;/...&gt;
+      &lt;/<span class="tag">saml:Attribute</span>&gt;
+      &lt;<span class="tag">saml:Attribute</span> <span class="attr">Name</span>=<span class="val">"groups"</span>&gt;               <span class="cm">&lt;!-- Q: 権限情報 --&gt;</span>
+        &lt;<span class="tag">saml:AttributeValue</span>&gt;<span class="str">Simple IdP Users</span>&lt;/...&gt;
+        &lt;<span class="tag">saml:AttributeValue</span>&gt;<span class="str">West Coast Users</span>&lt;/...&gt;
+        &lt;<span class="tag">saml:AttributeValue</span>&gt;<span class="str">Cloud Users</span>&lt;/...&gt;
+      &lt;/<span class="tag">saml:Attribute</span>&gt;
+      &lt;<span class="tag">saml:Attribute</span> <span class="attr">Name</span>=<span class="val">"userType"</span>&gt;
+        &lt;<span class="tag">saml:AttributeValue</span>&gt;<span class="str">Admin</span>&lt;/...&gt;
+      &lt;/<span class="tag">saml:Attribute</span>&gt;
+    &lt;/<span class="tag">saml:AttributeStatement</span>&gt;
+
+  &lt;/<span class="tag">saml:Assertion</span>&gt;
+&lt;/<span class="tag">samlp:Response</span>&gt;</pre>
+    </div>
+
+    <table class="compare-table">
+      <tr><th>記号</th><th>要素</th><th>なぜ必要か</th></tr>
+      <tr><td>B, L</td><td>InResponseTo</td><td>SPが送った AuthnRequest の ID と照合。「自分が頼んだ認証の返事か？」を確認。なければリプレイ攻撃が可能。</td></tr>
+      <tr><td>C, K</td><td>Destination / Recipient</td><td>「このSPのこのURLに届けるべき」という指定。別のURLで受け取った場合は偽装の疑い → 拒否。</td></tr>
+      <tr><td>D, G</td><td>Issuer</td><td>Response にも Assertion にも入る。SP は「信頼する IdP が発行したか」を確認。</td></tr>
+      <tr><td>E, H</td><td>Signature（2箇所）</td><td>Response全体と Assertion個別の二重署名。片方だけだと部分改ざんのリスク（Lab 09で深掘り）。</td></tr>
+      <tr><td>I</td><td>NameID</td><td>ユーザーの一意識別子。SPがDBと紐付けるキー。メールアドレス形式が一般的。</td></tr>
+      <tr><td>J, M</td><td>NotOnOrAfter</td><td>有効期限。古いAssertionの再利用を防ぐ。今回は1時間（3600秒）。</td></tr>
+      <tr><td>N</td><td>Audience</td><td>「このSPだけが使っていい」という制限。他のSPがこのAssertionを流用することを防ぐ。</td></tr>
+      <tr><td>O</td><td>SessionIndex</td><td>IdP側のセッション識別子。シングルログアウト（SLO）で「どのセッションを切るか」を指定するのに使う。</td></tr>
+      <tr><td>P</td><td>AuthnContextClassRef</td><td>認証方法の申告。「パスワード認証でした」「MFAでした」等。SPはこれを見て信頼度を判断できる。</td></tr>
+      <tr><td>Q</td><td>groups / userType</td><td>権限判断用の属性。SPはこれを見て「管理者画面を見せるか」等を決定。</td></tr>
+    </table>
+
+    <div class="why-box">
+      <div class="why-title">なぜ Response と Assertion の2層構造なのか</div>
+      <strong>Response</strong> = 配送用の封筒。宛先（Destination）、配送状況（Status）を持つ。<br>
+      <strong>Assertion</strong> = 封筒の中身の証明書。ユーザー情報、有効期限、署名を持つ。<br>
+      分離する理由: Assertion は IdP-Initiated フローなど<strong>別のコンテキストでも再利用可能</strong>な独立した証明書として設計されている。
+      また、Assertionだけを暗号化して Response は平文にする、といった柔軟な運用ができる。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">確認ポイント</div>
+      <ol>
+        <li>XML内に <code>InResponseTo</code> が2箇所（Response属性と SubjectConfirmationData）あることを確認</li>
+        <li>両方とも同じ値 <code>_4d7b3f3d...606bdfe5</code> で、Lab 06 の AuthnRequest <code>id</code> と一致するか</li>
+        <li><code>Audience</code> の値がSPの <code>issuer</code> と一致するか確認</li>
+        <li>Response と Assertion に分離されている理由を「封筒と証明書」のアナロジーで説明できるか</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ======== Lab 09 ======== -->
+<div class="lab" id="lab9">
+  <div class="lab-header">
+    <div class="lab-num">09</div>
+    <h3>XML署名 — なぜ署名するのか</h3>
+    <span class="lab-tag tag-advanced">セキュリティ</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      SAMLの全データはブラウザを経由する。ブラウザはユーザーが操作できる環境。
+      ということは、<strong>データを改ざんできる</strong>。これを防ぐのがXML署名。
+    </p>
+
+    <div class="why-box">
+      <div class="why-title">なぜ署名が必要か — 攻撃シナリオで考える</div>
+      <strong>もし署名がなかったら:</strong><br>
+      ① 攻撃者がブラウザの開発者ツールでSAMLResponse（Base64）をデコード<br>
+      ② XML内の <code>&lt;saml:NameID&gt;</code> を <code>admin@company.com</code> に書き換え<br>
+      ③ 再度Base64エンコードしてPOST<br>
+      → SPは「IdPが admin を認証した」と信じてしまう = <strong>なりすまし成功</strong><br><br>
+      署名があれば: XMLを1文字でも変更すると署名検証が失敗 → SPが拒否
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>SAMLResponse 内の Signature 要素（実データ抜粋）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>&lt;<span class="tag">Signature</span>&gt;
+  &lt;<span class="tag">SignedInfo</span>&gt;
+    &lt;<span class="tag">CanonicalizationMethod</span> <span class="attr">Algorithm</span>=<span class="val">"xml-exc-c14n#"</span>/&gt;
+    &lt;<span class="tag">SignatureMethod</span> <span class="attr">Algorithm</span>=<span class="val">"rsa-sha256"</span>/&gt;        <span class="cm">&lt;!-- ① 署名アルゴリズム --&gt;</span>
+    &lt;<span class="tag">Reference</span> <span class="attr">URI</span>=<span class="val">"#_3d7d310638bcabbbba53"</span>&gt;         <span class="cm">&lt;!-- ② どの要素を署名対象にしたか --&gt;</span>
+      &lt;<span class="tag">DigestMethod</span> <span class="attr">Algorithm</span>=<span class="val">"sha256"</span>/&gt;              <span class="cm">&lt;!-- ③ ダイジェスト計算法 --&gt;</span>
+      &lt;<span class="tag">DigestValue</span>&gt;<span class="str">GiqqZKKWee...</span>&lt;/<span class="tag">DigestValue</span>&gt;      <span class="cm">&lt;!-- ④ XML本体のハッシュ値 --&gt;</span>
+    &lt;/<span class="tag">Reference</span>&gt;
+  &lt;/<span class="tag">SignedInfo</span>&gt;
+  &lt;<span class="tag">SignatureValue</span>&gt;<span class="str">Eh5FcOI8z3UIEe7y...</span>&lt;/<span class="tag">SignatureValue</span>&gt; <span class="cm">&lt;!-- ⑤ 秘密鍵で暗号化した署名 --&gt;</span>
+  &lt;<span class="tag">KeyInfo</span>&gt;
+    &lt;<span class="tag">X509Certificate</span>&gt;<span class="str">MIIC+DCCAeC...</span>&lt;/<span class="tag">X509Certificate</span>&gt; <span class="cm">&lt;!-- ⑥ 検証用の公開鍵証明書 --&gt;</span>
+  &lt;/<span class="tag">KeyInfo</span>&gt;
+&lt;/<span class="tag">Signature</span>&gt;</pre>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">署名検証の仕組み（簡略版）</div>
+      <pre class="ascii-art">
+  【IdP（署名する側）】
+  ┌───────────────┐     ┌──────────────┐
+  │ XML本体       │ ──→ │ SHA-256 Hash │ ──→ DigestValue
+  └───────────────┘     └──────────────┘
+                                │
+                          ┌─────▼──────┐
+                          │ RSA暗号化   │ ← IdPの秘密鍵
+                          └─────┬──────┘
+                                ▼
+                          SignatureValue
+
+  【SP（検証する側）】
+  ┌───────────────┐     ┌──────────────┐
+  │ XML本体       │ ──→ │ SHA-256 Hash │ ──→ 計算した DigestValue
+  └───────────────┘     └──────────────┘          │
+                                                   │ 一致?
+  ┌────────────────┐     ┌──────────────┐          │
+  │ SignatureValue │ ──→ │ RSA復号      │ ← idp-cert.pem (公開鍵)
+  └────────────────┘     └──────┬───────┘          │
+                                ▼                  │
+                          復号した DigestValue ─── 比較 ─→ OK or NG</pre>
+    </div>
+
+    <div class="security-box">
+      <div class="security-title">なぜ Response と Assertion の両方に署名があるのか</div>
+      <strong>Response署名のみ</strong>の場合: 攻撃者がResponse内のAssertionを別の正当なAssertionに差し替える攻撃が理論上可能。<br>
+      <strong>Assertion署名のみ</strong>の場合: ResponseのStatus(Success)を改ざんされるリスク、Destination書き換えリスク。<br>
+      <strong>両方署名</strong>: Responseの封筒もAssertionの中身も、どちらも改ざん検知可能。二重の防御。
+    </div>
+
+    <div class="info-box warn">
+      <strong>テスト環境での緩和設定に注意</strong><br>
+      今回の <code>app.js</code> では <code>wantAuthnResponseSigned: false</code> にしている。
+      これはテスト用の緩和設定。本番環境では<strong>必ず <code>true</code></strong> にすること。
+      <code>false</code> のまま本番運用すると、上記の攻撃シナリオが現実のリスクになる。
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">確認ポイント</div>
+      <ol>
+        <li>「署名がなかったら何ができてしまうか」を攻撃者の視点で説明できるか</li>
+        <li>DigestValue が「XML本体のハッシュ」であることを理解 — 1文字でも変えるとハッシュが変わる</li>
+        <li>SignatureValue が「DigestValueを秘密鍵で暗号化したもの」であることを理解</li>
+        <li>SP側は <code>idp-cert.pem</code>（公開鍵）だけで検証できる理由を説明できるか</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ======== Lab 10 ======== -->
+<div class="lab" id="lab10">
+  <div class="lab-header">
+    <div class="lab-num">10</div>
+    <h3>POST /login/callback — なぜPOST・なぜブラウザ経由</h3>
+    <span class="lab-tag tag-intermediate">フロー</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      IdPがSAMLResponseをSPに届ける方法として「HTTP-POST Binding」が使われる。
+      なぜGETではなくPOSTなのか、なぜIdPがSPに直接送らないのか。
+    </p>
+
+    <div class="why-box">
+      <div class="why-title">なぜ GET ではなく POST なのか</div>
+      SAMLResponseのXMLは<strong>数KB〜数十KB</strong>の大きさになる（署名、証明書、属性情報が含まれるため）。
+      GETのURLパラメータには<strong>約2000文字の制限</strong>がある（ブラウザ依存）。
+      AuthnRequest（小さい）はGETで送れたが、SAMLResponse（大きい）はPOSTでしか送れない。
+    </div>
+
+    <div class="why-box">
+      <div class="why-title">なぜ IdP → SP に直接 POST しないのか</div>
+      <strong>理由1</strong>: SAMLの設計原則「IdPとSPは直接通信しない」。イントラネット内のSPにインターネット上のIdPから直接到達できないケースが多い。<br>
+      <strong>理由2</strong>: ブラウザのセッションCookieを活用するため。SPはブラウザのCookieでセッションを管理する。サーバー間通信ではCookieが使えない。<br>
+      <strong>理由3</strong>: ブラウザがSPにPOSTすることで、SPから見ると「ユーザーのブラウザからのリクエスト」になり、通常のWebアプリのセッション管理と自然に統合できる。
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>IdP が返す自動送信 HTML フォーム（概念）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">&lt;!-- IdP がブラウザに返す HTML --&gt;</span>
+&lt;<span class="tag">html</span>&gt;
+&lt;<span class="tag">body</span> <span class="attr">onload</span>=<span class="val">"document.forms[0].submit()"</span>&gt;   <span class="cm">&lt;!-- ページ読込と同時に自動送信 --&gt;</span>
+  &lt;<span class="tag">form</span> <span class="attr">method</span>=<span class="val">"POST"</span>
+        <span class="attr">action</span>=<span class="val">"http://localhost:3000/login/callback"</span>&gt;
+    &lt;<span class="tag">input</span> <span class="attr">type</span>=<span class="val">"hidden"</span>
+           <span class="attr">name</span>=<span class="val">"SAMLResponse"</span>
+           <span class="attr">value</span>=<span class="val">"PHNhbWxwOlJlc3BvbnNlIHhtbG5z..."</span>/&gt;  <span class="cm">&lt;!-- Base64エンコードされたXML --&gt;</span>
+  &lt;/<span class="tag">form</span>&gt;
+&lt;/<span class="tag">body</span>&gt;
+&lt;/<span class="tag">html</span>&gt;</pre>
+    </div>
+
+    <div class="info-box info">
+      <strong>自動送信の仕組み</strong>: IdPはHTMLフォームを返し、<code>onload</code> イベントで自動 <code>submit()</code> する。
+      ユーザーから見ると「一瞬白い画面が表示された後、SPのページに戻る」ように見える。
+      この瞬間にSAMLResponse（Base64）がPOSTのBody部として送信される。
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>app.js — コールバックルート</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// IdPからの自動POSTを受け取るエンドポイント</span>
+app.<span class="fn">post</span>(
+  <span class="str">"/login/callback"</span>,
+  passport.<span class="fn">authenticate</span>(<span class="str">"saml"</span>, {
+    <span class="prop">failureRedirect</span>: <span class="str">"/login-failed"</span>,   <span class="cm">// 検証失敗時のリダイレクト先</span>
+  }),
+  (req, res) =&gt; {
+    res.<span class="fn">redirect</span>(<span class="str">"/profile"</span>);              <span class="cm">// 検証成功 → プロフィールページへ</span>
+  }
+);</pre>
+    </div>
+
+    <div class="data-transition">
+      <div class="data-step">
+        <div class="data-step-num">1</div>
+        <div class="data-step-content">
+          <div class="data-step-label">POST Body で受信</div>
+          <div class="data-step-desc"><code>SAMLResponse=PHNhbWxwOlJlc3BvbnNlIHhtbG5z...</code> (Base64文字列)</div>
+        </div>
+      </div>
+      <div class="data-arrow">↓</div>
+      <div class="data-step">
+        <div class="data-step-num">2</div>
+        <div class="data-step-content">
+          <div class="data-step-label">passport-saml が Base64 デコード</div>
+          <div class="data-step-desc">Base64文字列 → XML文字列に復元。Lab 08 で見た XML が得られる</div>
+        </div>
+      </div>
+      <div class="data-arrow">↓</div>
+      <div class="data-step">
+        <div class="data-step-num">3</div>
+        <div class="data-step-content">
+          <div class="data-step-label">5項目の検証（Lab 11 で詳述）</div>
+          <div class="data-step-desc">署名、有効期限、Audience、InResponseTo、Recipientを検証</div>
+        </div>
+      </div>
+      <div class="data-arrow">↓</div>
+      <div class="data-step">
+        <div class="data-step-num">4</div>
+        <div class="data-step-content">
+          <div class="data-step-label">Profile オブジェクト抽出</div>
+          <div class="data-step-desc">XML の Assertion → JavaScript オブジェクトに変換（Lab 12 で詳述）</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">確認ポイント</div>
+      <ol>
+        <li>SAMLResponseがGETではなくPOSTで送られる理由を「データサイズ」で説明できるか</li>
+        <li>IdPがSPに直接通信しない理由を3つ挙げられるか（到達性、Cookie、セッション管理）</li>
+        <li>自動送信HTMLフォームの <code>onload="document.forms[0].submit()"</code> の役割を理解しているか</li>
+        <li>コールバックルートが <code>app.post</code>（GETではなくPOST）であることを確認</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ======== Lab 11 ======== -->
+<div class="lab" id="lab11">
+  <div class="lab-header">
+    <div class="lab-num">11</div>
+    <h3>検証5項目 — なぜ各検証が必要か</h3>
+    <span class="lab-tag tag-advanced">セキュリティ</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      SPが SAMLResponse を受信した後、<code>passport-saml</code> は内部で5つの検証を行う。
+      各検証が<strong>どの攻撃を防いでいるか</strong>をセットで理解する。
+    </p>
+
+    <table class="compare-table">
+      <tr>
+        <th>検証項目</th>
+        <th>実データの照合</th>
+        <th>防ぐ攻撃</th>
+        <th>もし検証しなかったら</th>
+      </tr>
+      <tr>
+        <td>① 署名検証</td>
+        <td>SignatureValue を <code>idp-cert.pem</code> で復号 → DigestValue と照合</td>
+        <td>改ざん</td>
+        <td>攻撃者が NameID を書き換えて別ユーザーになりすまし</td>
+      </tr>
+      <tr>
+        <td>② InResponseTo</td>
+        <td><code>_4d7b3f3d...606bdfe5</code> がSPの送ったIDと一致するか</td>
+        <td>リプレイ攻撃</td>
+        <td>過去の正当なSAMLResponseを再送信して認証を突破</td>
+      </tr>
+      <tr>
+        <td>③ 有効期限</td>
+        <td>現在時刻が <code>NotBefore</code>〜<code>NotOnOrAfter</code> の範囲内か</td>
+        <td>期限切れの流用</td>
+        <td>1年前のSAMLResponseを保存しておいて再利用</td>
+      </tr>
+      <tr>
+        <td>④ Audience</td>
+        <td><code>http://localhost:3000</code> が自分（SP）の issuer と一致するか</td>
+        <td>横流し</td>
+        <td>別のSP向けAssertionを横取りして自分のSPで使用</td>
+      </tr>
+      <tr>
+        <td>⑤ Recipient</td>
+        <td><code>http://localhost:3000/login/callback</code> が自分のcallbackUrlと一致するか</td>
+        <td>URL偽装</td>
+        <td>攻撃者のサーバーに送られたAssertionが正当なSPで受理される</td>
+      </tr>
+    </table>
+
+    <div class="beginner-box">
+      <div class="beginner-title">5検証の関係図 — なぜ全部必要か</div>
+      <pre class="ascii-art">
+   攻撃パターン        どの検証が防ぐか
+  ┌─────────────────┐
+  │ XML内容を改ざん   │ ──→ ① 署名検証
+  │ (NameID書換等)    │
+  ├─────────────────┤
+  │ 過去の応答を再送   │ ──→ ② InResponseTo + ③ 有効期限
+  │ (リプレイ攻撃)    │
+  ├─────────────────┤
+  │ 別SP向け応答を流用 │ ──→ ④ Audience
+  ├─────────────────┤
+  │ 別URL向け応答を流用│ ──→ ⑤ Recipient
+  └─────────────────┘
+
+  → どれか1つでも欠けると、対応する攻撃が成立する
+  → だから5つ全てが必要</pre>
+    </div>
+
+    <div class="security-box">
+      <div class="security-title">検証②と③の組み合わせが重要な理由</div>
+      <strong>InResponseTo だけ</strong>の場合: SPがリクエストIDを永久保存しなければ、古いIDの再利用を検知できない。<br>
+      <strong>有効期限だけ</strong>の場合: 有効期限内であれば何度でも再送可能。<br>
+      <strong>両方</strong>: InResponseToで「自分のリクエストへの応答か」を確認 + 有効期限で「古すぎないか」を確認 = 二重の防御。
+      SPは通常、InResponseToのIDをメモリに一定時間だけ保持し、有効期限切れで自動破棄する。
+    </div>
+
+    <div class="flow-diagram">
+      <div class="flow-label">passport-saml 内部の検証フロー</div>
+<pre>
+  POST /login/callback でSAMLResponse受信
+          │
+          ▼
+  ┌── Base64 デコード → XML 取得 ──┐
+  │                                 │
+  │  ① 署名検証                     │
+  │     idp-cert.pem で DigestValue │
+  │     を復号・照合                 │
+  │     → NG なら 401              │
+  │                                 │
+  │  ② InResponseTo 照合           │
+  │     _4d7b3f3d... = 送ったID?   │
+  │     → NG なら 401              │
+  │                                 │
+  │  ③ 有効期限チェック              │
+  │     now ≥ NotBefore?            │
+  │     now ≤ NotOnOrAfter?         │
+  │     → NG なら 401              │
+  │                                 │
+  │  ④ Audience チェック            │
+  │     http://localhost:3000       │
+  │     = 自分の issuer?            │
+  │     → NG なら 401              │
+  │                                 │
+  │  ⑤ Recipient チェック           │
+  │     callback URL と一致?        │
+  │     → NG なら 401              │
+  │                                 │
+  └── 全パス → Profile 抽出 ────────┘
+          │
+          ▼
+  検証コールバック (profile, done) => { ... }
+</pre>
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">確認ポイント</div>
+      <ol>
+        <li>5つの検証それぞれについて「これがなかったらどんな攻撃が可能か」を説明できるか</li>
+        <li>InResponseTo と有効期限がなぜセットで必要かを説明できるか</li>
+        <li>Audience と Recipient の違いを説明できるか（誰向け vs どのURLで受信すべきか）</li>
+        <li>全ての検証が1つでもNGなら401で拒否されることを理解しているか</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ======== Lab 12 ======== -->
+<div class="lab" id="lab12">
+  <div class="lab-header">
+    <div class="lab-num">12</div>
+    <h3>セッション確立 — XML → Profile の変換</h3>
+    <span class="lab-tag tag-intermediate">データ</span>
+  </div>
+  <div class="lab-body">
+    <p class="lab-desc">
+      全検証をパスした後、passport-saml は XML の Assertion からユーザー情報を抽出し、
+      JavaScript オブジェクト（Profile）に変換する。この Profile がアプリで使えるユーザー情報になる。
+    </p>
+
+    <div class="verify">
+      <div class="verify-col verify-before">
+        <div class="verify-label">Before: SAMLResponse XML（IdPから受信）</div>
+        <code>&lt;saml:NameID&gt;saml.jackson@example.com&lt;/saml:NameID&gt;</code><br>
+        <code>&lt;saml:Attribute Name="firstName"&gt;&lt;saml:AttributeValue&gt;Saml&lt;/...&gt;&lt;/...&gt;</code><br>
+        <code>&lt;saml:Attribute Name="groups"&gt;</code><br>
+        &nbsp;&nbsp;<code>&lt;saml:AttributeValue&gt;Simple IdP Users&lt;/...&gt;</code><br>
+        &nbsp;&nbsp;<code>&lt;saml:AttributeValue&gt;West Coast Users&lt;/...&gt;</code><br>
+        &nbsp;&nbsp;<code>&lt;saml:AttributeValue&gt;Cloud Users&lt;/...&gt;</code><br>
+        → XML要素として散在
+      </div>
+      <div class="verify-col verify-after">
+        <div class="verify-label">After: Profile オブジェクト（SPで利用可能）</div>
+        <code>{ nameID: "saml.jackson@example.com",</code><br>
+        <code>&nbsp;&nbsp;firstName: "Saml",</code><br>
+        <code>&nbsp;&nbsp;groups: ["Simple IdP Users",</code><br>
+        <code>&nbsp;&nbsp;&nbsp;&nbsp;"West Coast Users",</code><br>
+        <code>&nbsp;&nbsp;&nbsp;&nbsp;"Cloud Users"],</code><br>
+        <code>&nbsp;&nbsp;userType: "Admin" }</code><br>
+        → フラットなJSオブジェクトに正規化
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>SP側の実際のProfile出力（コンソールログ）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>{
+  <span class="prop">"issuer"</span>:        <span class="str">"urn:example:idp"</span>,              <span class="cm">// ← Assertion の Issuer</span>
+  <span class="prop">"inResponseTo"</span>:  <span class="str">"_4d7b3f3d...606bdfe5"</span>,         <span class="cm">// ← 照合済みのリクエストID</span>
+  <span class="prop">"sessionIndex"</span>:  <span class="str">"1578761197"</span>,                   <span class="cm">// ← SLO用セッション識別子</span>
+  <span class="prop">"nameID"</span>:        <span class="str">"saml.jackson@example.com"</span>,      <span class="cm">// ← ★ ユーザー一意識別子</span>
+  <span class="prop">"nameIDFormat"</span>:  <span class="str">"urn:...:emailAddress"</span>,          <span class="cm">// ← NameIDの形式</span>
+  <span class="prop">"firstName"</span>:     <span class="str">"Saml"</span>,                         <span class="cm">// ← AttributeStatement から</span>
+  <span class="prop">"lastName"</span>:      <span class="str">"Jackson"</span>,
+  <span class="prop">"displayName"</span>:   <span class="str">"saml jackson"</span>,
+  <span class="prop">"email"</span>:         <span class="str">"saml.jackson@example.com"</span>,
+  <span class="prop">"mobilePhone"</span>:   <span class="str">"+1-415-555-5141"</span>,
+  <span class="prop">"groups"</span>:        [<span class="str">"Simple IdP Users"</span>, <span class="str">"West Coast Users"</span>, <span class="str">"Cloud Users"</span>],
+  <span class="prop">"userType"</span>:      <span class="str">"Admin"</span>                         <span class="cm">// ← 権限情報</span>
+}</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header"><span>app.js — 検証コールバック → セッション保存 → リダイレクト</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// ① 検証成功後、passport-saml がこのコールバックを呼ぶ</span>
+(profile, done) =&gt; {
+  console.<span class="fn">log</span>(<span class="str">"--- SAML認証成功 ---"</span>);
+  console.<span class="fn">log</span>(<span class="str">"Profile:"</span>, JSON.<span class="fn">stringify</span>(profile, <span class="kw">null</span>, <span class="num">2</span>));
+  <span class="kw">return</span> <span class="fn">done</span>(<span class="kw">null</span>, profile);  <span class="cm">// ← done(null, user) でPassportにユーザー情報を渡す</span>
+}
+
+<span class="cm">// ② passport.serializeUser がセッションに保存</span>
+passport.<span class="fn">serializeUser</span>((user, done) =&gt; <span class="fn">done</span>(<span class="kw">null</span>, user));
+<span class="cm">// → req.session.passport.user に profile 全体が格納される</span>
+
+<span class="cm">// ③ 以降のリクエストで passport.deserializeUser がセッションから復元</span>
+passport.<span class="fn">deserializeUser</span>((user, done) =&gt; <span class="fn">done</span>(<span class="kw">null</span>, user));
+<span class="cm">// → req.user に profile が復元される</span>
+
+<span class="cm">// ④ 認証済みページで利用</span>
+app.<span class="fn">get</span>(<span class="str">"/profile"</span>, (req, res) =&gt; {
+  <span class="kw">if</span> (!req.<span class="fn">isAuthenticated</span>()) <span class="kw">return</span> res.<span class="fn">redirect</span>(<span class="str">"/"</span>);
+  <span class="cm">// req.user.nameID → "saml.jackson@example.com"</span>
+  <span class="cm">// req.user.groups → ["Simple IdP Users", ...]</span>
+  <span class="cm">// req.user.userType → "Admin"</span>
+});</pre>
+    </div>
+
+    <div class="beginner-box">
+      <div class="beginner-title">データの全旅路 — AuthnRequest から /profile まで</div>
+      <pre class="ascii-art">
+  ┌─ Lab 05 ─────────────────────────────────────────────┐
+  │ passport-saml: AuthnRequest XML 生成                  │
+  │   id: _4d7b3f3d...                                   │
+  └──────────┬────────────────────────────────────────────┘
+             ▼ Deflate + Base64 + URLエンコード
+  ┌─ Lab 05 ─────────────────────────────────────────────┐
+  │ 302 Location: IdP/saml/sso?SAMLRequest=nVPBjtow...   │
+  └──────────┬────────────────────────────────────────────┘
+             ▼ ブラウザ経由でIdPへ
+  ┌─ Lab 06-07 ──────────────────────────────────────────┐
+  │ IdP: AuthnRequest デコード → ログイン画面 → 認証      │
+  └──────────┬────────────────────────────────────────────┘
+             ▼ SAMLResponse XML 生成 + 署名
+  ┌─ Lab 08-09 ──────────────────────────────────────────┐
+  │ SAMLResponse: Assertion + Signature + 属性情報        │
+  │   InResponseTo: _4d7b3f3d... (元のIDをコピー)         │
+  └──────────┬────────────────────────────────────────────┘
+             ▼ Base64 エンコード → 自動POST HTML
+  ┌─ Lab 10 ─────────────────────────────────────────────┐
+  │ POST /login/callback  Body: SAMLResponse=PHNhbWxw... │
+  └──────────┬────────────────────────────────────────────┘
+             ▼ Base64 デコード → 5項目検証
+  ┌─ Lab 11 ─────────────────────────────────────────────┐
+  │ 署名OK, InResponseTo一致, 期限内, Audience一致,       │
+  │ Recipient一致 → 全パス                                │
+  └──────────┬────────────────────────────────────────────┘
+             ▼ Profile 抽出 + セッション保存
+  ┌─ Lab 12 (ここ) ──────────────────────────────────────┐
+  │ req.user = { nameID, firstName, groups, ... }        │
+  │ → /profile ページで表示                               │
+  └──────────────────────────────────────────────────────┘</pre>
+    </div>
+
+    <div class="info-box ok">
+      <strong>実運用での Profile 活用パターン</strong><br>
+      <code>nameID</code> → DBのユーザーテーブルとの紐付けキー（初回ログインでユーザー自動作成: JIT Provisioning）<br>
+      <code>groups</code> → ロールベースアクセス制御（RBAC）。例: <code>groups.includes("Admin")</code> で管理画面表示<br>
+      <code>sessionIndex</code> → シングルログアウト（SLO）実装時に、IdPから「このセッションを切って」と指定を受ける
+    </div>
+
+    <div class="usecase-box">
+      <div class="usecase-title">Profile 情報の活用シーン</div>
+      <ul class="usecase-list">
+        <li><code>req.user.userType === "Admin"</code> で管理者メニューの表示/非表示を切替</li>
+        <li><code>req.user.groups</code> に特定グループが含まれるかで機能アクセスを制御</li>
+        <li><code>req.user.email</code> をアプリ内の通知送信先として使用</li>
+        <li><code>req.user.nameID</code> でDBのユーザーレコードを検索し、アプリ固有データと結合</li>
+        <li>初回ログイン時に <code>nameID</code> が未登録なら自動でユーザーレコードを作成（JIT Provisioning）</li>
+      </ul>
+    </div>
+
+    <div class="check-steps">
+      <div class="check-steps-title">確認ポイント</div>
+      <ol>
+        <li>XML の <code>&lt;saml:NameID&gt;</code> が Profile の <code>nameID</code> に、<code>&lt;saml:Attribute Name="groups"&gt;</code> が <code>groups</code> 配列になっていることを対応付けられるか</li>
+        <li><code>serializeUser</code> → セッション保存 → <code>deserializeUser</code> → <code>req.user</code> 復元の流れを説明できるか</li>
+        <li>2回目以降のリクエストでは SAML認証は起きず、セッションCookieだけで <code>req.user</code> が復元される理由を説明できるか</li>
+        <li>全Lab（00〜10）を通して、1つのリクエストIDが <code>_4d7b3f3d...606bdfe5</code> として一貫して追跡できることを確認</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<!-- ======== Scripts ======== -->
+<script>
+  function copyCode(btn) {
+    const block = btn.closest('.code-block') || btn.parentElement;
+    const pre = block.querySelector('pre');
+    if (!pre) return;
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // サイドバー active ハイライト
+    const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+    const map = new Map();
+    links.forEach(a => {
+      const el = document.getElementById(a.getAttribute('href').slice(1));
+      if (el) map.set(el, a);
+    });
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting) {
+        const l = map.get(e.target);
+        if (l) { links.forEach(n => n.classList.remove('active')); l.classList.add('active'); }
+      }
+    }), { rootMargin: '-30% 0px -60% 0px' });
+    document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+    // 既存 .code-block に header + Copy を自動付与（headerがまだない場合のみ）
+    document.querySelectorAll('.code-block').forEach((cb, i) => {
+      if (cb.querySelector('.code-block-header')) return;
+      const header = document.createElement('div');
+      header.className = 'code-block-header';
+      header.innerHTML = `<span>Code #${i + 1}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+      cb.insertBefore(header, cb.firstChild);
+    });
+  });
+</script>
+</body>
+</html>
