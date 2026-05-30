@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSS Flexbox 完全網羅 Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+/* Sidebar */
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+/* Hero */
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+/* TOC */
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+/* Container & Lab cards */
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+.lab-body h4 { font-size:.95rem; margin:18px 0 6px; color:var(--text); }
+
+/* Code block */
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+/* Syntax token colors */
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+
+/* info-box */
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+/* verify Before / After */
+.verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+  line-height:1.7; border:1px solid; }
+.verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+.verify-before .verify-label { color:var(--error); }
+.verify-after  .verify-label { color:var(--success); }
+
+/* check-steps */
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+/* compare-table */
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); white-space:nowrap; }
+.compare-table .yes { color:var(--success); } .compare-table .no { color:var(--error); }
+
+/* beginner-box */
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+/* usecase-box */
+.usecase-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:6px; }
+.usecase-list { margin-left:20px; margin-bottom:10px; }
+.usecase-list li { margin-bottom:4px; }
+.usecase-trigger { background:rgba(0,92,197,.05); border-left:3px solid var(--accent);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#003d8f; margin-top:8px; }
+.usecase-trigger ul { margin:4px 0 0 20px; }
+
+/* try-box */
+.try-box { background:rgba(34,134,58,.06); border:1px solid rgba(34,134,58,.30);
+  border-left:3px solid var(--success); border-radius:7px;
+  padding:12px 14px; margin:14px 0; font-size:.86rem; line-height:1.8; color:#154f1e; }
+.try-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--success); font-weight:700; margin-bottom:6px; }
+.try-box ol { margin-left:20px; margin-top:4px; }
+.try-box ol li { margin-bottom:4px; }
+.try-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--success); }
+.try-tip { background:rgba(176,136,0,.06); border-left:3px solid var(--accent4);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#5c4400; margin-top:8px; }
+.try-tip strong { color:var(--accent4); }
+.try-skeleton { background:#f0f4f8; border:1px solid var(--border); border-radius:5px;
+  padding:10px 12px; margin-top:8px; font-family:var(--mono); font-size:.78rem;
+  color:var(--text); white-space:pre; overflow-x:auto; line-height:1.5; }
+
+/* code-pair */
+.code-pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; }
+.code-pair-col { display:flex; flex-direction:column; min-width:0; }
+.code-pair-label { font-family:var(--mono); font-size:.72rem; letter-spacing:.05em;
+  font-weight:700; padding:6px 10px; border-radius:6px 6px 0 0; }
+.code-pair-before .code-pair-label { background:rgba(203,36,49,.10); color:#9a1320;
+  border:1px solid rgba(203,36,49,.30); border-bottom:none; }
+.code-pair-after  .code-pair-label { background:rgba(34,134,58,.10); color:#154f1e;
+  border:1px solid rgba(34,134,58,.30); border-bottom:none; }
+.code-pair-col .code-block { margin:0; border-radius:0 0 8px 8px; flex:1; }
+.code-pair-before .code-block { border-color:rgba(203,36,49,.30); }
+.code-pair-after  .code-block { border-color:rgba(34,134,58,.30); }
+@media (max-width:900px){ .code-pair { grid-template-columns:1fr; } }
+
+/* ===== Flex live playground (このLab専用) ===== */
+.fxdemo { margin:14px 0; border:1px solid var(--border); border-radius:8px; overflow:hidden; background:var(--bg); }
+.fxdemo-controls { display:flex; flex-wrap:wrap; align-items:center; gap:6px;
+  padding:10px 12px; background:var(--surface2); border-bottom:1px solid var(--border); }
+.fxdemo-label { font-family:var(--mono); font-size:.74rem; color:var(--accent); font-weight:700; margin-right:2px; }
+.fxbtn { font-family:var(--mono); font-size:.72rem; padding:4px 10px; border-radius:5px;
+  border:1px solid var(--border); background:var(--bg); color:var(--text-dim); cursor:pointer; transition:all .12s; }
+.fxbtn:hover { border-color:var(--accent); color:var(--accent); }
+.fxbtn.active { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
+.fxbox { display:flex; gap:8px; padding:12px; min-height:84px;
+  background:repeating-linear-gradient(45deg,#f0f4f8,#f0f4f8 10px,#eaeff5 10px,#eaeff5 20px);
+  border:2px dashed var(--accent); margin:12px; border-radius:6px; }
+.fxitem { background:linear-gradient(135deg,var(--accent),#2b7de0); color:#fff;
+  font-family:var(--mono); font-size:.84rem; font-weight:600; padding:14px 16px; border-radius:6px;
+  display:flex; align-items:center; justify-content:center; text-align:center;
+  box-shadow:0 2px 6px rgba(0,92,197,.25); }
+.fxitem.alt  { background:linear-gradient(135deg,var(--accent2),#2fa34a); box-shadow:0 2px 6px rgba(34,134,58,.25); }
+.fxitem.alt3 { background:linear-gradient(135deg,var(--accent3),#8458c9); box-shadow:0 2px 6px rgba(111,66,193,.25); }
+.fxstate { font-family:var(--mono); font-size:.76rem; color:var(--accent2); padding:0 12px 12px; }
+.fxbox-tall   { min-height:140px; }
+.fxbox-narrow { max-width:360px; overflow:auto; }
+.fxbox-wrapy  { flex-wrap:wrap; height:215px; align-content:flex-start; }
+
+/* Responsive */
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .verify { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// FLEXBOX <span>完全網羅 Lab</span></div>
+  <div class="nav-section">なぜ / 土台</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>なぜ生まれたか</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>display と FFC</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>主軸 / 交差軸</a>
+  <div class="nav-section">コンテナ側</div>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>justify-content</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>align-items</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>wrap / align-content</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>gap と margin</a>
+  <div class="nav-section">アイテム側</div>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>flex-basis と width</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>flex-grow</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>flex-shrink</a>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>flex ショートハンド</a>
+  <a class="nav-item" href="#lab11"><span class="nav-num">11</span>align-self / order</a>
+  <div class="nav-section">罠 / 比較</div>
+  <a class="nav-item" href="#lab12"><span class="nav-num">12</span>min-width:auto の罠</a>
+  <a class="nav-item" href="#lab13"><span class="nav-num">13</span>Flexbox vs Grid</a>
+</nav>
+
+<div class="hero">
+  <h1>CSS Flexbox 完全網羅 Lab</h1>
+  <p class="subtitle">「余白をどの軸にどう配るか」— 14ラボ・実機で箱が動く対話デモ付き</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>なぜFlexboxが生まれたか</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>display:flex と FFC</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>主軸 / 交差軸という抽象</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>justify-content（主軸の配分）</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>align-items（交差軸・等高）</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>flex-wrap と align-content</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>gap と margin の違い</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>flex-basis と width</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>flex-grow（余りの山分け）</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>flex-shrink（basis加重）</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">10</span>flex ショートハンド</a>
+    <a class="toc-item" href="#lab11"><span class="toc-num">11</span>align-self と order</a>
+    <a class="toc-item" href="#lab12"><span class="toc-num">12</span>min-width:auto の罠</a>
+    <a class="toc-item" href="#lab13"><span class="toc-num">13</span>Flexbox vs Grid 使い分け</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ============ LAB 0 ============ -->
+<div class="lab" id="lab0">
+  <div class="lab-header"><div class="lab-num">00</div><h3>なぜFlexboxが生まれたか</h3><span class="lab-tag tag-basic">基本</span></div>
+  <div class="lab-body">
+    <p class="lab-desc">Flexbox前のCSSは「文書」を流すモデル。<code>float</code> や <code>table</code> では <strong>垂直中央・等高カラム・余白配分</strong> の3つが激しく苦しかった。その正体は「1本の軸に沿って箱と余白をどう配るか」という共通問題。</p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 一番大事な発想の転換</div>
+      Flexbox の核心は <strong>「余白(free space)を能動的に配る道具」</strong>。<br>
+      迷ったら必ずこの一文に戻る → <strong>「これは余白を、どの軸に、どう配る指示か?」</strong>
+      <pre class="ascii-art">通常フロー : 内容のサイズ → 箱が決まる（余白は受動的に「余ったもの」）
+Flexbox   : コンテナのサイズ → 中身を伸縮させ配る（余白は能動的に「配るもの」）
+                                        ↑ Δ(価値) = 余白を第一級の操作対象にした</pre>
+    </div>
+
+    <h4>Before：float で横並び（苦しみの例）</h4>
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before（float 時代）</div>
+        <div class="code-block"><pre><span class="cm">/* 横並びの度に float + clearfix が必須 */</span>
+<span class="sel">.col</span> { <span class="prop">float</span>:<span class="val">left</span>; <span class="prop">width</span>:<span class="num">33.33%</span>; }
+<span class="sel">.row::after</span> { <span class="prop">content</span>:<span class="str">""</span>; <span class="prop">display</span>:<span class="val">block</span>; <span class="prop">clear</span>:<span class="val">both</span>; }
+<span class="cm">/* 等高にも垂直中央にもならない… */</span></pre></div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After（Flexbox）</div>
+        <div class="code-block"><pre><span class="cm">/* 1宣言で横並び・等高・中央すべて解決 */</span>
+<span class="sel">.row</span> { <span class="prop">display</span>:<span class="val">flex</span>; <span class="prop">gap</span>:<span class="num">12px</span>; <span class="prop">align-items</span>:<span class="val">center</span>; }
+<span class="sel">.col</span> { <span class="prop">flex</span>:<span class="num">1</span>; }</pre></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ LAB 1 ============ -->
+<div class="lab" id="lab1">
+  <div class="lab-header"><div class="lab-num">01</div><h3>display:flex とフォーマッティングコンテキスト</h3><span class="lab-tag tag-basic">基本</span></div>
+  <div class="lab-body">
+    <p class="lab-desc"><code>display:flex</code>（または <code>inline-flex</code>）は <strong>Flexフォーマッティングコンテキスト(FFC)</strong> を生成するスイッチ。ここで通常フローのルールが停止し、Flexのルールに切り替わる。<strong>直接の子だけ</strong>がFlex Itemになる（孫は無関係）。</p>
+
+    <div class="code-block"><pre><span class="sel">.container</span> { <span class="prop">display</span>:<span class="val">flex</span>; }       <span class="cm">/* 親=blockのように振る舞う */</span>
+<span class="sel">.container-inline</span> { <span class="prop">display</span>:<span class="val">inline-flex</span>; } <span class="cm">/* 親=inlineのように振る舞う */</span></pre></div>
+
+    <div class="fxdemo">
+      <div class="fxdemo-controls">
+        <span class="fxdemo-label">display:</span>
+        <button class="fxbtn" data-fx="lab1box" data-prop="display" data-val="block">block（通常フロー）</button>
+        <button class="fxbtn active" data-fx="lab1box" data-prop="display" data-val="flex">flex（FFC）</button>
+      </div>
+      <div class="fxbox" id="lab1box" style="display:flex;">
+        <div class="fxitem">1</div><div class="fxitem alt">2</div><div class="fxitem alt3">3</div>
+      </div>
+      <div class="fxstate" id="lab1box-state">現在: display: flex（横並び＝FFC生成）</div>
+    </div>
+
+    <table class="compare-table">
+      <tr><th>FFC内で上書きされる挙動</th><th>なぜ</th></tr>
+      <tr><td>float / clear が無効</td><td>主軸配置が代替するので不要</td></tr>
+      <tr><td>margin 相殺しない</td><td>各itemが独立箱になる</td></tr>
+      <tr><td>vertical-align 無効</td><td>align-items が代替</td></tr>
+      <tr><td>匿名テキストもitem化</td><td>裸のテキストノードも1itemとして扱う</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ LAB 2 ============ -->
+<div class="lab" id="lab2">
+  <div class="lab-header"><div class="lab-num">02</div><h3>主軸 / 交差軸という抽象</h3><span class="lab-tag tag-basic">基本</span></div>
+  <div class="lab-body">
+    <p class="lab-desc">Flexboxは「左右上下」で考えない。<strong>主軸(main axis)</strong> と <strong>交差軸(cross axis)</strong> で考える。<code>flex-direction</code> を変えると、この軸が丸ごと回転し、全配分プロパティの基準が入れ替わる。</p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 なぜ「幅・高さ」を捨てたか</div>
+      具体語(幅/高さ)で定義すると <code>column</code> にした瞬間に意味が破綻する。<strong>axis という抽象を1枚かませる</strong>ことで、1セットのプロパティが row でも column でも(RTLでも)同じ意味を保てる。
+      <pre class="ascii-art">row :  main-start ──► main axis ──► main-end   （主軸=横）
+column:        main-start
+                  │  main axis（主軸=縦）
+                  ▼  main-end
+役割固定: justify-content = 主軸方向 / align-items = 交差軸方向</pre>
+    </div>
+
+    <div class="fxdemo">
+      <div class="fxdemo-controls">
+        <span class="fxdemo-label">flex-direction:</span>
+        <button class="fxbtn active" data-fx="lab2box" data-prop="flexDirection" data-val="row">row</button>
+        <button class="fxbtn" data-fx="lab2box" data-prop="flexDirection" data-val="row-reverse">row-reverse</button>
+        <button class="fxbtn" data-fx="lab2box" data-prop="flexDirection" data-val="column">column</button>
+        <button class="fxbtn" data-fx="lab2box" data-prop="flexDirection" data-val="column-reverse">column-reverse</button>
+      </div>
+      <div class="fxbox fxbox-tall" id="lab2box" style="display:flex; flex-direction:row;">
+        <div class="fxitem">1</div><div class="fxitem alt">2</div><div class="fxitem alt3">3</div>
+      </div>
+      <div class="fxstate" id="lab2box-state">現在: flex-direction: row（主軸=横）</div>
+    </div>
+
+    <div class="info-box warn">⚠ <code>-reverse</code> は<strong>視覚順だけ</strong>を逆転させる。DOM順・Tab順・読み上げ順は変わらないため、アクセシビリティ注意。</div>
+  </div>
+</div>
+
+<!-- ============ LAB 3 ============ -->
+<div class="lab" id="lab3">
+  <div class="lab-header"><div class="lab-num">03</div><h3>justify-content（主軸の余白配分）</h3><span class="lab-tag tag-basic">基本</span></div>
+  <div class="lab-body">
+    <p class="lab-desc">「余白を配る」が最も直接現れる場所。<strong>主軸方向に余った空間</strong>をどう分配するか。<code>space-*</code> 3兄弟の違いは <strong>「端の扱い」だけ</strong>。</p>
+
+    <div class="fxdemo">
+      <div class="fxdemo-controls">
+        <span class="fxdemo-label">justify-content:</span>
+        <button class="fxbtn active" data-fx="lab3box" data-prop="justifyContent" data-val="flex-start">flex-start</button>
+        <button class="fxbtn" data-fx="lab3box" data-prop="justifyContent" data-val="center">center</button>
+        <button class="fxbtn" data-fx="lab3box" data-prop="justifyContent" data-val="flex-end">flex-end</button>
+        <button class="fxbtn" data-fx="lab3box" data-prop="justifyContent" data-val="space-between">space-between</button>
+        <button class="fxbtn" data-fx="lab3box" data-prop="justifyContent" data-val="space-around">space-around</button>
+        <button class="fxbtn" data-fx="lab3box" data-prop="justifyContent" data-val="space-evenly">space-evenly</button>
+      </div>
+      <div class="fxbox" id="lab3box" style="display:flex; justify-content:flex-start;">
+        <div class="fxitem">1</div><div class="fxitem alt">2</div><div class="fxitem alt3">3</div>
+      </div>
+      <div class="fxstate" id="lab3box-state">現在: justify-content: flex-start（余白を後ろにまとめる＝既定）</div>
+    </div>
+
+    <table class="compare-table">
+      <tr><th>値</th><th>端の余白</th><th>間の余白</th></tr>
+      <tr><td>space-between</td><td>ゼロ</td><td>均等</td></tr>
+      <tr><td>space-around</td><td>間の半分</td><td>均等</td></tr>
+      <tr><td>space-evenly</td><td>間と同一</td><td>均等（端も同じ）</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ LAB 4 ============ -->
+<div class="lab" id="lab4">
+  <div class="lab-header"><div class="lab-num">04</div><h3>align-items（交差軸・等高の解決者）</h3><span class="lab-tag tag-basic">基本</span></div>
+  <div class="lab-body">
+    <p class="lab-desc"><strong>交差軸方向</strong>のitem配置。既定の <code>stretch</code> が「等高カラム」を自動実現する。これがFlexbox採用の決定打だった。</p>
+
+    <div class="fxdemo">
+      <div class="fxdemo-controls">
+        <span class="fxdemo-label">align-items:</span>
+        <button class="fxbtn active" data-fx="lab4box" data-prop="alignItems" data-val="stretch">stretch（既定）</button>
+        <button class="fxbtn" data-fx="lab4box" data-prop="alignItems" data-val="flex-start">flex-start</button>
+        <button class="fxbtn" data-fx="lab4box" data-prop="alignItems" data-val="center">center</button>
+        <button class="fxbtn" data-fx="lab4box" data-prop="alignItems" data-val="flex-end">flex-end</button>
+        <button class="fxbtn" data-fx="lab4box" data-prop="alignItems" data-val="baseline">baseline</button>
+      </div>
+      <div class="fxbox fxbox-tall" id="lab4box" style="display:flex; align-items:stretch;">
+        <div class="fxitem">A</div>
+        <div class="fxitem alt" style="font-size:1.5rem;">B（大）</div>
+        <div class="fxitem alt3">C</div>
+      </div>
+      <div class="fxstate" id="lab4box-state">現在: align-items: stretch（交差軸いっぱいに伸び＝高さが揃う）</div>
+    </div>
+
+    <div class="info-box ok">✓ <code>stretch</code> で高さが揃うのは <strong>itemに明示 height が無い時</strong>。height を付けるとその値が優先され伸びない。</div>
+  </div>
+</div>
+
+<!-- ============ LAB 5 ============ -->
+<div class="lab" id="lab5">
+  <div class="lab-header"><div class="lab-num">05</div><h3>flex-wrap と align-content（複数行）</h3><span class="lab-tag tag-intermediate">中級</span></div>
+  <div class="lab-body">
+    <p class="lab-desc">既定は <code>nowrap</code>＝折り返さない（Flexは「1次元」の道具という宣言）。<code>wrap</code> で初めて複数行になる。<code>align-content</code> は <strong>複数行のときだけ</strong>意味を持ち、「行の束」を交差軸に配る。</p>
+
+    <h4>① flex-wrap：折り返すか</h4>
+    <div class="fxdemo">
+      <div class="fxdemo-controls">
+        <span class="fxdemo-label">flex-wrap:</span>
+        <button class="fxbtn active" data-fx="lab5box" data-prop="flexWrap" data-val="nowrap">nowrap（既定）</button>
+        <button class="fxbtn" data-fx="lab5box" data-prop="flexWrap" data-val="wrap">wrap</button>
+        <button class="fxbtn" data-fx="lab5box" data-prop="flexWrap" data-val="wrap-reverse">wrap-reverse</button>
+      </div>
+      <div class="fxbox" id="lab5box" style="display:flex; flex-wrap:nowrap;">
+        <div class="fxitem" style="flex:0 0 120px;">1</div>
+        <div class="fxitem alt" style="flex:0 0 120px;">2</div>
+        <div class="fxitem alt3" style="flex:0 0 120px;">3</div>
+        <div class="fxitem" style="flex:0 0 120px;">4</div>
+        <div class="fxitem alt" style="flex:0 0 120px;">5</div>
+        <div class="fxitem alt3" style="flex:0 0 120px;">6</div>
+        <div class="fxitem" style="flex:0 0 120px;">7</div>
+        <div class="fxitem alt" style="flex:0 0 120px;">8</div>
+      </div>
+      <div class="fxstate" id="lab5box-state">現在: flex-wrap: nowrap（折り返さず縮む／はみ出す）</div>
+    </div>
+
+    <h4>② align-content：行の束を交差軸にどう配るか（wrap時のみ効く）</h4>
+    <div class="fxdemo">
+      <div class="fxdemo-controls">
+        <span class="fxdemo-label">align-content:</span>
+        <button class="fxbtn active" data-fx="lab5box2" data-prop="alignContent" data-val="flex-start">flex-start</button>
+        <button class="fxbtn" data-fx="lab5box2" data-prop="alignContent" data-val="center">center</button>
+        <button class="fxbtn" data-fx="lab5box2" data-prop="alignContent" data-val="flex-end">flex-end</button>
+        <button class="fxbtn" data-fx="lab5box2" data-prop="alignContent" data-val="space-between">space-between</button>
+        <button class="fxbtn" data-fx="lab5box2" data-prop="alignContent" data-val="space-around">space-around</button>
+      </div>
+      <div class="fxbox fxbox-wrapy" id="lab5box2" style="display:flex;">
+        <div class="fxitem" style="flex:0 0 120px;">1</div>
+        <div class="fxitem alt" style="flex:0 0 120px;">2</div>
+        <div class="fxitem alt3" style="flex:0 0 120px;">3</div>
+        <div class="fxitem" style="flex:0 0 120px;">4</div>
+        <div class="fxitem alt" style="flex:0 0 120px;">5</div>
+        <div class="fxitem alt3" style="flex:0 0 120px;">6</div>
+      </div>
+      <div class="fxstate" id="lab5box2-state">現在: align-content: flex-start（行の束を上に寄せる）</div>
+    </div>
+
+    <div class="info-box info">📘 <strong>align-items vs align-content</strong>：items＝各行<strong>内</strong>でのitem整列／content＝行<strong>群全体</strong>の整列。1行(nowrap)なら content は無効。</div>
+  </div>
+</div>
+
+<!-- ============ LAB 6 ============ -->
+<div class="lab" id="lab6">
+  <div class="lab-header"><div class="lab-num">06</div><h3>gap と margin の違い</h3><span class="lab-tag tag-basic">基本</span></div>
+  <div class="lab-body">
+    <p class="lab-desc"><code>gap</code> はitem<strong>間にだけ</strong>溝を入れ、端には付かない。margin の「端にも付く／最後の要素で除外が面倒」という副作用を解消する。</p>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">✗ Before（margin で隙間）</div>
+        <div class="code-block"><pre><span class="sel">.item</span> { <span class="prop">margin-right</span>:<span class="num">12px</span>; }
+<span class="cm">/* 最後の要素の余分な右余白を */</span>
+<span class="sel">.item:last-child</span> { <span class="prop">margin-right</span>:<span class="num">0</span>; }
+<span class="cm">/* …という除外が常に必要 */</span></pre></div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">✓ After（gap）</div>
+        <div class="code-block"><pre><span class="sel">.container</span> { <span class="prop">display</span>:<span class="val">flex</span>; <span class="prop">gap</span>:<span class="num">12px</span>; }
+<span class="cm">/* 端には付かない。除外コード不要 */</span>
+<span class="cm">/* row-gap / column-gap で個別指定も可 */</span></pre></div>
+      </div>
+    </div>
+
+    <div class="fxdemo">
+      <div class="fxdemo-controls">
+        <span class="fxdemo-label">gap:</span>
+        <button class="fxbtn" data-fx="lab6box" data-prop="gap" data-val="0px">0px</button>
+        <button class="fxbtn active" data-fx="lab6box" data-prop="gap" data-val="8px">8px</button>
+        <button class="fxbtn" data-fx="lab6box" data-prop="gap" data-val="24px">24px</button>
+        <button class="fxbtn" data-fx="lab6box" data-prop="gap" data-val="48px">48px</button>
+      </div>
+      <div class="fxbox" id="lab6box" style="display:flex; gap:8px;">
+        <div class="fxitem">1</div><div class="fxitem alt">2</div><div class="fxitem alt3">3</div>
+      </div>
+      <div class="fxstate" id="lab6box-state">現在: gap: 8px（item間のみ。両端は密着）</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ LAB 7 ============ -->
+<div class="lab" id="lab7">
+  <div class="lab-header"><div class="lab-num">07</div><h3>flex-basis と width</h3><span class="lab-tag tag-intermediate">中級</span></div>
+  <div class="lab-body">
+    <p class="lab-desc"><code>flex-basis</code> は <strong>主軸方向の初期サイズ</strong>（配分計算の出発点）。<code>width</code> は「左右の絶対サイズ」だが basis は「軸に追従する width」。主軸方向では <strong>basis が width に優先</strong>する。</p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 配分計算は3ステップ</div>
+      <pre class="ascii-art">Step1  各itemの flex-basis を初期占有サイズとして置く
+Step2  basisの合計 と コンテナのmainサイズ を比較
+Step3  余る → grow で配る ／ 足りない → shrink で削る</pre>
+      <code>basis:auto</code> = 自分のwidth/内容を初期値に使う ／ <code>basis:0</code> = 初期ゼロでgrow比率だけでサイズ決定。
+    </div>
+
+    <div class="fxdemo">
+      <div class="fxdemo-controls">
+        <span class="fxdemo-label">2個目の flex-basis:</span>
+        <button class="fxbtn active" data-fx="lab7item" data-prop="flexBasis" data-val="auto">auto</button>
+        <button class="fxbtn" data-fx="lab7item" data-prop="flexBasis" data-val="100px">100px</button>
+        <button class="fxbtn" data-fx="lab7item" data-prop="flexBasis" data-val="300px">300px</button>
+        <button class="fxbtn" data-fx="lab7item" data-prop="flexBasis" data-val="0px">0（潰れる）</button>
+      </div>
+      <div class="fxbox" id="lab7box" style="display:flex;">
+        <div class="fxitem">固定</div>
+        <div class="fxitem alt" id="lab7item" style="flex-basis:auto;">basis可変</div>
+        <div class="fxitem alt3">固定</div>
+      </div>
+      <div class="fxstate" id="lab7item-state">現在: 2個目 flex-basis: auto（内容サイズが初期値）</div>
+    </div>
+
+    <div class="info-box warn">⚠ 主軸が縦(<code>column</code>)のとき <code>width</code> は無関係になり、<code>flex-basis</code> が「高さ」を意味する。だから両方存在する。</div>
+  </div>
+</div>
+
+<!-- ============ LAB 8 ============ -->
+<div class="lab" id="lab8">
+  <div class="lab-header"><div class="lab-num">08</div><h3>flex-grow（余りの山分け＝比率）</h3><span class="lab-tag tag-intermediate">中級</span></div>
+  <div class="lab-body">
+    <p class="lab-desc">余白が<strong>正</strong>のとき、それを何対何で取り合うかの<strong>重み（比率）</strong>。絶対pxでなく比率だから、コンテナ幅が変わっても意図(例:2倍幅)が保たれる。</p>
+
+    <div class="code-block"><pre><span class="cm">/* 幅600・basis:0・grow 1,1,2 → 150 : 150 : 300 */</span>
+<span class="cm">// item1 = 600×(1/4)=150,  item3 = 600×(2/4)=300</span></pre></div>
+
+    <div class="fxdemo">
+      <div class="fxdemo-controls">
+        <span class="fxdemo-label">シナリオ:</span>
+        <button class="fxbtn active" data-scenario="grow-equal">flex:1 ×3</button>
+        <button class="fxbtn" data-scenario="grow-112">grow 1:1:2</button>
+        <button class="fxbtn" data-scenario="grow-auto">flex:auto</button>
+        <button class="fxbtn" data-scenario="grow-none">flex:none</button>
+      </div>
+      <div class="fxbox" id="lab8box" style="display:flex;">
+        <div class="fxitem" style="flex:1 1 0;">短</div>
+        <div class="fxitem alt" style="flex:1 1 0;">中くらいの文</div>
+        <div class="fxitem alt3" style="flex:1 1 0;">とても長いテキストの項目です</div>
+      </div>
+      <div class="fxstate" id="lab8box-state">現在: flex:1 1 0 ×3 → 内容を無視した完全な3等分</div>
+    </div>
+
+    <div class="info-box info">📘 <code>flex:1</code>(basis=0)は<strong>内容無視で等分</strong>、<code>flex:auto</code>(basis=auto)は<strong>内容差を残して</strong>余白を分配。ボタンで比べると一目瞭然。</div>
+  </div>
+</div>
+
+<!-- ============ LAB 9 ============ -->
+<div class="lab" id="lab9">
+  <div class="lab-header"><div class="lab-num">09</div><h3>flex-shrink（不足の削減＝basis加重）</h3><span class="lab-tag tag-advanced">上級</span></div>
+  <div class="lab-body">
+    <p class="lab-desc">余白が<strong>負（はみ出す）</strong>とき、どの割合で縮むかの重み。growと違い <strong>basis のサイズで重み付け</strong>される＝大きい箱ほど多く縮む。</p>
+
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 なぜ grow と非対称なのか</div>
+      大きい箱ほど「縮ませる余地」が大きいから。小箱と大箱を同率で縮めると小箱が先に潰れて不自然。
+      <pre class="ascii-art">伸ばす時(grow) : 公平に（単純比率）
+縮める時(shrink): 体格に応じて（basis加重比率）
+実際の縮小量 = shrink値 × その item の basis  の比で配分</pre>
+    </div>
+
+    <div class="fxdemo">
+      <div class="fxdemo-controls">
+        <span class="fxdemo-label">シナリオ（コンテナ幅 360px に制限）:</span>
+        <button class="fxbtn active" data-scenario="shrink-weighted">shrink全=1</button>
+        <button class="fxbtn" data-scenario="shrink-mid-lock">真ん中 shrink:0</button>
+        <button class="fxbtn" data-scenario="shrink-none-all">全 shrink:0（溢れる）</button>
+      </div>
+      <div class="fxbox fxbox-narrow" id="lab9box" style="display:flex; flex-wrap:nowrap;">
+        <div class="fxitem" style="flex:1 1 100px;">100</div>
+        <div class="fxitem alt" style="flex:1 1 200px;">200</div>
+        <div class="fxitem alt3" style="flex:1 1 300px;">300</div>
+      </div>
+      <div class="fxstate" id="lab9box-state">現在: shrink全=1 → basis加重で大きい箱ほど多く縮む（約60/120/180px）</div>
+    </div>
+
+    <div class="info-box warn">⚠ 「全 shrink:0」を選ぶと誰も縮まず合計600pxが360pxの枠を溢れ、デモ枠にスクロールバーが出る（=overflow）。</div>
+  </div>
+</div>
+
+<!-- ============ LAB 10 ============ -->
+<div class="lab" id="lab10">
+  <div class="lab-header"><div class="lab-num">10</div><h3>flex ショートハンド（定番4値）</h3><span class="lab-tag tag-intermediate">中級</span></div>
+  <div class="lab-body">
+    <p class="lab-desc"><code>flex: &lt;grow&gt; &lt;shrink&gt; &lt;basis&gt;</code>。この4パターンを覚えれば実務はほぼ足りる。最重要は <code>flex:1</code>(等分) と <code>flex:auto</code>(内容尊重) の差。</p>
+
+    <table class="compare-table">
+      <tr><th>記法</th><th>展開</th><th>意味</th></tr>
+      <tr><td>flex:initial</td><td>0 1 auto</td><td>既定。伸びず・縮む・内容サイズから</td></tr>
+      <tr><td>flex:1</td><td>1 1 0</td><td>内容無視の<strong>完全等分</strong></td></tr>
+      <tr><td>flex:auto</td><td>1 1 auto</td><td>内容差を残しつつ余白を山分け</td></tr>
+      <tr><td>flex:none</td><td>0 0 auto</td><td>伸びず縮まず<strong>内容幅で固定</strong></td></tr>
+    </table>
+
+    <div class="fxdemo">
+      <div class="fxdemo-controls">
+        <span class="fxdemo-label">全item一括:</span>
+        <button class="fxbtn active" data-scenario="sh-initial">flex:initial</button>
+        <button class="fxbtn" data-scenario="sh-1">flex:1</button>
+        <button class="fxbtn" data-scenario="sh-auto">flex:auto</button>
+        <button class="fxbtn" data-scenario="sh-none">flex:none</button>
+      </div>
+      <div class="fxbox" id="lab10box" style="display:flex;">
+        <div class="fxitem" style="flex:0 1 auto;">短い</div>
+        <div class="fxitem alt" style="flex:0 1 auto;">中くらいの項目</div>
+        <div class="fxitem alt3" style="flex:0 1 auto;">かなり長いテキストの項目</div>
+      </div>
+      <div class="fxstate" id="lab10box-state">現在: flex:initial（0 1 auto）= 既定。内容サイズで並ぶ</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ LAB 11 ============ -->
+<div class="lab" id="lab11">
+  <div class="lab-header"><div class="lab-num">11</div><h3>align-self と order</h3><span class="lab-tag tag-intermediate">中級</span></div>
+  <div class="lab-body">
+    <p class="lab-desc"><code>align-self</code> はコンテナの <code>align-items</code> を<strong>特定1個だけ</strong>上書き（全体ポリシーに対する例外）。<code>order</code> は視覚順を整数で並べ替える（既定0）。</p>
+
+    <h4>① align-self（2個目だけ上書き）</h4>
+    <div class="fxdemo">
+      <div class="fxdemo-controls">
+        <span class="fxdemo-label">2個目の align-self:</span>
+        <button class="fxbtn active" data-fx="lab11item" data-prop="alignSelf" data-val="auto">auto（親に従う）</button>
+        <button class="fxbtn" data-fx="lab11item" data-prop="alignSelf" data-val="flex-start">flex-start</button>
+        <button class="fxbtn" data-fx="lab11item" data-prop="alignSelf" data-val="center">center</button>
+        <button class="fxbtn" data-fx="lab11item" data-prop="alignSelf" data-val="flex-end">flex-end</button>
+      </div>
+      <div class="fxbox fxbox-tall" id="lab11box" style="display:flex; align-items:stretch;">
+        <div class="fxitem">1</div>
+        <div class="fxitem alt" id="lab11item" style="align-self:auto;">2</div>
+        <div class="fxitem alt3">3</div>
+      </div>
+      <div class="fxstate" id="lab11item-state">現在: 2個目 align-self: auto（親の stretch に従う）</div>
+    </div>
+
+    <h4>② order（視覚順だけ入れ替え）</h4>
+    <div class="fxdemo">
+      <div class="fxdemo-controls">
+        <span class="fxdemo-label">1個目の order:</span>
+        <button class="fxbtn active" data-fx="lab11ord" data-prop="order" data-val="0">0（既定）</button>
+        <button class="fxbtn" data-fx="lab11ord" data-prop="order" data-val="1">1</button>
+        <button class="fxbtn" data-fx="lab11ord" data-prop="order" data-val="99">99（最後尾へ）</button>
+      </div>
+      <div class="fxbox" id="lab11box2" style="display:flex;">
+        <div class="fxitem" id="lab11ord" style="order:0;">1番目(DOM)</div>
+        <div class="fxitem alt">2番目(DOM)</div>
+        <div class="fxitem alt3">3番目(DOM)</div>
+      </div>
+      <div class="fxstate" id="lab11ord-state">現在: 1番目の order: 0（DOM順のまま）</div>
+    </div>
+
+    <div class="info-box err">🚫 <code>order</code> は見た目だけ動かしDOM順(Tab/読み上げ順)は不変。視覚とアクセシビリティの順序が乖離するため装飾以外での多用は禁物。</div>
+  </div>
+</div>
+
+<!-- ============ LAB 12 ============ -->
+<div class="lab" id="lab12">
+  <div class="lab-header"><div class="lab-num">12</div><h3>min-width:auto の罠（最頻トラブル）</h3><span class="lab-tag tag-advanced">上級</span></div>
+  <div class="lab-body">
+    <p class="lab-desc"><code>flex-shrink:1</code> なのに子が縮まずコンテナを突き破る現象。原因はFlex Itemの <code>min-width</code> 初期値が <strong>auto（=コンテンツ最小サイズが下限）</strong> だから。</p>
+
+    <div class="fxdemo">
+      <div class="fxdemo-controls">
+        <span class="fxdemo-label">テキスト項目の min-width:</span>
+        <button class="fxbtn active" data-fx="lab12item" data-prop="minWidth" data-val="auto">auto（既定＝はみ出す）</button>
+        <button class="fxbtn" data-fx="lab12item" data-prop="minWidth" data-val="0">0（縮める許可）</button>
+      </div>
+      <div class="fxbox" id="lab12box" style="display:flex; flex-wrap:nowrap; max-width:420px;">
+        <div class="fxitem" style="flex:0 0 90px;">固定90px</div>
+        <div class="fxitem alt" id="lab12item" style="flex:1 1 auto; min-width:auto; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block;">これはとても長いテキストで枠を突き破ろうとします</div>
+      </div>
+      <div class="fxstate" id="lab12item-state">現在: min-width: auto（最長語が下限になり縮まずはみ出す）</div>
+    </div>
+
+    <div class="code-block"><pre><span class="cm">/* 解決: はみ出させたい item に下限を解除 */</span>
+<span class="sel">.item</span> { <span class="prop">min-width</span>:<span class="num">0</span>; }       <span class="cm">/* column方向なら min-height:0 */</span>
+<span class="cm">/* + overflow:hidden / text-overflow:ellipsis で「…」省略 */</span></pre></div>
+
+    <div class="info-box info">📘 なぜ既定がautoか＝<strong>文字が読めなくなるほど潰れる事故を防ぐ安全弁</strong>。省略やスクロールをしたい時だけ <code>min-width:0</code> で解除する。</div>
+  </div>
+</div>
+
+<!-- ============ LAB 13 ============ -->
+<div class="lab" id="lab13">
+  <div class="lab-header"><div class="lab-num">13</div><h3>Flexbox vs Grid 使い分け</h3><span class="lab-tag tag-intermediate">中級</span></div>
+  <div class="lab-body">
+    <p class="lab-desc">判断の一言：<strong>1方向に流したい→Flex／縦横を同時に格子状に揃えたい→Grid</strong>。両者は対立せず、Gridのセル内をFlexで整える入れ子が王道。</p>
+
+    <table class="compare-table">
+      <tr><th></th><th>Flexbox（1次元）</th><th>Grid（2次元）</th></tr>
+      <tr><td>得意</td><td>1本の軸に並べる</td><td>行と列を同時に揃える</td></tr>
+      <tr><td>発想</td><td>content-out寄り（中身で伸縮）</td><td>container-in（先に枠を切る）</td></tr>
+      <tr><td>最適例</td><td>ナビ/ツールバー/ボタン列/タグ群</td><td>ページ骨格/カード格子/表組み</td></tr>
+    </table>
+
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before">
+        <div class="code-pair-label">▶ Flex が向く場面</div>
+        <div class="code-block"><pre><span class="cm">/* 中身次第で可変な横並び */</span>
+<span class="sel">.toolbar</span> { <span class="prop">display</span>:<span class="val">flex</span>; <span class="prop">gap</span>:<span class="num">8px</span>;
+  <span class="prop">align-items</span>:<span class="val">center</span>; }</pre></div>
+      </div>
+      <div class="code-pair-col code-pair-after">
+        <div class="code-pair-label">▶ Grid が向く場面</div>
+        <div class="code-block"><pre><span class="cm">/* 行も列もピシッと揃える格子 */</span>
+<span class="sel">.cards</span> { <span class="prop">display</span>:<span class="val">grid</span>;
+  <span class="prop">grid-template-columns</span>:<span class="val">repeat</span>(<span class="num">3</span>,<span class="num">1fr</span>); <span class="prop">gap</span>:<span class="num">16px</span>; }</pre></div>
+      </div>
+    </div>
+
+    <div class="info-box ok">✓ 迷ったら全Labで使った問い <strong>「余白を、どの軸に、どう配るか」</strong> に戻る。1軸ならFlex、2軸が必要になったらGrid。</div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<script>
+  /* ---- Copy ---- */
+  function copyCode(btn) {
+    const block = btn.closest('.code-block') || btn.parentElement;
+    const pre = block.querySelector('pre');
+    if (!pre) return;
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'Copied!'; btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    });
+  }
+
+  /* ---- 各ラボ メタ（info / usecase / verify / try / check を自動注入） ---- */
+  const cssName = { display:'display', flexDirection:'flex-direction', justifyContent:'justify-content',
+    alignItems:'align-items', alignContent:'align-content', flexWrap:'flex-wrap', gap:'gap',
+    flexBasis:'flex-basis', alignSelf:'align-self', order:'order', minWidth:'min-width' };
+
+  const LAB_META = {
+    lab0: {
+      info:{type:'info', html:'📘 <strong>Before/After/Δ</strong>: Before=内容のサイズから箱が決まる(content-out)／After=コンテナのサイズから中身を伸縮(container-in)／<strong>Δ=余白を第一級の操作対象にした</strong>。'},
+      usecase:{items:['横並びナビ・ツールバーの実装','カードの等高揃え','「残り余白を均等配分」したい全UI','垂直中央揃え（margin:auto が縦に効かない問題の解消）'],
+        triggers:['float + clearfix を書いている','vertical-align や table-cell ハックを見た','「高さが揃わない」と悩んでいる']},
+      try:'まず Lab01〜04 のボタンを触ってから戻ると「なぜ生まれたか」が腑に落ちる。',
+      check:['① Before/After のコードを読み比べ、float版で必要だった clearfix が Flex版で消えていることを確認','② 「余白をどう配るか」という共通問題が3つの苦しみ(中央/等高/配分)を貫いていることを言語化する']
+    },
+    lab1: {
+      info:{type:'info', html:'📘 <code>display:flex</code> はFFCを生成するスイッチ。<strong>直接の子だけ</strong>がItem化する（孫は無関係）。'},
+      usecase:{items:['任意のラッパを横並びコンテナに変える','inline-flex でテキスト中に揃ったバッジを置く','子のfloat/marginハックを一掃する'],
+        triggers:['子要素を横に並べたい','margin相殺で隙間が想定外になる']},
+      verify:{before:'display:block → 1〜3が縦積み（通常フロー）', after:'display:flex → 1〜3が横並び（FFC）'},
+      try:'display ボタンで block↔flex を往復し、縦積み↔横並びの切替を体感。',
+      check:['① 「block」を押すとitemが縦積み、「flex」で横並びに戻ることを確認','② block時はitemが幅いっぱいに広がる（block既定）ことを観察し、FFCで挙動が変わる意味を掴む']
+    },
+    lab2: {
+      info:{type:'info', html:'📘 <strong>justify-content=主軸方向 / align-items=交差軸方向</strong>。flex-directionでこの2つの効く向きが丸ごと入れ替わる。'},
+      usecase:{items:['縦メニュー(column)と横メニュー(row)を同じプロパティ群で書く','RTL言語対応で左右を意識せず組む','direction切替で再利用できるレイアウト部品'],
+        triggers:['column にしたら justify と align の効きが逆になって混乱した','左右でなく「主軸」で考えるべき場面']},
+      try:'row→columnに切替えた後、Lab03/04に戻って justify と align の効く向きが入れ替わるのを確認すると理解が固まる。',
+      check:['① row / column を切替え、箱の並ぶ向きが90°変わることを確認','② -reverse を押すと並び順だけ逆転（番号は1→2→3のまま視覚位置が逆）になることを観察','③ column時に高さ方向へ積まれ、主軸が縦に回転したと言語化する']
+    },
+    lab3: {
+      info:{type:'info', html:'📘 free space = コンテナmainサイズ − item群のmainサイズ合計。<code>space-between/around/evenly</code> の違いは<strong>端の余白の扱いだけ</strong>。'},
+      usecase:{items:['ヘッダーで左ロゴ・右メニューを両端寄せ(space-between)','ボタン群を中央寄せ(center)','アイコンを等間隔配置(space-evenly)'],
+        triggers:['「両端に寄せたい」=space-between','「等間隔で並べたい」=space-evenly のサイン']},
+      try:'space-between → around → evenly を順に押し、両端の隙間がどう変化するかだけに注目する。',
+      check:['① 6つの値を順に押し、箱と余白の位置変化を観察','② space-between/around/evenly を行き来し、左端の隙間が「0→中間の半分→中間と同じ」と増えるのを確認','③ flex-start が既定（余白は後ろ）であることを確認']
+    },
+    lab4: {
+      info:{type:'info', html:'📘 既定の <code>stretch</code> が「等高カラム」を自動実現。これがFlexbox普及の決定打。height明示時はstretchが効かない。'},
+      usecase:{items:['高さの違うカードを横で揃える','アイコンとテキストをベースライン揃え','フッターを下端に固定(flex-end)'],
+        triggers:['カードの高さがバラバラ→align-items:stretch','文字サイズ違いの行を揃える→baseline']},
+      verify:{before:'flex-start → 高さがバラバラで上揃え', after:'stretch → 3つの箱が同じ高さに伸びる'},
+      try:'stretch↔flex-start を往復し、B(大)に高さが引っ張られず各itemが個別に揃うことを見る。',
+      check:['① stretch で3箱が同じ高さに伸びることを確認','② flex-start/center/flex-end で上・中央・下揃えに変わるのを観察','③ baseline で文字サイズの違うB(大)の文字下端が他と揃うことを確認']
+    },
+    lab5: {
+      info:{type:'info', html:'📘 既定 <code>nowrap</code> は「Flexは1次元の道具」という宣言。<code>align-content</code> は<strong>複数行のときだけ</strong>効く（行の束の整列）。'},
+      usecase:{items:['タグ/チップを画面幅に応じ折り返す','ギャラリーのサムネイルを複数行配置','折り返した行群を縦中央や均等配置'],
+        triggers:['横に入りきらない要素を折り返したい→wrap','複数行の行間を調整したい→align-content']},
+      try:'①でwrapにしてから②のalign-contentを押すと効果が出る。nowrapのままだとalign-contentは無反応＝それが「複数行のみ有効」の証拠。',
+      check:['① ①のboxでnowrap→wrapにし、8個が1行から複数行に折り返すのを確認','② nowrapのままだと枠を超えて縮む/はみ出すことを観察','③ ②のboxでalign-contentを切替え、行の束が上・中央・下・均等に動くのを確認']
+    },
+    lab6: {
+      info:{type:'info', html:'📘 <code>gap</code> はitem間だけに溝を作り端には付かない。marginの「最後の要素で除外」コストをゼロにする。'},
+      usecase:{items:['ボタン列・カード列の均一な隙間','row-gap/column-gapで縦横別の溝','折り返しグリッドの行間と列間を一括指定'],
+        triggers:['margin:last-child除外を書いている→gapに置換できる','要素間隔を一括で変えたい']},
+      try:'gapを0→48pxへ広げ、両端(枠との間)に隙間が付かないことを確認する。',
+      check:['① gapを0/8/24/48と切替え、item間の隙間だけが広がることを確認','② 最大gapでも左端・右端のitemが枠に密着（端に余白が付かない）ことを観察']
+    },
+    lab7: {
+      info:{type:'info', html:'📘 <code>flex-basis</code>=主軸方向の初期サイズ。主軸では<strong>basisがwidthに優先</strong>。<code>auto</code>は内容サイズ、<code>0</code>はgrow比率だけでサイズ決定。'},
+      usecase:{items:['カード幅の基準値を主軸方向で指定','column方向で「高さ」の初期値として使う','grow/shrinkと組み合わせて伸縮の起点を作る'],
+        triggers:['width指定が効かない(Flex item)→basisを疑う','column方向のサイズ調整']},
+      verify:{before:'basis:auto → 内容ぶんの幅', after:'basis:300px → 300pxから配分が始まり広がる'},
+      try:'2個目のbasisをauto/100/300/0と変え、初期サイズが変わることを観察。0にすると内容を無視して潰れる。',
+      check:['① 2個目のbasisをauto→300pxにし、2個目が広がることを確認','② basis:0で2個目が内容を無視して最小化することを観察','③ 主軸方向ではbasisがwidthのように振る舞うと言語化']
+    },
+    lab8: {
+      info:{type:'info', html:'📘 grow=余白を取り合う<strong>比率(重み)</strong>。<code>flex:1</code>(basis0)=内容無視の等分、<code>flex:auto</code>(basisauto)=内容差を残し配分。'},
+      usecase:{items:['カラムを完全等分(flex:1)','内容量に応じた自然な比率(flex:auto)','特定カラムだけ2倍幅(grow:2)'],
+        triggers:['「3等分したい」→flex:1','「内容に応じて可変だが全幅使いたい」→flex:auto']},
+      verify:{before:'flex:none → 内容幅で固定、右に余白', after:'flex:1 → 全幅を等分して埋める'},
+      try:'「flex:1 ×3」と「flex:auto」を交互に押し、内容の長いitemの扱い(無視 vs 尊重)の差を観察するのが核心。',
+      check:['① 「flex:1 ×3」で3箱が完全等幅(内容無視)になることを確認','② 「flex:auto」で内容の長い3個目が広く始まることを観察','③ 「grow 1:1:2」で3個目だけ約2倍幅になることを確認','④ 「flex:none」で内容幅固定＆右に余白が残ることを確認']
+    },
+    lab9: {
+      info:{type:'info', html:'📘 shrink=不足時に縮む重み。growと違い<strong>basisで重み付け</strong>される＝大きい箱ほど多く縮む。shrink:0で「縮むな」。'},
+      usecase:{items:['横幅が足りない時に均整よく縮める','固定したい要素だけshrink:0で死守','サイドバーは固定・本文は縮む構成'],
+        triggers:['縮ませたくない要素がある→shrink:0','狭幅で要素が潰れる/溢れる調整']},
+      try:'「shrink全=1」で3つの縮み幅が均等でなく(100/200/300のbasis比で)違うことに注目。大きい箱ほど多く縮む。',
+      check:['① 「shrink全=1」で3箱が縮むが、basisの大きい300の箱が最も多く縮むことを観察','② 「真ん中shrink:0」で200の箱だけサイズを保ち、両端が多く縮むのを確認','③ 「全shrink:0」で誰も縮まず枠を溢れ、デモ枠にスクロールが出ることを確認']
+    },
+    lab10: {
+      info:{type:'info', html:'📘 定番4値: <code>initial(0 1 auto)</code> / <code>1(1 1 0)</code> / <code>auto(1 1 auto)</code> / <code>none(0 0 auto)</code>。最重要は flex:1 と flex:auto の差。'},
+      usecase:{items:['均等グリッド(flex:1)','内容尊重レイアウト(flex:auto)','固定サイズの要素(flex:none)','既定の自然並び(initial)'],
+        triggers:['ショートハンドの意味を即答できない時の早見','「等分かと思ったら内容差が出る」→1かautoの取り違え']},
+      try:'4ボタンを順に押し、内容長の違う3項目がどう並ぶか比較。1=等分/auto=内容差残し/none=固定 の差を体で覚える。',
+      check:['① initialで内容サイズ並び＆右に余白を確認','② flex:1で完全等分(内容無視)を確認','③ flex:autoで内容差を残した配分を確認','④ flex:noneで固定＆余白が右に残ることを確認']
+    },
+    lab11: {
+      info:{type:'info', html:'📘 <code>align-self</code>=align-itemsの個別上書き(全体ポリシーへの例外)。<code>order</code>=視覚順のみ整数で変更、DOM順は不変。'},
+      usecase:{items:['1要素だけ下揃え/中央揃えにしたい','メニュー内の特定アイテムを別位置に','レスポンシブで視覚順だけ入れ替える(order)'],
+        triggers:['「この1個だけ位置を変えたい」→align-self','「見た目順だけ変えたい」→order(ただし注意)']},
+      try:'①で2個目のalign-selfを変え、他は親のstretchのまま2個目だけ動くことを確認。②でorderを99にすると1番目が最後尾へ移動。',
+      check:['① align-selfで2個目だけ上/中央/下に動き、1・3は親のstretchのままなのを確認','② orderを0→99にし、DOM上1番目の箱が視覚的に最後尾へ移ることを観察','③ orderは見た目だけでTab順は変わらない点を意識する']
+    },
+    lab12: {
+      info:{type:'warn', html:'⚠ Flex Itemの<code>min-width</code>初期値は<strong>auto</strong>=コンテンツ最小サイズが下限。これがshrink:1でも縮まずはみ出す犯人。'},
+      usecase:{items:['長文を…で省略したい','本文カラムを枠内にスクロール収納','grid/flex内で子が親を突き破る不具合の修正'],
+        triggers:['「flexなのに縮まずはみ出す」→min-width:autoを疑う','text-overflow:ellipsisが効かない時']},
+      verify:{before:'min-width:auto → 長文が枠を突き破る', after:'min-width:0 → 縮んで「…」省略が効く'},
+      try:'autoと0を往復。autoでは長文が枠外へ溢れ、0にすると枠内に収まり末尾が「…」省略されるのを確認。',
+      check:['① min-width:autoで長文itemが420px枠を突き破ることを確認','② min-width:0に切替えると枠内に収まり末尾が…省略になることを確認','③ shrink:1だけでは不十分でmin-width:0の併用が必要と理解する']
+    },
+    lab13: {
+      info:{type:'info', html:'📘 1方向に流す→Flex／縦横を同時に格子で揃える→Grid。Gridのセル内をFlexで整える入れ子が実務の王道。'},
+      usecase:{items:['ナビ/ツールバー/タグ群→Flex','ページ全体の骨格/カード格子/表組み→Grid','Gridセルの中の要素整列→Flex(入れ子)'],
+        triggers:['「1軸で十分」→Flex','「行も列も揃えたい」→Grid']},
+      try:'比較表と2つのコード例を読み、手元のUIが「1軸か2軸か」で振り分ける判断を練習する。',
+      check:['① 比較表でFlex(1次元)とGrid(2次元)の得意領域の違いを確認','② 自分が今作っているUIを1軸/2軸で分類し、どちらを使うか言語化する']
+    }
+  };
+
+  /* ---- 注入用ヘルパ ---- */
+  function infoHTML(m){ return m && m.info ? `<div class="info-box ${m.info.type||'info'}">${m.info.html}</div>` : ''; }
+  function usecaseHTML(m){ if(!m||!m.usecase) return '';
+    const items=(m.usecase.items||[]).map(s=>`<li>${s}</li>`).join('');
+    const trig=(m.usecase.triggers||[]).map(s=>`<li>${s}</li>`).join('');
+    return `<div class="usecase-box"><div class="usecase-title">💡 利用シーン</div>
+      <ul class="usecase-list">${items}</ul>
+      ${trig?`<div class="usecase-trigger"><strong>こう見えたら使う候補:</strong><ul>${trig}</ul></div>`:''}</div>`; }
+  function verifyHTML(m){ if(!m||!m.verify) return '';
+    const {before,after}=m.verify;
+    return `<div class="verify">
+      <div class="verify-col verify-before"><div class="verify-label">Before ▶︎ 実行前</div>${before||''}</div>
+      <div class="verify-col verify-after"><div class="verify-label">After ▶︎ 実行後</div>${after||''}</div></div>`; }
+  function tryHTML(m){
+    const tip = m && m.try ? `<div class="try-tip"><strong>💡 このラボのコツ:</strong> ${m.try}</div>` : '';
+    return `<div class="try-box"><div class="try-title">💻 試し方（このページ内で完結）</div>
+      <ol>
+        <li>上の<strong>コントロールのボタン</strong>を順に押して、デモ枠の箱がどう動くか観察する</li>
+        <li><strong>現在: …</strong> の状態表示で、今どのCSS値が適用中かを確認する</li>
+        <li>コード例の <strong>Copy</strong> ボタンで取得し、自分の<code>試行.html</code>に貼って手元でも再現する</li>
+        <li>下の「🔍 ブラウザ実機チェック」を順にこなす</li>
+      </ol>${tip}</div>`; }
+  function checkHTML(m){ if(!m||!m.check||!m.check.length) return '';
+    return `<div class="check-steps"><div class="check-steps-title">🔍 ブラウザ実機チェック</div>
+      <ol>${m.check.map(s=>`<li>${s}</li>`).join('')}</ol></div>`; }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    /* (1) info → usecase → verify → try → check を各ラボに注入 */
+    document.querySelectorAll('.lab').forEach(lab => {
+      const meta = LAB_META[lab.id]; const body = lab.querySelector('.lab-body');
+      if (!body || !meta) return;
+      const frag = document.createElement('div');
+      frag.innerHTML = infoHTML(meta) + usecaseHTML(meta) + verifyHTML(meta) + tryHTML(meta) + checkHTML(meta);
+      while (frag.firstChild) body.appendChild(frag.firstChild);
+    });
+
+    /* (2) サイドバー active ハイライト */
+    const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+    const map = new Map();
+    links.forEach(a => { const el = document.getElementById(a.getAttribute('href').slice(1)); if (el) map.set(el, a); });
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting) { const l = map.get(e.target);
+        if (l) { links.forEach(n=>n.classList.remove('active')); l.classList.add('active'); } }
+    }), { rootMargin:'-30% 0px -60% 0px' });
+    document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+    /* (3) code-block に header + Copy を自動付与 */
+    document.querySelectorAll('.code-block').forEach((cb, i) => {
+      if (cb.querySelector('.code-block-header')) return;
+      const header = document.createElement('div');
+      header.className = 'code-block-header';
+      header.innerHTML = `<span>CSS #${i+1}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+      cb.insertBefore(header, cb.firstChild);
+    });
+  });
+
+  /* ---- Flex playground: data-prop / data-scenario ---- */
+  const SCENARIOS = {
+    'grow-equal': {box:'lab8box', items:['1 1 0','1 1 0','1 1 0'], note:'flex:1 1 0 ×3 → 内容を無視した完全な3等分'},
+    'grow-112':   {box:'lab8box', items:['1 1 0','1 1 0','2 1 0'], note:'grow 1:1:2 → 3個目だけ約2倍幅'},
+    'grow-auto':  {box:'lab8box', items:['1 1 auto','1 1 auto','1 1 auto'], note:'flex:auto → 内容の長い3個目が広く始まり余白を分配'},
+    'grow-none':  {box:'lab8box', items:['0 0 auto','0 0 auto','0 0 auto'], note:'flex:none → 内容幅で固定、余白は右端に残る'},
+    'shrink-weighted':{box:'lab9box', items:['1 1 100px','1 1 200px','1 1 300px'], note:'shrink全=1 → basis加重で大きい箱(300)ほど多く縮む'},
+    'shrink-mid-lock':{box:'lab9box', items:['1 1 100px','0 1 200px','1 1 300px'], note:'真ん中 shrink:0 → 200pxを死守し、両端が多く縮む'},
+    'shrink-none-all':{box:'lab9box', items:['0 0 100px','0 0 200px','0 0 300px'], note:'全 shrink:0 → 誰も縮まず合計600pxが溢れる(枠にスクロール)'},
+    'sh-initial':{box:'lab10box', items:['0 1 auto','0 1 auto','0 1 auto'], note:'flex:initial(0 1 auto) = 既定。内容サイズで並ぶ'},
+    'sh-1':      {box:'lab10box', items:['1 1 0','1 1 0','1 1 0'], note:'flex:1(1 1 0) = 内容無視の完全等分'},
+    'sh-auto':   {box:'lab10box', items:['1 1 auto','1 1 auto','1 1 auto'], note:'flex:auto(1 1 auto) = 内容差を残して余白を山分け'},
+    'sh-none':   {box:'lab10box', items:['0 0 auto','0 0 auto','0 0 auto'], note:'flex:none(0 0 auto) = 内容幅で固定'}
+  };
+
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('.fxbtn'); if (!b) return;
+
+    if (b.dataset.scenario) {
+      const s = SCENARIOS[b.dataset.scenario]; if (!s) return;
+      const box = document.getElementById(s.box); const kids = [...box.children];
+      s.items.forEach((f,i)=>{ if (kids[i]) kids[i].style.flex = f; });
+      const st = document.getElementById(s.box+'-state'); if (st) st.textContent = '現在: ' + s.note;
+      b.parentElement.querySelectorAll('.fxbtn').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      return;
+    }
+
+    const id = b.dataset.fx, prop = b.dataset.prop, val = b.dataset.val;
+    if (!id || !prop) return;
+    const target = document.getElementById(id);
+    if (!target) return;
+    target.style[prop] = val;
+    b.parentElement.querySelectorAll(`.fxbtn[data-fx="${id}"][data-prop="${prop}"]`).forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    const st = document.getElementById(id+'-state');
+    if (st) st.textContent = `現在: ${cssName[prop]||prop}: ${val}`;
+  });
+</script>
+</body>
+</html>

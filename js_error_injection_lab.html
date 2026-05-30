@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JavaScript Error & 値注入（制御の反転）実機Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+*{ margin:0; padding:0; box-sizing:border-box; }
+html{ scroll-behavior:smooth; }
+body{ font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+/* Sidebar */
+#sidebar{ position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar{ width:4px; }
+#sidebar::-webkit-scrollbar-thumb{ background:var(--border); border-radius:2px; }
+#sidebar .nav-title{ font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span{ color:var(--text-dim); }
+#sidebar .nav-section{ padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item{ display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover{ background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active{ border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num{ font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+/* Hero */
+.hero{ padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before{ content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%); pointer-events:none; }
+.hero h1{ font-size:2.1rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle{ color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+/* TOC */
+.toc{ max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2{ font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item{ display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover{ border-color:var(--accent); transform:translateY(-1px); }
+.toc-num{ font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+/* Container & Lab cards */
+.container{ max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab{ margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header{ display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num{ font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; flex:none; }
+.lab-header h3{ font-size:1.12rem; font-weight:600; }
+.lab-tag{ margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; white-space:nowrap; }
+.tag-basic{ color:var(--accent); border-color:var(--accent); }
+.tag-intermediate{ color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced{ color:var(--accent3); border-color:var(--accent3); }
+.lab-body{ padding:24px; }
+.lab-desc{ font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code, .lab-desc b{ font-family:var(--mono); }
+.lab-desc code{ background:var(--code-bg); padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+/* Code block */
+.code-block{ position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre{ padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header{ display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn{ background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover{ border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied{ border-color:var(--success); color:var(--success); }
+.cm{ color:#6a737d; } .kw{ color:#d73a49; } .str{ color:#032f62; } .num{ color:#b08800; } .fn{ color:#6f42c1; }
+
+/* Run area (JS実行 + 出力コンソール) */
+.run-area{ margin:12px 0 4px; }
+.run-btn{ font-family:var(--mono); font-size:.82rem; padding:7px 18px; border-radius:6px;
+  border:1px solid var(--accent2); background:var(--accent2); color:#fff; cursor:pointer; transition:opacity .15s; }
+.run-btn:hover{ opacity:.85; }
+.js-output{ margin-top:10px; background:#0d1117; color:#c9d1d9; border:1px solid var(--border);
+  border-radius:7px; padding:12px 14px; font-family:var(--mono); font-size:.8rem; line-height:1.6;
+  white-space:pre-wrap; min-height:2.4em; overflow-x:auto; }
+.js-output:empty::before{ content:'▶ 実行 を押すと、ここに出力が表示されます'; color:#6e7681; }
+
+/* info-box */
+.info-box{ border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; }
+.info-box.ok{ border-color:var(--success); background:rgba(34,134,58,.08); color:#154f1e; }
+.info-box.info{ border-color:var(--accent); background:rgba(0,92,197,.08); color:#003d8f; }
+.info-box.warn{ border-color:var(--accent4); background:rgba(176,136,0,.08); color:#7a5c00; }
+.info-box.err{ border-color:var(--error); background:rgba(203,36,49,.08); color:#9a1320; }
+.info-box code{ font-family:var(--mono); background:rgba(0,0,0,.06); padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+/* check-steps */
+.check-steps{ background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title{ font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4); margin-bottom:6px; }
+.check-steps ol{ margin-left:20px; margin-top:2px; }
+.check-steps li{ margin-bottom:3px; }
+.check-steps code{ font-family:var(--mono); background:rgba(0,0,0,.06); padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+/* compare-table */
+.compare-table{ width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border); border-radius:7px; overflow:hidden; }
+.compare-table th{ background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent); letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td{ padding:8px 12px; border-bottom:1px solid var(--border); color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td{ border-bottom:none; }
+.compare-table td:first-child{ font-family:var(--mono); color:var(--accent2); }
+.compare-table .yes{ color:var(--success); } .compare-table .no{ color:var(--error); }
+
+/* beginner-box */
+.beginner-box{ background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title{ font-family:var(--mono); font-size:.7rem; letter-spacing:.1em; color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art{ font-family:var(--mono); font-size:.75rem; line-height:1.45;
+  background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px; margin-top:8px; color:var(--text); overflow-x:auto; }
+
+/* usecase-box */
+.usecase-box{ background:rgba(0,92,197,.05); border:1px solid rgba(0,92,197,.22);
+  border-left:3px solid var(--accent); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#003d8f; }
+.usecase-title{ font-family:var(--mono); font-size:.7rem; letter-spacing:.1em; color:var(--accent); font-weight:700; margin-bottom:6px; }
+.usecase-list{ margin-left:20px; }
+.usecase-list li{ margin-bottom:4px; }
+
+/* Responsive */
+@media (max-width:900px){
+  body{ padding-left:0; }
+  #sidebar{ position:static; width:100%; height:auto; border-right:none; border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item{ padding:6px 14px; font-size:.78rem; }
+  .hero h1{ font-size:1.5rem; }
+  .toc-grid{ grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// JS Error &amp; 値注入 Lab</div>
+  <div class="nav-section">Error 基礎</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>なぜErrorが要るか</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>Errorの構造</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>ビルトイン7+1型</a>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>new有無とカスタム</a>
+  <div class="nav-section">Error 発展</div>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>cause連鎖</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>AggregateError</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>防御catchとfinally</a>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>stackはnew時点</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>JSON.stringify問題</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>realmとisError</a>
+  <div class="nav-section">制御の反転（値注入）</div>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>catchの正体</a>
+  <a class="nav-item" href="#lab11"><span class="nav-num">11</span>コールバック注入</a>
+  <a class="nav-item" href="#lab12"><span class="nav-num">12</span>setterの注入</a>
+  <a class="nav-item" href="#lab13"><span class="nav-num">13</span>generator双方向</a>
+  <a class="nav-item" href="#lab14"><span class="nav-num">14</span>new.target魔法束縛</a>
+  <a class="nav-item" href="#lab15"><span class="nav-num">15</span>Proxyトラップ</a>
+  <a class="nav-item" href="#lab16"><span class="nav-num">16</span>generator初期値</a>
+</nav>
+
+<div class="hero">
+  <h1>JavaScript Error &amp; 値注入（制御の反転）実機Lab</h1>
+  <p class="subtitle">「なぜ」中心 / 各ラボに ▶実行 ボタンと出力コンソール内蔵 / DevTools不要で挙動を確認</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>なぜErrorが必要か（文字列thropとの差）</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>Errorの構造（nameはprototype・他は非列挙）</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>ビルトイン7+1型とinstanceof分類</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>new有無とカスタムError</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>error.cause（ES2022エラー連鎖）</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>AggregateError（Promise.any）</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>防御的catch / finally / optional binding</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>stackはnewの瞬間にキャプチャ</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>JSON.stringify(error)が{}になる</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>realm跨ぎとError.isError</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">10</span>catch(e)の正体＝制御の反転</a>
+    <a class="toc-item" href="#lab11"><span class="toc-num">11</span>コールバック注入（mapの反復）</a>
+    <a class="toc-item" href="#lab12"><span class="toc-num">12</span>setter＝代入が呼び出しに化ける</a>
+    <a class="toc-item" href="#lab13"><span class="toc-num">13</span>generator yield 双方向注入</a>
+    <a class="toc-item" href="#lab14"><span class="toc-num">14</span>new.target / this / arguments</a>
+    <a class="toc-item" href="#lab15"><span class="toc-num">15</span>Proxy get トラップ</a>
+    <a class="toc-item" href="#lab16"><span class="toc-num">16</span>generatorの初期値とプライミング</a>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ===== Lab 0 ===== -->
+  <div class="lab" id="lab0">
+    <div class="lab-header"><div class="lab-num">00</div><h3>なぜErrorが必要か（文字列throwとの差）</h3><span class="lab-tag tag-basic">基本</span></div>
+    <div class="lab-body">
+      <p class="lab-desc"><code>throw</code> は何でも投げられるが、ただの文字列には <b>stack（発生地点）</b>・<b>instanceofによる分類</b>・<b>構造化されたmessage</b> が無い。Errorはこの3点を備えた「エラーを値として扱う器」。</p>
+      <div class="code-block"><pre><span class="cm">// ① 文字列を投げると…</span>
+try { throw "失敗しました"; }
+catch (e) {
+  console.log(typeof e);   <span class="cm">// "string"</span>
+  console.log(e.stack);    <span class="cm">// undefined ← スタックが無い</span>
+}
+<span class="cm">// ② Errorを投げると…</span>
+try { throw new Error("失敗しました"); }
+catch (e) {
+  console.log(e instanceof Error);    <span class="cm">// true ← 分類できる</span>
+  console.log(e.message);             <span class="cm">// "失敗しました"</span>
+  console.log(e.stack.split("\n")[0]); <span class="cm">// "Error: 失敗しました"</span>
+}</pre></div>
+      <div class="run-area"><button class="run-btn" onclick="runLab0()">▶ 実行</button><pre class="js-output" id="out-lab0"></pre></div>
+    </div>
+  </div>
+
+  <!-- ===== Lab 1 ===== -->
+  <div class="lab" id="lab1">
+    <div class="lab-header"><div class="lab-num">01</div><h3>Errorの構造（nameはprototype・他は非列挙）</h3><span class="lab-tag tag-basic">基本</span></div>
+    <div class="lab-body">
+      <p class="lab-desc"><code>name</code> はインスタンスではなく <code>Error.prototype</code> 上にある。<code>message</code> / <code>stack</code> / <code>cause</code> は <b>own だが enumerable:false</b>。この「非列挙」がLab08のJSON問題の根本原因。</p>
+      <table class="compare-table">
+        <tr><th>プロパティ</th><th>所在</th><th>列挙可能</th></tr>
+        <tr><td>name</td><td>Error.prototype</td><td class="no">—（継承）</td></tr>
+        <tr><td>message</td><td>インスタンス(own)</td><td class="no">false</td></tr>
+        <tr><td>stack</td><td>インスタンス(own/V8)</td><td class="no">false</td></tr>
+        <tr><td>cause</td><td>インスタンス(own)</td><td class="no">false</td></tr>
+      </table>
+      <div class="code-block"><pre>const e = new Error("boom", { cause: "root" });
+console.log(e.hasOwnProperty("name"));  <span class="cm">// false ← 自分は持たない</span>
+console.log(e.name);                    <span class="cm">// "Error" ← prototype経由</span>
+console.log(Object.getOwnPropertyDescriptor(e,"message").enumerable); <span class="cm">// false</span>
+console.log(e.cause);                   <span class="cm">// "root"</span>
+console.log(Object.keys(e));            <span class="cm">// [] ← 全部非列挙</span></pre></div>
+      <div class="run-area"><button class="run-btn" onclick="runLab1()">▶ 実行</button><pre class="js-output" id="out-lab1"></pre></div>
+    </div>
+  </div>
+
+  <!-- ===== Lab 2 ===== -->
+  <div class="lab" id="lab2">
+    <div class="lab-header"><div class="lab-num">02</div><h3>ビルトイン7+1型とinstanceof分類</h3><span class="lab-tag tag-basic">基本</span></div>
+    <div class="lab-body">
+      <p class="lab-desc">なぜ型を分けるか＝<b>catch側で意味的に分岐</b>するため。全型は <code>Error</code> を継承するので <code>instanceof Error</code> は常に true。</p>
+      <table class="compare-table">
+        <tr><th>型</th><th>いつ発生するか（例）</th></tr>
+        <tr><td>TypeError</td><td>null.foo / 非関数の呼び出し</td></tr>
+        <tr><td>ReferenceError</td><td>未宣言変数の参照</td></tr>
+        <tr><td>RangeError</td><td>new Array(-1) / スタック超過</td></tr>
+        <tr><td>SyntaxError</td><td>JSON.parse("{") など</td></tr>
+        <tr><td>URIError</td><td>decodeURIComponent("%")</td></tr>
+        <tr><td>EvalError</td><td>事実上未使用（後方互換で残存）</td></tr>
+        <tr><td>AggregateError</td><td>複数エラーの束（Lab05）</td></tr>
+      </table>
+      <div class="code-block"><pre>const cases = [
+  () =&gt; null.foo,                 <span class="cm">// TypeError</span>
+  () =&gt; notDefined,               <span class="cm">// ReferenceError</span>
+  () =&gt; new Array(-1),            <span class="cm">// RangeError</span>
+  () =&gt; decodeURIComponent("%"),  <span class="cm">// URIError</span>
+  () =&gt; JSON.parse("{")           <span class="cm">// SyntaxError</span>
+];
+cases.forEach(fn =&gt; {
+  try { fn(); }
+  catch (e) { console.log(e.constructor.name, "/ Error?", e instanceof Error); }
+});</pre></div>
+      <div class="run-area"><button class="run-btn" onclick="runLab2()">▶ 実行</button><pre class="js-output" id="out-lab2"></pre></div>
+    </div>
+  </div>
+
+  <!-- ===== Lab 3 ===== -->
+  <div class="lab" id="lab3">
+    <div class="lab-header"><div class="lab-num">03</div><h3>new有無とカスタムError</h3><span class="lab-tag tag-basic">基本</span></div>
+    <div class="lab-body">
+      <p class="lab-desc"><code>Error("x")</code> は <code>new</code> 無しでも同じ（仕様で吸収）。だがサブクラスは <code>new</code> 必須。カスタムでは <b>super()</b>（messageとstack生成）と <b>this.name上書き</b>（既定は"Error"のまま）が要。</p>
+      <div class="code-block"><pre>console.log(Error("a").message === new Error("a").message); <span class="cm">// true</span>
+
+class ValidationError extends Error {
+  constructor(message, options) {
+    super(message, options);        <span class="cm">// ① messageセット+stack生成</span>
+    this.name = "ValidationError";  <span class="cm">// ② 名札を上書き</span>
+  }
+}
+const v = new ValidationError("入力不正");
+console.log(v instanceof ValidationError); <span class="cm">// true</span>
+console.log(v instanceof Error);           <span class="cm">// true</span>
+console.log(v.name);                       <span class="cm">// "ValidationError"</span>
+console.log(String(v));                    <span class="cm">// "ValidationError: 入力不正"</span></pre></div>
+      <div class="run-area"><button class="run-btn" onclick="runLab3()">▶ 実行</button><pre class="js-output" id="out-lab3"></pre></div>
+    </div>
+  </div>
+
+  <!-- ===== Lab 4 ===== -->
+  <div class="lab" id="lab4">
+    <div class="lab-header"><div class="lab-num">04</div><h3>error.cause（ES2022エラー連鎖）</h3><span class="lab-tag tag-intermediate">発展</span></div>
+    <div class="lab-body">
+      <p class="lab-desc">高レベルなエラーで包んでも <code>{ cause: e }</code> で根本原因を失わない。野良の <code>err.original=e</code> 慣習を言語標準に統一したもの。</p>
+      <div class="code-block"><pre>function low() { throw new Error("DB接続失敗"); }
+
+try {
+  try { low(); }
+  catch (e) { throw new Error("ユーザー登録失敗", { cause: e }); }
+} catch (top) {
+  console.log(top.message);        <span class="cm">// "ユーザー登録失敗"</span>
+  console.log(top.cause.message);  <span class="cm">// "DB接続失敗" ← 辿れる</span>
+}</pre></div>
+      <div class="run-area"><button class="run-btn" onclick="runLab4()">▶ 実行</button><pre class="js-output" id="out-lab4"></pre></div>
+    </div>
+  </div>
+
+  <!-- ===== Lab 5 ===== -->
+  <div class="lab" id="lab5">
+    <div class="lab-header"><div class="lab-num">05</div><h3>AggregateError（Promise.any）</h3><span class="lab-tag tag-intermediate">発展</span></div>
+    <div class="lab-body">
+      <p class="lab-desc"><code>Promise.any</code> は全部失敗したとき複数の理由を <b><code>.errors</code> 配列</b>で束ねる。単一Errorでは情報が落ちるから専用型が要る。<b>非同期</b>なので出力は一瞬遅れて表示される。</p>
+      <div class="code-block"><pre>Promise.any([
+  Promise.reject(new Error("A失敗")),
+  Promise.reject(new Error("B失敗"))
+]).catch(err =&gt; {
+  console.log(err instanceof AggregateError);   <span class="cm">// true</span>
+  console.log(err.errors.map(x =&gt; x.message));   <span class="cm">// ["A失敗","B失敗"]</span>
+});</pre></div>
+      <div class="run-area"><button class="run-btn" onclick="runLab5()">▶ 実行</button><pre class="js-output" id="out-lab5"></pre></div>
+    </div>
+  </div>
+
+  <!-- ===== Lab 6 ===== -->
+  <div class="lab" id="lab6">
+    <div class="lab-header"><div class="lab-num">06</div><h3>防御的catch / finally / optional binding</h3><span class="lab-tag tag-intermediate">発展</span></div>
+    <div class="lab-body">
+      <p class="lab-desc">catchには何が来るか保証されない（文字列も来る）ので <code>instanceof Error</code> で防御。<code>finally</code> は return/throwを跨いでも必ず走る。ES2019で <code>catch{}</code>（束縛省略）も可。</p>
+      <div class="code-block"><pre>function safe(fn) {
+  try { fn(); }
+  catch (e) {
+    if (e instanceof Error) console.log("Error:", e.message);
+    else console.log("非Error:", typeof e, JSON.stringify(e));
+  }
+  finally { console.log("finally は必ず走る"); }
+}
+safe(() =&gt; { throw 42; });                  <span class="cm">// 非Error: number 42</span>
+safe(() =&gt; { throw new Error("ちゃんとError"); });</pre></div>
+      <div class="run-area"><button class="run-btn" onclick="runLab6()">▶ 実行</button><pre class="js-output" id="out-lab6"></pre></div>
+    </div>
+  </div>
+
+  <!-- ===== Lab 7 ===== -->
+  <div class="lab" id="lab7">
+    <div class="lab-header"><div class="lab-num">07</div><h3>stackはnewの瞬間にキャプチャ</h3><span class="lab-tag tag-intermediate">発展</span></div>
+    <div class="lab-body">
+      <p class="lab-desc"><code>stack</code> は throw時ではなく <b>new した瞬間</b>のコールスタックを固定する。だからErrorは投げるその場で生成するのが鉄則（使い回すと発生地点とズレる）。</p>
+      <div class="code-block"><pre>function makeErr() { return new Error("作成時点でキャプチャ"); }
+const e = makeErr();
+<span class="cm">// stackの先頭数行を見る → makeErr が含まれる</span>
+console.log(e.stack.split("\n").slice(0, 3).join("\n"));</pre></div>
+      <div class="run-area"><button class="run-btn" onclick="runLab7()">▶ 実行</button><pre class="js-output" id="out-lab7"></pre></div>
+    </div>
+  </div>
+
+  <!-- ===== Lab 8 ===== -->
+  <div class="lab" id="lab8">
+    <div class="lab-header"><div class="lab-num">08</div><h3>JSON.stringify(error)が{}になる</h3><span class="lab-tag tag-intermediate">発展</span></div>
+    <div class="lab-body">
+      <p class="lab-desc">既定の <code>JSON.stringify</code> は <b>列挙可能なownプロパティ</b>しか拾わない。message/stackは非列挙なので結果は <code>{}</code>。許可リスト（replacer配列）を渡すと <code>[[Get]]</code> 経由で取得され非列挙でも入る。</p>
+      <div class="code-block"><pre>const e = new Error("boom");
+console.log(JSON.stringify(e));                       <span class="cm">// {} ← 空！</span>
+console.log(JSON.stringify(e, ["name", "message"]));  <span class="cm">// {"name":"Error","message":"boom"}</span>
+console.log(JSON.stringify({ name: e.name, message: e.message })); <span class="cm">// 明示変換</span></pre></div>
+      <div class="run-area"><button class="run-btn" onclick="runLab8()">▶ 実行</button><pre class="js-output" id="out-lab8"></pre></div>
+    </div>
+  </div>
+
+  <!-- ===== Lab 9 ===== -->
+  <div class="lab" id="lab9">
+    <div class="lab-header"><div class="lab-num">09</div><h3>realm跨ぎとError.isError</h3><span class="lab-tag tag-intermediate">発展</span></div>
+    <div class="lab-body">
+      <p class="lab-desc">iframe等の<b>別realm</b>のErrorは <code>instanceof Error</code> が false になりうる（Errorコンストラクタが別物）。内部スロットを見る <code>Object.prototype.toString</code> や近年追加の <code>Error.isError</code> が堅牢。</p>
+      <div class="code-block"><pre>const e = new Error("x");
+console.log(e instanceof Error);                     <span class="cm">// true（同一realm）</span>
+console.log(Object.prototype.toString.call(e));      <span class="cm">// "[object Error]"</span>
+console.log("Error.isError:",
+  typeof Error.isError === "function" ? Error.isError(e) : "(この環境は未対応)");</pre></div>
+      <div class="run-area"><button class="run-btn" onclick="runLab9()">▶ 実行</button><pre class="js-output" id="out-lab9"></pre></div>
+    </div>
+  </div>
+
+  <!-- ===== Lab 10 ===== -->
+  <div class="lab" id="lab10">
+    <div class="lab-header"><div class="lab-num">10</div><h3>catch(e)の正体＝制御の反転</h3><span class="lab-tag tag-advanced">制御の反転</span></div>
+    <div class="lab-body">
+      <p class="lab-desc"><code>catch(e)</code> の <code>e</code> は「自分が名前だけ決め、値はランタイムが注入する束縛点」。throwすると<b>スタックが巻き戻り</b>、throw後の行は実行されずcatchへ制御が飛ぶ。</p>
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 制御とデータの流れ</div>
+        <pre class="ascii-art">a() ─呼ぶ→ b() ─throw @Error→ ┐
+                              │ throw後の行は実行されない
+                              ▼ スタック巻き戻し(unwinding)
+              try が捕捉 → catch(e) に  e = @Error  を「注入」
+                              ▼
+              catchの後の通常処理へ復帰</pre>
+      </div>
+      <div class="code-block"><pre>function a() { console.log("a: 入る"); b(); console.log("a: ここは実行されない"); }
+function b() { console.log("b: 入る"); throw new Error("bで投げた"); console.log("b: ここは実行されない"); }
+
+try { a(); }
+catch (e) { console.log("catch: 注入された e =", e.message); }
+console.log("catchの後: 処理は継続する");</pre></div>
+      <div class="run-area"><button class="run-btn" onclick="runLab10()">▶ 実行</button><pre class="js-output" id="out-lab10"></pre></div>
+    </div>
+  </div>
+
+  <!-- ===== Lab 11 ===== -->
+  <div class="lab" id="lab11">
+    <div class="lab-header"><div class="lab-num">11</div><h3>コールバック注入（mapの反復）</h3><span class="lab-tag tag-advanced">制御の反転</span></div>
+    <div class="lab-body">
+      <p class="lab-desc">catchと同じく「名前は自分・値は呼ぶ側」。違いは <b>反復ごとに何度も</b> <code>(el, idx, arr)</code> が注入される点。DOMの <code>addEventListener("click", e =&gt; …)</code> のEvent注入も同型。</p>
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 反復ごとのデータ推移</div>
+        <pre class="ascii-art">map が cb(要素, 添字, 元配列) を反復注入し、戻り値を新配列へ積む
+ 反復1: el=10 idx=0 → 戻り10 → [10]
+ 反復2: el=20 idx=1 → 戻り21 → [10,21]
+ 反復3: el=30 idx=2 → 戻り32 → [10,21,32]</pre>
+      </div>
+      <div class="code-block"><pre>const out = [10, 20, 30].map((el, idx, arr) =&gt; {
+  console.log(`idx=${idx}: el=${el}, arr=${JSON.stringify(arr)} → 戻り値=${el + idx}`);
+  return el + idx;
+});
+console.log("結果:", JSON.stringify(out)); <span class="cm">// [10,21,32]</span></pre></div>
+      <div class="run-area"><button class="run-btn" onclick="runLab11()">▶ 実行</button><pre class="js-output" id="out-lab11"></pre></div>
+    </div>
+  </div>
+
+  <!-- ===== Lab 12 ===== -->
+  <div class="lab" id="lab12">
+    <div class="lab-header"><div class="lab-num">12</div><h3>setter＝代入が呼び出しに化ける</h3><span class="lab-tag tag-advanced">制御の反転</span></div>
+    <div class="lab-body">
+      <p class="lab-desc"><code>box.value = 42</code> は内部で <code>[[Set]]</code> → setter関数を <code>this=box, v=42</code> で呼ぶ。関数呼び出しの形をしていないのに、<b>代入が引数注入</b>になっている。</p>
+      <div class="code-block"><pre>const box = {
+  _v: 0,
+  set value(v) { console.log("setter発火 v =", v); this._v = v; }
+};
+console.log("代入前 _v =", box._v);  <span class="cm">// 0</span>
+box.value = 42;                       <span class="cm">// ← この代入がsetterを呼ぶ</span>
+console.log("代入後 _v =", box._v);  <span class="cm">// 42</span></pre></div>
+      <div class="run-area"><button class="run-btn" onclick="runLab12()">▶ 実行</button><pre class="js-output" id="out-lab12"></pre></div>
+    </div>
+  </div>
+
+  <!-- ===== Lab 13 ===== -->
+  <div class="lab" id="lab13">
+    <div class="lab-header"><div class="lab-num">13</div><h3>generator yield 双方向注入</h3><span class="lab-tag tag-advanced">制御の反転</span></div>
+    <div class="lab-body">
+      <p class="lab-desc"><code>const a = yield "first"</code> の <code>yield</code> 式は「出す」と「受け取る」を別タイミングで担う。停止地点に <b>次の <code>.next(x)</code> の <code>x</code> が注入</b>される（＝<code>await</code> と同型）。</p>
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 双方向のデータ推移</div>
+        <pre class="ascii-art">it.next()    ──"first"──▶  外へ出力（ここで一時停止）
+it.next(10)  ◀────10────  停止中のyield式の値=10 → a=10
+it.next(20)  ◀────20────  停止中のyield式の値=20 → b=20
+※ 最初のnext()の引数は「入れる先の停止yield」が無いので捨てられる</pre>
+      </div>
+      <div class="code-block"><pre>function* g() {
+  console.log("本体: start");
+  const a = yield "first";
+  console.log("本体: a =", a);
+  const b = yield "second";
+  console.log("本体: b =", b);
+  return "done";
+}
+const it = g();
+console.log("next()   →", JSON.stringify(it.next()));    <span class="cm">// {value:"first",done:false}</span>
+console.log("next(10) →", JSON.stringify(it.next(10)));  <span class="cm">// {value:"second",done:false}</span>
+console.log("next(20) →", JSON.stringify(it.next(20)));  <span class="cm">// {value:"done",done:true}</span></pre></div>
+      <div class="run-area"><button class="run-btn" onclick="runLab13()">▶ 実行</button><pre class="js-output" id="out-lab13"></pre></div>
+    </div>
+  </div>
+
+  <!-- ===== Lab 14 ===== -->
+  <div class="lab" id="lab14">
+    <div class="lab-header"><div class="lab-num">14</div><h3>new.target / this / arguments（魔法束縛）</h3><span class="lab-tag tag-advanced">制御の反転</span></div>
+    <div class="lab-body">
+      <p class="lab-desc">命名すらせず、関数に入った瞬間に固定名で存在する束縛。<code>new.target</code> は <code>new</code> で呼ばれたか（コンストラクタ or undefined）、<code>arguments</code> は実引数の集合をランタイムが注入する。</p>
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 呼び方が値を決める</div>
+        <pre class="ascii-art">F(1,2)     → new.target = undefined,  arguments = [1,2]
+new F(3,4) → new.target = F,          arguments = [3,4]
+            （呼び出し地点がnew.target/thisを注入する＝制御の反転）</pre>
+      </div>
+      <div class="code-block"><pre>function F() {
+  console.log("new.target:", new.target ? new.target.name : "undefined");
+  console.log("arguments :", JSON.stringify(Array.from(arguments)));
+}
+F(1, 2);       <span class="cm">// new.target undefined</span>
+new F(3, 4);   <span class="cm">// new.target F</span></pre></div>
+      <div class="run-area"><button class="run-btn" onclick="runLab14()">▶ 実行</button><pre class="js-output" id="out-lab14"></pre></div>
+    </div>
+  </div>
+
+  <!-- ===== Lab 15 ===== -->
+  <div class="lab" id="lab15">
+    <div class="lab-header"><div class="lab-num">15</div><h3>Proxy get トラップ</h3><span class="lab-tag tag-advanced">制御の反転</span></div>
+    <div class="lab-body">
+      <p class="lab-desc"><code>p.name</code> という<b>ただのプロパティ読み取り</b>が、裏でエンジンにより <code>handler.get(target, prop, receiver)</code> 呼び出しに化け、3引数が注入される。<code>box.value=42</code>→setter と同じ構造。</p>
+      <div class="code-block"><pre>const target = { name: "Tom" };
+const p = new Proxy(target, {
+  get(t, prop, receiver) {
+    console.log(`getトラップ: prop=${String(prop)} ← エンジンが注入`);
+    return Reflect.get(t, prop, receiver);
+  }
+});
+console.log("p.name =", p.name);  <span class="cm">// トラップ発火 → "Tom"</span>
+console.log("p.age  =", p.age);   <span class="cm">// トラップ発火 → undefined</span></pre></div>
+      <div class="run-area"><button class="run-btn" onclick="runLab15()">▶ 実行</button><pre class="js-output" id="out-lab15"></pre></div>
+    </div>
+  </div>
+
+  <!-- ===== Lab 16 ===== -->
+  <div class="lab" id="lab16">
+    <div class="lab-header"><div class="lab-num">16</div><h3>generatorの初期値とプライミング</h3><span class="lab-tag tag-advanced">制御の反転</span></div>
+    <div class="lab-body">
+      <p class="lab-desc">Lab13の続き。最初の <code>.next()</code> の引数は「停止中のyieldが無い」ため捨てられる。<b>最初から使う値は普通の引数</b>で渡し、<b>1回目の<code>.next(v)</code>から注入したい</b>ときだけ「プライミング」で最初の<code>.next()</code>を内部消費する。</p>
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 プライミングが「ズレ」を吸収する</div>
+        <pre class="ascii-art">素のまま : next(A)=起動  next(B)→Aの位置  next(C)→Bの位置 …1つズレる
+           └─捨─┘
+priming  : [内部でnext()起動] next(A)→先頭yield  next(B)→2番目yield …ズレ解消
+            └─捨てる回を肩代わり─┘</pre>
+      </div>
+      <div class="code-block"><pre><span class="cm">// 方法A: 初期値は「普通の引数」で渡す（yieldを経由しない）</span>
+function* counter(start) {
+  let cur = start;
+  while (true) { const step = yield cur; cur += step ?? 1; }
+}
+const it = counter(100);
+it.next();   <span class="cm">// {value:100} ← start が即使える</span>
+it.next(5);  <span class="cm">// {value:105}</span>
+it.next(10); <span class="cm">// {value:115}</span></pre></div>
+      <div class="code-block"><pre><span class="cm">// 方法B: プライミング（1回目の next(v) から注入したいとき）</span>
+function prime(genFn) {
+  return (...args) =&gt; { const it = genFn(...args); it.next(); return it; };
+}
+function* echo() { while (true) { const r = yield; console.log("受取:", r); } }
+
+const it = prime(echo)();
+it.next("A");  <span class="cm">// 受取: A ← 1回目から使える！</span>
+it.next("B");  <span class="cm">// 受取: B</span></pre></div>
+      <div class="run-area"><button class="run-btn" onclick="runLab16()">▶ 実行</button><pre class="js-output" id="out-lab16"></pre></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ===== 出力ヘルパ（DevTools不要で各ラボ内に表示） ===== */
+function jfmt(a){ return (typeof a === "string") ? a : (a === undefined ? "undefined" : JSON.stringify(a)); }
+function jlog(id, ...args){ const o = document.getElementById(id); if(o) o.textContent += args.map(jfmt).join(" ") + "\n"; }
+function clearOut(id){ const o = document.getElementById(id); if(o) o.textContent = ""; }
+
+/* ===== Copy ボタン ===== */
+function copyCode(btn){
+  const block = btn.closest('.code-block') || btn.parentElement;
+  const pre = block.querySelector('pre'); if(!pre) return;
+  navigator.clipboard.writeText(pre.innerText).then(()=>{
+    btn.textContent='Copied!'; btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent='Copy'; btn.classList.remove('copied'); },1500);
+  });
+}
+
+/* ===== 各ラボの実行関数 ===== */
+function runLab0(){ const id='out-lab0'; clearOut(id);
+  jlog(id,"[① 文字列を throw]");
+  try{ throw "失敗しました"; }catch(e){ jlog(id,"typeof e =", typeof e); jlog(id,"e.stack =", e.stack); }
+  jlog(id,"[② Error を throw]");
+  try{ throw new Error("失敗しました"); }catch(e){
+    jlog(id,"e instanceof Error =", e instanceof Error);
+    jlog(id,"e.message =", e.message);
+    jlog(id,"e.stack 1行目 =", e.stack.split("\n")[0]);
+  }
+}
+function runLab1(){ const id='out-lab1'; clearOut(id);
+  const e = new Error("boom", { cause:"root" });
+  jlog(id,"e.hasOwnProperty('name') =", e.hasOwnProperty("name"));
+  jlog(id,"e.name =", e.name);
+  jlog(id,"message の enumerable =", Object.getOwnPropertyDescriptor(e,"message").enumerable);
+  jlog(id,"e.cause =", e.cause);
+  jlog(id,"Object.keys(e) =", Object.keys(e));
+}
+function runLab2(){ const id='out-lab2'; clearOut(id);
+  const cases = [ ()=>null.foo, ()=>notDefined, ()=>new Array(-1), ()=>decodeURIComponent("%"), ()=>JSON.parse("{") ];
+  cases.forEach(fn=>{ try{ fn(); }catch(e){ jlog(id, e.constructor.name, "/ Error? =", e instanceof Error); } });
+}
+function runLab3(){ const id='out-lab3'; clearOut(id);
+  jlog(id,"Error('a') と new Error('a') 同値 =", Error("a").message === new Error("a").message);
+  class ValidationError extends Error{ constructor(m,o){ super(m,o); this.name="ValidationError"; } }
+  const v = new ValidationError("入力不正");
+  jlog(id,"v instanceof ValidationError =", v instanceof ValidationError);
+  jlog(id,"v instanceof Error =", v instanceof Error);
+  jlog(id,"v.name =", v.name);
+  jlog(id,"String(v) =", String(v));
+}
+function runLab4(){ const id='out-lab4'; clearOut(id);
+  function low(){ throw new Error("DB接続失敗"); }
+  try{ try{ low(); }catch(e){ throw new Error("ユーザー登録失敗",{cause:e}); } }
+  catch(top){ jlog(id,"top.message =", top.message); jlog(id,"top.cause.message =", top.cause.message); }
+}
+function runLab5(){ const id='out-lab5'; clearOut(id); jlog(id,"(非同期: 結果待ち…)");
+  Promise.any([ Promise.reject(new Error("A失敗")), Promise.reject(new Error("B失敗")) ])
+    .catch(err=>{
+      clearOut(id);
+      jlog(id,"err instanceof AggregateError =", err instanceof AggregateError);
+      jlog(id,"err.errors のmessage一覧 =", err.errors.map(x=>x.message));
+    });
+}
+function runLab6(){ const id='out-lab6'; clearOut(id);
+  function safe(fn){ try{ fn(); }catch(e){ if(e instanceof Error) jlog(id,"Error:", e.message); else jlog(id,"非Error:", typeof e, JSON.stringify(e)); } finally{ jlog(id,"finally は必ず走る"); } }
+  jlog(id,"--- throw 42 ---"); safe(()=>{ throw 42; });
+  jlog(id,"--- throw new Error ---"); safe(()=>{ throw new Error("ちゃんとError"); });
+}
+function runLab7(){ const id='out-lab7'; clearOut(id);
+  function makeErr(){ return new Error("作成時点でキャプチャ"); }
+  const e = makeErr();
+  jlog(id, e.stack.split("\n").slice(0,3).join("\n"));
+  jlog(id,"↑ 1行目にmessage、続く行に makeErr が出る（new時点のスタック）");
+}
+function runLab8(){ const id='out-lab8'; clearOut(id);
+  const e = new Error("boom");
+  jlog(id,"既定           :", JSON.stringify(e));
+  jlog(id,"許可リスト渡し :", JSON.stringify(e, ["name","message"]));
+  jlog(id,"明示変換       :", JSON.stringify({ name:e.name, message:e.message }));
+}
+function runLab9(){ const id='out-lab9'; clearOut(id);
+  const e = new Error("x");
+  jlog(id,"e instanceof Error =", e instanceof Error);
+  jlog(id,"toString.call(e) =", Object.prototype.toString.call(e));
+  jlog(id,"Error.isError =", (typeof Error.isError === "function") ? Error.isError(e) : "(この環境は未対応)");
+}
+function runLab10(){ const id='out-lab10'; clearOut(id);
+  function a(){ jlog(id,"a: 入る"); b(); jlog(id,"a: ここは実行されない"); }
+  function b(){ jlog(id,"b: 入る"); throw new Error("bで投げた"); }
+  try{ a(); }catch(e){ jlog(id,"catch: 注入された e =", e.message); }
+  jlog(id,"catchの後: 処理は継続する");
+}
+function runLab11(){ const id='out-lab11'; clearOut(id);
+  const out = [10,20,30].map((el,idx,arr)=>{ jlog(id,`idx=${idx}: el=${el}, arr=${JSON.stringify(arr)} → 戻り値=${el+idx}`); return el+idx; });
+  jlog(id,"結果:", JSON.stringify(out));
+}
+function runLab12(){ const id='out-lab12'; clearOut(id);
+  const box = { _v:0, set value(v){ jlog(id,"setter発火 v =", v); this._v=v; } };
+  jlog(id,"代入前 _v =", box._v);
+  box.value = 42;
+  jlog(id,"代入後 _v =", box._v);
+}
+function runLab13(){ const id='out-lab13'; clearOut(id);
+  function* g(){ jlog(id,"本体: start"); const a=yield "first"; jlog(id,"本体: a =", a); const b=yield "second"; jlog(id,"本体: b =", b); return "done"; }
+  const it = g();
+  jlog(id,"next()   →", JSON.stringify(it.next()));
+  jlog(id,"next(10) →", JSON.stringify(it.next(10)));
+  jlog(id,"next(20) →", JSON.stringify(it.next(20)));
+}
+function runLab14(){ const id='out-lab14'; clearOut(id);
+  function F(){ jlog(id,"new.target:", new.target ? new.target.name : "undefined"); jlog(id,"arguments :", JSON.stringify(Array.from(arguments))); }
+  jlog(id,"--- F(1,2) ---"); F(1,2);
+  jlog(id,"--- new F(3,4) ---"); new F(3,4);
+}
+function runLab15(){ const id='out-lab15'; clearOut(id);
+  const target = { name:"Tom" };
+  const p = new Proxy(target, { get(t,prop,receiver){ jlog(id,`getトラップ: prop=${String(prop)} ← エンジンが注入`); return Reflect.get(t,prop,receiver); } });
+  jlog(id,"p.name =", p.name);
+  jlog(id,"p.age  =", p.age);
+}
+function runLab16(){ const id='out-lab16'; clearOut(id);
+  jlog(id,"[素のまま] 最初のnextは捨てられる");
+  function* echoRaw(){ while(true){ const r=yield; jlog(id,"  raw受取:", r); } }
+  const c = echoRaw(); c.next("X"); c.next("Y");
+  jlog(id,"");
+  jlog(id,"[方法A] 初期値は普通の引数で渡す");
+  function* counter(start){ let cur=start; while(true){ const step=yield cur; cur += step ?? 1; } }
+  const a = counter(100);
+  jlog(id,"  next()   →", JSON.stringify(a.next()));
+  jlog(id,"  next(5)  →", JSON.stringify(a.next(5)));
+  jlog(id,"  next(10) →", JSON.stringify(a.next(10)));
+  jlog(id,"");
+  jlog(id,"[方法B] プライミングで1回目から注入");
+  function prime(genFn){ return (...args)=>{ const it=genFn(...args); it.next(); return it; }; }
+  function* echo(){ while(true){ const r=yield; jlog(id,"  echo受取:", r); } }
+  const b = prime(echo)(); b.next("A"); b.next("B");
+}
+
+/* ===== LAB_META（info + check を自動注入） ===== */
+const LAB_META = {
+  lab0:{ info:{type:'info', html:'📘 <strong>なぜ</strong>: Errorは「stack・instanceof分類・message」の3点を持つ“エラーの器”。文字列throwはこの全てを欠く。'},
+    check:['① <code>▶実行</code> を押す','② ①の出力 <code>e.stack = undefined</code>（文字列はスタック無し）を確認','③ ②の出力 <code>instanceof Error = true</code> と1行目 <code>Error: 失敗しました</code> を確認'] },
+  lab1:{ info:{type:'warn', html:'⚠ <code>name</code> は own ではなく prototype 由来。<code>message/stack/cause</code> は own でも <code>enumerable:false</code>。'},
+    check:['① 実行して <code>hasOwnProperty(\'name\') = false</code> を確認','② <code>message の enumerable = false</code> を確認','③ <code>Object.keys(e) = []</code>（非列挙ゆえ空）を確認'] },
+  lab2:{ info:{type:'info', html:'📘 全ビルトインError型は <code>Error</code> を継承。<code>e.constructor.name</code> で具体型、<code>instanceof Error</code> で共通判定。'},
+    check:['① 実行し5種の型名（TypeError等）が順に出るか確認','② 全行で <code>Error? = true</code> になるか確認','③ どの操作がどの型を生むか表と突き合わせる'] },
+  lab3:{ info:{type:'ok', html:'✓ カスタムErrorの型: <code>super()</code>＝message/stack生成、<code>this.name</code>＝名札上書き。両方ともinstanceofは true。'},
+    check:['① <code>Error(\'a\')</code> と <code>new Error(\'a\')</code> が同値（true）を確認','② <code>v instanceof Error</code> も true（継承）を確認','③ <code>String(v)</code> が「ValidationError: 入力不正」になるか確認'],
+    usecase:['業務ルール違反を <code>ValidationError</code> 等で分類し、catch側で型ごとに分岐','APIクライアントで <code>NotFoundError / AuthError</code> を作り再試行/中断を切替'] },
+  lab4:{ info:{type:'ok', html:'✓ <code>{ cause: e }</code> で根本原因を保持。ラップしても情報が消えない標準API（ES2022）。'},
+    check:['① <code>top.message</code> が高レベル文言になるか確認','② <code>top.cause.message</code> で元のDBエラーへ辿れるか確認','③ catchで毎回 cause を付けると連鎖が追える点を意識'],
+    usecase:['層をまたぐ再throw（DB→サービス→API）で原因を失わない','ロガーに cause チェーンごと記録して一次原因を即特定'] },
+  lab5:{ info:{type:'info', html:'📘 <code>Promise.any</code> は全部失敗で <code>AggregateError</code>。<code>.errors</code> に個別理由が配列で入る。非同期なので出力は遅延表示。'},
+    check:['① 実行直後は「結果待ち…」、一瞬後に結果へ置換されるのを確認','② <code>instanceof AggregateError = true</code> を確認','③ <code>.errors</code> に ["A失敗","B失敗"] が揃うか確認'] },
+  lab6:{ info:{type:'warn', html:'⚠ catchには文字列・数値など非Errorも来る。<code>instanceof Error</code> で必ず防御。<code>finally</code> は脱出経路を問わず実行。'},
+    check:['① <code>throw 42</code> 側が「非Error: number 42」になるか確認','② 両ケースとも直後に「finally は必ず走る」が出るか確認','③ Errorケースのみ message が読めることを確認'],
+    usecase:['想定外の throw（ライブラリが文字列を投げる等）を安全に処理','DBコネクション/ファイルハンドルの解放を finally に集約'] },
+  lab7:{ info:{type:'warn', html:'⚠ <code>stack</code> は throw時ではなく <strong>new時点</strong>を固定。Errorを使い回すと発生地点とズレる。'},
+    check:['① 出力1行目が「Error: 作成時点でキャプチャ」か確認','② 続く行に <code>makeErr</code> が含まれるか確認（生成関数が記録される）','③ 投げる場所で都度newする理由を意識'] },
+  lab8:{ info:{type:'warn', html:'⚠ 既定の <code>JSON.stringify</code> は列挙可能ownのみ → Errorは <code>{}</code>。許可リストを渡すと <code>[[Get]]</code> 経由で非列挙も拾える。'},
+    check:['① 既定が <code>{}</code>（空）になるのを確認','② 許可リスト版が name と message を含むか確認','③ ログ送信時は明示変換 or 許可リストが必要と理解'],
+    usecase:['例外を構造化ログ(JSON)で送る前に name/message/stack を明示抽出','エラーをHTTPレスポンスへ載せる際の安全なシリアライズ'] },
+  lab9:{ info:{type:'info', html:'📘 別realm(iframe等)では <code>instanceof Error</code> が壊れうる。<code>Object.prototype.toString</code> / <code>Error.isError</code> は内部スロット判定で堅牢。'},
+    check:['① <code>instanceof Error = true</code>（同一realm）を確認','② <code>toString.call(e) = "[object Error]"</code> を確認','③ <code>Error.isError</code> が関数なら true、未対応環境なら注記が出るか確認'] },
+  lab10:{ info:{type:'info', html:'📘 <code>catch(e)</code> ＝「名前は自分・値はランタイムが注入」。throwでスタックが巻き戻り、throw後の行は飛ばされる（＝制御の反転）。'},
+    check:['① 出力に「a: ここは実行されない」「b: ここは実行されない」が<strong>出ない</strong>ことを確認','② 「catch: 注入された e = bで投げた」が出るか確認','③ 最後に「catchの後: 処理は継続する」へ復帰するか確認'] },
+  lab11:{ info:{type:'info', html:'📘 catchと同型の「呼ぶ側が値を注入」。mapは反復ごとに <code>(el, idx, arr)</code> を渡し、戻り値を新配列へ積む。'},
+    check:['① idxが 0→1→2 と進み el/arr が注入されるのを確認','② 各戻り値 10,21,32 を確認','③ 最終結果が [10,21,32] になるか確認'] },
+  lab12:{ info:{type:'info', html:'📘 <code>box.value = 42</code> は内部で setter を <code>this=box, v=42</code> で呼ぶ。代入が引数注入に化ける。'},
+    check:['① 代入前 <code>_v = 0</code> を確認','② 「setter発火 v = 42」が代入の瞬間に出るか確認','③ 代入後 <code>_v = 42</code> に変わったか確認'] },
+  lab13:{ info:{type:'warn', html:'⚠ <code>yield</code>式の値＝<strong>次の<code>.next(x)</code>の<code>x</code></strong>。最初のnext()の引数は入れる先が無いので捨てられる。'},
+    check:['① next()でまず「本体: start」と value:"first" が出るか確認','② next(10)後に「本体: a = 10」が出る（=注入）か確認','③ next(20)で done:true と value:"done" になるか確認'] },
+  lab14:{ info:{type:'info', html:'📘 <code>new.target/this/arguments</code> は命名不要の魔法束縛。呼び出し方（new有無・実引数）がランタイム経由で値を決める。'},
+    check:['① <code>F(1,2)</code> で new.target が undefined になるか確認','② <code>new F(3,4)</code> で new.target が F になるか確認','③ argumentsに実引数 [1,2]/[3,4] が入るか確認'] },
+  lab15:{ info:{type:'ok', html:'✓ <code>p.name</code> の読み取りが <code>handler.get(target,prop,receiver)</code> 呼び出しに化け、3引数がエンジンから注入される。setterと同型。'},
+    check:['① <code>p.name</code> 読み取り時に getトラップが発火するか確認','② prop に "name" が注入されるか確認','③ 存在しない <code>p.age</code> でもトラップが発火し undefined になるか確認'] },
+  lab16:{ info:{type:'ok', html:'✓ 初期値は「普通の引数」で渡す（yield非経由）。1回目の <code>next(v)</code> から注入したいときだけ「プライミング」で最初の <code>next()</code> を内部消費する。'},
+    check:['① [素のまま]で raw受取 が Y のみ（X は捨て）になるか確認','② [方法A] <code>next()</code> がいきなり 100 を返し 105/115 と進むか確認','③ [方法B] 1回目の <code>next("A")</code> から「echo受取: A」が出るか確認'],
+    usecase:['起動時の設定値・依存をジェネレータへ渡す（初期値は引数）','co/redux-saga風に「毎回値を送るコルーチン」を均一な next(v) で書く'] }
+};
+
+function infoHTML(m){ return m && m.info ? `<div class="info-box ${m.info.type||'info'}">${m.info.html}</div>` : ''; }
+function usecaseHTML(m){ if(!m || !m.usecase || !m.usecase.length) return '';
+  return `<div class="usecase-box"><div class="usecase-title">💡 利用シーン</div><ul class="usecase-list">${m.usecase.map(s=>`<li>${s}</li>`).join('')}</ul></div>`; }
+function checkHTML(m){ if(!m || !m.check || !m.check.length) return '';
+  return `<div class="check-steps"><div class="check-steps-title">🔍 ブラウザ実機チェック</div><ol>${m.check.map(s=>`<li>${s}</li>`).join('')}</ol></div>`; }
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  /* (1) info → usecase → check を各ラボに自動注入（run-area の後ろに付く） */
+  document.querySelectorAll('.lab').forEach(lab=>{
+    const meta = LAB_META[lab.id]; const body = lab.querySelector('.lab-body');
+    if(!body || !meta) return;
+    const frag = document.createElement('div');
+    frag.innerHTML = infoHTML(meta) + usecaseHTML(meta) + checkHTML(meta);
+    while(frag.firstChild) body.appendChild(frag.firstChild);
+  });
+
+  /* (2) サイドバー active ハイライト */
+  const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+  const map = new Map();
+  links.forEach(a=>{ const el = document.getElementById(a.getAttribute('href').slice(1)); if(el) map.set(el,a); });
+  const io = new IntersectionObserver(es=>es.forEach(e=>{
+    if(e.isIntersecting){ const l = map.get(e.target); if(l){ links.forEach(n=>n.classList.remove('active')); l.classList.add('active'); } }
+  }), { rootMargin:'-30% 0px -60% 0px' });
+  document.querySelectorAll('.lab[id]').forEach(lab=>io.observe(lab));
+
+  /* (3) 既存 .code-block に header + Copy を自動付与 */
+  document.querySelectorAll('.code-block').forEach((cb,i)=>{
+    if(cb.querySelector('.code-block-header')) return;
+    const header = document.createElement('div');
+    header.className = 'code-block-header';
+    header.innerHTML = `<span>JavaScript</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+    cb.insertBefore(header, cb.firstChild);
+  });
+});
+</script>
+</body>
+</html>

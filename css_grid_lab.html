@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSS Grid 完全網羅 Lab — なぜ起点で学ぶ2次元レイアウト</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.7;min-height:100vh;padding-left:240px;}
+
+/* Sidebar */
+#sidebar{position:fixed;top:0;left:0;bottom:0;width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border);overflow-y:auto;padding:14px 0 40px;z-index:50;}
+#sidebar::-webkit-scrollbar{width:4px;}
+#sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+#sidebar .nav-title{font-family:var(--mono);font-size:.78rem;color:var(--accent);
+  padding:6px 16px 10px;letter-spacing:.06em;border-bottom:1px solid var(--border);margin-bottom:8px;}
+#sidebar .nav-title span{color:var(--text-dim);}
+#sidebar .nav-section{padding:10px 16px 4px;font-family:var(--mono);font-size:.65rem;
+  color:var(--text-dim);letter-spacing:.15em;text-transform:uppercase;}
+#sidebar .nav-item{display:block;padding:7px 16px 7px 20px;font-size:.82rem;
+  color:var(--text-dim);text-decoration:none;border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#sidebar .nav-item:hover{background:var(--surface2);color:var(--text);}
+#sidebar .nav-item.active{border-left-color:var(--accent);
+  background:rgba(0,92,197,.08);color:var(--accent);font-weight:600;}
+#sidebar .nav-num{font-family:var(--mono);color:var(--accent2);
+  font-size:.72rem;margin-right:8px;opacity:.8;}
+
+/* Hero */
+.hero{padding:60px 40px 40px;text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border);position:relative;overflow:hidden;}
+.hero::before{content:'';position:absolute;top:-120px;right:-120px;width:400px;height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);pointer-events:none;}
+.hero h1{font-size:2.4rem;font-weight:800;letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.hero .subtitle{color:var(--text-dim);font-size:1rem;margin-top:8px;}
+
+/* TOC */
+.toc{max-width:1100px;margin:32px auto;padding:0 24px;}
+.toc h2{font-size:1.1rem;color:var(--accent);margin-bottom:12px;font-family:var(--mono);}
+.toc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;}
+.toc-item{display:flex;align-items:center;gap:10px;padding:10px 14px;
+  background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  text-decoration:none;color:var(--text);font-size:.88rem;
+  transition:border-color .2s,transform .15s;}
+.toc-item:hover{border-color:var(--accent);transform:translateY(-1px);}
+.toc-num{font-family:var(--mono);font-weight:600;color:var(--accent);font-size:.8rem;min-width:28px;}
+
+/* Container & Lab cards */
+.container{max-width:1100px;margin:0 auto;padding:0 24px 80px;}
+.lab{margin-top:48px;border:1px solid var(--border);border-radius:12px;
+  overflow:hidden;background:var(--surface);scroll-margin-top:20px;}
+.lab-header{display:flex;align-items:center;gap:12px;padding:18px 24px;
+  background:var(--surface2);border-bottom:1px solid var(--border);}
+.lab-num{font-family:var(--mono);font-weight:600;color:#fff;background:var(--accent);
+  width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:.85rem;}
+.lab-header h3{font-size:1.15rem;font-weight:600;}
+.lab-tag{margin-left:auto;font-family:var(--mono);font-size:.72rem;padding:3px 10px;border-radius:20px;border:1px solid;}
+.tag-basic{color:var(--accent);border-color:var(--accent);}
+.tag-intermediate{color:var(--accent2);border-color:var(--accent2);}
+.tag-advanced{color:var(--accent3);border-color:var(--accent3);}
+.lab-body{padding:24px;}
+.lab-desc{font-size:.92rem;color:var(--text-dim);margin-bottom:16px;line-height:1.8;}
+.lab-desc code{font-family:var(--mono);background:var(--code-bg);padding:2px 6px;border-radius:4px;font-size:.84rem;color:var(--accent);}
+
+/* Code block */
+.code-block{position:relative;background:var(--code-bg);border:1px solid var(--border);border-radius:8px;margin:12px 0;overflow:hidden;}
+.code-block pre{padding:12px 16px 14px;overflow-x:auto;font-family:var(--mono);font-size:.82rem;line-height:1.65;color:var(--text);white-space:pre;tab-size:2;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:var(--surface2);border-bottom:1px solid var(--border);font-family:var(--mono);font-size:.72rem;color:var(--text-dim);letter-spacing:.05em;}
+.copy-btn{background:transparent;border:1px solid var(--border);color:var(--text-dim);font-family:var(--mono);font-size:.7rem;padding:3px 10px;border-radius:4px;cursor:pointer;transition:all .15s;}
+.copy-btn:hover{border-color:var(--accent);color:var(--accent);}
+.copy-btn.copied{border-color:var(--success);color:var(--success);}
+
+/* Syntax token colors */
+.kw{color:#d73a49;} .fn{color:#6f42c1;} .str{color:#032f62;} .cm{color:#6a737d;}
+.num{color:#b08800;} .tag{color:#22863a;} .attr{color:#6f42c1;} .val{color:#032f62;}
+.sel{color:#005cc5;} .prop{color:#22863a;}
+
+/* info-box */
+.info-box{border-radius:8px;padding:12px 14px 12px 16px;font-size:.88rem;line-height:1.75;margin:14px 0;border-left:3px solid;background:rgba(255,255,255,.02);}
+.info-box.ok{border-color:var(--success);background:rgba(34,134,58,.08);color:#154f1e;}
+.info-box.info{border-color:var(--accent);background:rgba(0,92,197,.08);color:#003d8f;}
+.info-box.warn{border-color:var(--accent4);background:rgba(176,136,0,.08);color:#7a5c00;}
+.info-box.err{border-color:var(--error);background:rgba(203,36,49,.08);color:#9a1320;}
+.info-box code{font-family:var(--mono);background:rgba(0,0,0,.06);padding:1px 6px;border-radius:3px;font-size:.82rem;color:var(--accent);}
+
+/* verify */
+.verify{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0;}
+.verify-col{border-radius:7px;padding:11px 14px 13px;font-size:.84rem;line-height:1.7;border:1px solid;}
+.verify-before{background:rgba(203,36,49,.05);border-color:rgba(203,36,49,.25);color:#6b1a22;}
+.verify-after{background:rgba(34,134,58,.05);border-color:rgba(34,134,58,.25);color:#154f1e;}
+.verify-label{font-family:var(--mono);font-size:.64rem;letter-spacing:.12em;text-transform:uppercase;margin-bottom:5px;font-weight:700;opacity:.85;}
+.verify-before .verify-label{color:var(--error);}
+.verify-after .verify-label{color:var(--success);}
+
+/* check-steps */
+.check-steps{background:rgba(176,136,0,.06);border:1px solid rgba(176,136,0,.30);border-left:3px solid var(--accent4);border-radius:7px;padding:11px 14px 11px 16px;margin:16px 0 4px;font-size:.86rem;line-height:1.8;color:#5c4400;}
+.check-steps-title{font-family:var(--mono);font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--accent4);margin-bottom:6px;display:flex;align-items:center;gap:6px;}
+.check-steps ol{margin-left:20px;margin-top:2px;}
+.check-steps li{margin-bottom:3px;}
+.check-steps code{font-family:var(--mono);background:rgba(0,0,0,.06);padding:1px 6px;border-radius:3px;font-size:.8rem;color:var(--accent);}
+
+/* compare-table */
+.compare-table{width:100%;border-collapse:collapse;font-size:.84rem;margin:12px 0 16px;background:var(--code-bg);border:1px solid var(--border);border-radius:7px;overflow:hidden;}
+.compare-table th{background:var(--surface2);padding:8px 12px;text-align:left;font-family:var(--mono);font-size:.72rem;color:var(--accent);letter-spacing:.05em;border-bottom:1px solid var(--border);}
+.compare-table td{padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:top;}
+.compare-table tr:last-child td{border-bottom:none;}
+.compare-table td:first-child{font-family:var(--mono);color:var(--accent2);}
+.compare-table .yes{color:var(--success);} .compare-table .no{color:var(--error);}
+
+/* beginner-box */
+.beginner-box{background:rgba(111,66,193,.06);border:1px solid rgba(111,66,193,.25);border-left:3px solid var(--accent3);border-radius:7px;padding:11px 14px;margin:14px 0;font-size:.86rem;line-height:1.8;color:#3a1d6e;}
+.beginner-title{font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;color:var(--accent3);font-weight:700;margin-bottom:5px;}
+.beginner-box pre.ascii-art{font-family:var(--mono);font-size:.75rem;line-height:1.45;background:rgba(0,0,0,.05);padding:10px 12px;border-radius:5px;margin-top:8px;color:var(--text);overflow-x:auto;}
+
+/* usecase-box */
+.usecase-box{background:rgba(111,66,193,.06);border:1px solid rgba(111,66,193,.25);border-left:3px solid var(--accent3);border-radius:7px;padding:12px 14px;margin:14px 0;font-size:.86rem;line-height:1.8;color:#3a1d6e;}
+.usecase-title{font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;color:var(--accent3);font-weight:700;margin-bottom:6px;}
+.usecase-list{margin-left:20px;margin-bottom:10px;}
+.usecase-list li{margin-bottom:4px;}
+.usecase-trigger{background:rgba(0,92,197,.05);border-left:3px solid var(--accent);padding:8px 12px;border-radius:5px;font-size:.82rem;color:#003d8f;margin-top:8px;}
+.usecase-trigger ul{margin:4px 0 0 20px;}
+
+/* livedemo */
+.livedemo{margin:14px 0;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.livedemo-bar{display:flex;align-items:center;gap:12px;padding:8px 12px;background:var(--surface2);border-bottom:1px solid var(--border);}
+.toggle-btn{font-family:var(--mono);font-size:.78rem;padding:5px 14px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer;transition:all .15s;}
+.toggle-btn:hover{opacity:.85;}
+.toggle-btn.is-before{background:var(--error);border-color:var(--error);}
+.toggle-label{font-family:var(--mono);font-size:.78rem;color:var(--text-dim);}
+.livedemo-stage{padding:16px;background:var(--bg);}
+.livedemo-stage.is-before{outline:2px dashed var(--error);outline-offset:-8px;}
+.livedemo-stage .ld-before{display:none;}
+.livedemo-stage.is-before .ld-before{display:block;}
+.livedemo-stage.is-before .ld-after{display:none;}
+.ld-panel{padding:12px;border-radius:6px;font-family:var(--mono);font-size:11px;line-height:1.6;}
+.ld-panel.bad{background:#fee2e2;border:1px solid #cb2431;color:#6b1a22;}
+.ld-panel.good{background:#dcfce7;border:1px solid #22863a;color:#166534;}
+
+/* try-box */
+.try-box{background:rgba(34,134,58,.06);border:1px solid rgba(34,134,58,.30);border-left:3px solid var(--success);border-radius:7px;padding:12px 14px;margin:14px 0;font-size:.86rem;line-height:1.8;color:#154f1e;}
+.try-title{font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;color:var(--success);font-weight:700;margin-bottom:6px;}
+.try-box ol{margin-left:20px;margin-top:4px;}
+.try-box ol li{margin-bottom:4px;}
+.try-box code{font-family:var(--mono);background:rgba(0,0,0,.06);padding:1px 6px;border-radius:3px;font-size:.82rem;color:var(--success);}
+.try-tip{background:rgba(176,136,0,.06);border-left:3px solid var(--accent4);padding:8px 12px;border-radius:5px;font-size:.82rem;color:#5c4400;margin-top:8px;}
+.try-tip strong{color:var(--accent4);}
+.try-skeleton{background:#f0f4f8;border:1px solid var(--border);border-radius:5px;padding:10px 12px;margin-top:8px;font-family:var(--mono);font-size:.78rem;color:var(--text);white-space:pre;overflow-x:auto;line-height:1.5;}
+
+/* code-pair */
+.code-pair{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0;}
+.code-pair-col{display:flex;flex-direction:column;min-width:0;}
+.code-pair-label{font-family:var(--mono);font-size:.72rem;letter-spacing:.05em;font-weight:700;padding:6px 10px;border-radius:6px 6px 0 0;}
+.code-pair-before .code-pair-label{background:rgba(203,36,49,.10);color:#9a1320;border:1px solid rgba(203,36,49,.30);border-bottom:none;}
+.code-pair-after .code-pair-label{background:rgba(34,134,58,.10);color:#154f1e;border:1px solid rgba(34,134,58,.30);border-bottom:none;}
+.code-pair-col .code-block{margin:0;border-radius:0 0 8px 8px;flex:1;}
+.code-pair-before .code-block{border-color:rgba(203,36,49,.30);}
+.code-pair-after .code-block{border-color:rgba(34,134,58,.30);}
+@media (max-width:900px){.code-pair{grid-template-columns:1fr;}}
+
+/* ============ DEMO STYLES (CSS Grid 実機デモ) ============ */
+.demo-cell{background:#cfe3ff;border:1px solid #005cc5;color:#003d8f;padding:12px 8px;text-align:center;
+  font-family:var(--mono);font-size:.8rem;border-radius:5px;display:flex;align-items:center;justify-content:center;min-height:40px;}
+.demo-cell.alt{background:#d7f5dd;border-color:#22863a;color:#154f1e;}
+.demo-cell.big{background:#efe2ff;border-color:#6f42c1;color:#3a1d6e;}
+.demo-cap{font-family:var(--mono);font-size:.72rem;color:var(--text-dim);margin-top:10px;}
+.demo-frame{border:1px dashed #9aa3ad;border-radius:6px;padding:10px;overflow:hidden;}
+
+/* lab0: grid vs flex */
+.demo-vs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.demo-vs .demo-cell{white-space:nowrap;}
+#ld-vs.is-before .demo-vs{display:flex;flex-wrap:wrap;}
+
+/* lab2: fr の正体（200px + 残余分配 vs 200px + 50%+50%=破綻） */
+.demo-fr{display:grid;grid-template-columns:200px 1fr 1fr;gap:12px;}
+#ld-fr.is-before .demo-fr{grid-template-columns:200px 50% 50%;}
+
+/* lab3: minmax(0,1fr) の罠 */
+.demo-mm{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;}
+.demo-mm .demo-cell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;text-align:left;}
+#ld-mm.is-before .demo-mm{grid-template-columns:1fr 1fr;}
+
+/* lab4: auto-fit vs auto-fill */
+.demo-af{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;}
+#ld-af.is-before .demo-af{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));}
+
+/* lab5: line/span */
+.demo-span{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.demo-span .span-cell{grid-column:1 / span 2;}
+#ld-span.is-before .demo-span .span-cell{grid-column:auto;}
+
+/* lab6: template-areas */
+.demo-area{display:grid;grid-template-columns:110px 1fr;grid-template-rows:auto 1fr auto;
+  grid-template-areas:"h h" "s m" "f f";gap:8px;min-height:190px;}
+.demo-area .a-h{grid-area:h;} .demo-area .a-s{grid-area:s;} .demo-area .a-m{grid-area:m;} .demo-area .a-f{grid-area:f;}
+#ld-area.is-before .demo-area{grid-template-areas:none;grid-template-columns:repeat(2,1fr);grid-template-rows:none;}
+#ld-area.is-before .demo-area>*{grid-area:auto !important;}
+
+/* lab7: dense */
+.demo-dense{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-flow:row dense;gap:8px;}
+.demo-dense .s3{grid-column:span 3;} .demo-dense .s2{grid-column:span 2;}
+#ld-dense.is-before .demo-dense{grid-auto-flow:row;}
+
+/* lab8: implicit grid */
+.demo-imp{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:56px;gap:8px;}
+.demo-imp .demo-cell{align-items:flex-start;text-align:left;}
+#ld-imp.is-before .demo-imp{grid-auto-rows:auto;}
+
+/* lab9: alignment */
+.demo-align{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:72px;gap:8px;place-items:center;
+  background:repeating-linear-gradient(45deg,#f5f7fa,#f5f7fa 8px,#eef2f6 8px,#eef2f6 16px);padding:6px;border-radius:6px;}
+.demo-align .demo-cell{min-height:auto;padding:8px 12px;}
+#ld-align.is-before .demo-align{place-items:stretch;}
+
+/* lab10: subgrid（最重要デモ） */
+.demo-sub{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:auto auto auto;gap:10px;}
+.sub-card{grid-row:span 3;display:grid;grid-template-rows:subgrid;border:1px solid #6f42c1;border-radius:7px;overflow:hidden;}
+.sub-card>div{padding:9px 10px;font-family:var(--mono);font-size:.74rem;line-height:1.5;}
+.sub-title{background:#ede7fb;color:#3a1d6e;font-weight:600;}
+.sub-body{background:#fff;color:#333;border-top:1px solid #e6e0f5;border-bottom:1px solid #e6e0f5;}
+.sub-foot{background:#f3eefc;color:#6f42c1;}
+#ld-sub.is-before .demo-sub{grid-template-rows:none;align-items:start;}
+#ld-sub.is-before .sub-card{grid-row:auto;grid-template-rows:none;display:block;}
+
+/* lab11: 実戦ギャラリー */
+.demo-gal{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;}
+.gal-card{display:grid;grid-template-rows:subgrid;grid-row:span 3;border:1px solid #005cc5;border-radius:7px;overflow:hidden;}
+.demo-gal{grid-template-rows:auto auto auto;}
+.gal-card>div{padding:9px 10px;font-family:var(--mono);font-size:.74rem;line-height:1.5;}
+.gal-h{background:#cfe3ff;color:#003d8f;font-weight:600;}
+.gal-b{background:#fff;color:#333;}
+.gal-f{background:#eef4fc;color:#005cc5;}
+#ld-gal.is-before .demo-gal{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));}
+
+/* Responsive */
+@media (max-width:900px){
+  body{padding-left:0;}
+  #sidebar{position:static;width:100%;height:auto;border-right:none;border-bottom:1px solid var(--border);padding:8px 0;}
+  #sidebar .nav-item{padding:6px 14px;font-size:.78rem;}
+  .verify{grid-template-columns:1fr;}
+  .hero h1{font-size:1.6rem;}
+  .toc-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// CSS GRID LAB <span>v1</span></div>
+  <div class="nav-section">土台</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>Grid と Flex の違い</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>用語マップ</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>fr の正体</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>ライン配置と span</a>
+  <div class="nav-section">トラック制御</div>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>minmax と fr 暴走</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>auto-fit / auto-fill</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>暗黙グリッド</a>
+  <div class="nav-section">配置と整列</div>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>template-areas</a>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>自動配置と dense</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>アラインメント</a>
+  <div class="nav-section">応用</div>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>subgrid</a>
+  <a class="nav-item" href="#lab11"><span class="nav-num">11</span>実戦ギャラリー</a>
+</nav>
+
+<div class="hero">
+  <h1>CSS Grid 完全網羅 Lab</h1>
+  <p class="subtitle">「なぜ」起点で学ぶ2次元レイアウト — fr / minmax / auto-fit / areas / subgrid をブラウザで実機確認</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>Grid と Flex の違い（layout-in）</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>用語マップ：line / track / cell / area</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>fr の正体（残余分配）</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>minmax と「fr 暴走の罠」</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>auto-fit vs auto-fill</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>ライン配置と span</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>grid-template-areas</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>自動配置と dense</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>暗黙グリッド</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>アラインメント（2軸×3対象）</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">10</span>subgrid</a>
+    <a class="toc-item" href="#lab11"><span class="toc-num">11</span>実戦ギャラリー（総合）</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ===== LAB 0 ===== -->
+<div class="lab" id="lab0">
+  <div class="lab-header"><div class="lab-num">00</div><h3>Grid と Flex の違い（content-out vs layout-in）</h3><span class="lab-tag tag-basic">土台</span></div>
+  <div class="lab-body">
+    <p class="lab-desc">Gridを学ぶ前の最重要分岐点。Flexは<strong>1次元（content-out＝中身が並びを決める）</strong>、Gridは<strong>2次元（layout-in＝先に枠を決めて流し込む）</strong>。同じ要素群を <code>display:grid</code> と <code>display:flex</code> で切り替え、行と列の「揃い」が保たれるかを見ます。</p>
+    <div class="code-block"><pre><span class="cm">/* After: Grid = 枠を先に決める → 行も列も揃う */</span>
+<span class="sel">.box</span> { <span class="prop">display</span>: <span class="val">grid</span>; <span class="prop">grid-template-columns</span>: <span class="fn">repeat</span>(<span class="num">3</span>, <span class="num">1fr</span>); <span class="prop">gap</span>: <span class="num">8px</span>; }
+
+<span class="cm">/* Before: Flex = 中身のサイズで並ぶ → wrap すると列が揃わない */</span>
+<span class="sel">.box</span> { <span class="prop">display</span>: <span class="val">flex</span>; <span class="prop">flex-wrap</span>: <span class="val">wrap</span>; <span class="prop">gap</span>: <span class="num">8px</span>; }</pre></div>
+    <div class="livedemo">
+      <div class="livedemo-bar"><button class="toggle-btn" data-target="ld-vs">Before（Flex）を見る</button><span class="toggle-label" id="ld-vs-label">現在: After（Grid＝2次元で整列）</span></div>
+      <div class="livedemo-stage" id="ld-vs">
+        <div class="demo-vs">
+          <div class="demo-cell">A</div><div class="demo-cell">BB</div><div class="demo-cell">CCC</div>
+          <div class="demo-cell">DDDD</div><div class="demo-cell">E</div><div class="demo-cell">FF</div><div class="demo-cell">GGG</div>
+        </div>
+        <div class="demo-cap">After=列が完全に揃う / Before(Flex)=中身の幅で各行がバラバラに並ぶ</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== LAB 1 ===== -->
+<div class="lab" id="lab1">
+  <div class="lab-header"><div class="lab-num">01</div><h3>用語マップ：line / track / cell / area</h3><span class="lab-tag tag-basic">土台</span></div>
+  <div class="lab-body">
+    <p class="lab-desc">Gridの全プロパティは結局この4要素を操作しているだけ。配置は内部的に必ず<strong>「どのラインからどのラインまで」</strong>に翻訳されます。ここを掴むと全プロパティが一本化されます。</p>
+    <div class="code-block"><pre><span class="cm">/* ライン番号は 1 始まり。負の値は末尾から (-1 = 最終ライン) */</span>
+<span class="sel">.grid</span> {
+  <span class="prop">display</span>: <span class="val">grid</span>;
+  <span class="prop">grid-template-columns</span>: <span class="num">1fr 1fr 1fr</span>;  <span class="cm">/* 列トラック×3 → 列ライン 1..4 */</span>
+  <span class="prop">grid-template-rows</span>: <span class="num">auto auto</span>;       <span class="cm">/* 行トラック×2 → 行ライン 1..3 */</span>
+  <span class="prop">gap</span>: <span class="num">12px</span>;                       <span class="cm">/* track の「間」。cell ではない */</span>
+}</pre></div>
+    <div class="beginner-box">
+      <div class="beginner-title">🔰 4要素の関係図</div>
+      <pre class="ascii-art">      col line: 1     2       3       4
+               │     │       │       │
+      row 1 ───┼─────┼───────┼───────┤
+               │ cell│       │       │  ← track(列/行) = 隣接ラインに挟まれた帯
+      row 2 ───┼─────┼───────┼───────┤
+               │     │╔═════════════╗│
+      row 3 ───┴─────┴╚═ area ══════╝┴  ← area = 4本のラインで囲まれた矩形</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ===== LAB 2 ===== -->
+<div class="lab" id="lab2">
+  <div class="lab-header"><div class="lab-num">02</div><h3>fr の正体：割合ではなく「残余の分配比」</h3><span class="lab-tag tag-basic">土台</span></div>
+  <div class="lab-body">
+    <p class="lab-desc"><code>fr</code>は「全幅の割合（%）」ではなく、<strong>gap・固定幅・コンテンツ幅を差し引いた"残り"を比で分配</strong>する単位。だから<code>1fr 1fr</code>はgapがあっても絶対はみ出さない。<code>%</code>はgapを計算に入れられず破綻します。下のデモは <code>200px 1fr 1fr</code>（堅牢） ⇄ <code>200px 50% 50%</code>（破綻）の切替です。</p>
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-after"><div class="code-pair-label">✓ After（fr＝残余を分配）</div>
+        <div class="code-block"><pre><span class="sel">.grid</span> {
+  <span class="prop">grid-template-columns</span>:
+    <span class="num">200px 1fr 1fr</span>;
+  <span class="prop">gap</span>: <span class="num">12px</span>;
+}
+<span class="cm">/* 残り = 全幅 - 200px - gap
+   を 1:1 で配る → 破綻しない */</span></pre></div></div>
+      <div class="code-pair-col code-pair-before"><div class="code-pair-label">✗ Before（%＝gap無視で破綻）</div>
+        <div class="code-block"><pre><span class="sel">.grid</span> {
+  <span class="prop">grid-template-columns</span>:
+    <span class="num">200px 50% 50%</span>;
+  <span class="prop">gap</span>: <span class="num">12px</span>;
+}
+<span class="cm">/* 200 + 50% + 50% + gap
+   = 100% 超 → はみ出す💥 */</span></pre></div></div>
+    </div>
+    <div class="livedemo">
+      <div class="livedemo-bar"><button class="toggle-btn" data-target="ld-fr">Before（%）を見る</button><span class="toggle-label" id="ld-fr-label">現在: After（fr＝はみ出さない）</span></div>
+      <div class="livedemo-stage" id="ld-fr">
+        <div class="demo-frame"><div class="demo-fr"><div class="demo-cell">200px固定</div><div class="demo-cell alt">fr / 50%</div><div class="demo-cell alt">fr / 50%</div></div></div>
+        <div class="demo-cap">After=3列が枠内に収まる / Before=3列目が枠外へはみ出し(クリップ)される</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== LAB 3 ===== -->
+<div class="lab" id="lab3">
+  <div class="lab-header"><div class="lab-num">03</div><h3>minmax() と「fr 暴走の罠」minmax(0,1fr)</h3><span class="lab-tag tag-intermediate">トラック制御</span></div>
+  <div class="lab-body">
+    <p class="lab-desc">最頻出の実務トラブル。<code>1fr</code>は内部的に<code>minmax(auto, 1fr)</code>と等価で、<strong>最小幅がauto（≒min-content）</strong>。長いURLや画像、overflow未処理のflex子があると、その最小幅がトラックを押し広げ均等比が壊れます。<code>minmax(0, 1fr)</code>で最小0を許可すれば直ります。</p>
+    <div class="code-pair">
+      <div class="code-pair-col code-pair-before"><div class="code-pair-label">✗ Before（崩れる）</div>
+        <div class="code-block"><pre><span class="prop">grid-template-columns</span>:
+  <span class="num">1fr 1fr</span>;
+<span class="cm">/* = minmax(auto,1fr)
+   長い語が列を押し広げる */</span></pre></div></div>
+      <div class="code-pair-col code-pair-after"><div class="code-pair-label">✓ After（守られる）</div>
+        <div class="code-block"><pre><span class="prop">grid-template-columns</span>:
+  <span class="fn">minmax</span>(<span class="num">0</span>,<span class="num">1fr</span>) <span class="fn">minmax</span>(<span class="num">0</span>,<span class="num">1fr</span>);
+<span class="cm">/* 最小0 → 比率維持＋省略 */</span></pre></div></div>
+    </div>
+    <div class="livedemo">
+      <div class="livedemo-bar"><button class="toggle-btn" data-target="ld-mm">Before（1fr）を見る</button><span class="toggle-label" id="ld-mm-label">現在: After（minmax(0,1fr)）</span></div>
+      <div class="livedemo-stage" id="ld-mm">
+        <div class="demo-mm"><div class="demo-cell">thisisaveryveryverylongurltoken-pushes-track</div><div class="demo-cell alt">右の列</div></div>
+        <div class="demo-cap">After=左右が均等で長文は…省略 / Before=長文が左列を押し広げ右列が潰れる</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== LAB 4 ===== -->
+<div class="lab" id="lab4">
+  <div class="lab-header"><div class="lab-num">04</div><h3>auto-fit vs auto-fill（メディアクエリ無しの段組）</h3><span class="lab-tag tag-intermediate">トラック制御</span></div>
+  <div class="lab-body">
+    <p class="lab-desc">「列数をビューポート任せにしたい」への答え。<code>repeat(auto-fit/auto-fill, minmax())</code>で1行記述。違いは<strong>アイテムが列数より少ないとき</strong>だけ現れる：<code>auto-fit</code>は空トラックを潰してアイテムを伸ばし、<code>auto-fill</code>は空トラックを残してアイテム幅を保ちます。</p>
+    <div class="code-block"><pre><span class="cm">/* After: auto-fit → 空列を畳み、3個が伸びて幅いっぱい */</span>
+<span class="prop">grid-template-columns</span>: <span class="fn">repeat</span>(<span class="val">auto-fit</span>, <span class="fn">minmax</span>(<span class="num">110px</span>, <span class="num">1fr</span>));
+<span class="cm">/* Before: auto-fill → 空列を残し、3個は110pxのまま左寄り */</span>
+<span class="prop">grid-template-columns</span>: <span class="fn">repeat</span>(<span class="val">auto-fill</span>, <span class="fn">minmax</span>(<span class="num">110px</span>, <span class="num">1fr</span>));</pre></div>
+    <div class="livedemo">
+      <div class="livedemo-bar"><button class="toggle-btn" data-target="ld-af">Before（auto-fill）を見る</button><span class="toggle-label" id="ld-af-label">現在: After（auto-fit＝伸びて充填）</span></div>
+      <div class="livedemo-stage" id="ld-af">
+        <div class="demo-af"><div class="demo-cell">1</div><div class="demo-cell">2</div><div class="demo-cell">3</div></div>
+        <div class="demo-cap">After=3枚が横いっぱいに伸びる / Before=3枚は110px幅のまま、右側に空きが残る</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== LAB 5 ===== -->
+<div class="lab" id="lab5">
+  <div class="lab-header"><div class="lab-num">05</div><h3>ライン配置と span</h3><span class="lab-tag tag-basic">土台</span></div>
+  <div class="lab-body">
+    <p class="lab-desc">アイテムを「どのラインからどのラインまで」で明示配置。終端を数えたくなければ<code>span</code>で「いくつ占めるか」を指定できます。<code>grid-column</code>/<code>grid-row</code>が基本、<code>grid-area</code>は4値の一括指定です。</p>
+    <div class="code-block"><pre><span class="sel">.item</span> {
+  <span class="prop">grid-column</span>: <span class="num">1 / 3</span>;        <span class="cm">/* 列ライン1→3（2トラック分） */</span>
+  <span class="cm">/* 同義: grid-column: 1 / span 2;  個数で指定 */</span>
+  <span class="prop">grid-row</span>: <span class="num">2 / 4</span>;
+  <span class="cm">/* 一括: grid-area: row-start / col-start / row-end / col-end; */</span>
+}</pre></div>
+    <div class="livedemo">
+      <div class="livedemo-bar"><button class="toggle-btn" data-target="ld-span">Before（span無し）を見る</button><span class="toggle-label" id="ld-span-label">現在: After（先頭セルが2列を span）</span></div>
+      <div class="livedemo-stage" id="ld-span">
+        <div class="demo-span"><div class="demo-cell big span-cell">span 2</div><div class="demo-cell">B</div><div class="demo-cell">C</div><div class="demo-cell">D</div><div class="demo-cell">E</div></div>
+        <div class="demo-cap">After=先頭が2列分を占有しレイアウトがずれる / Before=全セルが1列ずつ均等</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== LAB 6 ===== -->
+<div class="lab" id="lab6">
+  <div class="lab-header"><div class="lab-num">06</div><h3>grid-template-areas（名前で組む）</h3><span class="lab-tag tag-intermediate">配置と整列</span></div>
+  <div class="lab-body">
+    <p class="lab-desc">Gridの思想を最も体現する機能。<strong>CSSのテキストがそのままレイアウトの「絵」</strong>になり、さらに<strong>DOM順とレイアウト順を分離</strong>できます（ソースはa11y優先のまま見た目だけ並べ替え可）。<code>.</code>で空セルを表現します。</p>
+    <div class="code-block"><pre><span class="sel">.layout</span> {
+  <span class="prop">grid-template-columns</span>: <span class="num">110px 1fr</span>;
+  <span class="prop">grid-template-rows</span>: <span class="val">auto</span> <span class="num">1fr</span> <span class="val">auto</span>;
+  <span class="prop">grid-template-areas</span>:
+    <span class="str">"header  header"</span>
+    <span class="str">"sidebar main"</span>
+    <span class="str">"footer  footer"</span>;
+}
+<span class="sel">.header</span> { <span class="prop">grid-area</span>: <span class="val">header</span>; }  <span class="cm">/* 名前で配置 */</span></pre></div>
+    <div class="livedemo">
+      <div class="livedemo-bar"><button class="toggle-btn" data-target="ld-area">Before（areas無し）を見る</button><span class="toggle-label" id="ld-area-label">現在: After（Holy Grail レイアウト）</span></div>
+      <div class="livedemo-stage" id="ld-area">
+        <div class="demo-area"><div class="demo-cell a-h">header</div><div class="demo-cell alt a-s">sidebar</div><div class="demo-cell a-m">main</div><div class="demo-cell big a-f">footer</div></div>
+        <div class="demo-cap">After=名前通りに配置されページ骨格が完成 / Before=areas無効でソース順に2列で流れるだけ</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== LAB 7 ===== -->
+<div class="lab" id="lab7">
+  <div class="lab-header"><div class="lab-num">07</div><h3>自動配置と grid-auto-flow / dense</h3><span class="lab-tag tag-intermediate">配置と整列</span></div>
+  <div class="lab-body">
+    <p class="lab-desc">明示配置しなかったアイテムは自動配置アルゴリズムが流し込みます。<code>dense</code>は空いた「穴」を後続アイテムで埋めます。ただし<strong>視覚順とDOM順（Tab順・読み上げ順）がズレる</strong>副作用に注意。</p>
+    <div class="code-block"><pre><span class="prop">grid-auto-flow</span>: <span class="val">row</span>;        <span class="cm">/* 既定：行方向に詰める */</span>
+<span class="prop">grid-auto-flow</span>: <span class="val">row dense</span>;  <span class="cm">/* 穴を後続で埋める（見た目重視） */</span></pre></div>
+    <div class="livedemo">
+      <div class="livedemo-bar"><button class="toggle-btn" data-target="ld-dense">Before（dense無し）を見る</button><span class="toggle-label" id="ld-dense-label">現在: After（row dense＝穴埋め）</span></div>
+      <div class="livedemo-stage" id="ld-dense">
+        <div class="demo-dense"><div class="demo-cell big s3">1 (span3)</div><div class="demo-cell s2">2 (span2)</div><div class="demo-cell">3</div><div class="demo-cell">4</div><div class="demo-cell s2">5 (span2)</div></div>
+        <div class="demo-cap">After(dense)=空きセルが後続で埋まり詰まる / Before=幅の合わない箇所に穴(空白)が残る</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== LAB 8 ===== -->
+<div class="lab" id="lab8">
+  <div class="lab-header"><div class="lab-num">08</div><h3>暗黙グリッド（grid-auto-rows / columns）</h3><span class="lab-tag tag-intermediate">トラック制御</span></div>
+  <div class="lab-body">
+    <p class="lab-desc"><code>grid-template-*</code>で定義した範囲を超えてアイテムが来ると、Gridが自動で行/列を生やします（暗黙トラック）。件数が不定（DBから返るカード数が可変）なときに必須。サイズを決めないと、はみ出た行が中身次第でガタつきます。</p>
+    <div class="code-block"><pre><span class="prop">grid-template-columns</span>: <span class="fn">repeat</span>(<span class="num">3</span>, <span class="num">1fr</span>);
+<span class="prop">grid-auto-rows</span>: <span class="num">56px</span>;   <span class="cm">/* 暗黙的に増える行の高さを固定 → ガタつき防止 */</span>
+<span class="cm">/* 列方向に自動配置するなら grid-auto-columns: 1fr; */</span></pre></div>
+    <div class="livedemo">
+      <div class="livedemo-bar"><button class="toggle-btn" data-target="ld-imp">Before（auto）を見る</button><span class="toggle-label" id="ld-imp-label">現在: After（auto-rows:56px で均一）</span></div>
+      <div class="livedemo-stage" id="ld-imp">
+        <div class="demo-imp"><div class="demo-cell">短い</div><div class="demo-cell alt">中くらいの文章がここに入ります</div><div class="demo-cell">短い</div><div class="demo-cell">短い</div><div class="demo-cell alt">これはとても長い文章で複数行に折り返してセルの高さに影響します</div><div class="demo-cell">短い</div></div>
+        <div class="demo-cap">After=全行56pxで揃う / Before=各行が中身の高さに合わせてガタつく</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== LAB 9 ===== -->
+<div class="lab" id="lab9">
+  <div class="lab-header"><div class="lab-num">09</div><h3>アラインメント（2軸 × 3対象）</h3><span class="lab-tag tag-intermediate">配置と整列</span></div>
+  <div class="lab-body">
+    <p class="lab-desc">丸暗記不要。<strong>inline軸(横)=justify / block軸(縦)=align</strong> の2軸 × <strong>items（全体）/ self（個別上書き）/ content（トラック群）</strong> の3対象で体系化できます。一括は<code>place-*</code>。</p>
+    <table class="compare-table">
+      <tr><th>対象＼軸</th><th>横（inline / justify）</th><th>縦（block / align）</th></tr>
+      <tr><td>アイテム全体</td><td>justify-items</td><td>align-items</td></tr>
+      <tr><td>個別上書き</td><td>justify-self</td><td>align-self</td></tr>
+      <tr><td>トラック群全体</td><td>justify-content</td><td>align-content</td></tr>
+    </table>
+    <div class="code-block"><pre><span class="prop">place-items</span>: <span class="val">center</span>;            <span class="cm">/* align-items × justify-items 一括 */</span>
+<span class="cm">/* content系は「トラック合計 < コンテナ」のとき余白をどう寄せるか */</span></pre></div>
+    <div class="livedemo">
+      <div class="livedemo-bar"><button class="toggle-btn" data-target="ld-align">Before（stretch）を見る</button><span class="toggle-label" id="ld-align-label">現在: After（place-items:center）</span></div>
+      <div class="livedemo-stage" id="ld-align">
+        <div class="demo-align"><div class="demo-cell">A</div><div class="demo-cell alt">B</div><div class="demo-cell">C</div><div class="demo-cell alt">D</div><div class="demo-cell">E</div><div class="demo-cell alt">F</div></div>
+        <div class="demo-cap">After=各アイテムがセル中央に小さく配置 / Before=既定のstretchでセル全体に引き伸ばし</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== LAB 10 ===== -->
+<div class="lab" id="lab10">
+  <div class="lab-header"><div class="lab-num">10</div><h3>subgrid — 兄弟をまたいだ整列</h3><span class="lab-tag tag-advanced">応用</span></div>
+  <div class="lab-body">
+    <p class="lab-desc">Grid最大の構造的欠陥だった「ネストしたグリッドは線を共有できない」を解消する機能。子が<strong>親のトラックライン（座標系）を間借り</strong>し、整列の責任を親へ集約します。カード一覧でタイトル行・本文・フッターを<strong>カードをまたいで揃える</strong>のが代表例。</p>
+    <div class="code-block"><pre><span class="sel">.card-list</span> {
+  <span class="prop">display</span>: <span class="val">grid</span>;
+  <span class="prop">grid-template-columns</span>: <span class="fn">repeat</span>(<span class="num">3</span>, <span class="num">1fr</span>);
+  <span class="prop">grid-template-rows</span>: <span class="val">auto</span> <span class="val">auto</span> <span class="val">auto</span>;  <span class="cm">/* 行を親で定義 */</span>
+}
+<span class="sel">.card</span> {
+  <span class="prop">grid-row</span>: <span class="val">span</span> <span class="num">3</span>;
+  <span class="prop">display</span>: <span class="val">grid</span>;
+  <span class="prop">grid-template-rows</span>: <span class="val">subgrid</span>;  <span class="cm">/* ★親の行ラインを継承 → 全カードで揃う */</span>
+}</pre></div>
+    <div class="livedemo">
+      <div class="livedemo-bar"><button class="toggle-btn" data-target="ld-sub">Before（独立grid）を見る</button><span class="toggle-label" id="ld-sub-label">現在: After（subgrid＝行が揃う）</span></div>
+      <div class="livedemo-stage" id="ld-sub">
+        <div class="demo-sub">
+          <div class="sub-card"><div class="sub-title">タイトル A</div><div class="sub-body">本文</div><div class="sub-foot">FOOT</div></div>
+          <div class="sub-card"><div class="sub-title">タイトル B が2行に<br>なるカード</div><div class="sub-body">本文</div><div class="sub-foot">FOOT</div></div>
+          <div class="sub-card"><div class="sub-title">タイトル C</div><div class="sub-body">本文</div><div class="sub-foot">FOOT</div></div>
+        </div>
+        <div class="demo-cap">After(subgrid)=タイトル/本文/フッターの境界線が3枚で完全一致 / Before=各カード独立で境界がガタつく</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== LAB 11 ===== -->
+<div class="lab" id="lab11">
+  <div class="lab-header"><div class="lab-num">11</div><h3>実戦ギャラリー（auto-fit × subgrid 総合）</h3><span class="lab-tag tag-advanced">応用</span></div>
+  <div class="lab-body">
+    <p class="lab-desc">これまでの総合。<code>repeat(auto-fit, minmax())</code>でレスポンシブな段組を作り、各カードは<code>subgrid</code>で行を揃える——実務でのカード一覧の完成形です。トグルで<code>auto-fit</code>(伸びる) ⇄ <code>auto-fill</code>(右に空き)の差を、ウィンドウ幅変更で列の再流し込みを確認できます。</p>
+    <div class="code-block"><pre><span class="sel">.gallery</span> {
+  <span class="prop">display</span>: <span class="val">grid</span>;
+  <span class="prop">grid-template-columns</span>: <span class="fn">repeat</span>(<span class="val">auto-fit</span>, <span class="fn">minmax</span>(<span class="num">160px</span>, <span class="num">1fr</span>));
+  <span class="prop">grid-template-rows</span>: <span class="val">auto auto auto</span>;
+  <span class="prop">gap</span>: <span class="num">10px</span>;
+}
+<span class="sel">.gallery .card</span> { <span class="prop">grid-row</span>: <span class="val">span</span> <span class="num">3</span>; <span class="prop">display</span>: <span class="val">grid</span>; <span class="prop">grid-template-rows</span>: <span class="val">subgrid</span>; }</pre></div>
+    <div class="livedemo">
+      <div class="livedemo-bar"><button class="toggle-btn" data-target="ld-gal">Before（auto-fill）を見る</button><span class="toggle-label" id="ld-gal-label">現在: After（auto-fit＝伸びて充填）</span></div>
+      <div class="livedemo-stage" id="ld-gal">
+        <div class="demo-gal">
+          <div class="gal-card"><div class="gal-h">製品 A</div><div class="gal-b">説明が短い</div><div class="gal-f">¥1,200</div></div>
+          <div class="gal-card"><div class="gal-h">製品 B<br>(長い名前)</div><div class="gal-b">説明がやや長くて複数行になる</div><div class="gal-f">¥980</div></div>
+          <div class="gal-card"><div class="gal-h">製品 C</div><div class="gal-b">中</div><div class="gal-f">¥3,500</div></div>
+        </div>
+        <div class="demo-cap">subgridで価格(フッター)が底で揃う。トグルでauto-fit/fillの差、ウィンドウ幅変更で列数の自動変化を確認</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+function copyCode(btn){
+  const block = btn.closest('.code-block') || btn.parentElement;
+  const pre = block.querySelector('pre');
+  if(!pre) return;
+  navigator.clipboard.writeText(pre.innerText).then(()=>{
+    btn.textContent='Copied!'; btn.classList.add('copied');
+    setTimeout(()=>{btn.textContent='Copy'; btn.classList.remove('copied');},1500);
+  });
+}
+
+const LAB_META = {
+  lab0:{
+    info:{type:'info',html:'📘 <strong>判断基準</strong>: 「中身の量で並びが決まってほしい」なら Flex、「枠の形を自分が支配したい」なら Grid。Flex=主軸1本の1次元、Grid=行×列の2次元。'},
+    usecase:{list:['ダッシュボードやページ全体の骨格','カード一覧で行・列を揃えたいとき','ナビバー内部の整列は逆に Flex が適任'],trigger:['「wrap したら縦のラインが揃わない」と感じたら Grid','「2方向で揃えたい」が出たら Grid 候補']},
+    verify:{before:'Flex+wrap：各セルが中身の幅で並び、行ごとに列位置がズレる',after:'Grid：3列の枠が先に決まり、全行で列が完全に揃う'},
+    check:['①初期表示(After=Grid)で縦のラインが揃っているか目視','②「Before(Flex)を見る」を押し、セルが中身幅で不揃いに並ぶのを確認','③もう一度押して Grid に戻り、列が再び揃うのを確認'],
+    try:'ld-after の demo-cell の文字数を増減させても、Grid 側は列幅が変わらないことを確認すると理解が深まる'
+  },
+  lab1:{
+    info:{type:'info',html:'📘 <strong>核心</strong>: 配置プロパティ(span / areas / grid-area)は全て内部で「どのラインからどのラインまで」に翻訳される。ライン番号は <code>1</code> 始まり、<code>-1</code> は最終ライン。'},
+    usecase:{list:['負のライン番号で「末尾まで」を表現: grid-column: 1 / -1','ライン名を付けて意味的に配置','gap は track の間であり cell ではないと理解する'],trigger:['「右端まで伸ばしたい」→ -1 を思い出す','配置がズレたら「何番ラインからか」で考える']},
+    check:['①図のline/track/cell/areaの対応を1つずつ指で追う','②DevToolsを使わず、上のコード例を試行.htmlに貼り境界を目視','③列数を4に増やすと列ラインが1..5になることを確認'],
+    try:'grid-template-columns の値の個数を変えると「ライン本数 = トラック数 + 1」になることを数えてみる'
+  },
+  lab2:{
+    info:{type:'warn',html:'⚠️ <strong>誤解しやすい</strong>: <code>fr</code> は「全幅の割合」ではない。<strong>gap・固定幅・コンテンツ幅を引いた残り</strong>を比で分配する。だから <code>%</code> と違い gap があっても破綻しない。'},
+    usecase:{list:['サイドバー固定 + 本文可変: 240px 1fr','均等2分割で gap を入れたいとき(% は破綻)','残りスペースを 2:1 で配る: 2fr 1fr'],trigger:['「% にしたら gap ではみ出した」→ fr に置換','固定幅と可変幅を混在させたいとき']},
+    verify:{before:'200px 50% 50% + gap → 合計が100%を超え3列目がはみ出す',after:'200px 1fr 1fr → 残余を1:1で配るため枠内に収まる'},
+    check:['①After で3列が枠(破線)内に収まるか確認','②「Before(%)を見る」で3列目が枠外にはみ出し切れるのを確認','③ウィンドウ幅を変えても After は破綻しないことを確認'],
+    try:'1fr 1fr を 2fr 1fr に書き換え、残余が2:1で配分されるのを試行.htmlで確認'
+  },
+  lab3:{
+    info:{type:'err',html:'🚫 <strong>最頻出の罠</strong>: <code>1fr</code> = <code>minmax(auto,1fr)</code>。最小幅が auto(≒min-content)なので、長いURL/画像/overflow未処理のflex子が列を押し広げ均等比が壊れる。<strong>直し方は <code>minmax(0,1fr)</code></strong>。'},
+    usecase:{list:['カラム内に長いURLやコード断片が入るレイアウト','Grid の中に Flex を入れ子にして崩れたとき','チャートやcanvasなど内在幅を持つ要素を均等配置'],trigger:['「均等にしたのに片方だけ広がる」→ minmax(0,1fr)','「中身がはみ出してスクロールバーが出る」']},
+    verify:{before:'1fr 1fr：長文トークンが左列を押し広げ、右列が潰れる',after:'minmax(0,1fr)：最小0で比率を維持し、長文は…で省略'},
+    check:['①After で左右が均等、長文が省略表示か確認','②「Before(1fr)を見る」で左列が膨張し右列が細るのを確認','③左セルの文字列を短くすると Before でも崩れなくなる＝原因が min-content だと体感'],
+    try:'demo-cell の長い文字列を短くしたり伸ばしたりして、崩れの発生条件を観察する'
+  },
+  lab4:{
+    info:{type:'info',html:'📘 <strong>違いが出る条件</strong>: auto-fit と auto-fill の差は「<strong>アイテム数 &lt; 入る列数</strong>」のときだけ現れる。auto-fit=空列を畳んでアイテムを伸ばす / auto-fill=空列を残してアイテム幅を保つ。'},
+    usecase:{list:['商品カード一覧をメディアクエリ無しで段組','幅に応じて列数を自動増減させたいとき','「最大幅を保って左詰め」なら auto-fill を選ぶ'],trigger:['「ブレークポイントを何個も書きたくない」','「画面を広げたら自動で列を増やしたい」']},
+    verify:{before:'auto-fill：3枚は110px幅のまま、右側に空トラックが残る',after:'auto-fit：空トラックを畳み、3枚が横いっぱいに伸びる'},
+    check:['①After で3枚が横幅いっぱいに伸びているか確認','②「Before(auto-fill)を見る」で3枚が左に詰まり右に余白が出るのを確認','③ウィンドウ幅を狭めて、両方とも列数(=折返し)が変わるのを確認'],
+    try:'minmax の最小値 110px を 200px などに変えると、折り返す幅のしきい値が変わる'
+  },
+  lab5:{
+    info:{type:'info',html:'📘 <code>grid-column: 1 / 3</code> はライン1〜3(=2トラック)。終端を数えたくなければ <code>1 / span 2</code>。<code>grid-area</code> は row-start/col-start/row-end/col-end の4値一括。'},
+    usecase:{list:['見出しだけ全幅にする: grid-column: 1 / -1','特定セルだけ縦横に広げる','管理画面でウィジェットのサイズを個別指定'],trigger:['「この要素だけ2マス分にしたい」','「ここから端まで伸ばしたい」→ / -1']},
+    verify:{before:'span 無し：全セルが1列ずつ均等に並ぶ',after:'先頭セルが grid-column:1/span 2 で2列を占有しレイアウトがずれる'},
+    check:['①After で先頭セルが2列分の幅を持つか確認','②「Before(span無し)を見る」で全セルが等幅に戻るのを確認','③span 2 を span 3 に変えると先頭がさらに広がることを試行で確認'],
+    try:'span-cell に grid-row: span 2 も加えると、縦にも2行ぶち抜くタイル配置になる'
+  },
+  lab6:{
+    info:{type:'ok',html:'✅ <strong>2つの強み</strong>: ①CSSが視覚的ドキュメントになる ②<strong>DOM順とレイアウト順を分離</strong>できる(ソースはa11y優先のまま見た目を並べ替え)。空セルは <code>.</code> で表現。'},
+    usecase:{list:['Holy Grail (header/sidebar/main/footer) レイアウト','レスポンシブで areas だけ差し替えて配置変更','管理画面のゾーニングを一目で管理'],trigger:['「レイアウトの全体像をCSSで俯瞰したい」','「HTML順は変えずに見た目だけ並べ替えたい」']},
+    verify:{before:'areas 無効：アイテムがソース順のまま2列で自動配置される',after:'areas 有効：名前通りに header 全幅 / sidebar+main / footer 全幅'},
+    check:['①After で header と footer が全幅、中段が sidebar+main か確認','②「Before(areas無し)を見る」で配置が崩れソース順に戻るのを確認','③areas 文字列内の単語を入れ替えると配置が変わることを試行で確認'],
+    try:'メディアクエリ内で grid-template-areas だけ別の並びに書き換えると、HTMLを触らず再配置できる'
+  },
+  lab7:{
+    info:{type:'warn',html:'⚠️ <strong>dense の代償</strong>: 穴は埋まるが<strong>視覚順とDOM順(Tab順・スクリーンリーダー読み上げ順)がズレる</strong>。フォーカス移動が画面上で飛ぶため、操作系UIでは慎重に。'},
+    usecase:{list:['画像ギャラリーで隙間を詰めたいとき(操作なし要素向き)','サイズ違いのタイルを敷き詰める','ダッシュボードの装飾ブロック配置'],trigger:['「span 違いのアイテムで穴が空く」→ dense','ただしフォーム/ボタンが混ざるなら使用を再考']},
+    verify:{before:'row：幅の合わない箇所に空セル(穴)が残る',after:'row dense：後続の小さいアイテムが穴を埋めて詰まる'},
+    check:['①After で空白が少なく詰まっているか確認','②「Before(dense無し)を見る」で穴(空白セル)が現れるのを確認','③Tab キーでフォーカス移動順がDOM順=番号順のままか(視覚順と違う)を意識'],
+    try:'各 demo-cell に番号を振り、Tab移動の順序が見た目の並びと一致しないことを確認するとa11y上の注意が体感できる'
+  },
+  lab8:{
+    info:{type:'info',html:'📘 <strong>暗黙トラック</strong>: template で定義した範囲を超えたアイテムに対し Grid が自動で行/列を生やす。件数が可変なら <code>grid-auto-rows</code> で高さを決めておかないとガタつく。'},
+    usecase:{list:['DB件数が不定のカード一覧','無限スクロールで行が増えるリスト','行高を一定に揃えたい一覧表示'],trigger:['「件数が増えると行の高さがバラバラ」','「明示した行数を超える要素が来る」']},
+    verify:{before:'grid-auto-rows:auto：各行が中身の高さに合わせてガタつく',after:'grid-auto-rows:56px：暗黙行が全て56pxで揃う'},
+    check:['①After で全行の高さが揃っているか確認','②「Before(auto)を見る」で長文セルの行だけ高くなるのを確認','③56px を 80px に変えると全行が連動して高くなることを試行で確認'],
+    try:'minmax(56px, auto) にすると「最低56px・必要なら伸びる」という実務的な行高にできる'
+  },
+  lab9:{
+    info:{type:'info',html:'📘 <strong>体系</strong>: 横=justify / 縦=align の2軸 × items(全体)/self(個別)/content(トラック群) の3対象。content系は「トラック合計 &lt; コンテナ」のとき余白の寄せ方を決める。一括は place-*。'},
+    usecase:{list:['セル内でアイコンやボタンを中央寄せ','特定セルだけ右寄せ(justify-self:end)','グリッド全体がコンテナより小さい時の配置(content系)'],trigger:['「セル内で中身を中央に置きたい」→ place-items','「1つだけ配置を変えたい」→ *-self']},
+    verify:{before:'place-items:stretch(既定)：各アイテムがセル全体に引き伸ばされる',after:'place-items:center：各アイテムが内容サイズでセル中央に配置'},
+    check:['①After で各セルの中身が中央の小さなボックスか確認','②「Before(stretch)を見る」でセル全体に広がるのを確認','③justify-items だけ start にすると横位置だけ左に寄ることを試行で確認'],
+    try:'place-items を center / start / end と変え、items(全体)と self(個別)の優先関係も観察する'
+  },
+  lab10:{
+    info:{type:'ok',html:'✅ <strong>subgridの本質</strong>: 子が「新しい座標系」を作る通常ネストと違い、subgrid は<strong>親の座標系を間借り</strong>する。整列責任を兄弟をまたいで親に集約 → min-height手当てやJS計測を撲滅。行/列を個別に subgrid 化でき、gap も継承。'},
+    usecase:{list:['カード一覧でタイトル/本文/ボタンの行を全カードで揃える','フォームのラベル列と入力列を行をまたいで整列','表組みなのに各行を別要素にしたいとき'],trigger:['「カードごとに高さが違ってボタン位置がガタつく」','「兄弟要素間で内部の線を揃えたい」']},
+    verify:{before:'各カードが独立grid：タイトル行数の差で本文・フッターの位置がズレる',after:'subgrid：親の行ラインを共有し、3枚で境界線が完全一致'},
+    check:['①After でタイトル/本文/フッターの横の境界線が3枚で揃っているか確認','②「Before(独立grid)を見る」でカードBだけ高く、フッター位置がズレるのを確認','③カードAのタイトルを2行に増やしても After は全カードが追従して揃うことを試行で確認'],
+    try:'grid-template-rows: subgrid を片方のカードだけ外すと、そのカードだけ整列から外れることを確認すると効果が際立つ'
+  },
+  lab11:{
+    info:{type:'ok',html:'✅ <strong>完成形</strong>: 外側=<code>repeat(auto-fit, minmax())</code>でレスポンシブ段組、内側=<code>subgrid</code>で行揃え。この2段構えが実務カード一覧の定番。メディアクエリほぼ不要。'},
+    usecase:{list:['ECの商品グリッド(価格を底で揃える)','ブログ記事カード一覧','ポートフォリオ/ギャラリー表示'],trigger:['「レスポンシブ段組 × 中身の整列」を同時に満たしたい','カード一覧の最終形を作りたいとき']},
+    verify:{before:'auto-fill：カードが既定幅で左詰め、右に空きが出る',after:'auto-fit + subgrid：カードが伸びて充填され、価格が底で揃う'},
+    check:['①After で各カードの価格(フッター)が同じ高さに揃うか確認','②ウィンドウ幅を狭める/広げると列数が自動で増減するのを確認','③「Before(auto-fill)を見る」で右側に空きトラックが出るのを確認'],
+    try:'ブラウザ幅をゆっくり変えて、列が2→3→4と再流し込みされる瞬間を観察。minmax(160px,1fr)の160pxがしきい値'
+  }
+};
+
+function infoHTML(m){ return m?.info ? `<div class="info-box ${m.info.type||'info'}">${m.info.html}</div>` : ''; }
+function usecaseHTML(m){ if(!m?.usecase) return '';
+  const list=(m.usecase.list||[]).map(x=>`<li>${x}</li>`).join('');
+  const trig=(m.usecase.trigger||[]).map(x=>`<li>${x}</li>`).join('');
+  return `<div class="usecase-box"><div class="usecase-title">💡 利用シーン</div>
+    <ul class="usecase-list">${list}</ul>
+    <div class="usecase-trigger">こう見えたら使える候補:<ul>${trig}</ul></div></div>`; }
+function verifyHTML(m){ if(!m?.verify) return '';
+  const {before,after}=m.verify;
+  return `<div class="verify">
+    <div class="verify-col verify-before"><div class="verify-label">Before ▶︎ 機能OFF</div>${before||''}</div>
+    <div class="verify-col verify-after"><div class="verify-label">After ▶︎ 機能ON</div>${after||''}</div>
+  </div>`; }
+function tryHTML(m){
+  const tip=m?.try?`<div class="try-tip"><strong>💡 このラボのコツ:</strong> ${m.try}</div>`:'';
+  return `<div class="try-box">
+    <div class="try-title">💻 コード例を試す手順（コピペで動かす）</div>
+    <ol>
+      <li>上のコードブロックの <strong>Copy</strong> ボタンでクリップボードにコピー</li>
+      <li>テキストエディタで <code>試行.html</code> を新規作成し、下の<strong>HTML雛形</strong>の <code>&lt;style&gt;</code> 内や <code>&lt;!-- ここに貼る --&gt;</code> へペースト</li>
+      <li>保存して、ファイルを<strong>ダブルクリック</strong>かブラウザにドラッグ&amp;ドロップで開く</li>
+      <li>下の「🔍 ブラウザ実機チェック」を順に試し、想定通りの挙動か確認する</li>
+    </ol>
+    <pre class="try-skeleton">&lt;!DOCTYPE html&gt;
+&lt;html lang="ja"&gt;&lt;head&gt;&lt;meta charset="UTF-8"&gt;
+&lt;style&gt;
+  .grid { display:grid; gap:8px; border:1px dashed #999; padding:8px; }
+  .grid > div { background:#cfe3ff; border:1px solid #005cc5; padding:12px; text-align:center; }
+  /* ↑ ここに上のコード例の grid-template-* を貼る */
+&lt;/style&gt;&lt;/head&gt;&lt;body&gt;
+  &lt;div class="grid"&gt;
+    &lt;div&gt;1&lt;/div&gt;&lt;div&gt;2&lt;/div&gt;&lt;div&gt;3&lt;/div&gt;&lt;div&gt;4&lt;/div&gt;&lt;div&gt;5&lt;/div&gt;
+  &lt;/div&gt;
+&lt;/body&gt;&lt;/html&gt;</pre>
+    ${tip}
+  </div>`; }
+function checkHTML(m){ if(!m?.check?.length) return '';
+  return `<div class="check-steps">
+    <div class="check-steps-title">🔍 ブラウザ実機チェック</div>
+    <ol>${m.check.map(s=>`<li>${s}</li>`).join('')}</ol>
+  </div>`; }
+
+document.addEventListener('DOMContentLoaded',()=>{
+  // (1) 各ラボへ info → usecase → verify → try → check を自動挿入
+  document.querySelectorAll('.lab').forEach(lab=>{
+    const meta=LAB_META[lab.id]; const body=lab.querySelector('.lab-body');
+    if(!body||!meta) return;
+    const frag=document.createElement('div');
+    frag.innerHTML = infoHTML(meta)+usecaseHTML(meta)+verifyHTML(meta)+tryHTML(meta)+checkHTML(meta);
+    while(frag.firstChild) body.appendChild(frag.firstChild);
+  });
+
+  // (2) サイドバー active ハイライト
+  const links=Array.from(document.querySelectorAll('#sidebar .nav-item'));
+  const map=new Map();
+  links.forEach(a=>{const el=document.getElementById(a.getAttribute('href').slice(1)); if(el) map.set(el,a);});
+  const io=new IntersectionObserver(es=>es.forEach(e=>{
+    if(e.isIntersecting){const l=map.get(e.target);
+      if(l){links.forEach(n=>n.classList.remove('active')); l.classList.add('active');}}
+  }),{rootMargin:'-30% 0px -60% 0px'});
+  document.querySelectorAll('.lab[id]').forEach(lab=>io.observe(lab));
+
+  // (3) 既存 .code-block に header + Copy を自動付与
+  document.querySelectorAll('.code-block').forEach((cb,i)=>{
+    if(cb.querySelector('.code-block-header')) return;
+    const header=document.createElement('div');
+    header.className='code-block-header';
+    header.innerHTML=`<span>CSS — 例 #${i+1}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+    cb.insertBefore(header,cb.firstChild);
+  });
+});
+
+// (4) Livedemo トグル（Before/After 切替）
+document.addEventListener('click',(e)=>{
+  if(!e.target.matches('.toggle-btn')) return;
+  const btn=e.target;
+  const stage=document.getElementById(btn.dataset.target);
+  if(!stage) return;
+  const isBefore=stage.classList.toggle('is-before');
+  btn.classList.toggle('is-before',isBefore);
+  const label=document.getElementById(btn.dataset.target+'-label');
+  if(label) label.textContent = isBefore ? '現在: Before（機能OFF／問題あり）' : '現在: After（機能ON／修正済み）';
+});
+</script>
+</body>
+</html>

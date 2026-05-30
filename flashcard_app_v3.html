@@ -248,6 +248,28 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
 .drive-status-text{font-size:.7rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .drive-meta{font-size:.65rem;color:var(--text-dim);padding-left:14px;margin-bottom:2px}
 
+/* Sync progress overlay */
+.sync-overlay{position:fixed;top:0;left:240px;right:0;z-index:90;
+  background:linear-gradient(135deg,rgba(0,92,197,.07) 0%,rgba(34,134,58,.05) 100%);
+  border-bottom:2px solid var(--accent);
+  padding:16px 24px;display:none;align-items:center;gap:16px;
+  backdrop-filter:blur(8px);animation:slideDown .25s ease-out}
+.sync-overlay.show{display:flex}
+@keyframes slideDown{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}
+.sync-spinner{width:24px;height:24px;border:3px solid var(--surface2);
+  border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sync-info{flex:1;min-width:0}
+.sync-step{font-family:var(--mono);font-size:.85rem;font-weight:600;color:var(--accent);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sync-detail{font-size:.75rem;color:var(--text-dim);margin-top:2px;font-family:var(--mono)}
+.sync-progress-bar{height:4px;background:var(--surface2);border-radius:2px;margin-top:6px;overflow:hidden}
+.sync-progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));
+  border-radius:2px;transition:width .3s ease;width:0%}
+@media(max-width:768px){
+  .sync-overlay{left:0;top:0;padding:12px 16px}
+}
+
 /* Settings view */
 .setting-section{background:var(--surface);border:1px solid var(--border);
   border-radius:12px;padding:24px;margin-bottom:18px}
@@ -339,8 +361,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
   <div class="nav-section">デッキ</div>
   <div id="deck-list-nav"></div>
   <div class="nav-section">同期</div>
-  <button class="nav-item" id="nav-sync"><span class="nav-num">⟳</span>今すぐ同期</button>
-  <button class="nav-item" id="nav-reload"><span class="nav-num">⬇</span>Driveから再読込</button>
+  <button class="nav-item" id="nav-sync"><span class="nav-num">⟳</span>差分同期</button>
+  <button class="nav-item" id="nav-reload"><span class="nav-num">⬇</span>全件再読込</button>
 
   <div class="drive-status">
     <div class="drive-status-row">
@@ -351,6 +373,15 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
     <div class="drive-meta" id="drive-file-count"></div>
   </div>
 </nav>
+
+<div class="sync-overlay" id="sync-overlay">
+  <div class="sync-spinner"></div>
+  <div class="sync-info">
+    <div class="sync-step" id="sync-step">同期中...</div>
+    <div class="sync-detail" id="sync-detail"></div>
+    <div class="sync-progress-bar"><div class="sync-progress-fill" id="sync-progress-fill"></div></div>
+  </div>
+</div>
 
 <div class="hero">
   <h1>Keyword → Structure</h1>
@@ -544,6 +575,20 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
 
       <div class="setting-row">
         <div>
+          <div class="setting-label">同期対象の期間</div>
+          <div class="setting-desc">直近N日以内に更新されたファイルのみ取得(高速化)。0=全件取得。「Driveから再読込」は常に全件。</div>
+        </div>
+        <div class="setting-value" style="display:flex;align-items:center;gap:8px">
+          <span style="font-family:var(--mono);font-size:.85rem">直近</span>
+          <input type="number" class="form-input" id="setting-sync-days"
+            min="0" max="365" value="7" style="width:70px;text-align:center">
+          <span style="font-family:var(--mono);font-size:.85rem">日間</span>
+          <span style="font-size:.75rem;color:var(--text-dim)" id="sync-days-hint">(0で全件)</span>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div>
           <div class="setting-label">Driveフォルダ</div>
           <div class="setting-desc">マイドライブ直下に自動作成。ここに置いた全JSONを取り込みます。</div>
         </div>
@@ -635,6 +680,7 @@ const state = {
   drive: {
     clientId: '',
     autoSync: true,
+    syncDays: 7,        // 同期対象: 直近N日以内に更新されたファイル (0=全件)
     accessToken: null,
     user: null,                 // {email, name, picture}
     folderId: null,             // Flashcardsフォルダのid
@@ -1216,6 +1262,7 @@ function loadSettings(){
       const s = JSON.parse(raw);
       state.drive.clientId = s.clientId || '';
       state.drive.autoSync = s.autoSync !== false;
+      state.drive.syncDays = s.syncDays != null ? s.syncDays : 7;
       state.drive.fileId = s.fileId || null;
       state.drive.lastSyncAt = s.lastSyncAt || 0;
     }
@@ -1226,6 +1273,7 @@ function saveSettings(){
     localStorage.setItem(SETTINGS_KEY, JSON.stringify({
       clientId: state.drive.clientId,
       autoSync: state.drive.autoSync,
+      syncDays: state.drive.syncDays,
       fileId: state.drive.fileId,
       lastSyncAt: state.drive.lastSyncAt,
     }));
@@ -1328,10 +1376,15 @@ async function ensureFolder(){
   return state.drive.folderId;
 }
 
-// フォルダ内のJSONファイルを一覧
-async function listFolderJsons(folderId){
+// フォルダ内のJSONファイルを一覧 (syncDays>0 なら直近N日のみ)
+async function listFolderJsons(folderId, filterDays = 0){
+  let q = `'${folderId}' in parents and mimeType='application/json' and trashed=false`;
+  if(filterDays > 0){
+    const cutoff = new Date(Date.now() - filterDays * 86400000).toISOString();
+    q += ` and modifiedTime > '${cutoff}'`;
+  }
   const resp = await gapi.client.drive.files.list({
-    q: `'${folderId}' in parents and mimeType='application/json' and trashed=false`,
+    q,
     fields: 'files(id, name, modifiedTime, size)',
     pageSize: 200,
     orderBy: 'name',
@@ -1401,8 +1454,16 @@ async function syncWithDrive(reason = 'auto'){
   if(!state.drive.accessToken || state.drive.syncing) return;
   state.drive.syncing = true;
   updateDriveStatus('syncing', '同期中...');
+  const showOverlay = reason !== 'auto';
+  let syncFilterDays = 0;
+  let syncedCardFileCount = 0;
+  if(showOverlay){
+    showSyncOverlay(true);
+    updateSyncProgress('Drive同期を開始...', '', 0);
+  }
   try{
     // (1) フォルダ確保
+    if(showOverlay) updateSyncProgress('フォルダを確認中...', 'Flashcards/', 5);
     const folderId = await ensureFolder();
     if(!folderId) throw new Error('フォルダ作成失敗');
 
@@ -1412,16 +1473,28 @@ async function syncWithDrive(reason = 'auto'){
                          (nowMs() - state.drive.lastReloadAt > 60000); // 1分以上経過
 
     if(shouldReload){
-      const files = await listFolderJsons(folderId);
+      // reload=全件取得, それ以外=syncDaysでフィルタ(初回・ローカルキャッシュなしの場合は全件)
+      const isFullLoad = reason === 'reload' || state.rawCards.length === 0;
+      const filterDays = isFullLoad ? 0 : state.drive.syncDays;
+      syncFilterDays = filterDays;
+      const filterLabel = filterDays > 0 ? `(直近${filterDays}日)` : '(全件)';
+      if(showOverlay) updateSyncProgress('ファイル一覧を取得中...', filterLabel, 10);
+      const files = await listFolderJsons(folderId, filterDays);
 
       // _reviews.json を分離
       const reviewsFile = files.find(f => f.name === DRIVE_REVIEWS_FILE);
       const cardFiles = files.filter(f => !f.name.startsWith('_'));
+      if(showOverlay) updateSyncProgress('カードファイルを読込中...', `0 / ${cardFiles.length} ファイル ${filterLabel}`, 15);
 
-      // (3) 全カードファイルを並列ダウンロードしてマージ
+      // (3) カードファイルをダウンロードしてマージ
       const allCards = [];
       const fileMeta = [];
-      for(const f of cardFiles){
+      for(let i = 0; i < cardFiles.length; i++){
+        const f = cardFiles[i];
+        if(showOverlay){
+          const pct = 15 + Math.round((i / cardFiles.length) * 55);
+          updateSyncProgress('カードファイルを読込中...', `${i + 1} / ${cardFiles.length} — ${f.name}`, pct);
+        }
         try{
           const content = await downloadDriveFile(f.id);
           const parsed = JSON.parse(content);
@@ -1438,15 +1511,28 @@ async function syncWithDrive(reason = 'auto'){
         }
       }
 
-      // (4) ID後勝ちでマージ(ファイル順=名前順、後勝ち)
+      // (4) ID後勝ちでマージ — 差分モード時は既存カードを保持して更新分だけ上書き
       const idMap = new Map();
+      if(filterDays > 0){
+        // 差分モード: 既存カードをベースに、更新ファイルのカードで上書き
+        for(const c of state.rawCards){ idMap.set(c.id, c); }
+      }
       for(const c of allCards){
         idMap.set(c.id, c);
       }
       state.rawCards = Array.from(idMap.values());
-      state.drive.cardFiles = fileMeta;
+      syncedCardFileCount = cardFiles.length;
+      if(isFullLoad){
+        state.drive.cardFiles = fileMeta;
+      } else {
+        // 差分モード: fileMetaを既存に追記・更新
+        const existingMap = new Map((state.drive.cardFiles || []).map(f => [f.name, f]));
+        for(const f of fileMeta){ existingMap.set(f.name, f); }
+        state.drive.cardFiles = Array.from(existingMap.values());
+      }
 
       // (5) _reviews.json を読み込んで reviewMap を構築
+      if(showOverlay) updateSyncProgress('学習履歴を同期中...', '_reviews.json', 75);
       if(reviewsFile){
         state.drive.reviewsFileId = reviewsFile.id;
         try{
@@ -1484,12 +1570,14 @@ async function syncWithDrive(reason = 'auto'){
     }
 
     // (6) reviewsDirty なら _reviews.json をアップロード
+    if(showOverlay) updateSyncProgress('レビュー結果をアップロード中...', '', 85);
     if(state.reviewsDirty){
       const result = await uploadReviewsFile(buildReviewsPayload(), state.drive.reviewsFileId, folderId);
       state.drive.reviewsFileId = result.id;
       state.reviewsDirty = false;
     }
 
+    if(showOverlay) updateSyncProgress('完了!', '', 100);
     state.drive.lastSyncAt = nowMs();
     saveSettings();
     updateDriveStatus('connected', state.drive.user?.email || 'サインイン済み');
@@ -1497,10 +1585,12 @@ async function syncWithDrive(reason = 'auto'){
     updateFileCountDisplay();
 
     if(reason === 'reload'){
-      toast(`${state.drive.cardFiles.length}ファイル, ${state.rawCards.length}カードを読込`, 'success');
-    } else if(reason === 'manual'){
-      toast('同期完了', 'success');
+      toast(`全${state.drive.cardFiles.length}ファイル, ${state.rawCards.length}カードを読込`, 'success');
+    } else if(reason === 'manual' || reason === 'initial'){
+      const daysInfo = syncFilterDays > 0 ? ` (直近${syncFilterDays}日: ${syncedCardFileCount}ファイル更新)` : '';
+      toast(`同期完了 — ${state.rawCards.length}カード${daysInfo}`, 'success');
     }
+    if(showOverlay) setTimeout(() => showSyncOverlay(false), 800);
   }catch(e){
     console.error('sync failed', e);
     state.drive.error = e.message;
@@ -1508,6 +1598,7 @@ async function syncWithDrive(reason = 'auto'){
     if(reason !== 'auto'){
       toast('同期失敗: ' + e.message, 'error');
     }
+    showSyncOverlay(false);
   }finally{
     state.drive.syncing = false;
   }
@@ -1521,6 +1612,19 @@ function updateDriveStatus(status, text){
     dot.className = 'drive-status-dot ' + status;
   }
   if(txt){ txt.textContent = text; }
+}
+
+function showSyncOverlay(show){
+  const el = document.getElementById('sync-overlay');
+  if(el) el.classList.toggle('show', show);
+}
+function updateSyncProgress(step, detail, percent){
+  const stepEl = document.getElementById('sync-step');
+  const detailEl = document.getElementById('sync-detail');
+  const fillEl = document.getElementById('sync-progress-fill');
+  if(stepEl) stepEl.textContent = step;
+  if(detailEl) detailEl.textContent = detail || '';
+  if(fillEl) fillEl.style.width = (percent != null ? percent + '%' : '0%');
 }
 
 function updateLastSyncDisplay(){
@@ -1639,6 +1743,18 @@ function bindSettingsUI(){
     state.drive.autoSync = e.target.checked;
     saveSettings();
   });
+
+  // 同期対象期間
+  const syncDaysInput = document.getElementById('setting-sync-days');
+  syncDaysInput.value = state.drive.syncDays;
+  syncDaysInput.addEventListener('change', e => {
+    const v = Math.max(0, Math.min(365, parseInt(e.target.value) || 0));
+    e.target.value = v;
+    state.drive.syncDays = v;
+    saveSettings();
+    document.getElementById('sync-days-hint').textContent = v === 0 ? '(全件取得)' : `(${v}日以内)`;
+  });
+  document.getElementById('sync-days-hint').textContent = state.drive.syncDays === 0 ? '(全件取得)' : `(${state.drive.syncDays}日以内)`;
 
   document.getElementById('btn-force-pull').addEventListener('click', () => {
     if(!state.drive.accessToken){ toast('先にサインインしてください', 'error'); return; }
