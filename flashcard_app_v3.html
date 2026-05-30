@@ -1477,14 +1477,19 @@ async function syncWithDrive(reason = 'auto'){
       const isFullLoad = reason === 'reload' || state.rawCards.length === 0;
       const filterDays = isFullLoad ? 0 : state.drive.syncDays;
       syncFilterDays = filterDays;
-      const filterLabel = filterDays > 0 ? `(直近${filterDays}日)` : '(全件)';
+      const filterLabel = filterDays > 0 ? `直近${filterDays}日` : '全件';
       if(showOverlay) updateSyncProgress('ファイル一覧を取得中...', filterLabel, 10);
       const files = await listFolderJsons(folderId, filterDays);
 
       // _reviews.json を分離
       const reviewsFile = files.find(f => f.name === DRIVE_REVIEWS_FILE);
       const cardFiles = files.filter(f => !f.name.startsWith('_'));
-      if(showOverlay) updateSyncProgress('カードファイルを読込中...', `0 / ${cardFiles.length} ファイル ${filterLabel}`, 15);
+
+      if(cardFiles.length === 0){
+        if(showOverlay) updateSyncProgress('更新ファイルなし', `${filterLabel} — 新規・更新ファイルは見つかりませんでした`, 70);
+      } else {
+        if(showOverlay) updateSyncProgress('カードファイルを読込中...', `0 / ${cardFiles.length} ファイル (${filterLabel})`, 15);
+      }
 
       // (3) カードファイルをダウンロードしてマージ
       const allCards = [];
@@ -1492,7 +1497,7 @@ async function syncWithDrive(reason = 'auto'){
       for(let i = 0; i < cardFiles.length; i++){
         const f = cardFiles[i];
         if(showOverlay){
-          const pct = 15 + Math.round((i / cardFiles.length) * 55);
+          const pct = 15 + Math.round(((i + 1) / cardFiles.length) * 55);
           updateSyncProgress('カードファイルを読込中...', `${i + 1} / ${cardFiles.length} — ${f.name}`, pct);
         }
         try{
@@ -1512,6 +1517,7 @@ async function syncWithDrive(reason = 'auto'){
       }
 
       // (4) ID後勝ちでマージ — 差分モード時は既存カードを保持して更新分だけ上書き
+      if(showOverlay && allCards.length > 0) updateSyncProgress('カードをマージ中...', `${allCards.length}枚`, 72);
       const idMap = new Map();
       if(filterDays > 0){
         // 差分モード: 既存カードをベースに、更新ファイルのカードで上書き
@@ -1567,17 +1573,31 @@ async function syncWithDrive(reason = 'auto'){
       state.drive.lastReloadAt = nowMs();
       saveLocalSnapshot();
       refreshAllViews();
+    } else {
+      // shouldReload=false: カード再取得はスキップ
+      if(showOverlay) updateSyncProgress('カードは最新です', '前回の同期から60秒以内のためスキップ', 70);
     }
 
     // (6) reviewsDirty なら _reviews.json をアップロード
-    if(showOverlay) updateSyncProgress('レビュー結果をアップロード中...', '', 85);
+    if(showOverlay){
+      if(state.reviewsDirty){
+        updateSyncProgress('レビュー結果をアップロード中...', '_reviews.json', 85);
+      } else {
+        updateSyncProgress('レビュー結果を確認中...', '未送信の変更なし', 85);
+      }
+    }
     if(state.reviewsDirty){
       const result = await uploadReviewsFile(buildReviewsPayload(), state.drive.reviewsFileId, folderId);
       state.drive.reviewsFileId = result.id;
       state.reviewsDirty = false;
     }
 
-    if(showOverlay) updateSyncProgress('完了!', '', 100);
+    if(showOverlay){
+      const summary = syncedCardFileCount > 0
+        ? `${syncedCardFileCount}ファイル更新, 計${state.rawCards.length}カード`
+        : `${state.rawCards.length}カード (変更なし)`;
+      updateSyncProgress('同期完了!', summary, 100);
+    }
     state.drive.lastSyncAt = nowMs();
     saveSettings();
     updateDriveStatus('connected', state.drive.user?.email || 'サインイン済み');
