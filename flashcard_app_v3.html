@@ -47,6 +47,11 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
 .deck-row.active .nav-item{color:var(--accent);font-weight:600}
 .deck-count{font-family:var(--mono);font-size:.7rem;color:var(--text-dim);
   background:var(--surface2);padding:1px 6px;border-radius:10px;min-width:24px;text-align:center}
+.deck-done-btn{flex-shrink:0;width:24px;height:22px;padding:0;border-radius:6px;
+  border:1px solid var(--border);background:var(--bg);color:var(--success);
+  font-size:.78rem;line-height:1;cursor:pointer;transition:all .15s}
+.deck-done-btn:hover{border-color:var(--success)}
+.deck-done-btn.done{background:var(--success);color:#fff;border-color:var(--success)}
 
 /* Level filter tabs */
 .level-tabs{display:flex;gap:2px;padding:4px 16px;margin-bottom:6px}
@@ -86,7 +91,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
 
 /* === STUDY VIEW === */
 .study-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;
-  font-family:var(--mono);font-size:.82rem;color:var(--text-dim)}
+  font-family:var(--mono);font-size:.82rem;color:var(--text-dim);gap:10px}
+.study-deck-head{display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:wrap}
 .study-progress{display:flex;gap:14px;align-items:center}
 .progress-bar{width:120px;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden}
 .progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .3s}
@@ -227,10 +233,16 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
 
 .deck-stats-list{display:flex;flex-direction:column;gap:8px}
 .deck-stat-item{background:var(--surface);border:1px solid var(--border);border-radius:8px;
-  padding:12px 16px;display:grid;grid-template-columns:1fr auto auto auto auto;gap:14px;align-items:center;
+  padding:12px 16px;display:grid;grid-template-columns:1fr auto auto auto auto auto;gap:14px;align-items:center;
   font-size:.88rem}
 .deck-stat-item .ds-name{font-weight:600}
 .deck-stat-item .ds-num{font-family:var(--mono);color:var(--text-dim);font-size:.82rem}
+.ds-done-btn{padding:5px 12px;border-radius:16px;border:1px solid var(--border);
+  background:var(--surface2);color:var(--text-dim);font-family:var(--mono);font-size:.74rem;
+  cursor:pointer;white-space:nowrap;transition:all .15s}
+.ds-done-btn:hover{border-color:var(--success);color:var(--success)}
+.ds-done-btn.done{background:rgba(34,134,58,.14);border-color:var(--success);
+  color:var(--success);font-weight:600}
 
 /* Toast */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);
@@ -354,6 +366,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
   .list-item .li-stats,.list-item .li-due,.list-item .li-deck{justify-self:start}
   .manage-toolbar{flex-direction:column}
   .manage-toolbar .search-box{flex:1 1 auto !important;min-width:0 !important}
+  .deck-stat-item{grid-template-columns:1fr auto;row-gap:8px}
+  .deck-stat-item .ds-name{grid-column:1 / -1}
+  .ds-done-btn{justify-self:end}
 }
 </style>
 </head>
@@ -418,7 +433,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
       </select>
     </div>
     <div class="study-header">
-      <div id="study-deck-name">全カード</div>
+      <div class="study-deck-head">
+        <span id="study-deck-name">全カード</span>
+        <button id="study-deck-done" class="ds-done-btn" style="display:none"></button>
+      </div>
       <div class="study-progress">
         <span id="study-counter">0 / 0</span>
         <div class="progress-bar"><div class="progress-fill" id="study-progress-fill" style="width:0%"></div></div>
@@ -855,21 +873,38 @@ function recordReviewToday(){
 // 実施済みチェック(手動トグル)
 // done フラグは reviewMap に保存され、_reviews.json 経由で端末間同期される
 // ============================================================
+// 1枚のカードに done を適用(保存は呼び出し側でまとめて行う)
+function applyDoneToCard(card, value){
+  card.done = value;
+  card.doneAt = nowMs();
+  // reviewMap に書き戻す(レビュー予定フィールドは保持)
+  state.reviewMap[card.id] = {
+    ...state.reviewMap[card.id],
+    done: value,
+    doneAt: card.doneAt,
+  };
+}
+
 function toggleDone(cardId, force){
   const card = state.cards.find(c => c.id === cardId);
   if(!card) return;
   const next = (typeof force === 'boolean') ? force : !card.done;
-  card.done = next;
-  card.doneAt = nowMs();
-  // reviewMap に書き戻す(レビュー予定フィールドは保持)
-  state.reviewMap[cardId] = {
-    ...state.reviewMap[cardId],
-    done: next,
-    doneAt: card.doneAt,
-  };
+  applyDoneToCard(card, next);
   state.reviewsDirty = true;
   saveLocalSnapshot();
   return next;
+}
+
+// デッキ単位で実施済みを一括ON/OFF
+// 全カードが済みなら解除、そうでなければ全て済みにする(トグル)
+function toggleDoneForDeck(deck){
+  const cards = state.cards.filter(c => c.deck === deck);
+  if(cards.length === 0) return;
+  const target = !cards.every(c => c.done);
+  cards.forEach(c => applyDoneToCard(c, target));
+  state.reviewsDirty = true;
+  saveLocalSnapshot();
+  return target;
 }
 
 // ============================================================
@@ -945,15 +980,21 @@ function renderDeckNav(){
   const decks = getDecks();
   const nav = document.getElementById('deck-list-nav');
   const filtered = filterByLevel(state.cards);
-  const counts = {};
-  filtered.forEach(c => { counts[c.deck] = (counts[c.deck]||0) + 1; });
+  const counts = {}, doneCounts = {};
+  filtered.forEach(c => {
+    counts[c.deck] = (counts[c.deck]||0) + 1;
+    if(c.done) doneCounts[c.deck] = (doneCounts[c.deck]||0) + 1;
+  });
   let html = `<div class="deck-row ${state.currentDeck===null?'active':''}">
     <button class="nav-item" data-deck="" style="padding-left:0">全カード</button>
     <span class="deck-count">${filtered.length}</span>
   </div>`;
   decks.forEach(d => {
+    const allDone = (counts[d]||0) > 0 && doneCounts[d] === counts[d];
     html += `<div class="deck-row ${state.currentDeck===d?'active':''}">
       <button class="nav-item" data-deck="${escapeAttr(d)}" style="padding-left:0">${escapeHtml(d)}</button>
+      <button class="deck-done-btn ${allDone?'done':''}" title="このデッキを実施済み一括ON/OFF"
+        onclick="toggleDoneForDeckUI('${escapeAttr(d)}')">${allDone?'☑':'☐'}</button>
       <span class="deck-count">${counts[d]||0}</span>
     </div>`;
   });
@@ -1011,7 +1052,22 @@ function startStudy(){
                      state.currentLevel === 'structure' ? '【構造】' : '';
   const deckLabel = state.currentDeck || '全カード';
   document.getElementById('study-deck-name').textContent = levelLabel + deckLabel;
+  updateStudyDeckToggle();
   renderStudy();
+}
+
+// 学習画面ヘッダーの「このデッキを一括実施済み」ボタンの表示/状態を更新
+// (特定デッキ選択時のみ表示。全カード選択時は非表示)
+function updateStudyDeckToggle(){
+  const btn = document.getElementById('study-deck-done');
+  if(!btn) return;
+  const cards = state.currentDeck ? state.cards.filter(c => c.deck === state.currentDeck) : [];
+  if(cards.length === 0){ btn.style.display = 'none'; return; }
+  const allDone = cards.every(c => c.done);
+  btn.style.display = 'inline-block';
+  btn.className = 'ds-done-btn' + (allDone ? ' done' : '');
+  btn.textContent = allDone ? '☑ このデッキ全実施済み' : '☐ このデッキを全て実施';
+  btn.onclick = () => toggleDoneForDeckUI(state.currentDeck);
 }
 
 function renderStudy(){
@@ -1207,6 +1263,21 @@ function toggleDoneInList(id){
   if(document.getElementById('view-stats').classList.contains('active')) renderStats();
 }
 
+// デッキ単位の一括トグル(統計画面のデッキ別リストから呼ばれる)
+function toggleDoneForDeckUI(deck){
+  const target = toggleDoneForDeck(deck);
+  if(target == null) return;
+  toast(target ? `「${deck}」を全て実施済みにしました` : `「${deck}」の実施済みを全て解除しました`,
+        target ? 'success' : '');
+  renderDeckNav();  // サイドバーのデッキ別トグル状態を更新
+  renderStats();
+  if(document.getElementById('view-manage').classList.contains('active')) renderManage();
+  if(document.getElementById('view-study').classList.contains('active')){
+    renderStudy();              // 表示中カードの個別トグル表示も更新
+    updateStudyDeckToggle();    // ヘッダーのデッキトグル状態も更新
+  }
+}
+
 function previewCard(id){
   const card = state.cards.find(c => c.id === id);
   if(!card) return;
@@ -1283,6 +1354,7 @@ function renderStats(){
     const cards = state.cards.filter(c => c.deck === d);
     const due = cards.filter(c => c.due <= nowMs()).length;
     const done = cards.filter(c => c.done).length;
+    const allDone = cards.length > 0 && done === cards.length;
     const reviewed = cards.reduce((sum, c) => sum + (c.reviewCount||0), 0);
     return `<div class="deck-stat-item">
       <span class="ds-name">${escapeHtml(d)}</span>
@@ -1290,6 +1362,8 @@ function renderStats(){
       <span class="ds-num" style="color:${done>0?'var(--success)':'var(--text-dim)'}">実施済み ${done}</span>
       <span class="ds-num" style="color:${due>0?'var(--error)':'var(--text-dim)'}">期限到来 ${due}</span>
       <span class="ds-num">復習 ${reviewed}回</span>
+      <button class="ds-done-btn ${allDone?'done':''}"
+        onclick="toggleDoneForDeckUI('${escapeAttr(d)}')">${allDone?'☑ 全実施済み':'☐ 全て実施'}</button>
     </div>`;
   }).join('');
 }
