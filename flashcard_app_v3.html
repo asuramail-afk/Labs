@@ -237,6 +237,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
   font-size:.88rem}
 .deck-stat-item .ds-name{font-weight:600}
 .deck-stat-item .ds-num{font-family:var(--mono);color:var(--text-dim);font-size:.82rem}
+.ds-name-link{background:none;border:none;padding:0;font-family:var(--sans);font-size:.88rem;
+  font-weight:600;color:var(--accent);cursor:pointer;text-align:left}
+.ds-name-link:hover{text-decoration:underline}
 .ds-done-btn{padding:5px 12px;border-radius:16px;border:1px solid var(--border);
   background:var(--surface2);color:var(--text-dim);font-family:var(--mono);font-size:.74rem;
   cursor:pointer;white-space:nowrap;transition:all .15s}
@@ -1028,9 +1031,13 @@ function renderDeckNav(){
   // sync study-filters (mobile bar)
   const sds = document.getElementById('study-deck-select');
   if(sds){
-    const sCur = sds.value;
-    sds.innerHTML = '<option value="">全デッキ</option>' +
-      decks.map(d => `<option value="${escapeAttr(d)}">${escapeHtml(d)}</option>`).join('');
+    // 全デッキが実施済みなら ☑ を、各デッキも全実施済みなら ☑ を頭に付ける
+    const allOfAllDone = filtered.length > 0 && filtered.every(c => c.done);
+    sds.innerHTML = `<option value="">${allOfAllDone?'☑ ':''}全デッキ</option>` +
+      decks.map(d => {
+        const allDone = (counts[d]||0) > 0 && doneCounts[d] === counts[d];
+        return `<option value="${escapeAttr(d)}">${allDone?'☑ ':''}${escapeHtml(d)}</option>`;
+      }).join('');
     sds.value = state.currentDeck || '';
   }
   document.querySelectorAll('.sf-level-btn').forEach(b => {
@@ -1263,6 +1270,14 @@ function toggleDoneInList(id){
   if(document.getElementById('view-stats').classList.contains('active')) renderStats();
 }
 
+// 統計画面のデッキ名タップ → そのデッキを選択して学習画面へ遷移
+// (戻るときはサイドバー/上部タブの「統計」をタップ)
+function studyDeck(deck){
+  state.currentDeck = deck || null;
+  renderDeckNav();          // サイドバー・プルダウンの選択状態を同期
+  switchView('study');      // startStudy() が currentDeck で再構築される
+}
+
 // デッキ単位の一括トグル(統計画面のデッキ別リストから呼ばれる)
 function toggleDoneForDeckUI(deck){
   const target = toggleDoneForDeck(deck);
@@ -1357,7 +1372,7 @@ function renderStats(){
     const allDone = cards.length > 0 && done === cards.length;
     const reviewed = cards.reduce((sum, c) => sum + (c.reviewCount||0), 0);
     return `<div class="deck-stat-item">
-      <span class="ds-name">${escapeHtml(d)}</span>
+      <button class="ds-name ds-name-link" title="このデッキを学習する" onclick="studyDeck('${escapeAttr(d)}')">${escapeHtml(d)} ▸</button>
       <span class="ds-num">全${cards.length}</span>
       <span class="ds-num" style="color:${done>0?'var(--success)':'var(--text-dim)'}">実施済み ${done}</span>
       <span class="ds-num" style="color:${due>0?'var(--error)':'var(--text-dim)'}">期限到来 ${due}</span>
