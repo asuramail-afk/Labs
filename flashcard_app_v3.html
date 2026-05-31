@@ -103,6 +103,15 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
   font-size:.7rem;color:var(--accent);background:rgba(0,92,197,.08);
   padding:3px 10px;border-radius:12px}
 
+/* Done (実施済み) toggle on study card */
+.card-done-toggle{position:absolute;top:11px;left:50%;transform:translateX(-50%);
+  display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:20px;
+  border:1px solid var(--border);background:var(--surface2);color:var(--text-dim);
+  font-family:var(--mono);font-size:.74rem;cursor:pointer;transition:all .15s;z-index:2;white-space:nowrap}
+.card-done-toggle:hover{border-color:var(--success);color:var(--success)}
+.card-done-toggle.done{background:rgba(34,134,58,.14);border-color:var(--success);
+  color:var(--success);font-weight:600}
+
 .front-content{text-align:center;font-size:2rem;font-weight:700;color:var(--text);
   letter-spacing:-.5px;line-height:1.4;padding:0 12px}
 .front-context{font-size:.9rem;color:var(--text-dim);margin-top:14px;font-weight:400}
@@ -163,7 +172,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
 
 .card-list{display:flex;flex-direction:column;gap:8px}
 .list-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;
-  padding:14px 18px;display:grid;grid-template-columns:auto 1fr auto auto;gap:14px;align-items:center;
+  padding:14px 18px;display:grid;grid-template-columns:auto auto 1fr auto auto;gap:14px;align-items:center;
   cursor:pointer;transition:border-color .15s}
 .list-item:hover{border-color:var(--accent)}
 .list-item .li-deck{font-family:var(--mono);font-size:.7rem;color:var(--accent);
@@ -171,6 +180,12 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
 .list-item .li-front{font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .list-item .li-stats{font-family:var(--mono);font-size:.72rem;color:var(--text-dim);white-space:nowrap}
 .list-item .li-due{font-family:var(--mono);font-size:.72rem;white-space:nowrap;padding:2px 8px;border-radius:10px}
+.list-item .li-done{width:26px;height:26px;border-radius:6px;border:1px solid var(--border);
+  background:var(--bg);cursor:pointer;font-size:.9rem;line-height:1;color:var(--success);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.list-item .li-done:hover{border-color:var(--success)}
+.list-item .li-done.done{background:var(--success);color:#fff;border-color:var(--success)}
+.list-item.is-done .li-front{color:var(--text-dim)}
 .li-due.due-now{background:rgba(203,36,49,.10);color:var(--error)}
 .li-due.due-soon{background:rgba(176,136,0,.10);color:var(--warn)}
 .li-due.due-later{background:rgba(34,134,58,.10);color:var(--success)}
@@ -212,7 +227,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
 
 .deck-stats-list{display:flex;flex-direction:column;gap:8px}
 .deck-stat-item{background:var(--surface);border:1px solid var(--border);border-radius:8px;
-  padding:12px 16px;display:grid;grid-template-columns:1fr auto auto auto;gap:14px;align-items:center;
+  padding:12px 16px;display:grid;grid-template-columns:1fr auto auto auto auto;gap:14px;align-items:center;
   font-size:.88rem}
 .deck-stat-item .ds-name{font-weight:600}
 .deck-stat-item .ds-num{font-family:var(--mono);color:var(--text-dim);font-size:.82rem}
@@ -423,7 +438,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
       <kbd>Space</kbd> 表/裏切替 &nbsp;・&nbsp;
       <kbd>1</kbd> 思い出せた &nbsp;・&nbsp;
       <kbd>2</kbd> あいまい &nbsp;・&nbsp;
-      <kbd>3</kbd> 詰まった
+      <kbd>3</kbd> 詰まった &nbsp;・&nbsp;
+      <kbd>D</kbd> 実施済み
     </div>
   </div>
 
@@ -520,6 +536,11 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
         <div class="stat-label">STREAK</div>
         <div class="stat-value" id="stat-streak" style="color:var(--accent4)">0</div>
         <div class="stat-sub">連続学習日数</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">DONE</div>
+        <div class="stat-value" id="stat-done" style="color:var(--success)">0</div>
+        <div class="stat-sub">実施済みチェック</div>
       </div>
     </div>
 
@@ -739,6 +760,8 @@ function mergeAndApply(){
       due: rev.due ?? card.due ?? nowMs(),
       lastReviewed: rev.lastReviewed ?? card.lastReviewed ?? 0,
       reviewCount: rev.reviewCount ?? card.reviewCount ?? 0,
+      done: rev.done ?? card.done ?? false,
+      doneAt: rev.doneAt ?? card.doneAt ?? 0,
     };
   });
   state.cards = merged;
@@ -804,7 +827,9 @@ function applyReview(card, quality){
     card.due = daysFromNow(card.interval);
   }
   // reviewMap に書き戻す(これがDriveに同期される)
+  // 既存の done/doneAt(手動の実施済みチェック)はスプレッドで保持する
   state.reviewMap[card.id] = {
+    ...state.reviewMap[card.id],
     ease: card.ease,
     interval: card.interval,
     due: card.due,
@@ -824,6 +849,27 @@ function recordReviewToday(){
   // 直近365日のみ保持
   const cutoff = daysFromNow(-365);
   state.reviews = state.reviews.filter(r => new Date(r.date).getTime() > cutoff);
+}
+
+// ============================================================
+// 実施済みチェック(手動トグル)
+// done フラグは reviewMap に保存され、_reviews.json 経由で端末間同期される
+// ============================================================
+function toggleDone(cardId, force){
+  const card = state.cards.find(c => c.id === cardId);
+  if(!card) return;
+  const next = (typeof force === 'boolean') ? force : !card.done;
+  card.done = next;
+  card.doneAt = nowMs();
+  // reviewMap に書き戻す(レビュー予定フィールドは保持)
+  state.reviewMap[cardId] = {
+    ...state.reviewMap[cardId],
+    done: next,
+    doneAt: card.doneAt,
+  };
+  state.reviewsDirty = true;
+  saveLocalSnapshot();
+  return next;
 }
 
 // ============================================================
@@ -1004,11 +1050,14 @@ function renderStudy(){
   counter.textContent = `${state.studyIndex + 1} / ${state.studyQueue.length}`;
   fill.style.width = `${(state.studyIndex / state.studyQueue.length) * 100}%`;
 
+  const doneToggle = `<button class="card-done-toggle ${card.done?'done':''}" onclick="toggleDoneStudy()">${card.done?'☑ 実施済み':'☐ 実施済みにする'}</button>`;
+
   if(state.studyShowing === 'front'){
     stage.innerHTML = `
       <div class="card">
         <div class="card-side-label">FRONT — キーワード</div>
         <div class="card-deck-label">${escapeHtml(card.deck)}</div>
+        ${doneToggle}
         <div class="front-content">${escapeHtml(card.front)}</div>
         ${card.context ? `<div class="front-context">${escapeHtml(card.context)}</div>` : ''}
         <div class="recall-prompt">
@@ -1025,6 +1074,7 @@ function renderStudy(){
       <div class="card">
         <div class="card-side-label">BACK — 構造図</div>
         <div class="card-deck-label">${escapeHtml(card.deck)}</div>
+        ${doneToggle}
         <div style="font-size:1.1rem;font-weight:600;text-align:center;margin-bottom:8px">${escapeHtml(card.front)}</div>
         <div class="back-content">${escapeHtml(card.back)}</div>
         <div class="eval-row">
@@ -1054,6 +1104,15 @@ function renderStudy(){
 function flipCard(){
   state.studyShowing = state.studyShowing === 'front' ? 'back' : 'front';
   renderStudy();
+}
+
+function toggleDoneStudy(){
+  const card = state.studyQueue[state.studyIndex];
+  if(!card) return;
+  const next = toggleDone(card.id);
+  toast(next ? '実施済みにしました' : '実施済みを解除しました', next ? 'success' : '');
+  renderStudy();
+  if(document.getElementById('view-stats').classList.contains('active')) renderStats();
 }
 
 function evalCard(quality){
@@ -1119,7 +1178,9 @@ function renderManage(){
     const dueText = c.due <= nowMs() ? '今すぐ' :
       `${Math.ceil((c.due - nowMs()) / 86400000)}日後`;
     const levelBadge = isElementLevel(c) ? '<span class="li-deck" style="background:rgba(176,136,0,.08);color:var(--accent4)">要素</span>' : '';
-    return `<div class="list-item" onclick="previewCard('${c.id}')">
+    return `<div class="list-item ${c.done?'is-done':''}" onclick="previewCard('${c.id}')">
+      <button class="li-done ${c.done?'done':''}" title="実施済みチェック"
+        onclick="event.stopPropagation();toggleDoneInList('${c.id}')">${c.done?'✓':''}</button>
       <span class="li-deck">${escapeHtml(c.deck||'未分類')}</span>
       <span class="li-front">${escapeHtml(c.front)}</span>
       <span class="li-stats">${c.reviewCount||0}回</span>
@@ -1140,6 +1201,12 @@ function loadMoreCards(){
   renderManage();
 }
 
+function toggleDoneInList(id){
+  toggleDone(id);
+  renderManage();
+  if(document.getElementById('view-stats').classList.contains('active')) renderStats();
+}
+
 function previewCard(id){
   const card = state.cards.find(c => c.id === id);
   if(!card) return;
@@ -1148,17 +1215,29 @@ function previewCard(id){
          📄 元ファイル: ${escapeHtml(card._sourceFile)}<br>
          このカードを編集するにはDrive上のJSONファイルを直接編集してください
        </div>` : '';
+  const doneBadge = card.done
+    ? `<div style="font-family:var(--mono);font-size:.78rem;color:var(--success);margin-bottom:10px">☑ 実施済み</div>`
+    : '';
   showModal({
     title: card.front,
     body: `<div style="font-size:.85rem;color:var(--text-dim);margin-bottom:10px">
             ${escapeHtml(card.deck||'未分類')}${card.context ? ' / ' + escapeHtml(card.context) : ''}
            </div>
+           ${doneBadge}
            <div style="font-family:var(--mono);font-size:.85rem;line-height:1.7;background:var(--code-bg);
                        border:1px solid var(--border);border-radius:7px;padding:14px;
                        white-space:pre;overflow-x:auto">${escapeHtml(card.back)}</div>
            ${sourceInfo}`,
     confirmText: '閉じる',
     cancelText: '',
+    extraText: card.done ? '実施済みを解除' : '実施済みにする',
+    extraStyle: card.done ? 'btn-ghost' : 'btn-success',
+    onExtra: () => {
+      toggleDone(id);
+      renderManage();
+      if(document.getElementById('view-stats').classList.contains('active')) renderStats();
+      previewCard(id);  // 更新後の状態で開き直す
+    },
     onConfirm: () => {},
   });
 }
@@ -1171,6 +1250,10 @@ function renderStats(){
 
   const dueNow = state.cards.filter(c => c.due <= nowMs()).length;
   document.getElementById('stat-due').textContent = dueNow;
+
+  const doneCount = state.cards.filter(c => c.done).length;
+  const doneEl = document.getElementById('stat-done');
+  if(doneEl) doneEl.textContent = doneCount;
 
   const t = todayStr();
   const today = state.reviews.find(r => r.date === t);
@@ -1199,10 +1282,12 @@ function renderStats(){
   list.innerHTML = decks.map(d => {
     const cards = state.cards.filter(c => c.deck === d);
     const due = cards.filter(c => c.due <= nowMs()).length;
+    const done = cards.filter(c => c.done).length;
     const reviewed = cards.reduce((sum, c) => sum + (c.reviewCount||0), 0);
     return `<div class="deck-stat-item">
       <span class="ds-name">${escapeHtml(d)}</span>
       <span class="ds-num">全${cards.length}</span>
+      <span class="ds-num" style="color:${done>0?'var(--success)':'var(--text-dim)'}">実施済み ${done}</span>
       <span class="ds-num" style="color:${due>0?'var(--error)':'var(--text-dim)'}">期限到来 ${due}</span>
       <span class="ds-num">復習 ${reviewed}回</span>
     </div>`;
@@ -1548,9 +1633,19 @@ async function syncWithDrive(reason = 'auto'){
           const remoteMap = reviewsData.reviewMap || {};
           for(const [cardId, remote] of Object.entries(remoteMap)){
             const local = state.reviewMap[cardId];
-            if(!local || (remote.lastReviewed || 0) > (local.lastReviewed || 0)){
-              state.reviewMap[cardId] = remote;
+            // レビュー予定フィールドは lastReviewed の新しい方を採用
+            const merged = (!local || (remote.lastReviewed || 0) > (local.lastReviewed || 0))
+              ? { ...remote } : { ...local };
+            // 実施済みチェック(done)は doneAt の新しい方を独立して採用
+            // (トグルだけでは lastReviewed が動かないため、予定とは別に解決する)
+            const localDoneAt = local?.doneAt || 0;
+            const remoteDoneAt = remote.doneAt || 0;
+            if(remoteDoneAt >= localDoneAt){
+              merged.done = remote.done; merged.doneAt = remoteDoneAt;
+            } else {
+              merged.done = local.done; merged.doneAt = localDoneAt;
             }
+            state.reviewMap[cardId] = merged;
           }
           // reviews(日別集計)も統合
           const remoteReviews = reviewsData.reviews || [];
@@ -1901,6 +1996,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if(!document.getElementById('view-study').classList.contains('active')) return;
 
     if(e.key === ' '){ e.preventDefault(); flipCard(); }
+    else if(e.key === 'd' || e.key === 'D'){ e.preventDefault(); toggleDoneStudy(); }
     else if(state.studyShowing === 'back'){
       if(e.key === '1') evalCard('good');
       else if(e.key === '2') evalCard('mid');
