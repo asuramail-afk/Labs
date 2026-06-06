@@ -460,7 +460,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
       <kbd>1</kbd> 思い出せた &nbsp;・&nbsp;
       <kbd>2</kbd> あいまい &nbsp;・&nbsp;
       <kbd>3</kbd> 詰まった &nbsp;・&nbsp;
-      <kbd>D</kbd> 実施済み
+      <kbd>D</kbd> 実施済み &nbsp;・&nbsp;
+      <kbd>←</kbd> 前へ戻る
     </div>
   </div>
 
@@ -717,6 +718,7 @@ const state = {
   studyQueue: [],
   studyIndex: 0,
   studyShowing: 'front',
+  studyHistory: [],   // セッション内の「戻る」用 undo スタック(評価のスナップショット)
   reviewsDirty: false, // _reviews.json を再アップロードする必要があるか
   // Drive 関連
   drive: {
@@ -1055,6 +1057,7 @@ function startStudy(){
   state.studyQueue = getCardsForStudy();
   state.studyIndex = 0;
   state.studyShowing = 'front';
+  state.studyHistory = [];   // 新セッション開始: 戻る履歴をリセット
   const levelLabel = state.currentLevel === 'element' ? '【要素】' :
                      state.currentLevel === 'structure' ? '【構造】' : '';
   const deckLabel = state.currentDeck || '全カード';
@@ -1102,6 +1105,7 @@ function renderStudy(){
       <h3>🎉 セッション完了</h3>
       <p>${state.studyQueue.length} 枚のカードを学習しました。</p>
       <button class="btn btn-primary" onclick="startStudy()">もう1セット</button>
+      ${state.studyIndex > 0 ? `<button class="btn btn-ghost" onclick="goBack()" style="margin-left:8px">← 前のカードへ戻る</button>` : ''}
       <button class="btn btn-ghost" onclick="switchView('stats')" style="margin-left:8px">統計を見る</button>
     </div>`;
     counter.textContent = `${state.studyQueue.length} / ${state.studyQueue.length}`;
@@ -1114,6 +1118,9 @@ function renderStudy(){
   fill.style.width = `${(state.studyIndex / state.studyQueue.length) * 100}%`;
 
   const doneToggle = `<button class="card-done-toggle ${card.done?'done':''}" onclick="toggleDoneStudy()">${card.done?'☑ 実施済み':'☐ 実施済みにする'}</button>`;
+  const backBtn = state.studyIndex > 0
+    ? `<button class="btn btn-ghost btn-icon" onclick="goBack()" title="前のカードへ戻る（直前の評価を取り消します）">← 前へ</button>`
+    : '';
 
   if(state.studyShowing === 'front'){
     stage.innerHTML = `
@@ -1129,6 +1136,7 @@ function renderStudy(){
           (10〜30秒)
         </div>
         <div class="card-actions">
+          ${backBtn}
           <button class="btn btn-primary" onclick="flipCard()">裏を見る</button>
         </div>
       </div>`;
@@ -1157,7 +1165,8 @@ function renderStudy(){
             <span class="eval-hint">[3]</span>
           </button>
         </div>
-        <div style="text-align:center;margin-top:12px">
+        <div style="text-align:center;margin-top:12px;display:flex;gap:8px;justify-content:center">
+          ${backBtn}
           <button class="btn btn-ghost btn-icon" onclick="flipCard()">↩ 表に戻す</button>
         </div>
       </div>`;
@@ -1182,11 +1191,47 @@ function evalCard(quality){
   if(state.studyShowing !== 'back') return;
   const card = state.studyQueue[state.studyIndex];
   if(!card) return;
+  // 「戻る」で取り消せるよう、評価適用前の状態をスナップショット
+  state.studyHistory.push({
+    index: state.studyIndex,
+    cardId: card.id,
+    prevMapEntry: state.reviewMap[card.id] ? JSON.parse(JSON.stringify(state.reviewMap[card.id])) : null,
+    prevFields: { ease: card.ease, interval: card.interval, due: card.due, lastReviewed: card.lastReviewed, reviewCount: card.reviewCount },
+    prevReviews: JSON.parse(JSON.stringify(state.reviews)),
+  });
   applyReview(card, quality);
   state.studyIndex++;
   state.studyShowing = 'front';
   renderStudy();
   renderDeckNav();
+}
+
+// 前のカードへ戻る。直前の評価(復習状態・当日レビュー数)を取り消してから戻す。
+function goBack(){
+  if(state.studyHistory.length > 0){
+    const h = state.studyHistory.pop();
+    // reviewMap を評価前に復元(done/doneAt も prevMapEntry に含まれるので保持される)
+    if(h.prevMapEntry === null){ delete state.reviewMap[h.cardId]; }
+    else { state.reviewMap[h.cardId] = h.prevMapEntry; }
+    // 当日レビュー集計を復元
+    state.reviews = h.prevReviews;
+    // 表示・次回SM-2計算の基準となる studyQueue 上のカードを復元
+    // (自動同期で state.cards が作り直されても studyQueue の参照は不変なのでこちらを直す)
+    const card = state.studyQueue[h.index];
+    if(card){ Object.assign(card, h.prevFields); }
+    state.studyIndex = h.index;
+    state.studyShowing = 'front';
+    state.reviewsDirty = true;
+    saveLocalSnapshot();
+    renderStudy();
+    renderDeckNav();
+    toast('前のカードに戻りました（直前の評価を取り消し）', '');
+  } else if(state.studyIndex > 0){
+    // 履歴が無い場合の保険: 単純に1つ前へ
+    state.studyIndex--;
+    state.studyShowing = 'front';
+    renderStudy();
+  }
 }
 
 function forceStudyAll(){
@@ -1195,6 +1240,7 @@ function forceStudyAll(){
   state.studyQueue = pool.slice().sort(() => Math.random() - 0.5);
   state.studyIndex = 0;
   state.studyShowing = 'front';
+  state.studyHistory = [];   // 強制学習も新セッション扱い
   renderStudy();
 }
 
@@ -2086,6 +2132,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if(e.key === ' '){ e.preventDefault(); flipCard(); }
     else if(e.key === 'd' || e.key === 'D'){ e.preventDefault(); toggleDoneStudy(); }
+    else if(e.key === 'ArrowLeft' || e.key === 'Backspace'){ e.preventDefault(); goBack(); }
     else if(state.studyShowing === 'back'){
       if(e.key === '1') evalCard('good');
       else if(e.key === '2') evalCard('mid');
