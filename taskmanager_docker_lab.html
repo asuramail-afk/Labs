@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>タスク管理アプリ LocalStorage → Docker+DB 構築 Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.2rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+.hero .meta-line { font-family:var(--mono); font-size:.74rem; color:var(--text-dim); margin-top:14px; }
+
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+.cm { color:#6a737d; } .kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.num { color:#b08800; } .tag { color:#22863a; } .attr { color:#6f42c1; } .val { color:#032f62; }
+
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+.verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+  line-height:1.7; border:1px solid; }
+.verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+.verify-before .verify-label { color:var(--error); }
+.verify-after  .verify-label { color:var(--success); }
+
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+.compare-table .yes { color:var(--success); } .compare-table .no { color:var(--error); }
+
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+.usecase-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:6px; }
+.usecase-list { margin-left:20px; margin-bottom:10px; }
+.usecase-list li { margin-bottom:4px; }
+.usecase-trigger { background:rgba(0,92,197,.05); border-left:3px solid var(--accent);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#003d8f; margin-top:8px; }
+.usecase-trigger ul { margin:4px 0 0 20px; }
+
+.livedemo { margin:14px 0; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+.livedemo-bar { display:flex; align-items:center; gap:12px; padding:8px 12px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.toggle-btn { font-family:var(--mono); font-size:.78rem; padding:5px 14px;
+  border-radius:6px; border:1px solid var(--accent); background:var(--accent);
+  color:#fff; cursor:pointer; transition:all .15s; }
+.toggle-btn:hover { opacity:.85; }
+.toggle-btn.is-before { background:var(--error); border-color:var(--error); }
+.toggle-label { font-family:var(--mono); font-size:.78rem; color:var(--text-dim); }
+.livedemo-stage { padding:16px; background:var(--bg); }
+.livedemo-stage .ld-before { display:none; }
+.livedemo-stage.is-before .ld-before { display:block; }
+.livedemo-stage.is-before .ld-after { display:none; }
+.ld-panel { padding:12px; border-radius:6px; font-family:var(--mono); font-size:12px; line-height:1.7; white-space:pre-wrap; }
+.ld-panel.bad { background:#fee2e2; border:1px solid #cb2431; color:#6b1a22; }
+.ld-panel.good { background:#dcfce7; border:1px solid #22863a; color:#166534; }
+
+.code-pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; }
+.code-pair-col { display:flex; flex-direction:column; min-width:0; }
+.code-pair-label { font-family:var(--mono); font-size:.72rem; letter-spacing:.05em;
+  font-weight:700; padding:6px 10px; border-radius:6px 6px 0 0; }
+.code-pair-before .code-pair-label { background:rgba(203,36,49,.10); color:#9a1320;
+  border:1px solid rgba(203,36,49,.30); border-bottom:none; }
+.code-pair-after  .code-pair-label { background:rgba(34,134,58,.10); color:#154f1e;
+  border:1px solid rgba(34,134,58,.30); border-bottom:none; }
+.code-pair-col .code-block { margin:0; border-radius:0 0 8px 8px; flex:1; }
+.code-pair-before .code-block { border-color:rgba(203,36,49,.30); }
+.code-pair-after  .code-block { border-color:rgba(34,134,58,.30); }
+@media (max-width:900px){ .code-pair { grid-template-columns:1fr; } }
+
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .verify { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// TaskManager <span>Docker Lab</span></div>
+  <div class="nav-section">概念・準備</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>全体像と3バリアント</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>環境確認</a>
+  <div class="nav-section">フェーズ1 (LocalStorage)</div>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>Vite＋保存の窓口</a>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>UI実装と検証</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>設計の背骨</a>
+  <div class="nav-section">フェーズ2 (Docker+DB)</div>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>backend (Express+DB)</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>docker-compose</a>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>リポジトリ差し替え</a>
+  <div class="nav-section">デプロイ・運用</div>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>方式A と 方式B</a>
+  <a class="nav-item" href="#lab9"><span class="nav-num">09</span>競合回避（4環境）</a>
+  <a class="nav-item" href="#lab10"><span class="nav-num">10</span>検証方法</a>
+  <a class="nav-item" href="#lab11"><span class="nav-num">11</span>つまずきポイント</a>
+  <a class="nav-item" href="#lab12"><span class="nav-num">12</span>運用コマンド集</a>
+</nav>
+
+<div class="hero">
+  <h1>タスク管理アプリ：LocalStorage → Docker+DB 構築 Lab</h1>
+  <p class="subtitle">React+Vite の1人用アプリを、WSL2 Ubuntu の Docker で DB 化し複数ユーザ共同利用へ。<br>3つの実装方式を競合なく同時稼働させた全工程の振り返り。</p>
+  <p class="meta-line">Windows 11 + WSL2(Ubuntu 26.04) + Docker 29.5.2 + PostgreSQL 17 + React 19 / Vite 8 + Express 5</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>全体像と3バリアント</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>環境確認</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>Vite＋保存の窓口</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>UI実装と検証</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>設計の背骨</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>backend (Express+DB)</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>docker-compose</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>リポジトリ差し替え</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>方式A と 方式B</a>
+    <a class="toc-item" href="#lab9"><span class="toc-num">09</span>競合回避（4環境）</a>
+    <a class="toc-item" href="#lab10"><span class="toc-num">10</span>検証方法</a>
+    <a class="toc-item" href="#lab11"><span class="toc-num">11</span>つまずきポイント</a>
+    <a class="toc-item" href="#lab12"><span class="toc-num">12</span>運用コマンド集</a>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ===================== LAB 00 ===================== -->
+  <div class="lab" id="lab0">
+    <div class="lab-header"><div class="lab-num">00</div><h3>全体像と3つの実装バリアント</h3><span class="lab-tag tag-basic">概念</span></div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        2フェーズで進めた。<strong>フェーズ1</strong>＝React+Vite+LocalStorage（1人用・サーバ無し）、
+        <strong>フェーズ2</strong>＝保存先を Docker 上の PostgreSQL に移して複数ユーザ共同利用。
+        さらに「ソースとDockerをどこに置くか」で <strong>3つの方式</strong>を作り、すべて競合なく同時稼働させた。
+      </p>
+      <div class="code-block"><pre><span class="cm"># 推移（保存先と配信が段階的に変わる。UIコードは最後まで無変更）</span>
+フェーズ1            フェーズ2(開発)              フェーズ2(共有)
+1ブラウザ完結   →    DB+API化(viteは生)     →    全コンテナ化(他端末公開)
+LocalStorage         PostgreSQL/Docker           PostgreSQL/Docker</pre></div>
+      <div class="code-block"><pre><span class="cm"># 3バリアント（フォルダ / Compose名 / どこでビルドするか）</span>
+1) WSL版      taskmanager        /home/user/TaskManager      （全部WSL内）
+2) Win版・方式B taskmanager-win   C:\…\TaskManagerWin         （rsyncでWSLへ転送→build）
+3) WinA版・方式A taskmanager-wina  C:\…\TaskManagerWinA        （/mnt/c を直接build）</pre></div>
+    </div>
+  </div>
+
+  <!-- ===================== LAB 01 ===================== -->
+  <div class="lab" id="lab1">
+    <div class="lab-header"><div class="lab-num">01</div><h3>環境確認（WSL2 / Docker / Node）</h3><span class="lab-tag tag-basic">準備</span></div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        着手前に「Docker は <strong>WSL2 Ubuntu 内のネイティブ Docker</strong>（Docker Desktop ではない）」「ユーザが
+        <code>docker</code> グループ所属で <code>sudo</code> 不要」「8080 は既存 Keycloak が使用中」を確認した。
+      </p>
+      <div class="code-block"><pre><span class="cm"># WSL とディストロ</span>
+wsl --status
+wsl --list --verbose        <span class="cm"># Ubuntu / VERSION 2 / Running</span>
+
+<span class="cm"># Ubuntu 内の Docker / Node（WSL越しに実行）</span>
+wsl -d Ubuntu -- bash -lic "docker --version; docker compose version; node -v"
+<span class="cm"># Docker 29.5.2 / Compose v5.1.4 / (Node は当初未導入)</span>
+
+<span class="cm"># デーモン稼働＆権限（dockerグループ＝sudo不要）</span>
+wsl -d Ubuntu -- docker ps     <span class="cm"># 既に Keycloak が13日稼働 / id -nG に docker</span></pre></div>
+      <div class="code-block"><pre><span class="cm"># WSL内に Node が無かったので nvm で導入（WSLネイティブ版）</span>
+curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+nvm install --lts          <span class="cm"># → v24.16.0（/home/user/.nvm 配下）</span></pre></div>
+    </div>
+  </div>
+
+  <!-- ===================== LAB 02 ===================== -->
+  <div class="lab" id="lab2">
+    <div class="lab-header"><div class="lab-num">02</div><h3>フェーズ1：Vite 生成と「保存の窓口」</h3><span class="lab-tag tag-intermediate">フェーズ1</span></div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        Vite+React を生成し、<strong>データ保存を <code>taskRepository.js</code> 1ファイルに隔離</strong>した。
+        UI は localStorage を直接触らず、必ずこの窓口経由。これがフェーズ2で「中身だけ差し替え」を可能にする要。
+      </p>
+      <div class="code-block"><pre><span class="cm"># プロジェクト生成</span>
+npm create vite@latest TaskManager -- --template react
+cd TaskManager &amp;&amp; npm install</pre></div>
+      <div class="code-block"><pre><span class="cm">// src/repository/taskRepository.js（フェーズ1：LocalStorage版）</span>
+<span class="kw">const</span> STORAGE_KEY = <span class="str">'taskmanager.tasks.v1'</span>
+
+<span class="cm">// 防御的read: 空/壊れたデータでも例外を投げず必ず配列を返す</span>
+<span class="kw">function</span> <span class="fn">read</span>() {
+  <span class="kw">try</span> {
+    <span class="kw">const</span> parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? <span class="str">'[]'</span>)
+    <span class="kw">return</span> Array.isArray(parsed) ? parsed : []
+  } <span class="kw">catch</span> { <span class="kw">return</span> [] }
+}
+
+<span class="cm">// ★関数はすべて Promise を返す（非同期IF）→ フェーズ2で fetch にしても await が変わらない</span>
+<span class="kw">export async function</span> <span class="fn">addTask</span>({ title }) {
+  <span class="kw">const</span> task = { id: crypto.randomUUID(), title: title.trim(),
+    done: <span class="kw">false</span>, createdAt: <span class="kw">new</span> Date().toISOString() }
+  <span class="kw">const</span> tasks = read(); tasks.push(task); write(tasks); <span class="kw">return</span> task
+}</pre></div>
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 「窓口を1つに隔離」とは</div>
+        UI から保存先への呼び出しを1ファイルに集約しておくと、後で保存先を差し替えても「触る場所はそこだけ」で済む。
+        <pre class="ascii-art">UI (App/TaskForm/TaskList)
+      │  getTasks() / addTask() ...  ← 呼び方は常に同じ
+      ▼
+ taskRepository.js  ←★ここの中身だけ後で差し替える
+      │
+  [LocalStorage]  →（フェーズ2）→  [fetch → API → DB]</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== LAB 03 ===================== -->
+  <div class="lab" id="lab3">
+    <div class="lab-header"><div class="lab-num">03</div><h3>フェーズ1：UI 実装と検証</h3><span class="lab-tag tag-intermediate">フェーズ1</span></div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        App が状態を持ち、操作後は必ず <code>refresh()</code> でリポジトリから取り直す。検証は
+        <strong>ロジックは Node 単体テスト</strong>、<strong>永続化（リロード）はブラウザ目視</strong>に分けた
+        （LocalStorage はブラウザ専用で <code>curl</code> では確認できないため）。
+      </p>
+      <div class="code-block"><pre><span class="cm">// src/App.jsx（抜粋）操作 → リポジトリ → 取り直し</span>
+<span class="kw">async function</span> <span class="fn">handleAdd</span>(title) {
+  <span class="kw">await</span> taskRepository.addTask({ title })
+  <span class="kw">await</span> refresh()
+}</pre></div>
+      <div class="code-block"><pre><span class="cm"># 検証コマンド（Windows / WSL どちらの Node でも）</span>
+npm run test:repo   <span class="cm"># Node単体テスト（localStorageをシムで差し替え, 8件）</span>
+npm run build       <span class="cm"># 全コンパイル確認（21 modules transformed）</span>
+npm run dev         <span class="cm"># http://localhost:5173/ で起動</span></pre></div>
+    </div>
+  </div>
+
+  <!-- ===================== LAB 04 ===================== -->
+  <div class="lab" id="lab4">
+    <div class="lab-header"><div class="lab-num">04</div><h3>設計の背骨（なぜ UI を変えずに済むか）</h3><span class="lab-tag tag-advanced">設計</span></div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        フェーズ2移行が「1ファイルの差し替え」で済んだ理由は4つ。
+        <strong>①窓口の隔離 ②最初から非同期IF ③相対URLで同一オリジン ④返り値の形と並び順を厳守</strong>。
+      </p>
+      <div class="code-pair">
+        <div class="code-pair-col code-pair-before">
+          <div class="code-pair-label">フェーズ1：LocalStorage</div>
+          <div class="code-block"><pre><span class="kw">export const</span> STORAGE_LABEL =
+  <span class="str">'ブラウザの LocalStorage'</span>
+
+<span class="kw">export async function</span> <span class="fn">getTasks</span>() {
+  <span class="kw">return</span> read().sort(...)
+}</pre></div>
+        </div>
+        <div class="code-pair-col code-pair-after">
+          <div class="code-pair-label">フェーズ2：fetch（UI無変更）</div>
+          <div class="code-block"><pre><span class="kw">export const</span> STORAGE_LABEL =
+  <span class="str">'データベース（PostgreSQL）'</span>
+
+<span class="kw">export async function</span> <span class="fn">getTasks</span>() {
+  <span class="kw">return</span> handle(<span class="kw">await</span> fetch(<span class="str">'/api/tasks'</span>))
+}</pre></div>
+        </div>
+      </div>
+      <div class="info-box info">
+        🔑 <strong>相対URL <code>/api/tasks</code></strong> がポイント。dev では vite proxy、共有では nginx が同じパスを backend へ転送するので、
+        <strong>同一オリジン扱い＝CORS不要</strong>。リポジトリのコードは環境非依存のまま。
+      </div>
+      <div class="livedemo">
+        <div class="livedemo-bar">
+          <button class="toggle-btn" data-target="ld-footer">Before（フェーズ1）を見る</button>
+          <span class="toggle-label" id="ld-footer-label">現在: After（フェーズ2・DB）</span>
+        </div>
+        <div class="livedemo-stage" id="ld-footer">
+          <div class="ld-panel good ld-after">画面フッター表示：
+保存先: データベース（PostgreSQL / Docker・フェーズ2）
+
+← STORAGE_LABEL を import して表示。リポジトリを差し替えると自動でこの文言に切替わる。</div>
+          <div class="ld-panel bad ld-before">画面フッター表示：
+保存先: ブラウザの LocalStorage（フェーズ1）
+
+← 以前は文言をハードコードしていたため、差し替え時に直し忘れが2回発生。STORAGE_LABEL 化で解決。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== LAB 05 ===================== -->
+  <div class="lab" id="lab5">
+    <div class="lab-header"><div class="lab-num">05</div><h3>フェーズ2：backend（Express + PostgreSQL）</h3><span class="lab-tag tag-advanced">フェーズ2</span></div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>/api/tasks</code> の CRUD を Express+pg で実装。<strong>id/createdAt はサーバが採番</strong>。
+        起動時に <code>CREATE TABLE IF NOT EXISTS</code>＋接続リトライでDB準備を待つ。
+      </p>
+      <div class="code-block"><pre><span class="cm">// backend/src/server.js（要点）</span>
+<span class="cm">// created_at を camelCase の createdAt に別名付け（UIのソート前提を維持）</span>
+<span class="kw">const</span> TASK_COLS = <span class="str">'id, title, done, created_at AS "createdAt"'</span>
+
+app.get(<span class="str">'/api/tasks'</span>, <span class="kw">async</span> (_req, res) =&gt; {
+  <span class="kw">const</span> { rows } = <span class="kw">await</span> pool.query(
+    <span class="str">`SELECT ${TASK_COLS} FROM tasks ORDER BY created_at DESC`</span>) <span class="cm">// 新しい順＝Phase1と同じ</span>
+  res.json(rows)
+})</pre></div>
+      <div class="info-box warn">
+        ⚠️ <strong>起動順レース</strong>: compose の <code>depends_on</code> は「コンテナ起動」を待つだけで、Postgres が
+        <em>接続を受け付ける</em>状態は別。→ <strong>healthcheck ＋ 接続リトライの二重保険</strong>で回避した。
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== LAB 06 ===================== -->
+  <div class="lab" id="lab6">
+    <div class="lab-header"><div class="lab-num">06</div><h3>フェーズ2：docker-compose（db / backend / 共有nginx）</h3><span class="lab-tag tag-advanced">フェーズ2</span></div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        3サービスを定義。<strong>db</strong>（名前付きvolumeで永続化＋healthcheck）、<strong>backend</strong>、
+        <strong>frontend</strong>（<code>profile: share</code> で共有時のみ・nginxがdist配信＋/api転送）。
+      </p>
+      <div class="code-block"><pre><span class="cm"># docker-compose.yml（要点・WSL版の例）</span>
+<span class="attr">services</span>:
+  <span class="attr">db</span>:
+    <span class="attr">image</span>: postgres:17-alpine
+    <span class="attr">volumes</span>: [<span class="str">"db-data:/var/lib/postgresql/data"</span>]   <span class="cm"># ★永続化</span>
+    <span class="attr">healthcheck</span>:
+      <span class="attr">test</span>: [<span class="str">"CMD-SHELL"</span>, <span class="str">"pg_isready -U taskuser -d taskmanager"</span>]
+  <span class="attr">backend</span>:
+    <span class="attr">build</span>: ./backend
+    <span class="attr">depends_on</span>: { db: { condition: service_healthy } }   <span class="cm"># ★healthy待ち</span>
+  <span class="attr">frontend</span>:
+    <span class="attr">profiles</span>: [<span class="str">"share"</span>]                <span class="cm"># 共有時のみ起動</span>
+<span class="attr">volumes</span>: { db-data: {} }</pre></div>
+      <div class="info-box info">
+        開発時はフロントを <strong>vite dev（生）</strong>で動かし HMR で快適に。他端末へ配るときだけ
+        <code>--profile share</code> で <strong>nginx コンテナ</strong>を足す。backend / db は両モードで共用。
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== LAB 07 ===================== -->
+  <div class="lab" id="lab7">
+    <div class="lab-header"><div class="lab-num">07</div><h3>リポジトリ差し替え＋プロキシ配線</h3><span class="lab-tag tag-advanced">フェーズ2</span></div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>taskRepository.js</code> を fetch 版に差し替え、<strong>UI は1行も変えず</strong>に DB 接続へ。
+        dev は vite proxy、共有は nginx が同じ <code>/api</code> を backend へ転送する。
+      </p>
+      <div class="code-block"><pre><span class="cm">// vite.config.js（開発時：/api を backend の公開ポートへ転送）</span>
+server: {
+  port: <span class="num">5173</span>,
+  proxy: { <span class="str">'/api'</span>: <span class="str">'http://localhost:3000'</span> }
+}</pre></div>
+      <div class="code-block"><pre><span class="cm"># nginx.conf（共有時：/api を backend サービスへ転送）</span>
+location /api/ {
+    proxy_pass http://backend:3000;
+}
+location / {
+    try_files $uri $uri/ /index.html;   <span class="cm"># SPA fallback</span>
+}</pre></div>
+    </div>
+  </div>
+
+  <!-- ===================== LAB 08 ===================== -->
+  <div class="lab" id="lab8">
+    <div class="lab-header"><div class="lab-num">08</div><h3>方式A と 方式B（デプロイの違い）</h3><span class="lab-tag tag-advanced">デプロイ</span></div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        「デプロイ」＝ソースを<strong>イメージに <code>COPY</code> で焼き込み</strong>、<code>docker compose up -d --build</code>。
+        Windows の C: ソースを WSL の Docker に渡す経路で <strong>方式A / 方式B</strong>に分かれる。
+      </p>
+      <div class="code-block"><pre><span class="cm"># パス対応（同じ実体）</span>
+C:\Users\user\ClaudeCode\...   ⇔   /mnt/c/Users/user/ClaudeCode/...</pre></div>
+      <div class="code-pair">
+        <div class="code-pair-col code-pair-before">
+          <div class="code-pair-label">方式A：/mnt/c を直接ビルド</div>
+          <div class="code-block"><pre><span class="cm"># rsync なし・1コマンド</span>
+wsl -d Ubuntu -- bash -lc \
+ "cd /mnt/c/Users/user/ClaudeCode/TaskManagerWinA \
+  &amp;&amp; docker compose up -d --build"
+<span class="cm"># 手軽 / 但し /mnt/c 読込で遅め</span></pre></div>
+        </div>
+        <div class="code-pair-col code-pair-after">
+          <div class="code-pair-label">方式B：rsync 転送してからビルド</div>
+          <div class="code-block"><pre><span class="cm"># WSLネイティブへ複製 → そこでビルド</span>
+rsync -a --delete --exclude node_modules \
+ /mnt/c/Users/user/ClaudeCode/TaskManagerWin/ \
+ /home/user/TaskManagerWin/
+cd /home/user/TaskManagerWin
+docker compose up -d --build
+<span class="cm"># 速い / C:と完全分離・本番に近い</span></pre></div>
+        </div>
+      </div>
+      <div class="info-box warn">
+        ⚠️ どちらも <strong><code>node_modules</code> は持ち込まない</strong>（<code>.dockerignore</code> / rsync <code>--exclude</code>）。
+        Windowsの node_modules は Windows用バイナリを含み、Linuxコンテナに入れると壊れる。コンテナ内で <code>npm install</code> させる。
+      </div>
+      <div class="info-box info">
+        💡 バインドマウント（<code>volumes</code>）は「実行時ライブリンク」で<strong>開発用</strong>。デプロイとは別物。
+        <code>/mnt/c</code> のバインドは inotify が効きにくくホットリロードが不安定なので採らず、両方式とも<strong>イメージ焼き込み</strong>にした（更新＝再ビルド）。
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== LAB 09 ===================== -->
+  <div class="lab" id="lab9">
+    <div class="lab-header"><div class="lab-num">09</div><h3>競合回避：4環境を同時稼働</h3><span class="lab-tag tag-advanced">デプロイ</span></div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        3スタック＋Keycloak を<strong>同時に立てても衝突しない</strong>よう、<strong>Compose名で全リソースを分離</strong>し、
+        <strong>ポートを全てずらした</strong>。8080 は Keycloak が使用中のため回避。
+      </p>
+      <table class="compare-table">
+        <tr><th>環境 / Compose名</th><th>vite</th><th>backend</th><th>postgres</th><th>共有nginx</th></tr>
+        <tr><td>taskmanager (WSL版)</td><td>5173</td><td>3000</td><td>5432</td><td>8081</td></tr>
+        <tr><td>taskmanager-win (方式B)</td><td>5174</td><td>3001</td><td>5433</td><td>8082</td></tr>
+        <tr><td>taskmanager-wina (方式A)</td><td>5175</td><td>3002</td><td>5434</td><td>8083</td></tr>
+        <tr><td>（Keycloak 既存）</td><td>—</td><td>—</td><td>—</td><td class="no">8080</td></tr>
+      </table>
+      <div class="code-block"><pre><span class="cm"># docker-compose.yml 先頭で name を付けるとコンテナ/volume/network/image名が分離</span>
+name: taskmanager-wina
+<span class="cm"># → taskmanager-wina-db-1 / taskmanager-wina_db-data / ...-network / ...-backend:latest</span></pre></div>
+      <div class="info-box ok">
+        ✅ <code>docker ps</code> で <strong>8コンテナ＋Keycloak</strong> が同時稼働、各 backend に API テストが通ることを実証。
+        Windows の vite から WSL コンテナへは <code>localhost:&lt;port&gt;</code>（WSL2 のポート転送）で到達する。
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== LAB 10 ===================== -->
+  <div class="lab" id="lab10">
+    <div class="lab-header"><div class="lab-num">10</div><h3>検証方法（自動でできる／できない）</h3><span class="lab-tag tag-intermediate">検証</span></div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        フェーズで検証の性質が変わる。<strong>LocalStorage はブラウザ専用</strong>でサーバから確認不可。
+        <strong>DB はサーバ状態</strong>なので CRUD も永続性も <code>curl</code> で自動検証できる。React 描画だけ目視。
+      </p>
+      <div class="code-block"><pre><span class="cm"># API の自動検証（backend/test/api.test.mjs ＝ fetch統合テスト7件）</span>
+node backend/test/api.test.mjs    <span class="cm"># health/CRUD/400/404/createdAtキー</span>
+
+<span class="cm"># 永続性＝コンテナ作り直してもボリュームに残るか</span>
+curl -X POST .../api/tasks -d '{"title":"MARKER"}'
+docker compose down &amp;&amp; docker compose up -d   <span class="cm"># 名前付きvolumeは保持</span>
+curl .../api/tasks                <span class="cm"># → MARKER が残っていれば永続OK</span></pre></div>
+      <div class="info-box err">
+        🚫 <strong>curl の 200 を「UI が動く」と誤解しない</strong>。<code>/api/tasks → 200</code> はプロキシ疎通の証明で、React 描画の確認ではない。
+        描画・LocalStorageのリロード永続化は必ずブラウザ目視に回す。
+      </div>
+      <div class="info-box warn">
+        ⚠️ リポジトリを fetch 化したら、Phase1 の <code>repository.test.mjs</code>（localStorage前提）は壊れる。
+        <strong>差し替えと同時に削除</strong>（デッドコードのまま緑表示になる事故を防ぐ）。実際これを2回踏んだ。
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== LAB 11 ===================== -->
+  <div class="lab" id="lab11">
+    <div class="lab-header"><div class="lab-num">11</div><h3>つまずきポイント（実際に踏んだ）</h3><span class="lab-tag tag-advanced">教訓</span></div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        Windows × WSL × Docker の境界で起きた4つの罠と回避策。次回の自分のための記録。
+      </p>
+      <div class="code-block"><pre><span class="cm"># ① PowerShell から $ を含む bash ワンライナーは変数展開が干渉</span>
+<span class="cm">#   → 複雑なものは .sh に書いて wsl bash で実行する</span>
+
+<span class="cm"># ② UNC(\\wsl.localhost) 経由で書いたファイルは root 所有になり user で rm 不可</span>
+<span class="cm">#   → ディレクトリ削除は Windows 側の Remove-Item で行う</span>
+
+<span class="cm"># ③ nvm 初回導入：Windows側 tar/xz が PATH 漏れで展開失敗</span>
+<span class="cm">#   → /mnt/* を PATH から除外して回避。さらに $HOME 展開ミスで</span>
+<span class="cm">#     "C:Usersuser"(U+F03A=コロン代替)という文字化けフォルダが誤生成（掃除済み）</span>
+
+<span class="cm"># ④ WSL の background プロセスは wsl コマンド終了で消える</span>
+<span class="cm">#   → Docker は up -d(detached) / dev server は harness の background 実行で保持</span></pre></div>
+      <div class="info-box ok">
+        ✅ 設計の改善として、フッター文言を <code>STORAGE_LABEL</code> 定数化（リポジトリから export）。
+        差し替えでラベルも自動で切替わり、「文言の直し忘れ」を<strong>構造的に</strong>解消した。
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== LAB 12 ===================== -->
+  <div class="lab" id="lab12">
+    <div class="lab-header"><div class="lab-num">12</div><h3>運用コマンド集（3環境）</h3><span class="lab-tag tag-basic">運用</span></div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        起動・停止・再デプロイの早見表。<strong><code>down</code> はデータ保持</strong>、<strong><code>down -v</code> はデータも削除</strong>。
+      </p>
+      <div class="code-block"><pre><span class="cm"># 起動（db+backend）。共有フロントも出すなら --profile share を付ける</span>
+docker compose up -d                      <span class="cm"># 通常</span>
+docker compose --profile share up -d --build   <span class="cm"># 他端末公開（nginx 8081/8082/8083）</span>
+
+<span class="cm"># 停止</span>
+docker compose down        <span class="cm"># コンテナ削除・データ(volume)は残る</span>
+docker compose down -v     <span class="cm"># データも完全削除</span>
+
+<span class="cm"># 再デプロイ</span>
+<span class="cm">#  方式A: /mnt/c で1コマンド</span>
+cd /mnt/c/Users/user/ClaudeCode/TaskManagerWinA &amp;&amp; docker compose up -d --build
+<span class="cm">#  方式B: rsync 再転送 → 再ビルドの2手</span>
+rsync -a --delete --exclude node_modules /mnt/c/.../TaskManagerWin/ /home/user/TaskManagerWin/
+cd /home/user/TaskManagerWin &amp;&amp; docker compose up -d --build</pre></div>
+      <div class="code-block"><pre><span class="cm"># 各環境のフォルダ（ここで docker compose を実行する）</span>
+WSL版    /home/user/TaskManager                         （5173/3000/5432/8081）
+方式B    /home/user/TaskManagerWin                      （5174/3001/5433/8082）
+方式A    /mnt/c/Users/user/ClaudeCode/TaskManagerWinA   （5175/3002/5434/8083）</pre></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function copyCode(btn) {
+  const block = btn.closest('.code-block') || btn.parentElement;
+  const pre = block.querySelector('pre');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = 'Copied!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+const LAB_META = {
+  lab0: {
+    info: { type:'info', html:'📘 <strong>2フェーズ × 3バリアント</strong>。保存先が LocalStorage→DB、配信が vite生→nginx と段階的に変わるが、<strong>UI コードは最後まで無変更</strong>。これが本構築の背骨。' },
+    check: [
+      'サイドバーで 00→12 へ一通り眺め、全体の流れ（フェーズ1→2、方式A/B）を掴む',
+      '各ラボのコードブロック右上 <code>Copy</code> を押すと「Copied!」になることを確認',
+      'ブラウザ幅を 900px 未満に狭め、サイドバーが上部の横並びに切替わることを確認'
+    ]
+  },
+  lab1: {
+    info: { type:'ok', html:'✅ Docker は <strong>WSL2 Ubuntu 内ネイティブ</strong>（Docker Desktop ではない）。<code>docker</code> グループ所属で <strong>sudo 不要</strong>、デーモンは稼働済み。' },
+    verify: { before:'Ubuntu 内に Node 無し（Windows の node が PATH 漏れ）', after:'▶︎ nvm で v24.16.0 を WSLネイティブ導入' },
+    check: [
+      'PowerShell で <code>wsl --list --verbose</code> → Ubuntu / VERSION 2 / Running を確認',
+      '<code>wsl -d Ubuntu -- docker ps</code> で 8080 を使う Keycloak が既に居ることを確認',
+      '<code>wsl -d Ubuntu -- bash -lic "docker compose version"</code> が v2系（<code>docker compose</code>）で応答するか'
+    ]
+  },
+  lab2: {
+    info: { type:'info', html:'📘 <code>taskRepository.js</code> が <strong>localStorage を触る唯一の場所</strong>。UI からは <code>getTasks/addTask/...</code> しか呼ばない。' },
+    check: [
+      'コード内の <code>read()</code> が <code>?? "[]"</code> と <code>try/catch</code> で、空・壊れデータでも落ちない作りか確認',
+      '各公開関数が <code>async</code>（Promise返し）になっている点に注目（フェーズ2の伏線）',
+      '🔰ボックスの図で「窓口の下だけ差し替える」イメージを掴む'
+    ]
+  },
+  lab3: {
+    info: { type:'info', html:'📘 操作のたびに <code>refresh()</code> でリポジトリから取り直す単純な一方向フロー。' },
+    verify: { before:'追加直後の画面', after:'▶︎ F5 リロード後もタスクが残る＝LocalStorage 永続化OK' },
+    check: [
+      'アプリを開き、タスクを2〜3件追加 → 完了チェック → 1件削除して挙動を見る',
+      '<strong>F5 でリロード</strong>し、データが消えずに残ることを確認（フェーズ1の合格条件）',
+      'ターミナルで <code>npm run test:repo</code> を実行し「All 8 tests passed.」を確認'
+    ]
+  },
+  lab4: {
+    info: { type:'ok', html:'✅ 差し替えで変わったのは <strong>リポジトリの中身＋STORAGE_LABEL</strong> だけ。<code>App.jsx</code> 等は無変更。' },
+    check: [
+      '左右コード対比で「関数名・引数・返り値の形は同じ／中身だけ違う」点を確認',
+      '上の <strong>Before/After トグル</strong>を押し、フッター文言が LocalStorage↔データベース で切替わる様子を見る',
+      '実アプリのフッターが現在「データベース（PostgreSQL / Docker・フェーズ2）」表示か確認'
+    ]
+  },
+  lab5: {
+    info: { type:'warn', html:'⚠️ <code>created_at AS "createdAt"</code> と <code>ORDER BY created_at DESC</code> を忘れると、UI のキー名／並び順がズレて「UI 無変更」が崩れる。' },
+    check: [
+      'SELECT が <code>created_at AS "createdAt"</code> で camelCase に揃えている点を確認',
+      '一覧が <code>ORDER BY created_at DESC</code>（新しい順）でフェーズ1と同じ並びか確認',
+      'id/createdAt が <strong>サーバ採番</strong>（INSERT の DEFAULT）に変わった点に注目'
+    ]
+  },
+  lab6: {
+    info: { type:'info', html:'📘 <strong>db=永続(volume)+健康診断</strong>, <strong>backend=db健康後に起動</strong>, <strong>frontend=share時のみ</strong>。1つの compose で開発と共有を両立。' },
+    check: [
+      'db に <code>volumes: db-data</code> が付き、データがコンテナ寿命と切り離されている点を確認',
+      'backend の <code>depends_on ... condition: service_healthy</code> で起動順レースを防いでいる点を確認',
+      'frontend に <code>profiles: ["share"]</code> が付き、通常の <code>up</code> では起動しないことを理解'
+    ]
+  },
+  lab7: {
+    info: { type:'ok', html:'✅ dev=vite proxy / 共有=nginx、どちらも <code>/api</code> を backend へ転送。フロントは相対URLのまま<strong>両モードで無変更</strong>。' },
+    verify: { before:'fetch("/api/tasks") をそのまま投げる', after:'▶︎ vite/nginx が backend:3000 へ転送し同一オリジンに' },
+    check: [
+      'vite.config.js の <code>proxy</code> と nginx.conf の <code>proxy_pass</code> が同じ <code>/api</code> を指す点を確認',
+      'nginx に <code>try_files ... /index.html</code>（SPA fallback）がある点を確認',
+      'ブラウザで <code>localhost:5173/api/tasks</code> を直接開き、JSON が返る（プロキシ疎通）ことを確認'
+    ]
+  },
+  lab8: {
+    info: { type:'info', html:'📘 「デプロイ」＝<strong>イメージに焼き込む</strong>こと。焼けばイメージは WSL 内に保存され C: から独立して動く。' },
+    verify: { before:'方式A：/mnt/c を毎回読む（手軽・遅め）', after:'方式B：rsync で WSL ネイティブへ（速い・分離）' },
+    check: [
+      '左右で「rsync の有無」だけが違う点を確認（焼き込み自体は同じ）',
+      'どちらも <code>node_modules</code> を除外している点を確認（Windowsバイナリ混入防止）',
+      '実際に方式Aで <code>docker compose up -d --build</code> を /mnt/c のフォルダで実行し、イメージが build される様子を見る'
+    ]
+  },
+  lab9: {
+    info: { type:'ok', html:'✅ <strong>Compose <code>name:</code> ＋ 全ポートずらし</strong>で、3スタック＋Keycloak が衝突なく同時稼働。' },
+    check: [
+      '表で 4 環境のポートが全て別番号、8080 は Keycloak 専用で回避されている点を確認',
+      '<code>wsl -d Ubuntu -- docker ps</code> を実行し、<code>taskmanager-*</code> 3系統＋keycloak が並ぶことを確認',
+      'ブラウザで 5173 / 5174 / 5175 を別タブで開き、3つの画面が独立して動くことを確認'
+    ]
+  },
+  lab10: {
+    info: { type:'err', html:'🚫 <code>curl 200</code>＝疎通の証明であって、UI 描画や LocalStorage 永続化の証明ではない。検証の対象を取り違えない。' },
+    check: [
+      '<code>node backend/test/api.test.mjs</code> を実行し「All 7 API tests passed.」を確認',
+      'POST→<code>down</code>→<code>up</code>→GET で投入タスクが残る（volume 永続）ことを自分の手で確認',
+      'fetch 化後に Phase1 の <code>test:repo</code> が削除済みであることを確認（緑のデッドコード防止）'
+    ]
+  },
+  lab11: {
+    info: { type:'warn', html:'⚠️ 罠の大半は <strong>Windows と WSL の境界</strong>（PATH・所有者・パス・プロセス寿命）で起きる。回避策をセットで覚える。' },
+    check: [
+      '4つの罠それぞれの「症状→原因→回避策」を読み、次に同じ操作をする時の対処を言えるようにする',
+      '文字化けフォルダ <code>C:Usersuser</code> の正体（コロンが U+F03A に化けた誤生成パス）を理解',
+      'background プロセスは <code>up -d</code> / harness 実行で保持する、を運用ルールとして記憶'
+    ]
+  },
+  lab12: {
+    info: { type:'info', html:'📘 <code>down</code>＝データ保持 / <code>down -v</code>＝データ削除。再デプロイは方式Aなら1コマンド、方式Bなら rsync→build の2手。' },
+    check: [
+      '各環境の「フォルダ」と「ポート」の対応を表で確認し、操作するディレクトリを取り違えない',
+      '不要な環境を <code>docker compose down</code> で止めても、再 <code>up</code> でデータが戻る（volume保持）ことを確認',
+      '共有公開は <code>--profile share</code> 付き、通常は付けない、の使い分けを確認'
+    ]
+  }
+};
+
+function infoHTML(m){ return m?.info ? `<div class="info-box ${m.info.type||'info'}">${m.info.html}</div>` : ''; }
+function verifyHTML(m){ if (!m?.verify) return '';
+  const {before, after} = m.verify;
+  return `<div class="verify">
+    <div class="verify-col verify-before"><div class="verify-label">Before ▶︎ 実行前</div>${before||''}</div>
+    <div class="verify-col verify-after"><div class="verify-label">After ▶︎ 実行後</div>${after||''}</div>
+  </div>`; }
+function checkHTML(m){ if (!m?.check?.length) return '';
+  return `<div class="check-steps">
+    <div class="check-steps-title">🔍 ブラウザ実機チェック</div>
+    <ol>${m.check.map(s=>`<li>${s}</li>`).join('')}</ol>
+  </div>`; }
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.lab').forEach(lab => {
+    const meta = LAB_META[lab.id]; const body = lab.querySelector('.lab-body');
+    if (!body || !meta) return;
+    const frag = document.createElement('div');
+    frag.innerHTML = infoHTML(meta) + verifyHTML(meta) + checkHTML(meta);
+    while (frag.firstChild) body.appendChild(frag.firstChild);
+  });
+
+  const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+  const map = new Map();
+  links.forEach(a => { const el = document.getElementById(a.getAttribute('href').slice(1)); if (el) map.set(el, a); });
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) { const l = map.get(e.target);
+      if (l) { links.forEach(n=>n.classList.remove('active')); l.classList.add('active'); } }
+  }), { rootMargin:'-30% 0px -60% 0px' });
+  document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+  document.querySelectorAll('.code-block').forEach((cb, i) => {
+    if (cb.querySelector('.code-block-header')) return;
+    const header = document.createElement('div');
+    header.className = 'code-block-header';
+    header.innerHTML = `<span>Code #${i+1}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+    cb.insertBefore(header, cb.firstChild);
+  });
+});
+
+document.addEventListener('click', (e) => {
+  if (!e.target.matches('.toggle-btn')) return;
+  const btn = e.target;
+  const stage = document.getElementById(btn.dataset.target);
+  if (!stage) return;
+  const isBefore = stage.classList.toggle('is-before');
+  btn.classList.toggle('is-before', isBefore);
+  const label = document.getElementById(btn.dataset.target + '-label');
+  if (label) label.textContent = isBefore ? '現在: Before（フェーズ1・LocalStorage）' : '現在: After（フェーズ2・DB）';
+  btn.textContent = isBefore ? 'After（フェーズ2）を見る' : 'Before（フェーズ1）を見る';
+});
+</script>
+</body>
+</html>
