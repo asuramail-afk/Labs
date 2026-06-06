@@ -1124,9 +1124,7 @@ function renderStudy(){
   const backBtn = state.studyIndex > 0
     ? `<button class="btn btn-ghost btn-icon" onclick="goBack()" title="前のカードへ戻る（直前の評価を取り消します）">← 前へ</button>`
     : '';
-  const fwdBtn = state.studyRedo.length > 0
-    ? `<button class="btn btn-ghost btn-icon" onclick="goForward()" title="評価をやり直して次へ進む">進む →</button>`
-    : '';
+  const fwdBtn = `<button class="btn btn-ghost btn-icon" onclick="goForward()" title="${state.studyRedo.length > 0 ? '前回の評価のまま次へ進む' : '「詰まった」で次へ進む'}">進む →</button>`;
 
   if(state.studyShowing === 'front'){
     stage.innerHTML = `
@@ -1195,10 +1193,8 @@ function toggleDoneStudy(){
   if(document.getElementById('view-stats').classList.contains('active')) renderStats();
 }
 
-function evalCard(quality){
-  if(state.studyShowing !== 'back') return;
-  const card = state.studyQueue[state.studyIndex];
-  if(!card) return;
+// カードを評価して次へ進む共通処理(評価ボタン・「進む」両方から使う)
+function rateAndAdvance(card, quality){
   // 「戻る」で取り消せるよう、評価適用前の状態をスナップショット(quality も記録 → 「進む」で再適用)
   state.studyHistory.push({
     index: state.studyIndex,
@@ -1214,6 +1210,13 @@ function evalCard(quality){
   state.studyShowing = 'front';
   renderStudy();
   renderDeckNav();
+}
+
+function evalCard(quality){
+  if(state.studyShowing !== 'back') return;
+  const card = state.studyQueue[state.studyIndex];
+  if(!card) return;
+  rateAndAdvance(card, quality);
 }
 
 // 前のカードへ戻る。直前の評価(復習状態・当日レビュー数)を取り消してから戻す。
@@ -1246,19 +1249,28 @@ function goBack(){
   }
 }
 
-// 戻った評価をやり直して次へ進む。記録した quality で applyReview を再実行(再計算方式)。
-// done トグルなど戻り中の変更は applyReview のスプレッドで保持される。
+// 次へ進む。いつでも選べる。
+//  ・redo(戻って退避した「前回分」)があれば、その評価をそのまま再適用してやり直し
+//  ・無ければ、今のカードを「詰まった(bad)」で評価して進める
 function goForward(){
-  if(state.studyRedo.length === 0) return;
-  const h = state.studyRedo.pop();
-  const card = state.studyQueue[h.index];
-  if(card){ applyReview(card, h.quality); }  // reviewsDirty/保存/当日カウントも内部で実施
-  state.studyHistory.push(h);   // 再び「戻る」可能に
-  state.studyIndex = h.index + 1;
-  state.studyShowing = 'front';
-  renderStudy();
-  renderDeckNav();
-  toast('評価をやり直して次へ進みました', '');
+  if(state.studyRedo.length > 0){
+    // やり直し: 記録した quality で applyReview を再実行(done トグル等は内部スプレッドで保持)
+    const h = state.studyRedo.pop();
+    const card = state.studyQueue[h.index];
+    if(card){ applyReview(card, h.quality); }  // reviewsDirty/保存/当日カウントも内部で実施
+    state.studyHistory.push(h);   // 再び「戻る」可能に
+    state.studyIndex = h.index + 1;
+    state.studyShowing = 'front';
+    renderStudy();
+    renderDeckNav();
+    toast('前回の評価のまま次へ進みました', '');
+    return;
+  }
+  // redo が無い: 今のカードを「詰まった」で進める(進む対象が無ければ何もしない)
+  const card = state.studyQueue[state.studyIndex];
+  if(!card) return;
+  rateAndAdvance(card, 'bad');
+  toast('「詰まった」で次へ進みました', '');
 }
 
 function forceStudyAll(){
