@@ -390,6 +390,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
     <button class="level-tab active" data-level="all">全て<span class="level-count" id="lc-all"></span></button>
     <button class="level-tab" data-level="structure">構造<span class="level-count" id="lc-structure"></span></button>
     <button class="level-tab" data-level="element">要素<span class="level-count" id="lc-element"></span></button>
+    <button class="level-tab" data-level="keyword" title="キーワード(1キーワード×4視点)">KW<span class="level-count" id="lc-keyword"></span></button>
   </div>
   <div class="nav-section">デッキ</div>
   <div id="deck-list-nav"></div>
@@ -430,6 +431,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
         <button class="sf-level-btn active" data-level="all">全て</button>
         <button class="sf-level-btn" data-level="structure">構造</button>
         <button class="sf-level-btn" data-level="element">要素</button>
+        <button class="sf-level-btn" data-level="keyword" title="キーワード(1キーワード×4視点)">KW</button>
       </div>
       <select class="sf-deck-select" id="study-deck-select">
         <option value="">全デッキ</option>
@@ -474,6 +476,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
         <option value="">全レベル</option>
         <option value="structure">構造レベル</option>
         <option value="element">要素レベル</option>
+        <option value="keyword">キーワードレベル</option>
       </select>
       <select class="search-box" id="filter-deck" style="flex:0 0 180px;min-width:auto">
         <option value="">全てのデッキ</option>
@@ -713,7 +716,7 @@ const state = {
   reviewMap: {},      // { cardId: { ease, interval, due, lastReviewed, reviewCount } }
   reviews: [],        // [{date:'YYYY-MM-DD', count}]  日別レビュー集計
   currentDeck: null,  // null = 全カード
-  currentLevel: 'all', // 'all' | 'structure' | 'element'
+  currentLevel: 'all', // 'all' | 'structure' | 'element' | 'keyword'
   managePageSize: 50,  // モバイル向けページネーション
   manageShown: 50,     // 現在表示中の件数
   studyQueue: [],
@@ -917,19 +920,23 @@ function toggleDoneForDeck(deck){
 // ============================================================
 // Level helpers
 // ============================================================
-function isElementLevel(card){
-  // deck名が -elem で終わる、または type フィールドが 'element'
-  return (card.deck && card.deck.endsWith('-elem')) || card.type === 'element';
+// カードのレベル種別を判定: 'keyword' | 'element' | 'structure'
+// deck名の接尾辞(-kw1 / -elem)、または type フィールドで分類する
+function getCardLevel(card){
+  const d = card.deck || '';
+  if(d.endsWith('-kw1') || card.type === 'keyword') return 'keyword';
+  if(d.endsWith('-elem') || card.type === 'element') return 'element';
+  return 'structure';
 }
+function isElementLevel(card){ return getCardLevel(card) === 'element'; }
 function filterByLevel(cards){
-  if(state.currentLevel === 'element') return cards.filter(c => isElementLevel(c));
-  if(state.currentLevel === 'structure') return cards.filter(c => !isElementLevel(c));
-  return cards;
+  if(state.currentLevel === 'all') return cards;
+  return cards.filter(c => getCardLevel(c) === state.currentLevel);
 }
 function getLevelCounts(){
-  const all = state.cards.length;
-  const elem = state.cards.filter(c => isElementLevel(c)).length;
-  return { all, element: elem, structure: all - elem };
+  const counts = { all: state.cards.length, structure: 0, element: 0, keyword: 0 };
+  state.cards.forEach(c => { counts[getCardLevel(c)]++; });
+  return counts;
 }
 
 // ============================================================
@@ -975,9 +982,11 @@ function renderDeckNav(){
   const lcAll = document.getElementById('lc-all');
   const lcStr = document.getElementById('lc-structure');
   const lcElem = document.getElementById('lc-element');
+  const lcKw = document.getElementById('lc-keyword');
   if(lcAll) lcAll.textContent = lc.all;
   if(lcStr) lcStr.textContent = lc.structure;
   if(lcElem) lcElem.textContent = lc.element;
+  if(lcKw) lcKw.textContent = lc.keyword;
 
   // Level tab active state
   document.querySelectorAll('.level-tab').forEach(t => {
@@ -1062,7 +1071,8 @@ function startStudy(){
   state.studyHistory = [];   // 新セッション開始: 戻る履歴をリセット
   state.studyRedo = [];      // 進む履歴もリセット
   const levelLabel = state.currentLevel === 'element' ? '【要素】' :
-                     state.currentLevel === 'structure' ? '【構造】' : '';
+                     state.currentLevel === 'structure' ? '【構造】' :
+                     state.currentLevel === 'keyword' ? '【KW】' : '';
   const deckLabel = state.currentDeck || '全カード';
   document.getElementById('study-deck-name').textContent = levelLabel + deckLabel;
   updateStudyDeckToggle();
@@ -1296,8 +1306,7 @@ function renderManage(){
 
   let cards = state.cards.slice();
   // Level filter (manage view has its own dropdown, synced with sidebar)
-  if(levelFilter === 'element'){ cards = cards.filter(c => isElementLevel(c)); }
-  else if(levelFilter === 'structure'){ cards = cards.filter(c => !isElementLevel(c)); }
+  if(levelFilter){ cards = cards.filter(c => getCardLevel(c) === levelFilter); }
   else { cards = filterByLevel(cards); } // respect sidebar level if manage dropdown is "全レベル"
   if(deckFilter){ cards = cards.filter(c => c.deck === deckFilter); }
   if(search){
@@ -1326,7 +1335,10 @@ function renderManage(){
     const dueStatus = c.due <= nowMs() ? 'due-now' : (c.due <= daysFromNow(2) ? 'due-soon' : 'due-later');
     const dueText = c.due <= nowMs() ? '今すぐ' :
       `${Math.ceil((c.due - nowMs()) / 86400000)}日後`;
-    const levelBadge = isElementLevel(c) ? '<span class="li-deck" style="background:rgba(176,136,0,.08);color:var(--accent4)">要素</span>' : '';
+    const _lv = getCardLevel(c);
+    const levelBadge = _lv === 'element' ? '<span class="li-deck" style="background:rgba(176,136,0,.08);color:var(--accent4)">要素</span>'
+                     : _lv === 'keyword' ? '<span class="li-deck" style="background:rgba(111,66,193,.08);color:var(--accent3)">KW</span>'
+                     : '';
     return `<div class="list-item ${c.done?'is-done':''}" onclick="previewCard('${c.id}')">
       <button class="li-done ${c.done?'done':''}" title="実施済みチェック"
         onclick="event.stopPropagation();toggleDoneInList('${c.id}')">${c.done?'✓':''}</button>
