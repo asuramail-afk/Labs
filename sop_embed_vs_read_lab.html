@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SOP: embed許可 vs read遮断 Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+.verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+  line-height:1.7; border:1px solid; }
+.verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+.verify-before .verify-label { color:var(--error); }
+.verify-after  .verify-label { color:var(--success); }
+
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+.compare-table .yes { color:var(--success); font-weight:600; } .compare-table .no { color:var(--error); font-weight:600; }
+
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+.usecase-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:6px; }
+.usecase-list { margin-left:20px; margin-bottom:10px; }
+.usecase-list li { margin-bottom:4px; }
+.usecase-trigger { background:rgba(0,92,197,.05); border-left:3px solid var(--accent);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#003d8f; margin-top:8px; }
+.usecase-trigger ul { margin:4px 0 0 20px; }
+
+.livedemo { margin:14px 0; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+.livedemo-bar { display:flex; align-items:center; gap:12px; padding:8px 12px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.toggle-btn { font-family:var(--mono); font-size:.78rem; padding:5px 14px;
+  border-radius:6px; border:1px solid var(--accent); background:var(--accent);
+  color:#fff; cursor:pointer; transition:all .15s; }
+.toggle-btn:hover { opacity:.85; }
+.toggle-btn.is-before { background:var(--error); border-color:var(--error); }
+.toggle-label { font-family:var(--mono); font-size:.78rem; color:var(--text-dim); }
+.livedemo-stage { padding:16px; background:var(--bg); }
+.livedemo-stage.is-before { outline:2px dashed var(--error); outline-offset:-8px; }
+.livedemo-stage .ld-before { display:none; }
+.livedemo-stage.is-before .ld-before { display:block; }
+.livedemo-stage.is-before .ld-after { display:none; }
+.ld-panel { padding:12px; border-radius:6px; font-family:var(--mono); font-size:11px; line-height:1.6; }
+.ld-panel.bad { background:#fee2e2; border:1px solid #cb2431; color:#6b1a22; }
+.ld-panel.good { background:#dcfce7; border:1px solid #22863a; color:#166534; }
+
+.try-box { background:rgba(34,134,58,.06); border:1px solid rgba(34,134,58,.30);
+  border-left:3px solid var(--success); border-radius:7px;
+  padding:12px 14px; margin:14px 0; font-size:.86rem; line-height:1.8; color:#154f1e; }
+.try-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--success); font-weight:700; margin-bottom:6px; }
+.try-box ol { margin-left:20px; margin-top:4px; }
+.try-box ol li { margin-bottom:4px; }
+.try-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--success); }
+.try-tip { background:rgba(176,136,0,.06); border-left:3px solid var(--accent4);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#5c4400; margin-top:8px; }
+.try-tip strong { color:var(--accent4); }
+.try-skeleton { background:#f0f4f8; border:1px solid var(--border); border-radius:5px;
+  padding:10px 12px; margin-top:8px; font-family:var(--mono); font-size:.78rem;
+  color:var(--text); white-space:pre; overflow-x:auto; line-height:1.5; }
+
+.code-pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; }
+.code-pair-col { display:flex; flex-direction:column; min-width:0; }
+.code-pair-label { font-family:var(--mono); font-size:.72rem; letter-spacing:.05em;
+  font-weight:700; padding:6px 10px; border-radius:6px 6px 0 0; }
+.code-pair-before .code-pair-label { background:rgba(203,36,49,.10); color:#9a1320;
+  border:1px solid rgba(203,36,49,.30); border-bottom:none; }
+.code-pair-after  .code-pair-label { background:rgba(34,134,58,.10); color:#154f1e;
+  border:1px solid rgba(34,134,58,.30); border-bottom:none; }
+.code-pair-col .code-block { margin:0; border-radius:0 0 8px 8px; flex:1; }
+.code-pair-before .code-block { border-color:rgba(203,36,49,.30); }
+.code-pair-after  .code-block { border-color:rgba(34,134,58,.30); }
+@media (max-width:900px){ .code-pair { grid-template-columns:1fr; } }
+
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .verify { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+  </style>
+</head>
+<body>
+  <nav id="sidebar" aria-label="Lab navigation">
+    <div class="nav-title">// SOP embed vs read <span>Lab</span></div>
+    <div class="nav-section">全体像</div>
+    <a class="nav-item" href="#lab0"><span class="nav-num">00</span>境界の全体像</a>
+    <div class="nav-section">read = 遮断</div>
+    <a class="nav-item" href="#lab1"><span class="nav-num">01</span>fetch 読取の遮断</a>
+    <a class="nav-item" href="#lab2"><span class="nav-num">02</span>iframe DOM 読取</a>
+    <a class="nav-item" href="#lab3"><span class="nav-num">03</span>canvas 汚染と読取</a>
+    <div class="nav-section">embed = 許可</div>
+    <a class="nav-item" href="#lab4"><span class="nav-num">04</span>img/script の埋込</a>
+    <a class="nav-item" href="#lab5"><span class="nav-num">05</span>form 送信は通る</a>
+    <div class="nav-section">境界が生む穴</div>
+    <a class="nav-item" href="#lab6"><span class="nav-num">06</span>JSONP の抜け道</a>
+    <a class="nav-item" href="#lab7"><span class="nav-num">07</span>CORB/ORB の補強</a>
+  </nav>
+
+  <div class="hero">
+    <h1>SOP: embed許可 vs read遮断</h1>
+    <p class="subtitle">Same-Origin Policy が「止めるもの」と「通すもの」を実機で確かめる8ラボ</p>
+  </div>
+
+  <div class="toc">
+    <h2>// 目次</h2>
+    <div class="toc-grid">
+      <a class="toc-item" href="#lab0"><span class="toc-num">00</span>境界の全体像 — read / embed</a>
+      <a class="toc-item" href="#lab1"><span class="toc-num">01</span>fetch のレスポンス読取が遮断される</a>
+      <a class="toc-item" href="#lab2"><span class="toc-num">02</span>iframe の contentDocument 読取</a>
+      <a class="toc-item" href="#lab3"><span class="toc-num">03</span>canvas 汚染 (tainted) と getImageData</a>
+      <a class="toc-item" href="#lab4"><span class="toc-num">04</span>img/script の埋込は許可される</a>
+      <a class="toc-item" href="#lab5"><span class="toc-num">05</span>form のクロスオリジン送信は通る</a>
+      <a class="toc-item" href="#lab6"><span class="toc-num">06</span>JSONP — script実行を逆手に取る</a>
+      <a class="toc-item" href="#lab7"><span class="toc-num">07</span>CORB/ORB — embed要求の補強</a>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- ===== LAB 0 ===== -->
+    <div class="lab" id="lab0">
+      <div class="lab-header">
+        <div class="lab-num">00</div>
+        <h3>境界の全体像 — read を止め embed を通す</h3>
+        <span class="lab-tag tag-basic">基本</span>
+      </div>
+      <div class="lab-body">
+        <p class="lab-desc">
+          SOP(Same-Origin Policy)は「クロスオリジンへのアクセス全部」を止めるのではない。止めるのは <code>JS がレスポンスのバイト列・DOM を読む</code> 瞬間。リクエスト送信やリソースの埋め込み(表示・実行)はむしろ許可される。この非対称性が全ラボの軸。
+        </p>
+
+        <table class="compare-table">
+          <thead><tr><th>操作</th><th>分類</th><th>クロスオリジン可否</th><th>例</th></tr></thead>
+          <tbody>
+            <tr><td>表示・実行委任</td><td>embed</td><td class="yes">✓ 許可</td><td>&lt;img&gt; &lt;script&gt; &lt;link&gt; &lt;video&gt; &lt;iframe表示&gt;</td></tr>
+            <tr><td>リクエスト送信</td><td>embed系</td><td class="yes">✓ 許可</td><td>&lt;form&gt; 送信 / 画像GET</td></tr>
+            <tr><td>レスポンス本文読取</td><td>read</td><td class="no">✗ 遮断</td><td>fetch().text() / XHR.responseText</td></tr>
+            <tr><td>DOM 読取</td><td>read</td><td class="no">✗ 遮断</td><td>iframe.contentDocument</td></tr>
+            <tr><td>ピクセル読取</td><td>read</td><td class="no">✗ 遮断</td><td>canvas.getImageData()</td></tr>
+          </tbody>
+        </table>
+
+        <div class="beginner-box">
+          <div class="beginner-title">🔰 なぜ「読む」だけ止めるのか</div>
+          埋め込みは Web をリンクで繋ぐ前提機能で、止めると CDN も画像も使えなくなる。一方「他サイトの中身を JS が読めてしまう」と、ログイン中の銀行残高やメール本文を悪意サイトが盗める。だから <strong>送る・表示するは自由、中身を読むのは禁止</strong> という線引きになった。
+          <pre class="ascii-art">attacker.example のページ
+   │
+   ├─ embed ──▶ bank.example のリソースを「表示/実行」  ✓ 通す
+   │             （ブラウザが処理。JSは中身に触れない）
+   │
+   └─ read ───▶ bank.example のレスポンスを「JSで読む」  ✗ 止める
+                 fetch / XHR / contentDocument / getImageData</pre>
+        </div>
+
+        <div class="code-block">
+          <div class="code-block-header"><span>JS — 同じ相手でも read と embed で結果が違う</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// embed: ブラウザに表示を委任 → 通る（onload発火）</span>
+<span class="kw">const</span> img = <span class="kw">new</span> <span class="fn">Image</span>();
+img.src = <span class="str">'https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png'</span>;
+img.onload = () =&gt; <span class="fn">console</span>.log(<span class="str">'embed OK: 画像は表示できた'</span>);
+
+<span class="cm">// read: 同じ画像URLを fetch で「読もう」とする → CORSで遮断され得る</span>
+<span class="fn">fetch</span>(img.src)
+  .then(r =&gt; r.<span class="fn">blob</span>())
+  .then(() =&gt; <span class="fn">console</span>.log(<span class="str">'read OK'</span>))
+  .<span class="fn">catch</span>(e =&gt; <span class="fn">console</span>.log(<span class="str">'read 遮断:'</span>, e.message));</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== LAB 1 ===== -->
+    <div class="lab" id="lab1">
+      <div class="lab-header">
+        <div class="lab-num">01</div>
+        <h3>fetch のレスポンス読取が遮断される</h3>
+        <span class="lab-tag tag-basic">基本</span>
+      </div>
+      <div class="lab-body">
+        <p class="lab-desc">
+          <code>fetch()</code> のリクエスト自体は相手サーバに届く(設定次第で Cookie も付く)。止まるのは <code>.text()</code> / <code>.json()</code> で<strong>本文を読む瞬間</strong>。相手が <code>Access-Control-Allow-Origin</code> を返さなければ、JS はレスポンスに触れずエラーになる。
+        </p>
+
+        <div class="code-pair">
+          <div class="code-pair-col code-pair-before">
+            <div class="code-pair-label">✗ Before（CORS未許可 → 読取で例外）</div>
+            <div class="code-block">
+              <div class="code-block-header"><span>JS — クロスオリジンを素で読む</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 相手が CORS ヘッダを返さない場合</span>
+<span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'https://example.com/'</span>);
+<span class="kw">const</span> t = <span class="kw">await</span> res.<span class="fn">text</span>();
+<span class="cm">// → TypeError: Failed to fetch</span>
+<span class="cm">//   （送信は届くが本文を読めない）</span></pre>
+            </div>
+          </div>
+          <div class="code-pair-col code-pair-after">
+            <div class="code-pair-label">✓ After（CORS許可 or no-cors埋込）</div>
+            <div class="code-block">
+              <div class="code-block-header"><span>JS — 許可済みAPI or 読まない</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// ① 相手が ACAO を返すAPIなら読める</span>
+<span class="kw">const</span> r = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'https://api.github.com/zen'</span>);
+<span class="fn">console</span>.log(<span class="kw">await</span> r.<span class="fn">text</span>()); <span class="cm">// OK</span>
+
+<span class="cm">// ② no-cors なら送れるが body は opaque（読めない）</span>
+<span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'https://example.com/'</span>, { mode:<span class="str">'no-cors'</span> });</pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="livedemo">
+          <div class="livedemo-bar">
+            <button class="toggle-btn" data-target="ld-fetch">Before を見る</button>
+            <span class="toggle-label" id="ld-fetch-label">現在: After（CORS許可APIは読める）</span>
+          </div>
+          <div class="livedemo-stage" id="ld-fetch">
+            <div class="ld-panel good ld-after">✓ After: api.github.com/zen は ACAO:* を返す → fetch().text() が成功し本文が読める</div>
+            <div class="ld-panel bad ld-before">✗ Before: ACAOを返さないオリジンへ素のfetch → 送信は届くが .text() の手前で "Failed to fetch"。本文はJSに渡らない</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== LAB 2 ===== -->
+    <div class="lab" id="lab2">
+      <div class="lab-header">
+        <div class="lab-num">02</div>
+        <h3>iframe の表示は許可・contentDocument 読取は遮断</h3>
+        <span class="lab-tag tag-intermediate">中級</span>
+      </div>
+      <div class="lab-body">
+        <p class="lab-desc">
+          クロスオリジンを <code>&lt;iframe&gt;</code> に表示するのは許可(embed)。だが親ページの JS から <code>iframe.contentDocument</code> や <code>contentWindow.document</code> で<strong>中の DOM を読む</strong>と SecurityError。表示はできても中身は覗けない。
+        </p>
+
+        <div class="code-block">
+          <div class="code-block-header"><span>HTML+JS — iframe表示はOK / DOM読取はNG</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">&lt;!-- 表示(embed): 通る --&gt;</span>
+&lt;<span class="tag">iframe</span> <span class="attr">id</span>=<span class="val">"f"</span> <span class="attr">src</span>=<span class="val">"https://example.com/"</span>&gt;&lt;/<span class="tag">iframe</span>&gt;
+
+&lt;<span class="tag">script</span>&gt;
+  <span class="kw">const</span> f = <span class="fn">document</span>.<span class="fn">getElementById</span>(<span class="str">'f'</span>);
+  f.onload = () =&gt; {
+    <span class="kw">try</span> {
+      <span class="cm">// read: 中のDOMを読む → 例外</span>
+      <span class="fn">console</span>.log(f.contentDocument.body.innerHTML);
+    } <span class="kw">catch</span> (e) {
+      <span class="fn">console</span>.log(<span class="str">'read 遮断:'</span>, e.name); <span class="cm">// SecurityError</span>
+    }
+  };
+&lt;/<span class="tag">script</span>&gt;</pre>
+        </div>
+
+        <div class="info-box info">
+          📘 例外的に通る境界: <code>postMessage</code> は「読む」のではなく「相手が送ってよいと判断したメッセージを受け取る」仕組みなので、クロスオリジンでも合意の上で通信できる。直接 DOM を読むのとは別物。
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== LAB 3 ===== -->
+    <div class="lab" id="lab3">
+      <div class="lab-header">
+        <div class="lab-num">03</div>
+        <h3>canvas 汚染(tainted) — 描画は許可・読取は遮断</h3>
+        <span class="lab-tag tag-intermediate">中級</span>
+      </div>
+      <div class="lab-body">
+        <p class="lab-desc">
+          クロスオリジン画像を <code>drawImage()</code> で canvas に<strong>描く</strong>のは許可(embed)。だがその瞬間 canvas は "tainted(汚染)" 扱いになり、<code>getImageData()</code> や <code>toDataURL()</code> で<strong>ピクセルを読む</strong>と SecurityError。見せてよいが盗ませない、の典型例。
+        </p>
+
+        <div class="code-pair">
+          <div class="code-pair-col code-pair-before">
+            <div class="code-pair-label">✗ Before（汚染 → 読取で例外）</div>
+            <div class="code-block">
+              <div class="code-block-header"><span>JS — crossorigin指定なし</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">const</span> img = <span class="kw">new</span> <span class="fn">Image</span>();
+img.src = <span class="str">'https://他オリジン/photo.png'</span>;
+img.onload = () =&gt; {
+  ctx.<span class="fn">drawImage</span>(img,<span class="num">0</span>,<span class="num">0</span>); <span class="cm">// 描画OK</span>
+  ctx.<span class="fn">getImageData</span>(<span class="num">0</span>,<span class="num">0</span>,<span class="num">10</span>,<span class="num">10</span>);
+  <span class="cm">// → SecurityError: tainted canvas</span>
+};</pre>
+            </div>
+          </div>
+          <div class="code-pair-col code-pair-after">
+            <div class="code-pair-label">✓ After（CORS同意で汚染回避）</div>
+            <div class="code-block">
+              <div class="code-block-header"><span>JS — crossorigin + 相手がACAO返す</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">const</span> img = <span class="kw">new</span> <span class="fn">Image</span>();
+img.crossOrigin = <span class="str">'anonymous'</span>; <span class="cm">// 同意を要求</span>
+img.src = <span class="str">'https://CORS許可オリジン/photo.png'</span>;
+img.onload = () =&gt; {
+  ctx.<span class="fn">drawImage</span>(img,<span class="num">0</span>,<span class="num">0</span>);
+  ctx.<span class="fn">getImageData</span>(<span class="num">0</span>,<span class="num">0</span>,<span class="num">10</span>,<span class="num">10</span>);
+  <span class="cm">// → 読める（相手が許可した場合のみ）</span>
+};</pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="livedemo">
+          <div class="livedemo-bar">
+            <button class="toggle-btn" data-target="ld-canvas">Before を見る</button>
+            <span class="toggle-label" id="ld-canvas-label">現在: After（同意ありで読める）</span>
+          </div>
+          <div class="livedemo-stage" id="ld-canvas">
+            <div class="ld-panel good ld-after">✓ After: crossOrigin='anonymous' + 相手がACAOを返す → canvasは汚染されず getImageData() でピクセルを読める</div>
+            <div class="ld-panel bad ld-before">✗ Before: crossOrigin未指定で他オリジン画像をdrawImage → 画像は見えるが canvasがtaintedになり getImageData() で SecurityError</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== LAB 4 ===== -->
+    <div class="lab" id="lab4">
+      <div class="lab-header">
+        <div class="lab-num">04</div>
+        <h3>img/script の埋込は許可される</h3>
+        <span class="lab-tag tag-basic">基本</span>
+      </div>
+      <div class="lab-body">
+        <p class="lab-desc">
+          <code>&lt;img&gt;</code> はクロスオリジンでも表示される(が JS はピクセルを読めない→Lab03)。<code>&lt;script&gt;</code> は取得して<strong>実行までされる</strong>(が .js のソース文字列を JS から読むことはできない)。「実行は委任、中身の読取は禁止」が一貫した線。
+        </p>
+
+        <div class="code-block">
+          <div class="code-block-header"><span>HTML — クロスオリジン埋込はすべて通る</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">&lt;!-- 表示される（JSはピクセルを読めない） --&gt;</span>
+&lt;<span class="tag">img</span> <span class="attr">src</span>=<span class="val">"https://他オリジン/logo.png"</span>&gt;
+
+<span class="cm">&lt;!-- 取得して実行される（ソース文字列は読めない） --&gt;</span>
+&lt;<span class="tag">script</span> <span class="attr">src</span>=<span class="val">"https://cdn.example/lib.js"</span>&gt;&lt;/<span class="tag">script</span>&gt;
+
+<span class="cm">&lt;!-- 適用される --&gt;</span>
+&lt;<span class="tag">link</span> <span class="attr">rel</span>=<span class="val">"stylesheet"</span> <span class="attr">href</span>=<span class="val">"https://cdn.example/x.css"</span>&gt;</pre>
+        </div>
+
+        <div class="info-box warn">
+          ⚠️ 埋込の "実行委任" は信頼の前提。クロスオリジンの <code>&lt;script&gt;</code> は<strong>自オリジンの権限で実行</strong>される。CDN が改ざんされれば自サイトが乗っ取られるため、本番では <code>integrity</code>(SRI)属性でハッシュ検証するのが定石。
+        </div>
+
+        <div class="code-pair">
+          <div class="code-pair-col code-pair-before">
+            <div class="code-pair-label">✗ Before（無検証で実行）</div>
+            <div class="code-block">
+              <div class="code-block-header"><span>HTML</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>&lt;<span class="tag">script</span> <span class="attr">src</span>=<span class="val">"https://cdn.example/lib.js"</span>&gt;&lt;/<span class="tag">script</span>&gt;</pre>
+            </div>
+          </div>
+          <div class="code-pair-col code-pair-after">
+            <div class="code-pair-label">✓ After（SRIで改ざん検知）</div>
+            <div class="code-block">
+              <div class="code-block-header"><span>HTML</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>&lt;<span class="tag">script</span> <span class="attr">src</span>=<span class="val">"https://cdn.example/lib.js"</span>
+  <span class="attr">integrity</span>=<span class="val">"sha384-…"</span>
+  <span class="attr">crossorigin</span>=<span class="val">"anonymous"</span>&gt;&lt;/<span class="tag">script</span>&gt;</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== LAB 5 ===== -->
+    <div class="lab" id="lab5">
+      <div class="lab-header">
+        <div class="lab-num">05</div>
+        <h3>form のクロスオリジン送信は通る — CSRFの根本</h3>
+        <span class="lab-tag tag-intermediate">中級</span>
+      </div>
+      <div class="lab-body">
+        <p class="lab-desc">
+          <code>&lt;form&gt;</code> から他オリジンへ POST を<strong>送る</strong>のは許可(embed系)。送信先の Cookie も自動で付く。レスポンスは画面遷移としてブラウザが処理し JS は読めないが、<strong>「送れてしまう」こと自体</strong>が副作用を起こす。これが CSRF の原理。
+        </p>
+
+        <div class="beginner-box">
+          <div class="beginner-title">🔰 read遮断だけでは防げない理由</div>
+          SOP は「レスポンスを読む」のは止めるが「リクエストを送る」のは止めない。送金APIのように<strong>送信だけで副作用が完結する</strong>処理は、レスポンスを読めなくても被害が成立する。だから SOP とは別に CSRF トークンや SameSite Cookie が必要になる。
+          <pre class="ascii-art">悪意ページ ──POST送信(Cookie自動付与)──▶ bank/transfer
+                                              │
+                          残高が動く（副作用は完結）
+                                              │
+   ◀──レスポンス── JSは読めない ✗（でも手遅れ）</pre>
+        </div>
+
+        <div class="code-pair">
+          <div class="code-pair-col code-pair-before">
+            <div class="code-pair-label">✗ Before（防御なし → CSRF成立）</div>
+            <div class="code-block">
+              <div class="code-block-header"><span>HTML — 攻撃側ページ</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">&lt;!-- 被害者が踏むと自動送信 --&gt;</span>
+&lt;<span class="tag">form</span> <span class="attr">action</span>=<span class="val">"https://bank.example/transfer"</span>
+      <span class="attr">method</span>=<span class="val">"POST"</span>&gt;
+  &lt;<span class="tag">input</span> <span class="attr">name</span>=<span class="val">"to"</span> <span class="attr">value</span>=<span class="val">"attacker"</span>&gt;
+&lt;/<span class="tag">form</span>&gt;
+&lt;<span class="tag">script</span>&gt;<span class="fn">document</span>.forms[<span class="num">0</span>].<span class="fn">submit</span>()&lt;/<span class="tag">script</span>&gt;</pre>
+            </div>
+          </div>
+          <div class="code-pair-col code-pair-after">
+            <div class="code-pair-label">✓ After（SameSite + トークン）</div>
+            <div class="code-block">
+              <div class="code-block-header"><span>サーバ設定 — 防御側</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># Cookieにクロスサイト送信抑止</span>
+Set-Cookie: sid=…; SameSite=Lax; Secure
+
+<span class="cm"># フォームに予測不能なトークン必須</span>
+&lt;input name="csrf" value="ランダム値"&gt;
+<span class="cm"># サーバ側でトークン照合 → 不一致は拒否</span></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== LAB 6 ===== -->
+    <div class="lab" id="lab6">
+      <div class="lab-header">
+        <div class="lab-num">06</div>
+        <h3>JSONP — script実行を逆手に取った抜け道</h3>
+        <span class="lab-tag tag-advanced">応用</span>
+      </div>
+      <div class="lab-body">
+        <p class="lab-desc">
+          read は遮断でも、<code>&lt;script&gt;</code> の「実行までされる」性質を悪用すればデータを取れる。サーバが <code>callback({...})</code> という JS を返し、ブラウザがそれを実行する——これが CORS 普及前の JSONP。SOP の境界の<strong>非対称性が穴になった</strong>歴史的事例。
+        </p>
+
+        <div class="code-block">
+          <div class="code-block-header"><span>HTML+JS — JSONPの仕組み</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">// 1) コールバックをグローバルに用意</span>
+<span class="kw">function</span> <span class="fn">cb</span>(data) { <span class="fn">console</span>.log(<span class="str">'取得:'</span>, data.balance); }
+
+<span class="cm">// 2) script として読み込む（read遮断を回避）</span>
+<span class="kw">const</span> s = <span class="fn">document</span>.<span class="fn">createElement</span>(<span class="str">'script'</span>);
+s.src = <span class="str">'https://api.example/balance?callback=cb'</span>;
+<span class="fn">document</span>.body.<span class="fn">appendChild</span>(s);
+
+<span class="cm">// 3) サーバが返すのは「実行可能なJS」:</span>
+<span class="cm">//    cb({ balance: 100 })  ← これが実行され cb にデータが渡る</span></pre>
+        </div>
+
+        <div class="info-box err">
+          🚫 JSONP は<strong>非推奨</strong>。返ってくるのは任意実行コードなので、サーバが侵害されれば即XSS相当になる。現在はクロスオリジンデータ取得に CORS(相手が明示同意する設計)を使う。JSONP は「embed の実行委任を read の代わりに使う」発想そのものが危険。
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== LAB 7 ===== -->
+    <div class="lab" id="lab7">
+      <div class="lab-header">
+        <div class="lab-num">07</div>
+        <h3>CORB/ORB — embed要求でも中身は渡さない補強</h3>
+        <span class="lab-tag tag-advanced">応用</span>
+      </div>
+      <div class="lab-body">
+        <p class="lab-desc">
+          Spectre 以降、「embed として要求されたレスポンスのバイト列がプロセス内に乗る」こと自体がリスクになった。CORB(後継 ORB)は <code>&lt;img&gt;</code> や <code>&lt;script&gt;</code> として要求されても、中身が JSON/HTML/XML 等「画像でも実行用JSでもない」なら<strong>レンダラに渡す前にブロック</strong>する補強策。
+        </p>
+
+        <table class="compare-table">
+          <thead><tr><th>層</th><th>守る対象</th><th>判定基準</th></tr></thead>
+          <tbody>
+            <tr><td>SOP</td><td>JSがread()する瞬間</td><td>オリジン一致 / CORS同意</td></tr>
+            <tr><td>CORB/ORB</td><td>embed要求のレスポンス本文</td><td>Content-Type と内容の整合(sniff)</td></tr>
+            <tr><td>COOP/COEP</td><td>プロセス分離・SAB許可</td><td>レスポンスヘッダの宣言</td></tr>
+          </tbody>
+        </table>
+
+        <div class="info-box info">
+          📘 関係整理: <strong>SOP</strong> は「JS が読む」を止める基本線。<strong>CORB/ORB</strong> は「embed と偽って中身をプロセスに引き込む」を塞ぐ補強。<strong>COOP/COEP</strong> はさらにプロセス自体を分離して <code>SharedArrayBuffer</code> 等の強力機能を安全に解禁する層。境界の非対称性(Lab00)を多層で守る構図。
+        </div>
+
+        <div class="code-block">
+          <div class="code-block-header"><span>HTTP — CORBが効く例</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm"># 攻撃側: 機密JSONを &lt;img&gt; として要求</span>
+GET /secret.json
+<span class="cm"># レスポンス</span>
+Content-Type: application/json
+<span class="cm"># → CORB: 画像要求なのに中身はJSON</span>
+<span class="cm">#   → レンダラに渡さずブロック（空扱い）</span>
+<span class="cm">#   ＝ Spectreでも中身が読めない</span></pre>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    function copyCode(btn) {
+      const block = btn.closest('.code-block') || btn.parentElement;
+      const pre = block.querySelector('pre');
+      if (!pre) return;
+      navigator.clipboard.writeText(pre.innerText).then(() => {
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+      });
+    }
+
+    const LAB_META = {
+      lab0: {
+        info: { type:'ok', html:'✅ <strong>覚える一文</strong>: SOPは「送る・表示する」は通し、「JSが中身を読む」だけを止める。read遮断 / embed許可 の非対称が全ての出発点。' },
+        usecase: {
+          list:[
+            'CDNから画像・JS・CSSを読み込む（embed側＝普通に動く前提）',
+            '外部APIをfetchして失敗 → CORS設定の要否を判断する',
+            '他社サイトをiframe埋込したいが中のDOMは触れないと知る',
+            'CSRF対策が「なぜSOPだけでは足りないか」を説明する'
+          ],
+          trigger:[
+            '"Failed to fetch" や "CORS policy" がコンソールに出た',
+            '画像は表示されるのに getImageData だけ落ちる'
+          ]
+        },
+        try:'コンソールで Lab00 の2つの例を貼って、imgのonloadは発火するのにfetchは落ちる対比を体感する',
+        check: [
+          '①DevToolsを使わず: 適当なサイトで &lt;img src=他オリジン&gt; を置く → 画像が<strong>表示される</strong>ことを目視（embed許可）',
+          '②同じURLを別タブのアドレスバーに貼って開く → 単体では普通に見える（送信は自由）',
+          '③下のtry手順でfetchを試す → 画面に「read 遮断」と出れば境界を体感'
+        ]
+      },
+      lab1: {
+        info: { type:'warn', html:'⚠️ <strong>勘違い注意</strong>: fetchが失敗しても「リクエストが届かなかった」わけではない。届いて副作用も起きうる。止まるのは<strong>本文を読む段階</strong>だけ。' },
+        verify: { before:'素のfetchで他オリジンを読む → 例外で本文ゼロ', after:'CORS許可APIならtext()成功 / no-corsなら送れるが本文はopaque' },
+        usecase: {
+          list:[
+            '自作フロントから他社APIを叩いて CORS エラーになる場面の切り分け',
+            'no-cors で送信だけしたい（計測ビーコン等）ケースの理解',
+            'プロキシ(BFF)を立てて自オリジン経由にする設計判断',
+            'OutSystemsでServer Action経由にしてブラウザのCORSを回避する設計'
+          ],
+          trigger:[
+            'fetchが "TypeError: Failed to fetch" で落ちる',
+            'Networkタブでは200なのにJSで本文が取れない'
+          ]
+        },
+        try:'api.github.com/zen（ACAO:*）とACAOを返さないサイトを両方fetchして対比。後者だけ落ちる',
+        check: [
+          '①try手順でApfetchを api.github.com/zen に対して実行 → 画面に英文が出れば read 成功',
+          '②次に ACAO を返さないオリジン(例: https://example.com/)へ素のfetch → 「read 遮断」表示を確認',
+          '③同URLに mode:"no-cors" を付けて再実行 → エラーは消えるが本文は空（opaque）になることを確認'
+        ]
+      },
+      lab2: {
+        info: { type:'info', html:'📘 <strong>境界</strong>: iframe表示=embed(許可) / contentDocument読取=read(遮断)。例外的に postMessage は<strong>合意通信</strong>なのでクロスオリジンでも通る。' },
+        usecase: {
+          list:[
+            '他社ウィジェットをiframe埋込（表示はできる）',
+            '埋込先の高さを取りたいが contentDocument が読めず詰まる → postMessageで解決',
+            '決済画面をiframe分離してホスト側から中身を触れなくする設計',
+            'OAuth同意画面など、表示はするが親から制御させない構成の理解'
+          ],
+          trigger:[
+            'iframe.contentDocument が null / SecurityError になる',
+            '埋込コンテンツとデータをやり取りしたいが直接DOMを触れない'
+          ]
+        },
+        try:'iframeのsrcを他オリジンにして contentDocument.body を読む → SecurityErrorをコンソールで確認',
+        check: [
+          '①try手順でiframe(src=他オリジン)を表示 → <strong>画面に中身が映る</strong>ことを目視（embed許可）',
+          '②onload内で contentDocument を読む行を有効化 → コンソールに「read 遮断: SecurityError」が出るか確認',
+          '③自オリジンの別ページをsrcにすると同じコードでDOMが読める → オリジン一致なら通ることを対比'
+        ]
+      },
+      lab3: {
+        info: { type:'warn', html:'⚠️ <strong>tainted canvas</strong>: 他オリジン画像をdrawImageした瞬間canvasが汚染され、getImageData/toDataURLが落ちる。crossOrigin指定＋相手のACAOで回避。' },
+        verify: { before:'crossOrigin無し → 描画はできるがgetImageDataでSecurityError', after:'crossOrigin="anonymous"+相手ACAO → 汚染されず読める' },
+        usecase: {
+          list:[
+            '他オリジンの画像をcanvasで加工(リサイズ/フィルタ)したい',
+            '画像をtoDataURLでBase64化してアップロードしたい',
+            'WebGLテクスチャに外部画像を使うときのCORS要件理解',
+            '「画像は出るのにエクスポートだけ落ちる」現象の原因特定'
+          ],
+          trigger:[
+            'getImageData / toDataURL で "tainted canvas" SecurityError',
+            'canvasに描いた他オリジン画像をエクスポートできない'
+          ]
+        },
+        try:'crossOrigin指定あり/なしで同じ画像をdrawImage→getImageDataし、なし側だけ落ちるのを確認',
+        check: [
+          '①try手順でcrossOrigin<strong>未指定</strong>の画像をcanvasに描く → 画像は見える（描画=embed許可）',
+          '②続けてgetImageDataを呼ぶ → コンソールに SecurityError(tainted)が出るか確認',
+          '③crossOrigin="anonymous"＋ACAOを返すURL(例: wikimedia)に変えて再実行 → 読めるようになるか対比'
+        ]
+      },
+      lab4: {
+        info: { type:'ok', html:'✅ <strong>一貫した線</strong>: img=表示OK/ピクセル読取NG、script=実行OK/ソース読取NG。「実行・表示は委任、中身の読取は禁止」で全て説明できる。' },
+        usecase: {
+          list:[
+            'CDNからライブラリやWebフォントを読み込む（embedで動く）',
+            'SRI(integrity)でCDN改ざんを検知する本番設定',
+            'CSPのscript-srcで実行を許可するオリジンを絞る',
+            'OutSystemsのテーマ/拡張で外部JSを読む際の信頼境界整理'
+          ],
+          trigger:[
+            '外部スクリプトのソースをJSで読もうとして取れない',
+            'CDN由来のスクリプトが自サイト権限で動くことの是非を検討'
+          ]
+        },
+        try:'外部CDNのscriptを読み、その関数が使えること（実行された証拠）を確認。ソース文字列は取れないことも',
+        check: [
+          '①try手順で &lt;script src=CDNのライブラリ&gt; を置く → その関数が呼べる＝<strong>実行された</strong>ことを確認',
+          '②同じURLをfetchで読もうとする → ACAO無しなら「read 遮断」になる対比を見る',
+          '③integrity属性をわざと間違ったハッシュにする → スクリプトが実行されず止まることを確認(SRIの効果)'
+        ]
+      },
+      lab5: {
+        info: { type:'err', html:'🚫 <strong>CSRFの核心</strong>: SOPは「送信」を止めない。送金など副作用が送信だけで完結する処理は、レスポンスを読めなくても被害成立。SameSite+CSRFトークンが別途必要。' },
+        verify: { before:'防御なし → クロスサイトPOSTにCookie自動付与で副作用成立', after:'SameSite=Lax + CSRFトークン照合 → 不正送信を拒否' },
+        usecase: {
+          list:[
+            '状態変更API(POST/PUT/DELETE)へのCSRF対策の必要性判断',
+            'SameSite Cookie属性(Lax/Strict/None)の選定',
+            'CSRFトークンの発行・検証フローの設計',
+            'OutSystemsのフォーム/Server ActionでのCSRFトークン挙動理解'
+          ],
+          trigger:[
+            '「SOPがあるのになぜCSRF対策が要るのか」と聞かれた',
+            '外部サイト経由で意図しないPOSTが成立した'
+          ]
+        },
+        try:'ローカルに送信先ページとフォームページを別ポートで立て、Cookieが付いて送信が通ることを観察',
+        check: [
+          '①フォームのactionを別オリジンにして submit → <strong>リクエストは送信される</strong>ことを確認（embed系=許可）',
+          '②送信先のCookieが自動付与されることをサーバログ/受信側で確認',
+          '③SameSite=Lax を付け直す → クロスサイトのPOSTでCookieが付かなくなる対比を見る'
+        ]
+      },
+      lab6: {
+        info: { type:'err', html:'🚫 <strong>非推奨</strong>: JSONPはembedの「実行委任」をreadの代用に使う発想。返るのは任意実行コードでXSS相当のリスク。今はCORS(明示同意)を使う。' },
+        usecase: {
+          list:[
+            'レガシーコードでJSONPを見つけたとき、何をしているか読解する',
+            'JSONP依存をCORS APIへ移行する判断',
+            'なぜ &lt;script&gt; だけ read 遮断を抜けられるのかの理解',
+            'CSPでscript-srcを絞りJSONP悪用を抑止する設計'
+          ],
+          trigger:[
+            'URLに ?callback=xxx が付いたAPI呼び出しを見た',
+            'グローバル関数を定義してから外部scriptを足す古い実装を発見'
+          ]
+        },
+        try:'callback=cb 形式のJSONP対応エンドポイント(あれば)で、cbが呼ばれデータが渡る流れを観察',
+        check: [
+          '①try手順でグローバル関数cbを定義し、&lt;script src=…?callback=cb&gt; を追加',
+          '②cb内のconsole.logが発火する → <strong>実行経由でデータが渡った</strong>ことを確認（read遮断の抜け道）',
+          '③同じデータを素のfetchで取ろうとする → ACAO無しなら遮断される対比を見て、なぜJSONPが使われたか理解'
+        ]
+      },
+      lab7: {
+        info: { type:'info', html:'📘 <strong>多層防御</strong>: SOP(readを止める)→CORB/ORB(embed偽装で中身を引き込むのを止める)→COOP/COEP(プロセス分離)。Lab00の非対称性を段階的に補強する構図。' },
+        usecase: {
+          list:[
+            'Spectre以降のブラウザ防御がなぜ追加されたか理解する',
+            '機密JSONが &lt;img&gt;/&lt;script&gt; 経由で漏れないことの確認',
+            'SharedArrayBuffer使用にCOOP/COEPが要る理由の把握',
+            'Content-Typeを正しく付けることがCORB発動の前提になる運用'
+          ],
+          trigger:[
+            'コンソールに "blocked by CORB" / "ORB" の警告が出た',
+            'crossOriginIsolated を要求する機能(SAB等)を使いたい'
+          ]
+        },
+        try:'機密相当のJSONを &lt;script&gt; や &lt;img&gt; で読もうとし、CORBで中身が渡らないことをコンソール警告で確認',
+        check: [
+          '①application/json を返すURLを &lt;img&gt; のsrcに指定 → 画像として描画されない（中身がレンダラに渡らない）',
+          '②コンソールに CORB/ORB 関連の警告が出るか確認（出る環境では明示される）',
+          '③正しい画像URL(image/png)に変えると表示される → Content-Typeと内容の整合で判定されることを対比'
+        ]
+      }
+    };
+
+    function infoHTML(m){ return m?.info ? `<div class="info-box ${m.info.type||'info'}">${m.info.html}</div>` : ''; }
+    function usecaseHTML(m){ if (!m?.usecase) return '';
+      const u = m.usecase;
+      const list = (u.list||[]).map(x=>`<li>${x}</li>`).join('');
+      const trig = (u.trigger||[]).map(x=>`<li>${x}</li>`).join('');
+      return `<div class="usecase-box">
+        <div class="usecase-title">💡 利用シーン</div>
+        <ul class="usecase-list">${list}</ul>
+        ${trig ? `<div class="usecase-trigger"><strong>こう見えたら出番:</strong><ul>${trig}</ul></div>` : ''}
+      </div>`; }
+    function verifyHTML(m){ if (!m?.verify) return '';
+      const {before, after} = m.verify;
+      return `<div class="verify">
+        <div class="verify-col verify-before"><div class="verify-label">Before ▶︎ 実行前</div>${before||''}</div>
+        <div class="verify-col verify-after"><div class="verify-label">After ▶︎ 実行後</div>${after||''}</div>
+      </div>`; }
+    function tryHTML(m){
+      const tip = m?.try ? `<div class="try-tip"><strong>💡 このラボのコツ:</strong> ${m.try}</div>` : '';
+      return `<div class="try-box">
+        <div class="try-title">💻 コード例を試す手順（コピペで動かす）</div>
+        <ol>
+          <li>上のコードブロックの <strong>Copy</strong> ボタンを押してクリップボードにコピー</li>
+          <li>テキストエディタで <code>試行.html</code> を新規作成し、下の<strong>HTML雛形</strong>の <code>&lt;!-- ここに貼る --&gt;</code> 部分にペースト（JS例は &lt;script&gt; 内に貼る）</li>
+          <li>保存して、ファイルを<strong>ダブルクリック</strong>するかブラウザにドラッグ&amp;ドロップで開く</li>
+          <li>下の「🔍 ブラウザ実機チェック」を順に試し、想定挙動になるか確認（コンソールは右クリック→検証でも開ける）</li>
+        </ol>
+        <pre class="try-skeleton">&lt;!DOCTYPE html&gt;
+&lt;html lang="ja"&gt;
+&lt;head&gt;&lt;meta charset="UTF-8"&gt;&lt;title&gt;試行&lt;/title&gt;&lt;/head&gt;
+&lt;body&gt;
+  &lt;!-- ここに貼る --&gt;
+  &lt;script&gt;
+    // JS例はここに貼る
+  &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+        ${tip}
+      </div>`; }
+    function checkHTML(m){ if (!m?.check?.length) return '';
+      return `<div class="check-steps">
+        <div class="check-steps-title">🔍 ブラウザ実機チェック</div>
+        <ol>${m.check.map(s=>`<li>${s}</li>`).join('')}</ol>
+      </div>`; }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.lab').forEach(lab => {
+        const meta = LAB_META[lab.id]; const body = lab.querySelector('.lab-body');
+        if (!body || !meta) return;
+        const frag = document.createElement('div');
+        frag.innerHTML = infoHTML(meta) + usecaseHTML(meta) + verifyHTML(meta) + tryHTML(meta) + checkHTML(meta);
+        while (frag.firstChild) body.appendChild(frag.firstChild);
+      });
+
+      const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+      const map = new Map();
+      links.forEach(a => { const el = document.getElementById(a.getAttribute('href').slice(1)); if (el) map.set(el, a); });
+      const io = new IntersectionObserver(es => es.forEach(e => {
+        if (e.isIntersecting) { const l = map.get(e.target);
+          if (l) { links.forEach(n=>n.classList.remove('active')); l.classList.add('active'); } }
+      }), { rootMargin:'-30% 0px -60% 0px' });
+      document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+      document.querySelectorAll('.code-block').forEach((cb, i) => {
+        if (cb.querySelector('.code-block-header')) return;
+        const header = document.createElement('div');
+        header.className = 'code-block-header';
+        header.innerHTML = `<span>Code #${i+1}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+        cb.insertBefore(header, cb.firstChild);
+      });
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.matches('.toggle-btn')) return;
+      const btn = e.target;
+      const stage = document.getElementById(btn.dataset.target);
+      if (!stage) return;
+      const isBefore = stage.classList.toggle('is-before');
+      btn.classList.toggle('is-before', isBefore);
+      const label = document.getElementById(btn.dataset.target + '-label');
+      if (label) label.textContent = isBefore ? '現在: Before（遮断される側）' : '現在: After（許可/回避できる側）';
+    });
+  </script>
+</body>
+</html>

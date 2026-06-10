@@ -162,6 +162,22 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
 .eval-bad{border-color:var(--error);color:var(--error);background:rgba(203,36,49,.04)}
 .eval-bad:hover{background:rgba(203,36,49,.12)}
 
+/* 前回の回答結果・回答回数 */
+.card-history{margin-top:14px;display:flex;gap:8px;justify-content:center;align-items:center;
+  font-family:var(--mono);font-size:.78rem;color:var(--text-dim);flex-wrap:wrap}
+.q-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:12px;
+  font-weight:600;border:1px solid var(--border);background:var(--surface2);color:var(--text-dim)}
+.q-badge.q-good{background:rgba(34,134,58,.10);border-color:var(--success);color:var(--success)}
+.q-badge.q-mid{background:rgba(176,136,0,.10);border-color:var(--warn);color:var(--warn)}
+.q-badge.q-bad{background:rgba(203,36,49,.10);border-color:var(--error);color:var(--error)}
+.q-badge.q-new{background:rgba(0,92,197,.08);border-color:var(--accent);color:var(--accent)}
+.q-count{padding-left:8px;border-left:1px solid var(--border)}
+.eval-btn{position:relative}
+.eval-btn.prev{border-width:2px;font-weight:700}
+.eval-btn .prev-mark{position:absolute;top:-9px;left:50%;transform:translateX(-50%);
+  font-size:.62rem;font-family:var(--mono);padding:1px 8px;border-radius:8px;
+  background:var(--text);color:#fff;white-space:nowrap;letter-spacing:.05em}
+
 .empty-state{text-align:center;padding:60px 20px;color:var(--text-dim)}
 .empty-state h3{font-size:1.2rem;color:var(--text);margin-bottom:8px}
 .empty-state p{font-size:.92rem;margin-bottom:20px}
@@ -250,10 +266,12 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
   color:var(--success);font-weight:600}
 
 /* Toast */
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);
+/* 非表示時は「自身の高さ+bottom+余白」ぶん下げる(高さ固定の80pxだと複数行時に上端が画面内に残る) */
+.toast{position:fixed;bottom:24px;left:50%;max-width:calc(100vw - 32px);
+  transform:translateX(-50%) translateY(calc(100% + 34px));opacity:0;pointer-events:none;
   background:var(--text);color:#fff;padding:12px 22px;border-radius:8px;
-  font-size:.9rem;z-index:200;transition:transform .25s;box-shadow:0 4px 12px rgba(0,0,0,.2)}
-.toast.show{transform:translateX(-50%) translateY(0)}
+  font-size:.9rem;z-index:200;transition:transform .25s,opacity .25s;box-shadow:0 4px 12px rgba(0,0,0,.2)}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
 .toast.success{background:var(--success)}
 .toast.error{background:var(--error)}
 
@@ -715,7 +733,7 @@ const DRIVE_REVIEWS_FILE = '_reviews.json';
 const state = {
   cards: [],          // 表示用にマージ済みのカード(レビュー履歴反映後)
   rawCards: [],       // Driveから読み込んだ素のカード(履歴未反映)
-  reviewMap: {},      // { cardId: { ease, interval, due, lastReviewed, reviewCount } }
+  reviewMap: {},      // { cardId: { ease, interval, due, lastReviewed, reviewCount, lastQuality, done, doneAt } }
   reviews: [],        // [{date:'YYYY-MM-DD', count}]  日別レビュー集計
   currentDeck: null,  // null = 全カード
   currentLevel: 'all', // 'all' | 'structure' | 'element' | 'keyword'
@@ -790,6 +808,7 @@ function mergeAndApply(){
       due: rev.due ?? card.due ?? nowMs(),
       lastReviewed: rev.lastReviewed ?? card.lastReviewed ?? 0,
       reviewCount: rev.reviewCount ?? card.reviewCount ?? 0,
+      lastQuality: rev.lastQuality ?? card.lastQuality ?? null,
       done: rev.done ?? card.done ?? false,
       doneAt: rev.doneAt ?? card.doneAt ?? 0,
     };
@@ -838,6 +857,7 @@ function applyReview(card, quality){
   // quality: 'good' | 'mid' | 'bad'
   card.lastReviewed = nowMs();
   card.reviewCount = (card.reviewCount || 0) + 1;
+  card.lastQuality = quality;
   if(card.ease == null) card.ease = 2.5;
 
   if(quality === 'bad'){
@@ -865,6 +885,7 @@ function applyReview(card, quality){
     due: card.due,
     lastReviewed: card.lastReviewed,
     reviewCount: card.reviewCount,
+    lastQuality: card.lastQuality,
   };
   recordReviewToday();
   state.reviewsDirty = true;
@@ -1064,6 +1085,38 @@ function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, m => ({'&':'&am
 function escapeAttr(s){ return escapeHtml(s); }
 
 // ============================================================
+// 前回の回答結果・回答回数の表示ヘルパー
+// ============================================================
+const QUALITY_INFO = {
+  good: { icon: '○', label: '思い出せた', cls: 'q-good', color: 'var(--success)' },
+  mid:  { icon: '△', label: 'あいまい',   cls: 'q-mid',  color: 'var(--warn)' },
+  bad:  { icon: '×', label: '詰まった',   cls: 'q-bad',  color: 'var(--error)' },
+};
+
+// lastReviewed(ms) → 「今日」「昨日」「N日前」
+function timeAgoStr(ms){
+  if(!ms) return '';
+  const diffDays = Math.floor((nowMs() - ms) / 86400000);
+  if(diffDays <= 0) return '今日';
+  if(diffDays === 1) return '昨日';
+  return diffDays + '日前';
+}
+
+// 学習カード(表面)用の履歴バッジ行
+function cardHistoryHtml(card){
+  const n = card.reviewCount || 0;
+  if(n === 0){
+    return `<div class="card-history"><span class="q-badge q-new">🆕 初めてのカード</span></div>`;
+  }
+  const q = QUALITY_INFO[card.lastQuality];
+  const when = timeAgoStr(card.lastReviewed);
+  const qHtml = q
+    ? `<span class="q-badge ${q.cls}">${q.icon} ${q.label}</span>`
+    : `<span class="q-badge">―</span>`; // 旧データ: 回数のみ記録あり
+  return `<div class="card-history">前回: ${qHtml}${when ? `<span>(${when})</span>` : ''}<span class="q-count">回答 ${n}回</span></div>`;
+}
+
+// ============================================================
 // Study view
 // ============================================================
 function startStudy(){
@@ -1146,6 +1199,7 @@ function renderStudy(){
         ${doneToggle}
         <div class="front-content">${escapeHtml(card.front)}</div>
         ${card.context ? `<div class="front-context">${escapeHtml(card.context)}</div>` : ''}
+        ${cardHistoryHtml(card)}
         <div class="recall-prompt">
           ↓<br>
           目を閉じて、頭の中で構造を組み立ててみる<br>
@@ -1167,17 +1221,20 @@ function renderStudy(){
         <div style="font-size:1.1rem;font-weight:600;text-align:center;margin-bottom:8px">${escapeHtml(card.front)}</div>
         <div class="back-content">${escapeHtml(card.back)}</div>
         <div class="eval-row">
-          <button class="eval-btn eval-good" onclick="evalCard('good')">
+          <button class="eval-btn eval-good ${card.lastQuality==='good'?'prev':''}" onclick="evalCard('good')">
+            ${card.lastQuality==='good'?'<span class="prev-mark">◀ 前回</span>':''}
             <span class="eval-icon">○</span>
             <span class="eval-label">思い出せた</span>
             <span class="eval-hint">[1]</span>
           </button>
-          <button class="eval-btn eval-mid" onclick="evalCard('mid')">
+          <button class="eval-btn eval-mid ${card.lastQuality==='mid'?'prev':''}" onclick="evalCard('mid')">
+            ${card.lastQuality==='mid'?'<span class="prev-mark">◀ 前回</span>':''}
             <span class="eval-icon">△</span>
             <span class="eval-label">あいまい</span>
             <span class="eval-hint">[2]</span>
           </button>
-          <button class="eval-btn eval-bad" onclick="evalCard('bad')">
+          <button class="eval-btn eval-bad ${card.lastQuality==='bad'?'prev':''}" onclick="evalCard('bad')">
+            ${card.lastQuality==='bad'?'<span class="prev-mark">◀ 前回</span>':''}
             <span class="eval-icon">×</span>
             <span class="eval-label">詰まった</span>
             <span class="eval-hint">[3]</span>
@@ -1222,7 +1279,7 @@ function rateAndAdvance(card, quality){
     cardId: card.id,
     quality: quality,
     prevMapEntry: state.reviewMap[card.id] ? JSON.parse(JSON.stringify(state.reviewMap[card.id])) : null,
-    prevFields: { ease: card.ease, interval: card.interval, due: card.due, lastReviewed: card.lastReviewed, reviewCount: card.reviewCount },
+    prevFields: { ease: card.ease, interval: card.interval, due: card.due, lastReviewed: card.lastReviewed, reviewCount: card.reviewCount, lastQuality: card.lastQuality },
     prevReviews: JSON.parse(JSON.stringify(state.reviews)),
   });
   state.studyRedo = [];   // 新しい評価は分岐 → やり直し履歴を無効化
@@ -1355,7 +1412,7 @@ function renderManage(){
         onclick="event.stopPropagation();toggleDoneInList('${c.id}')">${c.done?'✓':''}</button>
       <span class="li-deck">${escapeHtml(c.deck||'未分類')}</span>
       <span class="li-front">${escapeHtml(c.front)}</span>
-      <span class="li-stats">${c.reviewCount||0}回</span>
+      <span class="li-stats">${QUALITY_INFO[c.lastQuality] ? `<span style="color:${QUALITY_INFO[c.lastQuality].color};font-weight:700">${QUALITY_INFO[c.lastQuality].icon}</span> ` : ''}${c.reviewCount||0}回</span>
       <span class="li-due ${dueStatus}">${dueText}</span>
     </div>`;
   }).join('');
@@ -1413,11 +1470,20 @@ function previewCard(id){
   const doneBadge = card.done
     ? `<div style="font-family:var(--mono);font-size:.78rem;color:var(--success);margin-bottom:10px">☑ 実施済み</div>`
     : '';
+  const q = QUALITY_INFO[card.lastQuality];
+  const histLine = (card.reviewCount||0) === 0
+    ? `<div style="font-family:var(--mono);font-size:.78rem;color:var(--accent);margin-bottom:10px">🆕 未回答</div>`
+    : `<div style="font-family:var(--mono);font-size:.78rem;color:var(--text-dim);margin-bottom:10px">
+         前回: ${q ? `<span style="color:${q.color};font-weight:700">${q.icon} ${q.label}</span>` : '―'}
+         ${card.lastReviewed ? '(' + new Date(card.lastReviewed).toLocaleDateString('ja-JP') + ')' : ''}
+         ・ 回答 ${card.reviewCount||0}回
+       </div>`;
   showModal({
     title: card.front,
     body: `<div style="font-size:.85rem;color:var(--text-dim);margin-bottom:10px">
             ${escapeHtml(card.deck||'未分類')}${card.context ? ' / ' + escapeHtml(card.context) : ''}
            </div>
+           ${histLine}
            ${doneBadge}
            <div style="font-family:var(--mono);font-size:.85rem;line-height:1.7;background:var(--code-bg);
                        border:1px solid var(--border);border-radius:7px;padding:14px;
@@ -1495,11 +1561,14 @@ function renderStats(){
 // ============================================================
 // UI helpers
 // ============================================================
+let toastTimer = null;
 function toast(msg, type){
   const el = document.getElementById('toast');
   el.textContent = msg;
   el.className = 'toast show' + (type ? ' ' + type : '');
-  setTimeout(() => { el.className = 'toast' + (type ? ' ' + type : ''); }, 2000);
+  // 連続表示時に前のタイマーが新しいトーストを早く消さないようリセット
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = 'toast' + (type ? ' ' + type : ''); }, 2000);
 }
 
 function showModal(opts){
