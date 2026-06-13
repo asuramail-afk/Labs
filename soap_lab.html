@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SOAP 送受信 実機確認ラボ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --surface:#f5f7fa; --surface2:#ebeef2; --border:#c8cdd3;
+  --accent:#005cc5; --accent2:#22863a; --accent3:#6f42c1; --accent4:#b08800;
+  --text:#1a1a2e; --text-dim:#5c6370; --code-bg:#f0f4f8;
+  --success:#22863a; --error:#cb2431;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; min-height:100vh; padding-left:240px; }
+
+#sidebar { position:fixed; top:0; left:0; bottom:0; width:240px;
+  background:linear-gradient(180deg,#f5f7fa 0%,#ffffff 100%);
+  border-right:1px solid var(--border); overflow-y:auto; padding:14px 0 40px; z-index:50; }
+#sidebar::-webkit-scrollbar { width:4px; }
+#sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+#sidebar .nav-title { font-family:var(--mono); font-size:.78rem; color:var(--accent);
+  padding:6px 16px 10px; letter-spacing:.06em; border-bottom:1px solid var(--border); margin-bottom:8px; }
+#sidebar .nav-title span { color:var(--text-dim); }
+#sidebar .nav-section { padding:10px 16px 4px; font-family:var(--mono); font-size:.65rem;
+  color:var(--text-dim); letter-spacing:.15em; text-transform:uppercase; }
+#sidebar .nav-item { display:block; padding:7px 16px 7px 20px; font-size:.82rem;
+  color:var(--text-dim); text-decoration:none; border-left:2px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#sidebar .nav-item:hover { background:var(--surface2); color:var(--text); }
+#sidebar .nav-item.active { border-left-color:var(--accent);
+  background:rgba(0,92,197,.08); color:var(--accent); font-weight:600; }
+#sidebar .nav-num { font-family:var(--mono); color:var(--accent2);
+  font-size:.72rem; margin-right:8px; opacity:.8; }
+
+.hero { padding:60px 40px 40px; text-align:center;
+  background:linear-gradient(160deg,#f5f7fa 0%,#eef3fa 50%,#ffffff 100%);
+  border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-120px; right:-120px;
+  width:400px; height:400px;
+  background:radial-gradient(circle,rgba(0,92,197,.10) 0%,transparent 70%);
+  pointer-events:none; }
+.hero h1 { font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { color:var(--text-dim); font-size:1rem; margin-top:8px; }
+
+.toc { max-width:1100px; margin:32px auto; padding:0 24px; }
+.toc h2 { font-size:1.1rem; color:var(--accent); margin-bottom:12px; font-family:var(--mono); }
+.toc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.toc-item { display:flex; align-items:center; gap:10px; padding:10px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  text-decoration:none; color:var(--text); font-size:.88rem;
+  transition:border-color .2s,transform .15s; }
+.toc-item:hover { border-color:var(--accent); transform:translateY(-1px); }
+.toc-num { font-family:var(--mono); font-weight:600; color:var(--accent);
+  font-size:.8rem; min-width:28px; }
+
+.container { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+.lab { margin-top:48px; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; background:var(--surface); scroll-margin-top:20px; }
+.lab-header { display:flex; align-items:center; gap:12px; padding:18px 24px;
+  background:var(--surface2); border-bottom:1px solid var(--border); }
+.lab-num { font-family:var(--mono); font-weight:600; color:#fff;
+  background:var(--accent); width:30px; height:30px; display:flex;
+  align-items:center; justify-content:center; border-radius:6px; font-size:.85rem; }
+.lab-header h3 { font-size:1.15rem; font-weight:600; }
+.lab-tag { margin-left:auto; font-family:var(--mono); font-size:.72rem;
+  padding:3px 10px; border-radius:20px; border:1px solid; }
+.tag-basic { color:var(--accent); border-color:var(--accent); }
+.tag-intermediate { color:var(--accent2); border-color:var(--accent2); }
+.tag-advanced { color:var(--accent3); border-color:var(--accent3); }
+.lab-body { padding:24px; }
+.lab-desc { font-size:.92rem; color:var(--text-dim); margin-bottom:16px; line-height:1.8; }
+.lab-desc code { font-family:var(--mono); background:var(--code-bg);
+  padding:2px 6px; border-radius:4px; font-size:.84rem; color:var(--accent); }
+
+.code-block { position:relative; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.code-block pre { padding:12px 16px 14px; overflow-x:auto;
+  font-family:var(--mono); font-size:.82rem; line-height:1.65;
+  color:var(--text); white-space:pre; tab-size:2; }
+.code-block-header { display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.05em; }
+.copy-btn { background:transparent; border:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--mono); font-size:.7rem;
+  padding:3px 10px; border-radius:4px; cursor:pointer; transition:all .15s; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+.copy-btn.copied { border-color:var(--success); color:var(--success); }
+
+.kw { color:#d73a49; } .fn { color:#6f42c1; } .str { color:#032f62; }
+.cm { color:#6a737d; } .num { color:#b08800; } .tag { color:#22863a; }
+.attr { color:#6f42c1; } .val { color:#032f62; } .sel { color:#005cc5; } .prop { color:#22863a; }
+
+.info-box { border-radius:8px; padding:12px 14px 12px 16px; font-size:.88rem;
+  line-height:1.75; margin:14px 0; border-left:3px solid; background:rgba(255,255,255,.02); }
+.info-box.ok   { border-color:var(--success); background:rgba(34,134,58,.08);  color:#154f1e; }
+.info-box.info { border-color:var(--accent);  background:rgba(0,92,197,.08);   color:#003d8f; }
+.info-box.warn { border-color:var(--accent4); background:rgba(176,136,0,.08);  color:#7a5c00; }
+.info-box.err  { border-color:var(--error);   background:rgba(203,36,49,.08);  color:#9a1320; }
+.info-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--accent); }
+
+.verify { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.verify-col { border-radius:7px; padding:11px 14px 13px; font-size:.84rem;
+  line-height:1.7; border:1px solid; }
+.verify-before { background:rgba(203,36,49,.05); border-color:rgba(203,36,49,.25); color:#6b1a22; }
+.verify-after  { background:rgba(34,134,58,.05); border-color:rgba(34,134,58,.25); color:#154f1e; }
+.verify-label { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:700; opacity:.85; }
+.verify-before .verify-label { color:var(--error); }
+.verify-after  .verify-label { color:var(--success); }
+
+.check-steps { background:rgba(176,136,0,.06); border:1px solid rgba(176,136,0,.30);
+  border-left:3px solid var(--accent4); border-radius:7px;
+  padding:11px 14px 11px 16px; margin:16px 0 4px;
+  font-size:.86rem; line-height:1.8; color:#5c4400; }
+.check-steps-title { font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:700; color:var(--accent4);
+  margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.check-steps ol { margin-left:20px; margin-top:2px; }
+.check-steps li { margin-bottom:3px; }
+.check-steps code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.8rem; color:var(--accent); }
+
+.compare-table { width:100%; border-collapse:collapse; font-size:.84rem;
+  margin:12px 0 16px; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:7px; overflow:hidden; }
+.compare-table th { background:var(--surface2); padding:8px 12px; text-align:left;
+  font-family:var(--mono); font-size:.72rem; color:var(--accent);
+  letter-spacing:.05em; border-bottom:1px solid var(--border); }
+.compare-table td { padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { font-family:var(--mono); color:var(--accent2); }
+.compare-table .yes { color:var(--success); } .compare-table .no { color:var(--error); }
+
+.beginner-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:11px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.beginner-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:5px; }
+.beginner-box pre.ascii-art { font-family:var(--mono); font-size:.75rem;
+  line-height:1.45; background:rgba(0,0,0,.05); padding:10px 12px; border-radius:5px;
+  margin-top:8px; color:var(--text); overflow-x:auto; }
+
+.usecase-box { background:rgba(111,66,193,.06); border:1px solid rgba(111,66,193,.25);
+  border-left:3px solid var(--accent3); border-radius:7px; padding:12px 14px;
+  margin:14px 0; font-size:.86rem; line-height:1.8; color:#3a1d6e; }
+.usecase-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--accent3); font-weight:700; margin-bottom:6px; }
+.usecase-list { margin-left:20px; margin-bottom:10px; }
+.usecase-list li { margin-bottom:4px; }
+.usecase-trigger { background:rgba(0,92,197,.05); border-left:3px solid var(--accent);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#003d8f; margin-top:8px; }
+.usecase-trigger ul { margin:4px 0 0 20px; }
+
+.try-box { background:rgba(34,134,58,.06); border:1px solid rgba(34,134,58,.30);
+  border-left:3px solid var(--success); border-radius:7px;
+  padding:12px 14px; margin:14px 0; font-size:.86rem; line-height:1.8; color:#154f1e; }
+.try-title { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  color:var(--success); font-weight:700; margin-bottom:6px; }
+.try-box ol { margin-left:20px; margin-top:4px; }
+.try-box ol li { margin-bottom:4px; }
+.try-box code { font-family:var(--mono); background:rgba(0,0,0,.06);
+  padding:1px 6px; border-radius:3px; font-size:.82rem; color:var(--success); }
+.try-tip { background:rgba(176,136,0,.06); border-left:3px solid var(--accent4);
+  padding:8px 12px; border-radius:5px; font-size:.82rem; color:#5c4400; margin-top:8px; }
+.try-tip strong { color:var(--accent4); }
+.try-skeleton { background:#f0f4f8; border:1px solid var(--border); border-radius:5px;
+  padding:10px 12px; margin-top:8px; font-family:var(--mono); font-size:.78rem;
+  color:var(--text); white-space:pre; overflow-x:auto; line-height:1.5; }
+
+.code-pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; }
+.code-pair-col { display:flex; flex-direction:column; min-width:0; }
+.code-pair-label { font-family:var(--mono); font-size:.72rem; letter-spacing:.05em;
+  font-weight:700; padding:6px 10px; border-radius:6px 6px 0 0; }
+.code-pair-before .code-pair-label { background:rgba(203,36,49,.10); color:#9a1320;
+  border:1px solid rgba(203,36,49,.30); border-bottom:none; }
+.code-pair-after  .code-pair-label { background:rgba(34,134,58,.10); color:#154f1e;
+  border:1px solid rgba(34,134,58,.30); border-bottom:none; }
+.code-pair-col .code-block { margin:0; border-radius:0 0 8px 8px; flex:1; }
+.code-pair-before .code-block { border-color:rgba(203,36,49,.30); }
+.code-pair-after  .code-block { border-color:rgba(34,134,58,.30); }
+@media (max-width:900px){ .code-pair { grid-template-columns:1fr; } }
+
+@media (max-width:900px) {
+  body { padding-left:0; }
+  #sidebar { position:static; width:100%; height:auto; border-right:none;
+    border-bottom:1px solid var(--border); padding:8px 0; }
+  #sidebar .nav-item { padding:6px 14px; font-size:.78rem; }
+  .verify { grid-template-columns:1fr; }
+  .hero h1 { font-size:1.6rem; }
+  .toc-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Lab navigation">
+  <div class="nav-title">// SOAP <span>LAB</span></div>
+  <div class="nav-section">基本</div>
+  <a class="nav-item" href="#lab0"><span class="nav-num">00</span>SOAPとは何か</a>
+  <a class="nav-item" href="#lab1"><span class="nav-num">01</span>Envelope の文法</a>
+  <a class="nav-item" href="#lab2"><span class="nav-num">02</span>起動と初送受信</a>
+  <div class="nav-section">中級</div>
+  <a class="nav-item" href="#lab3"><span class="nav-num">03</span>SOAPAction</a>
+  <a class="nav-item" href="#lab4"><span class="nav-num">04</span>SOAP Fault</a>
+  <a class="nav-item" href="#lab5"><span class="nav-num">05</span>WSDL の読み方</a>
+  <a class="nav-item" href="#lab6"><span class="nav-num">06</span>1.1 vs 1.2</a>
+  <div class="nav-section">応用</div>
+  <a class="nav-item" href="#lab7"><span class="nav-num">07</span>プロキシ/CORS</a>
+</nav>
+
+<div class="hero">
+  <h1>SOAP 送受信 実機確認ラボ</h1>
+  <p class="subtitle">ローカルの自作アプリ（server.js / index.html）を curl とブラウザで叩いて、SOAP の仕様を手で確かめる</p>
+</div>
+
+<div class="toc">
+  <h2>// 目次</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#lab0"><span class="toc-num">00</span>SOAPとは何か（Envelopeの全体像）</a>
+    <a class="toc-item" href="#lab1"><span class="toc-num">01</span>Envelope / Header / Body の文法</a>
+    <a class="toc-item" href="#lab2"><span class="toc-num">02</span>アプリ起動と最初の送受信(Add)</a>
+    <a class="toc-item" href="#lab3"><span class="toc-num">03</span>SOAPAction ヘッダー</a>
+    <a class="toc-item" href="#lab4"><span class="toc-num">04</span>SOAP Fault（異常応答）</a>
+    <a class="toc-item" href="#lab5"><span class="toc-num">05</span>WSDL の構造と読み方</a>
+    <a class="toc-item" href="#lab6"><span class="toc-num">06</span>SOAP 1.1 vs 1.2</a>
+    <a class="toc-item" href="#lab7"><span class="toc-num">07</span>プロキシと CORS 回避</a>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ============ LAB 0 ============ -->
+  <div class="lab" id="lab0">
+    <div class="lab-header">
+      <div class="lab-num">00</div>
+      <h3>SOAPとは何か（Envelopeの全体像）</h3>
+      <span class="lab-tag tag-basic">基本</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        SOAP は XML メッセージを必ず <code>Envelope</code>（封筒）に包んで HTTP の上で送受信する<strong>メッセージング仕様</strong>。
+        REST が URL + JSON で表すのに対し、SOAP は「決まった形の封筒」を往復させる。まずは送信する1通の全体像を見る。
+      </p>
+      <div class="code-block">
+        <div class="code-block-header"><span>SOAP リクエスト例 — Add(3,4)</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="cm">&lt;?xml version="1.0" encoding="utf-8"?&gt;</span>
+&lt;<span class="tag">soap:Envelope</span> <span class="attr">xmlns:soap</span>=<span class="val">"http://schemas.xmlsoap.org/soap/envelope/"</span>
+               <span class="attr">xmlns:tns</span>=<span class="val">"http://example.com/calculator"</span>&gt;
+  &lt;<span class="tag">soap:Body</span>&gt;
+    &lt;<span class="tag">tns:Add</span>&gt;
+      &lt;<span class="tag">tns:a</span>&gt;3&lt;/<span class="tag">tns:a</span>&gt;
+      &lt;<span class="tag">tns:b</span>&gt;4&lt;/<span class="tag">tns:b</span>&gt;
+    &lt;/<span class="tag">tns:Add</span>&gt;
+  &lt;/<span class="tag">soap:Body</span>&gt;
+&lt;/<span class="tag">soap:Envelope</span>&gt;</pre>
+      </div>
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 封筒のイメージ</div>
+        SOAP は「中身（用件）を、決まった形の封筒に必ず入れる」ルール。封筒の外側＝HTTP、中身＝XML。
+<pre class="ascii-art">┌─ soap:Envelope ────────────┐  ← 封筒（必須・ルート）
+│  ┌─ soap:Header (任意) ──┐  │  ← 付箋（認証など）
+│  └───────────────────────┘  │
+│  ┌─ soap:Body (必須) ────┐  │  ← 便箋（本文＝用件）
+│  │   tns:Add { a, b }    │  │
+│  └───────────────────────┘  │
+└─────────────────────────────┘</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ LAB 1 ============ -->
+  <div class="lab" id="lab1">
+    <div class="lab-header">
+      <div class="lab-num">01</div>
+      <h3>Envelope / Header / Body の文法</h3>
+      <span class="lab-tag tag-basic">基本</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        Envelope 直下に書けるのは <code>Header</code>（任意）と <code>Body</code>（必須）だけ。順序も決まっている。
+        Header には認証やトランザクションなどの「メタ情報」、Body には実データ（操作と引数）を入れる。
+      </p>
+      <table class="compare-table">
+        <tr><th>要素</th><th>必須?</th><th>個数</th><th>役割</th></tr>
+        <tr><td>Envelope</td><td class="yes">必須</td><td>1（ルート）</td><td>メッセージ全体の封筒</td></tr>
+        <tr><td>Header</td><td class="no">任意</td><td>0 か 1</td><td>認証 / WS-Security 等のメタ情報</td></tr>
+        <tr><td>Body</td><td class="yes">必須</td><td>1</td><td>操作＋引数、または Fault</td></tr>
+      </table>
+      <div class="code-block">
+        <div class="code-block-header"><span>Header 付きの例（認証トークンを添える）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>&lt;<span class="tag">soap:Envelope</span> <span class="attr">xmlns:soap</span>=<span class="val">"http://schemas.xmlsoap.org/soap/envelope/"</span>&gt;
+  &lt;<span class="tag">soap:Header</span>&gt;
+    &lt;<span class="tag">auth:Token</span> <span class="attr">xmlns:auth</span>=<span class="val">"http://example.com/auth"</span>&gt;abc123&lt;/<span class="tag">auth:Token</span>&gt;
+  &lt;/<span class="tag">soap:Header</span>&gt;
+  &lt;<span class="tag">soap:Body</span>&gt; <span class="cm">&lt;!-- 本文 --&gt;</span> &lt;/<span class="tag">soap:Body</span>&gt;
+&lt;/<span class="tag">soap:Envelope</span>&gt;</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ LAB 2 ============ -->
+  <div class="lab" id="lab2">
+    <div class="lab-header">
+      <div class="lab-num">02</div>
+      <h3>アプリ起動と最初の送受信(Add)</h3>
+      <span class="lab-tag tag-basic">基本</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        自作アプリ <code>server.js</code> を起動し、組み込みの計算機サービスへ <code>Add(3,4)</code> を送って <code>7</code> が返ることを確認する。
+        UI（ブラウザ）でも curl（端末）でも同じサービスを叩ける。
+      </p>
+      <div class="code-block">
+        <div class="code-block-header"><span>① サーバー起動（PowerShell）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">cd</span> C:\Users\user\ClaudeCode\SOAP
+node server.js
+<span class="cm"># → UI : http://127.0.0.1:8088/ が表示されれば起動成功</span></pre>
+      </div>
+      <div class="code-block">
+        <div class="code-block-header"><span>② curl で Add を送信（別の端末）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>curl -s -X POST http://127.0.0.1:8088/soap -H <span class="str">"Content-Type: text/xml"</span> ^
+  -d <span class="str">"&lt;soap:Envelope xmlns:soap='http://schemas.xmlsoap.org/soap/envelope/' xmlns:tns='http://example.com/calculator'&gt;&lt;soap:Body&gt;&lt;tns:Add&gt;&lt;tns:a&gt;3&lt;/tns:a&gt;&lt;tns:b&gt;4&lt;/tns:b&gt;&lt;/tns:Add&gt;&lt;/soap:Body&gt;&lt;/soap:Envelope&gt;"</span>
+<span class="cm"># → &lt;tns:AddResult&gt;7&lt;/tns:AddResult&gt; が返れば成功</span></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ LAB 3 ============ -->
+  <div class="lab" id="lab3">
+    <div class="lab-header">
+      <div class="lab-num">03</div>
+      <h3>SOAPAction ヘッダー</h3>
+      <span class="lab-tag tag-intermediate">中級</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <code>SOAPAction</code> は XML の<strong>中ではなく外側の HTTP ヘッダー</strong>。本文を解析せずに「リクエストの意図」を伝えるためのもの。
+        SOAP 1.1 では値をダブルクォートで囲む。WSDL の <code>soap:operation</code> に定義された値を使う。
+      </p>
+      <div class="code-block">
+        <div class="code-block-header"><span>HTTP リクエスト全体（ヘッダーと本文の位置関係）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="kw">POST</span> /soap HTTP/1.1
+Host: 127.0.0.1:8088
+Content-Type: text/xml; charset=utf-8
+SOAPAction: <span class="str">"http://example.com/calculator/Add"</span>   <span class="cm">← ★ HTTP層。XML本文の外</span>
+Content-Length: 312
+
+<span class="cm">&lt;?xml version="1.0"?&gt;</span>           <span class="cm">┐ ここからが本文（HTTPボディ）</span>
+&lt;soap:Envelope ...&gt;...            <span class="cm">┘</span></pre>
+      </div>
+      <table class="compare-table">
+        <tr><th>項目</th><th>SOAP 1.1</th><th>SOAP 1.2</th></tr>
+        <tr><td>SOAPAction</td><td>独立した HTTP ヘッダー</td><td>廃止 → Content-Type の param へ</td></tr>
+        <tr><td>書き方</td><td>SOAPAction: "...../Add"</td><td>Content-Type: ...; action="...../Add"</td></tr>
+        <tr><td>クォート</td><td class="yes">ダブルクォート必須</td><td>action="" の中に記述</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============ LAB 4 ============ -->
+  <div class="lab" id="lab4">
+    <div class="lab-header">
+      <div class="lab-num">04</div>
+      <h3>SOAP Fault（異常応答）</h3>
+      <span class="lab-tag tag-intermediate">中級</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        SOAP では<strong>エラーも正常な SOAP メッセージ</strong>として <code>Body</code> 内の <code>Fault</code> で返すのが作法。
+        アプリで <code>Divide(20,0)</code> を送ると、ゼロ除算で Fault が返る。
+      </p>
+      <div class="code-block">
+        <div class="code-block-header"><span>ゼロ除算で返る Fault（HTTP 500）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>&lt;<span class="tag">soap:Fault</span>&gt;
+  &lt;<span class="tag">faultcode</span>&gt;soap:Server&lt;/<span class="tag">faultcode</span>&gt;       <span class="cm">&lt;!-- 機械可読 --&gt;</span>
+  &lt;<span class="tag">faultstring</span>&gt;ゼロ除算はできません。&lt;/<span class="tag">faultstring</span>&gt; <span class="cm">&lt;!-- 人間可読 --&gt;</span>
+&lt;/<span class="tag">soap:Fault</span>&gt;</pre>
+      </div>
+      <table class="compare-table">
+        <tr><th>faultcode</th><th>意味</th><th>責任の所在</th></tr>
+        <tr><td>soap:Client</td><td>リクエストが不正（引数不足など）</td><td>送信側（送り直しても同じ）</td></tr>
+        <tr><td>soap:Server</td><td>処理側の問題（ゼロ除算など）</td><td>サーバー側（後で成功し得る）</td></tr>
+      </table>
+      <div class="code-block">
+        <div class="code-block-header"><span>curl で Fault を発生させる</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>curl -s -X POST http://127.0.0.1:8088/soap -H <span class="str">"Content-Type: text/xml"</span> ^
+  -d <span class="str">"&lt;soap:Envelope xmlns:soap='http://schemas.xmlsoap.org/soap/envelope/' xmlns:tns='http://example.com/calculator'&gt;&lt;soap:Body&gt;&lt;tns:Divide&gt;&lt;tns:a&gt;20&lt;/tns:a&gt;&lt;tns:b&gt;0&lt;/tns:b&gt;&lt;/tns:Divide&gt;&lt;/soap:Body&gt;&lt;/soap:Envelope&gt;"</span></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ LAB 5 ============ -->
+  <div class="lab" id="lab5">
+    <div class="lab-header">
+      <div class="lab-num">05</div>
+      <h3>WSDL の構造と読み方</h3>
+      <span class="lab-tag tag-intermediate">中級</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        WSDL は「サービスの取扱説明書」。<strong>何ができ / 型は何か / どこに送るか</strong>を機械可読で記述する。
+        SOAP は封筒の形しか決めないため、使い方を伝える WSDL が必要になる。読むときは<strong>下から上</strong>が分かりやすい。
+      </p>
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 WSDL の5部品（抽象 → 具象）</div>
+<pre class="ascii-art">definitions
+ ├─ types     … 型(XML Schema)        [抽象]┐ 何を
+ ├─ message   … 入出力メッセージ       [抽象]┤
+ ├─ portType  … 操作一覧(in/out)      [抽象]┘ できる?
+ ├─ binding   … 運び方(SOAP/HTTP)     [具象] どう運ぶ?
+ └─ service   … 送り先URL(location)   [具象] どこへ?
+
+読む順 = 下から: service→binding→portType→message/types</pre>
+      </div>
+      <div class="code-block">
+        <div class="code-block-header"><span>WSDL 抜粋 — binding の soapAction と service の URL</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>&lt;<span class="tag">binding</span> <span class="attr">name</span>=<span class="val">"CalculatorBinding"</span> <span class="attr">type</span>=<span class="val">"tns:CalculatorPortType"</span>&gt;
+  &lt;<span class="tag">soap:operation</span> <span class="attr">soapAction</span>=<span class="val">"http://example.com/calculator/Add"</span>/&gt;
+&lt;/<span class="tag">binding</span>&gt;
+&lt;<span class="tag">service</span> <span class="attr">name</span>=<span class="val">"CalculatorService"</span>&gt;
+  &lt;<span class="tag">port</span> ...&gt;&lt;<span class="tag">soap:address</span> <span class="attr">location</span>=<span class="val">"http://127.0.0.1:8088/soap"</span>/&gt;&lt;/<span class="tag">port</span>&gt;
+&lt;/<span class="tag">service</span>&gt;</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ LAB 6 ============ -->
+  <div class="lab" id="lab6">
+    <div class="lab-header">
+      <div class="lab-num">06</div>
+      <h3>SOAP 1.1 vs 1.2</h3>
+      <span class="lab-tag tag-intermediate">中級</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        SOAP には 1.1（事実上の業界標準・本アプリ採用）と 1.2 がある。<strong>名前空間 URI で版が決まる</strong>のが要点。
+        SOAPAction の扱いと Content-Type が大きく異なる。
+      </p>
+      <table class="compare-table">
+        <tr><th>観点</th><th>SOAP 1.1</th><th>SOAP 1.2</th></tr>
+        <tr><td>Envelope NS</td><td>schemas.xmlsoap.org/soap/envelope/</td><td>www.w3.org/2003/05/soap-envelope</td></tr>
+        <tr><td>SOAPAction</td><td>独立 HTTP ヘッダー</td><td>Content-Type の action param</td></tr>
+        <tr><td>Content-Type</td><td>text/xml</td><td>application/soap+xml</td></tr>
+        <tr><td>Fault 構造</td><td>faultcode / faultstring</td><td>Code/Value, Reason/Text</td></tr>
+      </table>
+      <div class="code-pair">
+        <div class="code-pair-col code-pair-before">
+          <div class="code-pair-label">SOAP 1.1 — 独立ヘッダー方式</div>
+          <div class="code-block">
+            <div class="code-block-header"><span>HTTP ヘッダー</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>Content-Type: text/xml; charset=utf-8
+SOAPAction: <span class="str">"http://example.com/calculator/Add"</span></pre>
+          </div>
+        </div>
+        <div class="code-pair-col code-pair-after">
+          <div class="code-pair-label">SOAP 1.2 — Content-Type 統合方式</div>
+          <div class="code-block">
+            <div class="code-block-header"><span>HTTP ヘッダー</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>Content-Type: application/soap+xml; charset=utf-8;
+  action=<span class="str">"http://example.com/calculator/Add"</span></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ LAB 7 ============ -->
+  <div class="lab" id="lab7">
+    <div class="lab-header">
+      <div class="lab-num">07</div>
+      <h3>プロキシと CORS 回避</h3>
+      <span class="lab-tag tag-advanced">応用</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        ブラウザは別オリジンへ直接 SOAP を送ると <strong>CORS</strong> で応答を読めず失敗しがち。
+        そこで同一オリジンの <code>/proxy</code> に依頼し、サーバーが代理で外部へ送って結果を返す。
+      </p>
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 なぜ間にサーバーを挟むのか</div>
+<pre class="ascii-art">[直接] ブラウザ ──X──&gt; 外部SOAP   ← 別オリジン=CORSで読めない
+[経由] ブラウザ ──JSON──&gt; /proxy ──SOAP──&gt; 外部SOAP
+                          (同一オリジン)  (サーバ間=CORS制約なし)
+        ブラウザ &lt;──JSON── /proxy &lt;──応答──┘</pre>
+      </div>
+      <div class="code-block">
+        <div class="code-block-header"><span>/proxy への依頼（JSONで包む）</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>curl -s -X POST http://127.0.0.1:8088/proxy -H <span class="str">"Content-Type: application/json"</span> ^
+  -d <span class="str">"{\"url\":\"http://127.0.0.1:8088/soap\",\"soapAction\":\"http://example.com/calculator/Multiply\",\"body\":\"&lt;soap:Envelope ...&gt;...&lt;/soap:Envelope&gt;\"}"</span>
+<span class="cm"># → {"status":200,"headers":{...},"body":"&lt;...MultiplyResult&gt;42..."} が返る</span></pre>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function copyCode(btn) {
+  const block = btn.closest('.code-block') || btn.parentElement;
+  const pre = block.querySelector('pre');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+const LAB_META = {
+  lab0: {
+    info: { type:'info', html:'📘 <strong>SOAP の核</strong>: メッセージは必ず <code>Envelope &gt; Body</code> に包まれる。Body の中の要素名（<code>tns:Add</code>）が「呼びたい操作」、その子要素が「引数」。封筒の形が固定だから、言語を問わず機械的に処理できる。' },
+    usecase: { items:[
+      '基幹システム間連携（銀行・保険・物流のレガシーAPI）',
+      '.NET の ASMX / WCF が公開する企業内Webサービス',
+      'SAP・Salesforce 等の SOAP エンドポイント呼び出し',
+      '厳格な型と契約（WSDL）が要件の B2B 連携'],
+      triggers:[
+      'エンドポイントの拡張子が <code>.asmx</code> / <code>.svc</code> だったら SOAP の可能性大',
+      'レスポンスが JSON でなく <code>&lt;soap:Envelope&gt;</code> で始まっていたら SOAP'] },
+    check: [
+      '<strong>操作</strong>: ブラウザで <code>http://127.0.0.1:8088/</code> を開き、テンプレ <code>Add (3+4)</code> を押す → <strong>期待</strong>: 左の XML 欄に Envelope が入る',
+      '<strong>操作</strong>: 入力欄の <code>&lt;tns:a&gt;</code> の値を <code>3</code> から <code>30</code> に書き換えて ▶ 送信 → <strong>期待</strong>: 右に <code>34</code> が返り、Body の中身が結果を左右すると分かる',
+      '<strong>操作</strong>: <code>&lt;soap:Body&gt;</code> の行ごと消して送信 → <strong>期待</strong>: 操作を判定できず Fault が返る（Body は必須だと体感）']
+  },
+  lab1: {
+    info: { type:'info', html:'📘 <strong>順序が文法</strong>: Envelope 直下は必ず <code>Header</code>（任意・0か1）→ <code>Body</code>（必須・1）の順。Header はメタ情報専用で、業務データは入れない。' },
+    check: [
+      '<strong>操作</strong>: 上の Header 付き例を UI の XML 欄に貼って ▶ 送信 → <strong>期待</strong>: 本アプリは Header を無視し、Body の操作だけ処理して正常応答（Header は任意だと確認）',
+      '<strong>操作</strong>: <code>Header</code> を <code>Body</code> の<strong>後ろ</strong>に移動して送信 → <strong>期待</strong>: 順序違反。厳格なサーバーなら拒否される（順序が文法だと体感）',
+      '<strong>操作</strong>: ブラウザで応答XMLを見て、応答にも <code>Envelope &gt; Body</code> 構造があるか確認 → <strong>期待</strong>: 行きも帰りも同じ封筒構造']
+  },
+  lab2: {
+    info: { type:'ok', html:'✅ <strong>同じサービスを2経路で</strong>: ブラウザUI も curl も、叩いている先は同じ <code>POST /soap</code>。UI は見やすさ、curl は再現性・自動化に向く。' },
+    verify: { before:'サーバー未起動 → curl すると <code>接続拒否（Connection refused）</code>', after:'▶︎ <code>node server.js</code> 後 → <code>&lt;tns:AddResult&gt;7&lt;/tns:AddResult&gt;</code> が返る' },
+    try: 'curl の <code>^</code> は PowerShell/cmd の行継続。1行で書くなら <code>^</code> と改行を消して1行にする。',
+    check: [
+      '<strong>操作</strong>: サーバーを起動した端末を見る → <strong>期待</strong>: 送信のたび <code>[時刻] SOAP 受信: Add ...</code> ログが出て、受信側からも送受信を確認できる',
+      '<strong>操作</strong>: curl の <code>&lt;tns:a&gt;3</code> を <code>&lt;tns:a&gt;100</code> に変えて再送 → <strong>期待</strong>: <code>104</code> が返る',
+      '<strong>操作</strong>: 操作名を <code>Add</code> → <code>Multiply</code> に変えて送信 → <strong>期待</strong>: <code>12</code>（3×4）が返り、操作名で処理が切り替わると分かる']
+  },
+  lab3: {
+    info: { type:'warn', html:'⚠ <strong>本文の外にある</strong>: SOAPAction は HTTP ヘッダーで、XML の中ではない。値は任意の URI で実在不要（単なる識別子）。本アプリは振り分けに使わずログ出力のみだが、.NET ASMX 等は不一致だと拒否する。' },
+    usecase: { items:[
+      'ファイアウォール/APIゲートウェイが本文を読まず操作単位で許可/遮断',
+      '.NET ASMX サービス呼び出し時の必須ヘッダー指定',
+      'WSDL から生成したクライアントが自動で付与する値の理解'],
+      triggers:[
+      'SOAP 呼び出しが <code>400/500</code> で「SOAPAction が不正」と出たら、まずこのヘッダーを疑う'] },
+    check: [
+      '<strong>操作</strong>: UI で <code>Add</code> テンプレを選び ▶ 送信し、サーバー端末のログを見る → <strong>期待</strong>: <code>SOAPAction=http://example.com/calculator/Add</code> が記録される',
+      '<strong>操作</strong>: UI の「SOAPAction」欄を空にして送信 → <strong>期待</strong>: 本アプリは本文で判定するため正常応答（このサーバーでは必須でないと確認）',
+      '<strong>操作</strong>: 「SOAPAction」欄を <code>でたらめな文字列</code> にして送信 → <strong>期待</strong>: それでも正常応答。値は識別子に過ぎないと体感']
+  },
+  lab4: {
+    info: { type:'info', html:'📘 <strong>エラーも SOAP</strong>: HTTP 500 と一緒に、Body 内の <code>Fault</code> で原因を構造化して返す。<code>faultcode</code> が機械可読、<code>faultstring</code> が人間向け。' },
+    verify: { before:'<code>Divide(20,5)</code> → HTTP 200・<code>DivideResult=4</code>（正常）', after:'▶︎ <code>Divide(20,0)</code> → HTTP 500・<code>soap:Fault</code>（異常）' },
+    check: [
+      '<strong>操作</strong>: UI で <code>Divide (÷0=Fault)</code> を押して ▶ 送信 → <strong>期待</strong>: バッジが赤の <code>HTTP 500 / Fault</code> になり、<code>ゼロ除算はできません。</code> が表示',
+      '<strong>操作</strong>: 引数 <code>a</code> を数値でなく <code>abc</code> にして送信 → <strong>期待</strong>: <code>soap:Client</code>（送信側起因）の Fault が返る',
+      '<strong>操作</strong>: 正常な <code>Divide(20,5)</code> と見比べる → <strong>期待</strong>: 正常時は <code>Result</code>、異常時は <code>Fault</code> と、Body の中身が切り替わる']
+  },
+  lab5: {
+    info: { type:'info', html:'📘 <strong>WSDL = 機械可読の契約書</strong>: SoapUI や Visual Studio はこれを読んでクライアントコードを自動生成する。だから人手と曖昧さが減る。本アプリは <code>?wsdl</code> で取得できる。' },
+    usecase: { items:[
+      'SoapUI に WSDL URL を読み込ませてリクエスト雛形を自動生成',
+      'Visual Studio の「サービス参照の追加」でプロキシクラス生成',
+      'Java の <code>wsimport</code> でスタブ生成（contract-first 開発）'],
+      triggers:[
+      'SOAP API のドキュメントが「WSDL の URL」だけ渡されたら、ツールに読ませれば即クライアントが作れる'] },
+    check: [
+      '<strong>操作</strong>: ブラウザのアドレスバーに <code>http://127.0.0.1:8088/soap?wsdl</code> を入力 → <strong>期待</strong>: サービス定義の XML が表示される',
+      '<strong>操作</strong>: その画面を上から眺め、<code>service</code> の <code>location</code> を探す → <strong>期待</strong>: 送り先 <code>http://127.0.0.1:8088/soap</code> が書かれている',
+      '<strong>操作</strong>: <code>binding</code> 内の <code>soapAction</code> を探す → <strong>期待</strong>: Lab03 でログに出た値と一致（クライアントはここを見て送る）']
+  },
+  lab6: {
+    info: { type:'info', html:'📘 <strong>版は名前空間で決まる</strong>: Envelope の名前空間 URI が <code>.../soap/envelope/</code> なら 1.1、<code>.../2003/05/soap-envelope</code> なら 1.2。接頭辞名(soap/env)は無関係。' },
+    check: [
+      '<strong>操作</strong>: UI の XML の <code>xmlns:soap</code> の URI を 1.2 の <code>http://www.w3.org/2003/05/soap-envelope</code> に書き換えて送信 → <strong>期待</strong>: 本アプリは 1.1 前提のため期待通り動かない（版差を体感）',
+      '<strong>操作</strong>: 接頭辞 <code>soap:</code> を <code>env:</code> に一括変更し、URI はそのままで送信 → <strong>期待</strong>: 正常応答。意味を決めるのは URI で接頭辞名でないと確認',
+      '<strong>操作</strong>: 上の表の Content-Type 列を見比べる → <strong>期待</strong>: 1.1=<code>text/xml</code>、1.2=<code>application/soap+xml</code> の違いを把握']
+  },
+  lab7: {
+    info: { type:'warn', html:'⚠ <strong>CORS はブラウザの制約</strong>: サーバー同士の通信に CORS はない。だから「ブラウザ→自分のサーバー→外部」と中継すれば、外部が CORS 非対応でも送受信できる。' },
+    usecase: { items:[
+      'ブラウザ製の SOAP テストツールから他社の外部APIを叩く',
+      '社内フロントから CORS 未対応のレガシー SOAP を呼ぶ中継層',
+      '認証ヘッダーをサーバー側で付与して秘匿したいとき'],
+      triggers:[
+      'ブラウザのコンソールに <code>blocked by CORS policy</code> が出たら、サーバー経由の中継を検討する合図'] },
+    check: [
+      '<strong>操作</strong>: UI で送信方法を <code>プロキシ経由</code> にして <code>Multiply</code> を送信 → <strong>期待</strong>: <code>42</code> が返り、サーバー端末に <code>プロキシ:</code> ログが出る',
+      '<strong>操作</strong>: エンドポイント URL を <code>http://127.0.0.1:9999/soap</code>（存在しない）にしてプロキシ送信 → <strong>期待</strong>: 接続エラーが JSON に包まれて返る（例外で落ちない）',
+      '<strong>操作</strong>: 送信方法を <code>直接</code> に戻し、外部URLを入れて送信 → <strong>期待</strong>: ブラウザの CORS でエラー表示になり、プロキシの必要性が分かる']
+  },
+};
+
+function infoHTML(m){ return m?.info ? `<div class="info-box ${m.info.type||'info'}">${m.info.html}</div>` : ''; }
+function usecaseHTML(m){ if(!m?.usecase) return '';
+  const items = (m.usecase.items||[]).map(s=>`<li>${s}</li>`).join('');
+  const triggers = (m.usecase.triggers||[]).map(s=>`<li>${s}</li>`).join('');
+  return `<div class="usecase-box">
+    <div class="usecase-title">💡 利用シーン</div>
+    <ul class="usecase-list">${items}</ul>
+    ${triggers?`<div class="usecase-trigger">こう見えたら使える候補:<ul>${triggers}</ul></div>`:''}
+  </div>`; }
+function verifyHTML(m){ if (!m?.verify) return '';
+  const {before, after} = m.verify;
+  return `<div class="verify">
+    <div class="verify-col verify-before"><div class="verify-label">Before ▶︎ 実行前</div>${before||''}</div>
+    <div class="verify-col verify-after"><div class="verify-label">After ▶︎ 実行後</div>${after||''}</div>
+  </div>`; }
+function tryHTML(m){
+  const tip = m?.try ? `<div class="try-tip"><strong>💡 このラボのコツ:</strong> ${m.try}</div>` : '';
+  return `<div class="try-box">
+    <div class="try-title">💻 試し方（このラボの確認を動かす）</div>
+    <ol>
+      <li>上のコードブロックの <strong>Copy</strong> ボタンでコピー</li>
+      <li>XML 例なら UI（<code>http://127.0.0.1:8088/</code>）の入力欄に貼る。curl 例なら PowerShell に貼って実行</li>
+      <li>下の「🔍 ブラウザ実機チェック」を順に試して、想定の挙動になるか確認</li>
+    </ol>
+    ${tip}
+  </div>`; }
+function checkHTML(m){ if (!m?.check?.length) return '';
+  return `<div class="check-steps">
+    <div class="check-steps-title">🔍 ブラウザ実機チェック</div>
+    <ol>${m.check.map(s=>`<li>${s}</li>`).join('')}</ol>
+  </div>`; }
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.lab').forEach(lab => {
+    const meta = LAB_META[lab.id]; const body = lab.querySelector('.lab-body');
+    if (!body || !meta) return;
+    const frag = document.createElement('div');
+    frag.innerHTML = infoHTML(meta) + usecaseHTML(meta) + verifyHTML(meta) + tryHTML(meta) + checkHTML(meta);
+    while (frag.firstChild) body.appendChild(frag.firstChild);
+  });
+
+  const links = Array.from(document.querySelectorAll('#sidebar .nav-item'));
+  const map = new Map();
+  links.forEach(a => { const el = document.getElementById(a.getAttribute('href').slice(1)); if (el) map.set(el, a); });
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) { const l = map.get(e.target);
+      if (l) { links.forEach(n=>n.classList.remove('active')); l.classList.add('active'); } }
+  }), { rootMargin:'-30% 0px -60% 0px' });
+  document.querySelectorAll('.lab[id]').forEach(lab => io.observe(lab));
+
+  document.querySelectorAll('.code-block').forEach((cb, i) => {
+    if (cb.querySelector('.code-block-header')) return;
+    const header = document.createElement('div');
+    header.className = 'code-block-header';
+    header.innerHTML = `<span>Code #${i+1}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+    cb.insertBefore(header, cb.firstChild);
+  });
+});
+</script>
+</body>
+</html>
