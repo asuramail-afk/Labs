@@ -216,6 +216,7 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); line-he
   <a class="nav-item" href="#lab6"><span class="nav-num">06</span>1.1 vs 1.2</a>
   <div class="nav-section">応用</div>
   <a class="nav-item" href="#lab7"><span class="nav-num">07</span>プロキシ/CORS</a>
+  <a class="nav-item" href="#lab8"><span class="nav-num">08</span>WS-Security認証</a>
 </nav>
 
 <div class="hero">
@@ -234,6 +235,7 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); line-he
     <a class="toc-item" href="#lab5"><span class="toc-num">05</span>WSDL の構造と読み方</a>
     <a class="toc-item" href="#lab6"><span class="toc-num">06</span>SOAP 1.1 vs 1.2</a>
     <a class="toc-item" href="#lab7"><span class="toc-num">07</span>プロキシと CORS 回避</a>
+    <a class="toc-item" href="#lab8"><span class="toc-num">08</span>WS-Security（UsernameToken）認証</a>
   </div>
 </div>
 
@@ -502,6 +504,53 @@ SOAPAction: <span class="str">"http://example.com/calculator/Add"</span></pre>
     </div>
   </div>
 
+  <!-- ============ LAB 8 ============ -->
+  <div class="lab" id="lab8">
+    <div class="lab-header">
+      <div class="lab-num">08</div>
+      <h3>WS-Security（UsernameToken）認証</h3>
+      <span class="lab-tag tag-advanced">応用</span>
+    </div>
+    <div class="lab-body">
+      <p class="lab-desc">
+        <strong>認証</strong>＝「あなたは誰か」を確かめる行為。<code>WS-Security</code> は認証情報を <code>soap:Header</code> に標準形式で載せる仕様。
+        本アプリは <code>UsernameToken</code> を検証し、不正なら <strong>Client Fault</strong> を返す。正規資格情報は <code>tom / soap123</code>。
+      </p>
+      <div class="beginner-box">
+        <div class="beginner-title">🔰 認証情報は Body でなく Header に置く</div>
+<pre class="ascii-art">soap:Envelope
+ ├─ soap:Header        ← 認証などメタ情報の置き場
+ │   └─ wsse:Security
+ │        └─ wsse:UsernameToken { Username, Password }
+ └─ soap:Body          ← 業務データ（Add など）
+
+サーバ: Header を検証 → OK なら Body を処理 / NG なら Fault</pre>
+      </div>
+      <div class="code-block">
+        <div class="code-block-header"><span>UsernameToken 付きリクエスト</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>&lt;<span class="tag">soap:Envelope</span> <span class="attr">xmlns:soap</span>=<span class="val">"http://schemas.xmlsoap.org/soap/envelope/"</span>
+               <span class="attr">xmlns:wsse</span>=<span class="val">"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd"</span>
+               <span class="attr">xmlns:tns</span>=<span class="val">"http://example.com/calculator"</span>&gt;
+  &lt;<span class="tag">soap:Header</span>&gt;
+    &lt;<span class="tag">wsse:Security</span>&gt;
+      &lt;<span class="tag">wsse:UsernameToken</span>&gt;
+        &lt;<span class="tag">wsse:Username</span>&gt;tom&lt;/<span class="tag">wsse:Username</span>&gt;
+        &lt;<span class="tag">wsse:Password</span>&gt;soap123&lt;/<span class="tag">wsse:Password</span>&gt;
+      &lt;/<span class="tag">wsse:UsernameToken</span>&gt;
+    &lt;/<span class="tag">wsse:Security</span>&gt;
+  &lt;/<span class="tag">soap:Header</span>&gt;
+  &lt;<span class="tag">soap:Body</span>&gt;&lt;<span class="tag">tns:Add</span>&gt;&lt;<span class="tag">tns:a</span>&gt;3&lt;/<span class="tag">tns:a</span>&gt;&lt;<span class="tag">tns:b</span>&gt;4&lt;/<span class="tag">tns:b</span>&gt;&lt;/<span class="tag">tns:Add</span>&gt;&lt;/<span class="tag">soap:Body</span>&gt;
+&lt;/<span class="tag">soap:Envelope</span>&gt;</pre>
+      </div>
+      <table class="compare-table">
+        <tr><th>守り方</th><th>HTTPS</th><th>WS-Security</th></tr>
+        <tr><td>保護対象</td><td>通信経路(transport)</td><td>メッセージ自体(message)</td></tr>
+        <tr><td>中継サーバ</td><td class="no">経由で一度復号される</td><td class="yes">最終受信者まで保護継続(end-to-end)</td></tr>
+        <tr><td>用途</td><td>常に推奨</td><td>多段中継の企業間連携で併用</td></tr>
+      </table>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -601,6 +650,21 @@ const LAB_META = {
       '<strong>操作</strong>: UI で送信方法を <code>プロキシ経由</code> にして <code>Multiply</code> を送信 → <strong>期待</strong>: <code>42</code> が返り、サーバー端末に <code>プロキシ:</code> ログが出る',
       '<strong>操作</strong>: エンドポイント URL を <code>http://127.0.0.1:9999/soap</code>（存在しない）にしてプロキシ送信 → <strong>期待</strong>: 接続エラーが JSON に包まれて返る（例外で落ちない）',
       '<strong>操作</strong>: 送信方法を <code>直接</code> に戻し、外部URLを入れて送信 → <strong>期待</strong>: ブラウザの CORS でエラー表示になり、プロキシの必要性が分かる']
+  },
+  lab8: {
+    info: { type:'warn', html:'⚠ <strong>認証 ≠ 認可</strong>: 認証=「誰か」を確かめる / 認可=「何をしてよいか」を決める。WS-Security は認証情報を <code>soap:Header</code> に標準形式で載せる仕様。本アプリは平文 UsernameToken の学習用で、実運用は PasswordDigest・XML署名を使う。' },
+    usecase: { items:[
+      '.NET WCF / Java JAX-WS の WS-Security 対応サービス呼び出し',
+      '多段中継(ESB/ゲートウェイ)で end-to-end にメッセージを保護',
+      'HTTPS に加えメッセージ単位の認証・改ざん検知が要る企業間連携'],
+      triggers:[
+      'リクエスト例に <code>&lt;wsse:Security&gt;</code> や <code>UsernameToken</code> が出てきたら WS-Security',
+      'SOAP 呼び出しが 401 や「authentication failed」で弾かれたら Header の資格情報を疑う'] },
+    check: [
+      '<strong>操作</strong>: UI で <code>Add</code> を選び「WS-Security ヘッダーを付与する」にチェックし <code>tom/soap123</code> のまま ▶ 送信 → <strong>期待</strong>: 緑 <code>HTTP 200</code>・<code>7</code>。サーバー端末に <code>認証: 成功 user=tom</code> ログ',
+      '<strong>操作</strong>: Password を <code>soap123</code> 以外に変えて送信 → <strong>期待</strong>: 赤 <code>Fault</code>・<code>soap:Client</code>「認証に失敗しました」、ログに <code>認証: 失敗</code>',
+      '<strong>操作</strong>: チェックを外して（トークン無しで）送信 → <strong>期待</strong>: 既定は任意モードなので従来どおり成功（後方互換）',
+      '<strong>操作</strong>: 端末で <code>$env:REQUIRE_AUTH=1; node server.js</code> で起動し直し、トークン無しで送信 → <strong>期待</strong>: <code>HTTP 401</code>・Fault「認証情報がありません」']
   },
 };
 
