@@ -353,6 +353,12 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
 .sf-deck-select{flex:1;min-width:120px;padding:8px 12px;border:1px solid var(--border);
   border-radius:8px;font-family:var(--sans);font-size:.85rem;background:var(--surface);color:var(--text)}
 .sf-deck-select:focus{outline:none;border-color:var(--accent)}
+.sf-deck-search{flex:1 1 140px;min-width:120px;padding:8px 12px;border:1px solid var(--border);
+  border-radius:8px;font-family:var(--sans);font-size:.85rem;background:var(--surface);color:var(--text)}
+.sf-deck-search:focus{outline:none;border-color:var(--accent)}
+.sf-deck-sort{flex:0 0 auto;padding:8px 10px;border:1px solid var(--border);
+  border-radius:8px;font-family:var(--sans);font-size:.82rem;background:var(--surface);color:var(--text-dim)}
+.sf-deck-sort:focus{outline:none;border-color:var(--accent)}
 
 /* Load more button */
 .load-more-row{text-align:center;padding:16px 0}
@@ -453,6 +459,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
         <button class="sf-level-btn" data-level="element">要素</button>
         <button class="sf-level-btn" data-level="keyword" title="キーワード(1キーワード×4視点)">KW</button>
       </div>
+      <input type="text" class="sf-deck-search" id="study-deck-search" placeholder="🔍 デッキ名で絞り込み">
+      <select class="sf-deck-sort" id="study-deck-sort" title="デッキの並び替え">
+        <option value="recommended">おすすめ(未学習×新着)</option>
+        <option value="date-desc">Drive更新が新しい順</option>
+        <option value="date-asc">Drive更新が古い順</option>
+        <option value="name">名前順</option>
+      </select>
       <select class="sf-deck-select" id="study-deck-select">
         <option value="">全デッキ</option>
       </select>
@@ -737,6 +750,8 @@ const state = {
   reviews: [],        // [{date:'YYYY-MM-DD', count}]  日別レビュー集計
   currentDeck: null,  // null = 全カード
   currentLevel: 'all', // 'all' | 'structure' | 'element' | 'keyword'
+  deckSort: 'recommended', // 学習画面デッキdrop の並び順: recommended|date-desc|date-asc|name
+  deckQuery: '',      // 学習画面デッキdrop の名前絞り込み
   managePageSize: 50,  // モバイル向けページネーション
   manageShown: 50,     // 現在表示中の件数
   studyQueue: [],
@@ -971,6 +986,39 @@ function getDecks(){
   filtered.forEach(c => { if(c.deck) set.add(c.deck); });
   return Array.from(set).sort();
 }
+// デッキごとに「日付」を導出: lastReviewed(最終学習=カード最大値) と modifiedTime(Drive更新=最新ファイル)
+function getDeckMeta(){
+  const fileTime = {}; // _sourceFile 名 → Drive modifiedTime(ms)
+  state.drive.cardFiles.forEach(f => {
+    fileTime[f.name] = f.modifiedTime ? Date.parse(f.modifiedTime) : 0;
+  });
+  const meta = {}; // deck → { lastReviewed, modifiedTime }
+  filterByLevel(state.cards).forEach(c => {
+    if(!c.deck) return;
+    const m = meta[c.deck] || (meta[c.deck] = { lastReviewed: 0, modifiedTime: 0 });
+    if((c.lastReviewed||0) > m.lastReviewed) m.lastReviewed = c.lastReviewed||0;
+    const ft = fileTime[c._sourceFile] || 0;
+    if(ft > m.modifiedTime) m.modifiedTime = ft;
+  });
+  return meta;
+}
+// 学習画面デッキdrop の並び替え(配列を破壊的にsortして返す)
+function sortDecks(decks, meta, mode){
+  const byName = (a,b) => a.localeCompare(b, 'ja');
+  const m = d => meta[d] || { lastReviewed: 0, modifiedTime: 0 };
+  switch(mode){
+    case 'date-desc': return decks.sort((a,b) => (m(b).modifiedTime - m(a).modifiedTime) || byName(a,b));
+    case 'date-asc':  return decks.sort((a,b) => (m(a).modifiedTime - m(b).modifiedTime) || byName(a,b));
+    case 'name':      return decks.sort(byName);
+    case 'recommended':
+    default:
+      // 第1キー: 最終学習日 昇順(未学習=0が先頭) / 第2キー: Drive更新 降順(新着優先)
+      return decks.sort((a,b) =>
+        (m(a).lastReviewed - m(b).lastReviewed) ||
+        (m(b).modifiedTime - m(a).modifiedTime) ||
+        byName(a,b));
+  }
+}
 function getCardsForStudy(){
   let pool = filterByLevel(state.cards);
   if(state.currentDeck){ pool = pool.filter(c => c.deck === state.currentDeck); }
@@ -1064,13 +1112,21 @@ function renderDeckNav(){
   const fl = document.getElementById('filter-level');
   if(fl) fl.value = state.currentLevel === 'all' ? '' : state.currentLevel;
 
-  // sync study-filters (mobile bar)
+  // sync study-filters (mobile bar) — 名前絞り込み + 日付ソートを適用
   const sds = document.getElementById('study-deck-select');
   if(sds){
+    const meta = getDeckMeta();
+    const q = (state.deckQuery || '').trim().toLowerCase();
+    let sdecks = q ? decks.filter(d => d.toLowerCase().includes(q)) : decks.slice();
+    // 選択中デッキが絞り込みで消えても選択を失わないよう必ず含める
+    if(state.currentDeck && decks.includes(state.currentDeck) && !sdecks.includes(state.currentDeck)){
+      sdecks.unshift(state.currentDeck);
+    }
+    sortDecks(sdecks, meta, state.deckSort || 'recommended');
     // 全デッキが実施済みなら ☑ を、各デッキも全実施済みなら ☑ を頭に付ける
     const allOfAllDone = filtered.length > 0 && filtered.every(c => c.done);
     sds.innerHTML = `<option value="">${allOfAllDone?'☑ ':''}全デッキ</option>` +
-      decks.map(d => {
+      sdecks.map(d => {
         const allDone = (counts[d]||0) > 0 && doneCounts[d] === counts[d];
         return `<option value="${escapeAttr(d)}">${allDone?'☑ ':''}${escapeHtml(d)}</option>`;
       }).join('');
@@ -2217,6 +2273,16 @@ document.addEventListener('DOMContentLoaded', () => {
     state.currentDeck = e.target.value || null;
     renderDeckNav();
     startStudy();
+  });
+
+  // Study deck: 名前絞り込み + 日付ソート(option を再構築するだけなので学習は再開しない)
+  document.getElementById('study-deck-search').addEventListener('input', e => {
+    state.deckQuery = e.target.value;
+    renderDeckNav();
+  });
+  document.getElementById('study-deck-sort').addEventListener('change', e => {
+    state.deckSort = e.target.value;
+    renderDeckNav();
   });
 
   document.getElementById('nav-sync').addEventListener('click', () => {
